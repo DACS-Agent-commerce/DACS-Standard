@@ -1939,6 +1939,39 @@ python3 scripts/generate_settlement_finality_verification_vectors.py --check
 python3 -m unittest tests.test_settlement_finality_verification_vectors -v
 ```
 
+### `finality-resolution-context-v1.json` — DACS-4 §9.7.0 FRC-1..FRC-11
+
+Thirteen candidate cases execute the all-authorities finality resolution
+context over the fixture-only `dacs-finality-synthetic-fixture-v1` binding.
+Every case carries its complete verifier input and names the entry point it
+runs:
+
+- `operation: "verify"`: `input.value` is the FV consumer input and
+  `input.authority` is the verifier-owned resolution authority (policy, issued
+  query, source references, decision time, local acquisition records and
+  retained responses). Run the FV entry point with the set-level `baseTrusted`
+  plus that authority.
+- `operation: "verify-composite"`: `input.relationship` and `input.legs[]`,
+  each leg with its own value and authority.
+- `operation: "replay"`: `input.replayRecord` with a recorded replay authority
+  (`mode: "replay"`, `replayValue`). The result is historical and never a
+  current finality decision.
+
+The authority is verifier configuration, not a member of any signed artifact.
+The cases cover complete coverage, a retained same-authority conflict,
+competing sibling-fork heads, an unresolved reorganisation, checkpoint and
+economic contradictions, an explicitly unavailable seat, signed-time and
+freshness boundaries, a response for another query, composite legs and
+recorded replay.
+
+Regenerate and execute from the repository root:
+
+```sh
+python3 scripts/generate_finality_resolution_context_vectors.py --write
+python3 scripts/generate_finality_resolution_context_vectors.py --check
+python3 -m unittest tests.test_finality_resolution_context_vectors -v
+```
+
 ### `current-use-reputation-v1.json` — unallocated #391+#392 LAB-1..LAB-7 / CUR-1..CUR-8
 
 Thirteen candidate fixtures drive the complete stronger DACS-5 consumer path. Six

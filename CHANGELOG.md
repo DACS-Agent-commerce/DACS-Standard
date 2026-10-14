@@ -73,6 +73,17 @@ The format used per release:
   signed top-level `sessionNonce`; SIWD uses its signed message `Nonce`; and the
   receiving phase orchestrator issues the verifier-identity challenge.
 
+### Fixed — conformance vectors for rules merged in #415–#420
+
+These additions change no normative text unless a bullet says so. Each new
+case is a committed vector that a verifier ignoring its rule gets wrong.
+
+- **Executable finality-resolution corpus** (DACS-4 §9.7.0; #416 follow-up) —
+  every `finality-resolution-context-v1` case now carries its complete
+  verifier input and names its entry point (`verify`, `verify-composite` or
+  `replay`), so each case executes from the committed JSON alone. No existing
+  verdict changes.
+
 ### Changed — current-delivery admission corrective boundary
 
 - **Breaking pre-v1 correction** (CORE v0.3 §11.1.2, DACS-4 v0.8 PDE-7/PDE-8,

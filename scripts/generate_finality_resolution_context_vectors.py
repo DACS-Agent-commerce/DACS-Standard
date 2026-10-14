@@ -138,7 +138,7 @@ def checkpoint_for(observation: dict) -> dict:
 
 
 def serialize_authority(authority) -> dict:
-    return {
+    payload = {
         "authenticated": authority.authenticated,
         "policy": authority.policy,
         "issuedQuery": authority.issued_query,
@@ -149,6 +149,10 @@ def serialize_authority(authority) -> dict:
         "acquisitionRecords": list(authority.acquisition_records),
         "retainedResponses": list(authority.retained_responses),
     }
+    if authority.mode != "current":
+        payload["mode"] = authority.mode
+        payload["replayValue"] = authority.replay_value
+    return payload
 
 
 def build_authority(
@@ -214,6 +218,54 @@ def resolved_input(
         "context": context_for(authority, transported),
     }
     return {"value": value, "authority": serialize_authority(authority)}
+
+
+def replace_seat(
+    value: dict, payload: dict, variant: dict, authority_id: str
+) -> dict:
+    """Replace one seat's transported, retained and acquired response."""
+    value = copy.deepcopy(value)
+    payload = copy.deepcopy(payload)
+    response = copy.deepcopy(variant["response"])
+    value["context"]["responseArtifacts"] = [
+        item for item in value["context"]["responseArtifacts"]
+        if item["authorityId"] != authority_id
+    ] + [response]
+    payload["retainedResponses"] = [
+        item for item in payload["retainedResponses"]
+        if item["authorityId"] != authority_id
+    ] + [copy.deepcopy(response)]
+    payload["acquisitionRecords"] = [
+        item for item in payload["acquisitionRecords"]
+        if item["authorityId"] != authority_id
+    ] + [copy.deepcopy(variant["acquisition"])]
+    value["context"]["replay"]["acquisitionRecords"] = copy.deepcopy(
+        payload["acquisitionRecords"]
+    )
+    return {"value": value, "authority": payload}
+
+
+def replay_record(value: dict, payload: dict) -> dict:
+    """The FRC-9 record a current decision retains for later replay."""
+    union = {
+        canonicalize(response): response
+        for response in (
+            value["context"]["responseArtifacts"] + payload["retainedResponses"]
+        )
+    }
+    return {
+        "finalityResolutionReplayVersion": "1",
+        "context": copy.deepcopy(value["context"]),
+        "policy": copy.deepcopy(payload["policy"]),
+        "policySource": copy.deepcopy(payload["policySource"]),
+        "authoritySetSource": copy.deepcopy(payload["authoritySetSource"]),
+        "checkpointSource": copy.deepcopy(payload["checkpointSource"]),
+        "acquisitionRecords": copy.deepcopy(payload["acquisitionRecords"]),
+        "retainedResponses": [
+            copy.deepcopy(union[key])
+            for key in sorted(union, key=lambda item: item.encode("utf-8"))
+        ],
+    }
 
 
 def document() -> dict:
@@ -580,27 +632,165 @@ def document() -> dict:
         copy.deepcopy(value)
     )
 
+    # Every case is materialized as the exact verifier input so a third party
+    # can execute it from the JSON alone; ``positive`` and ``variants`` remain
+    # as the building blocks the focused tests mutate.
+    positive_payload = serialize_authority(authority)
+    nonce = authority.issued_query["nonce"]
+    variants = {
+        "conflictingResponse": {
+            "response": conflict_response,
+            "acquisition": acquisition(conflict_response, nonce, ACQUIRED_AT),
+        },
+        "checkpointMismatchResponse": {
+            "response": checkpoint_mismatch_response,
+            "acquisition": acquisition(
+                checkpoint_mismatch_response, nonce, ACQUIRED_AT
+            ),
+        },
+        "contradictoryResponse": {
+            "response": contradiction_response,
+            "acquisition": acquisition(contradiction_response, nonce, ACQUIRED_AT),
+        },
+        "unavailableResponse": {
+            "response": unavailable_response,
+            "acquisition": acquisition(unavailable_response, nonce, ACQUIRED_AT),
+        },
+        "futureResponse": {
+            "response": future_response,
+            "acquisition": acquisition(future_response, nonce, ACQUIRED_AT),
+        },
+        "staleResponse": {
+            "response": stale_response,
+            "acquisition": acquisition(stale_response, nonce, ACQUIRED_AT),
+        },
+        "otherQueryResponse": {
+            "response": other_query_response,
+            "acquisition": acquisition(other_query_response, nonce, ACQUIRED_AT),
+        },
+    }
+    retained_conflict_payload = copy.deepcopy(positive_payload)
+    retained_conflict_payload["retainedResponses"].append(
+        copy.deepcopy(conflict_response)
+    )
+    retained_conflict_payload["acquisitionRecords"].append(
+        copy.deepcopy(variants["conflictingResponse"]["acquisition"])
+    )
+    retained_conflict_value = copy.deepcopy(value)
+    retained_conflict_value["context"]["replay"]["acquisitionRecords"] = (
+        copy.deepcopy(retained_conflict_payload["acquisitionRecords"])
+    )
+    composite_relationship_input = {
+        "relationship": copy.deepcopy(relationship),
+        "legs": [
+            {
+                "legId": leg["legId"],
+                "value": copy.deepcopy(leg["value"]),
+                "authority": copy.deepcopy(leg["authority"]),
+            }
+            for leg in composite_legs
+        ],
+    }
+    unavailable_leg_input = copy.deepcopy(composite_relationship_input)
+    destination = composite_legs[1]
+    unavailable_leg = replace_seat(
+        destination["value"], destination["authority"],
+        destination["unavailableVariant"], "observer-b",
+    )
+    unavailable_leg_input["legs"][1].update(unavailable_leg)
+    replay_payload = with_acquisition(
+        authority,
+        records=positive_payload["acquisitionRecords"],
+        retained_responses=replay_record(value, positive_payload)["retainedResponses"],
+        mode="replay",
+        replay_value=value,
+    )
+
+    def verify_input(case_value: dict, payload: dict) -> dict:
+        return {"value": copy.deepcopy(case_value), "authority": copy.deepcopy(payload)}
+
     vectors = [
-        {"name": "complete-all-authorities", "expected": "pass"},
-        {"name": "retained-same-authority-conflict", "expected": "indeterminate"},
+        {"name": "complete-all-authorities", "expected": "pass",
+         "operation": "verify",
+         "note": "both configured authorities sign the same native view for the "
+                 "verifier-issued query; transport order and metadata differ",
+         "input": verify_input(value, positive_payload)},
+        {"name": "retained-same-authority-conflict", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "a retained, separately acquired observer-a response with a "
+                 "different native view conflicts with the transported one",
+         "input": verify_input(retained_conflict_value, retained_conflict_payload)},
         {"name": "fv-conflicting-authenticated-heads", "expected": "indeterminate",
+         "operation": "verify",
          "note": "two configured authorities sign individually valid views whose "
                  "heads are competing sibling-fork blocks at the checkpoint height",
          "input": conflicting_heads_input},
         {"name": "fv-reorg-unresolved", "expected": "indeterminate",
+         "operation": "verify",
          "note": "a retained pre-reorganisation response conflicts with the same "
                  "authority's later replacement-fork response; both authorities "
                  "agree on the replacement and transport omits the retained view",
          "input": reorg_input},
-        {"name": "native-checkpoint-mismatch", "expected": "fail"},
-        {"name": "authenticated-economic-contradiction", "expected": "fail"},
-        {"name": "configured-authority-unavailable", "expected": "indeterminate"},
-        {"name": "signed-time-after-acquisition", "expected": "fail"},
-        {"name": "stale-signed-observation", "expected": "indeterminate"},
-        {"name": "response-for-other-query", "expected": "indeterminate"},
-        {"name": "distinct-composite-legs", "expected": "pass"},
-        {"name": "composite-leg-unavailable", "expected": "indeterminate"},
-        {"name": "recorded-policy-replay", "expected": "pass"},
+        {"name": "native-checkpoint-mismatch", "expected": "fail",
+         "operation": "verify",
+         "note": "observer-a's signed native head is not at the pinned checkpoint",
+         "input": replace_seat(
+             value, positive_payload,
+             variants["checkpointMismatchResponse"], "observer-a",
+         )},
+        {"name": "authenticated-economic-contradiction", "expected": "fail",
+         "operation": "verify",
+         "note": "observer-a's signed native event contradicts the signed "
+                 "agreement amount",
+         "input": replace_seat(
+             value, positive_payload,
+             variants["contradictoryResponse"], "observer-a",
+         )},
+        {"name": "configured-authority-unavailable", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "observer-b signs an explicit registered unavailable response",
+         "input": replace_seat(
+             value, positive_payload,
+             variants["unavailableResponse"], "observer-b",
+         )},
+        {"name": "signed-time-after-acquisition", "expected": "fail",
+         "operation": "verify",
+         "note": "observer-a's signed observation time is after the verifier's "
+                 "local acquisition",
+         "input": replace_seat(
+             value, positive_payload, variants["futureResponse"], "observer-a",
+         )},
+        {"name": "stale-signed-observation", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "observer-a's signed observation is older than the policy's "
+                 "maximum age at acquisition",
+         "input": replace_seat(
+             value, positive_payload, variants["staleResponse"], "observer-a",
+         )},
+        {"name": "response-for-other-query", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "observer-b's only response answers another query, so its "
+                 "configured seat stays empty",
+         "input": replace_seat(
+             value, positive_payload, variants["otherQueryResponse"], "observer-b",
+         )},
+        {"name": "distinct-composite-legs", "expected": "pass",
+         "operation": "verify-composite",
+         "note": "each leg passes its own complete authority gate under its own "
+                 "profile, subject and checkpoint",
+         "input": composite_relationship_input},
+        {"name": "composite-leg-unavailable", "expected": "indeterminate",
+         "operation": "verify-composite",
+         "note": "the destination leg's observer-b seat is explicitly unavailable",
+         "input": unavailable_leg_input},
+        {"name": "recorded-policy-replay", "expected": "pass",
+         "operation": "replay",
+         "note": "the recorded replay authority re-evaluates the retained record; "
+                 "the result is historical, not a current finality decision",
+         "input": {
+             "replayRecord": replay_record(value, positive_payload),
+             "authority": serialize_authority(replay_payload),
+         }},
     ]
     return {
         "set": "finality-resolution-context-v1",
@@ -618,60 +808,13 @@ def document() -> dict:
         "baseTrusted": base_trusted,
         "positive": {
             "value": value,
-            "authority": serialize_authority(authority),
+            "authority": positive_payload,
             "want": {
                 "decision": "pass",
                 "finalityClass": "profile-final",
             },
         },
-        "variants": {
-            "conflictingResponse": {
-                "response": conflict_response,
-                "acquisition": acquisition(
-                    conflict_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-            "checkpointMismatchResponse": {
-                "response": checkpoint_mismatch_response,
-                "acquisition": acquisition(
-                    checkpoint_mismatch_response,
-                    authority.issued_query["nonce"],
-                    ACQUIRED_AT,
-                ),
-            },
-            "contradictoryResponse": {
-                "response": contradiction_response,
-                "acquisition": acquisition(
-                    contradiction_response,
-                    authority.issued_query["nonce"],
-                    ACQUIRED_AT,
-                ),
-            },
-            "unavailableResponse": {
-                "response": unavailable_response,
-                "acquisition": acquisition(
-                    unavailable_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-            "futureResponse": {
-                "response": future_response,
-                "acquisition": acquisition(
-                    future_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-            "staleResponse": {
-                "response": stale_response,
-                "acquisition": acquisition(
-                    stale_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-            "otherQueryResponse": {
-                "response": other_query_response,
-                "acquisition": acquisition(
-                    other_query_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-        },
+        "variants": variants,
         "composite": {
             "relationship": relationship,
             "legs": composite_legs,

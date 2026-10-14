@@ -8,9 +8,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = str(ROOT / "scripts")
-if SCRIPTS not in sys.path:
-    sys.path.insert(0, SCRIPTS)
+for path in (str(ROOT / "scripts"), str(ROOT / "tests")):
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
@@ -54,13 +54,16 @@ class FinalityResolutionContextTests(unittest.TestCase):
         *,
         records=None,
         retained=None,
-        mode="current",
+        mode=None,
         replay_value=None,
         verification_time=None,
     ):
         payload = copy.deepcopy(
             payload or self.data["positive"]["authority"]
         )
+        mode = mode or payload.get("mode", "current")
+        if replay_value is None:
+            replay_value = payload.get("replayValue")
         return FinalityResolutionAuthority(
             authenticated=payload["authenticated"],
             policy=payload["policy"],
@@ -93,6 +96,36 @@ class FinalityResolutionContextTests(unittest.TestCase):
             copy.deepcopy(value or self.data["positive"]["value"]),
             self.trust(authority or self.authority()),
         )
+
+    def execute_vector(self, case):
+        """Run one committed case through its named entry point, JSON only."""
+        payload = copy.deepcopy(case["input"])
+        if case["operation"] == "verify":
+            return self.verify(payload["value"], self.authority(payload["authority"]))
+        if case["operation"] == "verify-composite":
+            legs = [
+                {
+                    "legId": leg["legId"],
+                    "value": leg["value"],
+                    "authority": self.authority(leg["authority"]),
+                }
+                for leg in payload["legs"]
+            ]
+            return verify_composite_resolution(
+                legs,
+                payload["relationship"],
+                legacy_verifier=_verify_single_view_finality,
+            )
+        if case["operation"] == "replay":
+            return replay_finality_resolution(
+                payload["replayRecord"],
+                self.authority(payload["authority"]),
+                legacy_verifier=_verify_single_view_finality,
+            )
+        raise AssertionError("unknown vector operation %r" % case["operation"])
+
+    def case(self, name):
+        return next(v for v in self.data["vectors"] if v["name"] == name)
 
     @staticmethod
     def replace_seat(value, payload, variant, authority_id="observer-b"):
@@ -279,18 +312,39 @@ class FinalityResolutionContextTests(unittest.TestCase):
         return case, copy.deepcopy(case["input"]["value"]), copy.deepcopy(case["input"]["authority"])
 
     def test_materialized_cases_execute_their_expectation(self):
-        executed = set()
+        self.assertEqual(13, self.data["count"])
+        self.assertEqual(self.data["count"], len(self.data["vectors"]))
+        self.assertEqual(
+            hashlib.sha256(json.dumps(
+                self.data["vectors"], separators=(",", ":"), sort_keys=True,
+            ).encode("utf-8")).hexdigest(),
+            self.data["hash"],
+        )
+        decisions = set()
         for case in self.data["vectors"]:
-            if "input" not in case:
-                continue
+            self.assertIn(case["operation"], {"verify", "verify-composite", "replay"})
+            self.assertIn("input", case)
             with self.subTest(case=case["name"]):
-                result = self.verify(
-                    case["input"]["value"], self.authority(case["input"]["authority"])
-                )
+                result = self.execute_vector(case)
                 self.assertEqual(case["expected"], result["decision"], result["reason"])
-            executed.add(case["name"])
-        self.assertLessEqual(
-            {"fv-conflicting-authenticated-heads", "fv-reorg-unresolved"}, executed
+            decisions.add(result["decision"])
+        self.assertEqual({"pass", "fail", "indeterminate"}, decisions)
+
+    def test_materialized_replay_record_is_the_current_decision_record(self):
+        case = self.case("recorded-policy-replay")
+        self.assertEqual(
+            self.verify()["replayRecord"], case["input"]["replayRecord"]
+        )
+        authority = case["input"]["authority"]
+        self.assertEqual("replay", authority["mode"])
+        self.assertEqual(self.data["positive"]["value"], authority["replayValue"])
+        result = self.execute_vector(case)
+        self.assertTrue(result["historicalReplay"])
+        self.assertFalse(result["currentFinalityDecision"])
+        # The same recorded authority cannot authorize a current decision.
+        self.assertEqual(
+            "indeterminate",
+            self.verify(authority=self.authority(authority))["decision"],
         )
 
     def test_conflicting_authenticated_heads_reach_frc7(self):

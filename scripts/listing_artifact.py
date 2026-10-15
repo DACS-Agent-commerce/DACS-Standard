@@ -286,7 +286,8 @@ def _valid_pipeline(pipeline, pricing, deliverable):
         or not pipeline
         or any(
             not isinstance(step, dict)
-            or step.get("kind") not in KNOWN_PHASES
+            or not isinstance(step.get("kind"), str)
+            or step["kind"] not in KNOWN_PHASES
             or ("parameters" in step and not isinstance(step["parameters"], dict))
             for step in pipeline
         )

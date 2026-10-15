@@ -497,6 +497,60 @@ class CurrentSealedPhaseShapeTests(unittest.TestCase):
                 self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
 
 
+def _wrong_typed(known: str) -> tuple:
+    """Every non-string JSON type, including containers that hold a known member."""
+    return (
+        ("object", {}),
+        ("object holding a known member", {known: known}),
+        ("array", []),
+        ("array holding a known member", [known]),
+        ("null", None),
+        ("integer", 1),
+        ("negative integer", -1),
+        ("float", 1.5),
+        ("boolean", True),
+    )
+
+
+class ListingShapeWrongTypeTests(unittest.TestCase):
+    """Wrong-typed closed-union members are shape failures, never exceptions."""
+
+    def assert_shape_failure(self, listing, reason):
+        self.assertEqual(
+            listing_artifact.validate_listing_shape(listing),
+            (False, reason, "Listing", "dacs-listing:v1:"),
+        )
+        self.assertEqual(
+            listing_admission.admit_listing(
+                listing,
+                inclusion_key=_public_hex(_seller_private()),
+                session_boundary="new-session",
+                native_binding=_native_binding(),
+            ),
+            ("rejected", "listing shape is invalid", None),
+        )
+        self.assertEqual(
+            listing_artifact.prepare_listing_publication(
+                listing,
+                _native_binding(),
+                substrate=CONFORMANCE_SUBSTRATE,
+                finality_profile=CONFORMANCE_FINALITY,
+            ),
+            ("fail", None),
+        )
+
+    def test_fixture_listing_is_shape_valid(self):
+        self.assertTrue(listing_artifact.validate_listing_shape(_legacy_listing())[0])
+
+    def test_wrong_typed_pipeline_kind_is_a_shape_failure(self):
+        for index in (0, -1):
+            for name, value in _wrong_typed("vet-credentials"):
+                with self.subTest(step=index, kind=name):
+                    listing = _legacy_listing()
+                    listing["pipeline"][index]["kind"] = value
+                    self.assert_shape_failure(listing, "invalid or unsupported pipeline")
+
+
 class RetainedAdmissionTests(unittest.TestCase):
     def test_retained_partial_bridge_cannot_mint_but_rejects_substitution(self):
         listing = _legacy_listing()

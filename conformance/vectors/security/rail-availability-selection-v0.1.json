@@ -15,8 +15,8 @@
     "productionContext": "trusted local-operator-policy input; counterparty and discovery hints are non-authoritative",
     "generator": "scripts/generate_rail_availability_selection_vectors.py"
   },
-  "hash": "eb80a8b4eb950ffc46fc92f51fc7d15390dbdc662b4b40122f76f46c32d4d45d",
-  "count": 28,
+  "hash": "e8e0c91170d64a729bc3bf9ed63a5ab2fb615be671ac01261014534a950a27d4",
+  "count": 30,
   "vectors": [
     {
       "name": "live-signed-pinned",
@@ -1268,6 +1268,94 @@
           "production": true
         },
         "discoveryAvailabilityHint": "failed"
+      }
+    },
+    {
+      "name": "tank-mocked-node-operation-live-hint",
+      "expected": "fail",
+      "note": "DEMOS-MAPPING A.5/RAV-R5: the signed tank rail is mocked; an adapter that reports the node's unsigned, incomplete compiled bridge operation as a live hint cannot make it available for production",
+      "rail": {
+        "railVersion": 1,
+        "railId": "cross-chain-liquidity-tank:USDC",
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {
+          "kind": "stablecoin-cross-chain",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "cross-chain",
+          "mechanism": "liquidity-tank"
+        },
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {
+          "sourceChainId": 11155111,
+          "destChainId": 80002
+        },
+        "availability": "mocked",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "iT_7gWyDXqrJaX9dF_h-XOyGyIJSgGaPWW2UC-vbn6ZVTX_Ka4QrdUu7n9e-KlP4Bou9D8aqLv8YLRrD3-_sBg"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "eccd3f98f920dc05128bc84667043d811bfb04437b6071831d01d7df0c86ee02",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        },
+        "discoveryAvailabilityHint": "live"
+      }
+    },
+    {
+      "name": "tank-live-unsigned",
+      "expected": "fail",
+      "note": "DEMOS-MAPPING A.5/RAV-R5: an unsigned tank rail claiming live is not authoritative",
+      "rail": {
+        "railVersion": 1,
+        "railId": "cross-chain-liquidity-tank:USDC",
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {
+          "kind": "stablecoin-cross-chain",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "cross-chain",
+          "mechanism": "liquidity-tank"
+        },
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {
+          "sourceChainId": 11155111,
+          "destChainId": 80002
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "67e7580a28a8f36babbff001b08694efb5c66ae8091b5c28806516011264f8b2",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {

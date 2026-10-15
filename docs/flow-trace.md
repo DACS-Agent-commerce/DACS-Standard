@@ -775,7 +775,7 @@ SDK surface column verified against `@kynesyslabs/demosdk` **4.0.5**. Names trac
 | **SR-2** Anchored storage | `demos.storagePrograms.read(addr)`; writes via `demos.store(...)` / `demos.tx.store(...)` | ✅ Live (Storage Programs; 1 MB substrate cap, 128 KB DACS soft limit) |
 | **SR-3** Consensus-backed proxy | `demos.web2.createDahr()` → `dahr.startProxy({url, method})` → `dahr.stopProxy()` | ✅ Live (hash-commitment mode); ⚠ validator-body-signed mode pending |
 | **SR-4** Private channel | `new l2ps.L2PS()` (`@kynesyslabs/demosdk/l2ps`) → `subnet.sendMessage({recipient, content})` | ⚠ Substrate live; CCI-keyed membership + envelope API + transcript export on backlog |
-| **SR-5** Atomic cross-chain settlement | `WorkStep` / `prepareXMStep` (context `"xm"`) inside `DemosWork` (`@kynesyslabs/demosdk/demoswork`), auto-routed through Liquidity Tank | ⚠ Phase 1 live (EVM-USDC unidirectional, 2 testnet tanks); Phase 2-4 (Solana, bidirectional, consensus execute, emergency recovery) on roadmap |
+| **SR-5** Atomic cross-chain settlement | `WorkStep` / `prepareXMStep` (context `"xm"`) inside `DemosWork` (`@kynesyslabs/demosdk/demoswork`), auto-routed through Liquidity Tank | ⚠ Unavailable/experimental (DEMOS-MAPPING §A.5): the pinned node's compiled bridge operation is unsigned and its parsers return no result; intended Phase 1 scope EVM-USDC unidirectional; Phase 2-4 (Solana, bidirectional, consensus execute, emergency recovery) on roadmap |
 
 ---
 

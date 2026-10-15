@@ -61,7 +61,7 @@ def rail_digest(rail: dict) -> str:
     ).hexdigest()
 
 
-def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=False):
+def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=False, fields=None):
     key = Ed25519PrivateKey.from_private_bytes(
         ATTACKER_SEED if attacker else STEWARD_SEED
     )
@@ -90,6 +90,7 @@ def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=Fal
             **({"supersedes": version - 1} if version > 1 else {}),
         },
     }
+    rail.update(fields or {})
     digest = rail_digest(rail)
     rail["signature"] = {
         "algorithm": "ed25519",
@@ -159,6 +160,17 @@ def build() -> dict:
     closed = sign_rail("x402:closed-test", "closed_data")
     bilateral = sign_rail("x402:bilateral-test", "bilateral")
     live_evm = sign_rail("x402:failure-test", "live")
+    # DEMOS-MAPPING A.5: the tank rail is unavailable/experimental, so the
+    # fixture signs it mocked; nothing the node returns can make it live.
+    tank_fields = {
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {"kind": "stablecoin-cross-chain", "symbol": "USDC", "decimals": 6},
+        "network": {"kind": "cross-chain", "mechanism": "liquidity-tank"},
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {"sourceChainId": 11155111, "destChainId": 80002},
+    }
+    tank_mocked = sign_rail("cross-chain-liquidity-tank:USDC", "mocked", fields=tank_fields)
+    tank_live = sign_rail("cross-chain-liquidity-tank:USDC", "live", fields=tank_fields)
     vectors = [
         vector("live-signed-pinned", "pass", "live, steward-signed and pinned is selectable", live_x402),
         vector("disabled-signed", "fail", "RAV-R2: disabled cannot start a new session", disabled),
@@ -224,6 +236,19 @@ def build() -> dict:
             "LRR-6/RAV-R5: a failed discovery hint cannot override authoritative live",
             live_evm,
             hint="failed",
+        ),
+        vector(
+            "tank-mocked-node-operation-live-hint",
+            "fail",
+            "DEMOS-MAPPING A.5/RAV-R5: the signed tank rail is mocked; an adapter that reports the node's unsigned, incomplete compiled bridge operation as a live hint cannot make it available for production",
+            tank_mocked,
+            hint="live",
+        ),
+        vector(
+            "tank-live-unsigned",
+            "fail",
+            "DEMOS-MAPPING A.5/RAV-R5: an unsigned tank rail claiming live is not authoritative",
+            unsigned_rail(tank_live),
         ),
         vector(
             "malformed-rail",

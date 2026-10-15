@@ -292,14 +292,14 @@ The v0.1 registry contains rail entries for the most-used settlement paths in pr
 | solana-spl:mainnet:USDC | pay-solana-spl | Solana mainnet USDC |
 | solana-spl:mainnet:USDT | pay-solana-spl | Solana mainnet USDT |
 | cross-chain-htlc:USDC | pay-cross-chain-htlc | Atomic swap across EVM ↔ Solana for USDC |
-| cross-chain-liquidity-tank:USDC | pay-cross-chain-liquidity-tank | Substrate-coordinated atomic settlement; on Demos: Liquidity Tanks. v0.1 supported routes: ETH Sepolia → Polygon Amoy unidirectional only |
+| cross-chain-liquidity-tank:USDC | pay-cross-chain-liquidity-tank | Substrate-coordinated atomic settlement; on Demos: Liquidity Tanks. Unavailable/experimental (DEMOS-MAPPING §A.5); intended initial route: ETH Sepolia → Polygon Amoy unidirectional |
 | demos-native:DEM | pay-dem | Native-DEM transfer on the Demos substrate (§9.5.9); single payee. |
 | ap2:visa-direct | pay-ap2 | AP2 mandate to Visa Direct |
 | ap2:mastercard-send | pay-ap2 | AP2 mandate to Mastercard Send |
 | ap2:stripe-paymentintents | pay-ap2 | AP2 mandate to Stripe PaymentIntents |
 | x402:default | pay-x402 | Generic x402 HTTP 402 micropayment |
 
-**v0.1 cross-chain settlement scope.** `pay-cross-chain-liquidity-tank` is supported **only** for the live tank routes: ETH Sepolia ↔ Polygon Amoy testnet, USDC, EVM-source unidirectional. All other tank rails are 🟡 to-add. v0.1 keeps both `pay-cross-chain-liquidity-tank` and `pay-cross-chain-htlc` first-class.
+**v0.1 cross-chain settlement scope.** Production availability of `pay-cross-chain-liquidity-tank` is **unavailable/experimental** (DEMOS-MAPPING §A.5): at the pinned Demos node the compiled bridge operation is unsigned, the chain parsers return no result, and the cited route registry does not exist. Rail selection MUST NOT treat the rail as `live` (RAV-R1) until a pinned node commit returns a complete, signed compiled operation and publishes its route registry. The intended initial scope is ETH Sepolia → Polygon Amoy testnet, USDC, EVM-source unidirectional. All other tank rails are 🟡 to-add. v0.1 keeps both `pay-cross-chain-liquidity-tank` and `pay-cross-chain-htlc` first-class.
 
 > **Note (non-normative).** Further tank routes unlock as Native Bridges Phase 2–4 ship: Solana tanks, bidirectional routes, additional EVM rails, mainnet deployments, non-USDC stablecoins. HTLC is the path the reference implementation runs today — a ~929-LOC reference (Solana Anchor program + Base Sepolia EVM HTLC contract) with lock/reveal/refund implemented end-to-end.
 
@@ -310,7 +310,7 @@ Maturity by rail:
 | Rail(s) | v0.1 status |
 | --- | --- |
 | `pay-evm-erc20`, `pay-solana-spl`, `pay-cross-chain-htlc` | Reference-backed: exercised by the reference implementation, with §14 conformance vectors |
-| `pay-cross-chain-liquidity-tank` | Partially live: only the Phase-1 testnet route (ETH Sepolia → Polygon Amoy, USDC, unidirectional); other routes to-add |
+| `pay-cross-chain-liquidity-tank` | Unavailable/experimental (DEMOS-MAPPING §A.5): no route is live at the pinned Demos node; intended initial route ETH Sepolia → Polygon Amoy, USDC, unidirectional; other routes to-add |
 | `pay-x402` | Exercised by the reference implementation; §14 conformance vector present (`settlement-x402-pass`); **not** `operator_gated` (see note) |
 | `pay-ap2` | Reference-backed in provider test mode: official AP2 mandate verification, provider capture, DAHR-attested status, and Demos-anchored evidence are exercised by the reference SDK; §14 fixture present (`settlement-ap2-reference-pass`); still `operator_gated` (see note) |
 
@@ -979,7 +979,7 @@ Atomic cross-chain settlement using HTLC contracts on source and destination cha
 - (HTLC-3) buyerSalt MUST NOT be reused across sessions; each jobId uses a freshly-generated salt.
 - (HTLC-4) The payer MUST retain buyerSalt until the destination-side claim reaches finality (loss makes the preimage unrecoverable — a fund-safety requirement, not merely operational).
 - (HTLC-5) **Preimage derivation** MUST use HKDF (RFC 5869, sha256): IKM=buyerSalt, salt=jobId, info=agreementHash. Weaker derivations MUST NOT be used. jobId MUST be globally unique per swap and agreementHash MUST be collision-resistant; both hold in DACS, where jobId is per-session and agreementHash is the sha256 of the canonical agreement.
-- (HTLC-6) **Hashlock** is the chain-native hash of the preimage. Source and destination chains MAY use different hash functions (keccak256 EVM, sha256 Solana/BTC, blake2b Cosmos) and MUST NOT be required to share one. The preimage is the only cross-chain-shared value; the preimage revealed on the destination is bit-identical to the one producing `hashlock_source`.
+- (HTLC-6) **Hashlock** is the chain-native hash of the preimage. Source and destination chains MAY use different hash functions and MUST NOT be required to share one; each MUST be an identifier the §9.14 HTLC row registers (`keccak256` for EVM, `sha256` for Solana/BTC). An unregistered identifier is `error`; another chain's hash (for example blake2b) needs a registry entry first. The preimage is the only cross-chain-shared value; the preimage revealed on the destination is bit-identical to the one producing `hashlock_source`.
 - (HTLC-7) **Timelock asymmetry.** Implementations MUST reject a route unless `expiry_source > expiry_dest + source_finality + safety`, evaluated on absolute expiry instants. The margin is sized to **source** finality, not destination latency: the binding constraint is the payee *finalising* its source claim after the reveal. `source_finality` and `safety` are the pinned rail parameters `rail.parameters.sourceFinalitySec` and `rail.parameters.safetyWindowSec`; both are REQUIRED, and `safetyWindowSec` defaults to 600s. The inequality MUST be evaluated against the pinned values, not runtime-estimated latency.
 - (HTLC-8) **Timelock epoch.** Timelocks are durations measured from when each lock is mined. The destination lock MUST NOT be mined before source-lock finality; implementations MUST reject any schedule that could. With this anchoring, the HTLC-7 duration inequality implies the absolute-expiry inequality.
 - (HTLC-10) **Free-option disclosure.** The asymmetry guarantees liveness but not freedom from the inherent HTLC free option. The payer MAY decline to reveal after observing market movement, at zero cost, while the payee's destination capital stays locked to the destination timelock. v0.1 does NOT standardise an anti-option mechanism. Listings sensitive to option abuse SHOULD prefer pay-cross-chain-liquidity-tank or require a payer stake.
@@ -1022,7 +1022,7 @@ Substrate-coordinated atomic settlement using pre-funded liquidity primitives. O
 **Procedure.**
 
 1. Resolve rail; verify `asset.kind == "stablecoin-cross-chain"` and `network.kind == "cross-chain"` with `mechanism: "liquidity-tank"`.
-2. Select `liquidityTankIds` matching `(sourceChainId, destChainId)`; validate the route is in v0.1 supported scope (today: ETH Sepolia → Polygon Amoy, USDC, unidirectional).
+2. Select `liquidityTankIds` matching `(sourceChainId, destChainId)`; validate the route is in v0.1 scope (intended: ETH Sepolia → Polygon Amoy, USDC, unidirectional) and that the pinned rail `availability` (§9.4.4) admits it. No tank route is available today (DEMOS-MAPPING §A.5).
 3. Call the substrate’s native bridge API. On Demos (`@kynesyslabs/demosdk@4.0.16` (git head `d3620ae24f657ae7442e63e7adaefef7094b22e2`)), construct a `BridgeOperation` conforming to `src/bridge/nativeBridgeTypes.ts` (`demoAddress`, `originChainType`, `originChain`, `destinationChainType`, `destinationChain`, `originAddress`, `destinationAddress`, `amount`, `token`, `txHash`, `status`), have the node's native-bridge RPC compile it, and submit the compiled operation as a `nativeBridge` transaction (`demos.run.bridge.submit(compiled)`). DEMOS-MAPPING §A.5 records the current availability.
 4. The substrate’s validator shard executes lock-on-source and release-on-dest atomically, within the substrate’s consensus epoch. Record the `bridge_id` — the 16-char hash that is the canonical end-to-end tracking handle.
 5. Wait for `BridgeOperation.status` to transition `"empty"` → `"pending"` → `"completed"`.
@@ -2065,7 +2065,14 @@ session/phase/role authority, and — for the `ap2-sr3` arm — an
 `SR3NativeTransactionFinalityAuthority` whose `sr3Binding` equals the selected
 rail profile's `sr3Binding`. Candidate fields cannot add or replace those trust
 anchors. Missing trusted authority is `indeterminate`; malformed trusted material
-is `error`.
+is `error`. A missing or empty key map is missing authority. So is a
+well-formed map that lacks the key of a signer the authenticated session or
+signed profile names (the phase orchestrator, a session party, a pinned
+observation authority, or the profile provider); such a signer cannot count
+toward a quorum. A signature is `fail` only when checked against an available
+key, and every signature with an available key is checked before an absent key
+is reported (FV-10). A rail signer absent from a non-empty steward key map is
+not a trusted steward and is `fail`.
 
 - **(FV-1) Exact rail authority.** A consumer MUST classify the record by
   `finalityBoundEvidenceVersion` before finality action, resolve

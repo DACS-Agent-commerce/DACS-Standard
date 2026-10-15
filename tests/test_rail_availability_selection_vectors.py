@@ -220,6 +220,30 @@ class RailAvailabilitySelectionVectorTests(unittest.TestCase):
         )
         self.assertEqual(evaluate(vector), "pass")
 
+    def test_tank_rail_is_not_made_available_by_the_node(self):
+        # DEMOS-MAPPING A.5: the pinned node returns an unsigned, incomplete
+        # compiled bridge operation, so the signed tank fixture is mocked and
+        # neither a node-derived hint nor an unsigned live copy selects it.
+        hinted = self.by_name["tank-mocked-node-operation-live-hint"]
+        unsigned = self.by_name["tank-live-unsigned"]
+        self.assertEqual("pay-cross-chain-liquidity-tank", hinted["rail"]["phaseHandler"])
+        self.assertEqual("mocked", hinted["rail"]["availability"])
+        self.assertEqual("live", hinted["ctx"]["discoveryAvailabilityHint"])
+        self.assertTrue(hinted["ctx"]["operatorContext"]["production"])
+        self.assertEqual("fail", evaluate(hinted))
+        # The rail is otherwise selectable: only its signed mocked
+        # availability under production policy decides the case.
+        testing = copy.deepcopy(hinted)
+        testing["ctx"]["operatorContext"]["production"] = False
+        self.assertEqual("pass", evaluate(testing))
+        self.assertEqual("live", unsigned["rail"]["availability"])
+        self.assertNotIn("signature", unsigned["rail"])
+        self.assertEqual("fail", evaluate(unsigned))
+        for vector in self.data["vectors"]:
+            if vector["rail"].get("phaseHandler") == "pay-cross-chain-liquidity-tank" and "signature" in vector["rail"]:
+                with self.subTest(vector=vector["name"]):
+                    self.assertNotEqual("live", vector["rail"]["availability"])
+
     def test_discovery_hint_never_changes_authoritative_result(self):
         for vector in self.data["vectors"]:
             if "discoveryAvailabilityHint" not in vector["ctx"]:

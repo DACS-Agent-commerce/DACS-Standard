@@ -55,7 +55,7 @@ does not invoke DAHR and does not claim a fresh ACME challenge.
 
 ### A.2 SR-2 — Storage Programs
 
-- 🟢 StorageProgramData per SDK at kynesyslabs/sdks/src/storage/StorageProgram.ts. Content-addressed at stor-{sha256(…)}. 128 KB cap. JSONB-backed in GCR_Main.data. ACL modes (private/public/restricted). Provenance via createdByTx, lastModifiedByTx, interactionTxs.
+- 🟢 StorageProgramData per SDK at kynesyslabs/sdks/src/storage/StorageProgram.ts. Content-addressed at stor-{sha256(…)}. JSONB-backed in GCR_Main.data. Provenance via createdByTx, lastModifiedByTx, interactionTxs. In `@kynesyslabs/demosdk@4.0.16` (git head `d3620ae24f657ae7442e63e7adaefef7094b22e2`) `src/types/blockchain/TransactionSubtypes/StorageProgramTransaction.ts`, the substrate cap is `STORAGE_PROGRAM_CONSTANTS.MAX_SIZE_BYTES = 1048576` (1 MB), which the node enforces too (`kynesyslabs/node` at `ac8f45f02fc9c25082ce9b83595c2e3916b49c5a`, `GCRStorageProgramRoutines.ts`). The ACL modes are `StorageACLMode = "owner" | "public" | "restricted"`. DACS applies a stricter 128 KB soft limit as its own adapter profile (DACS-4 §9.6.1, DACS-5 §10.4.2). Earlier DACS text called the SDK's `owner` mode "private"; a DACS adapter maps "private" to `owner`.
 - ⚪ Optional native multi-party Storage Program transaction-signature helper — not a DACS v0.1 dependency. DACS co-signing occurs on the bundle artifact under §10.4.1: for `completed`, `failed-perm`, `failed-counterparty`, and `failed-substrate`, the bundle carries every required buyer, seller, and distinct-orchestrator `BundleSignature`, and under §10.4.2 each required signing party anchors its fully co-signed role-specific copy through its own owner-signed SR-2 write and independently authenticated receipt. The abort outcomes are the normative exception: an `aborted-by-self` or `aborted-by-other` bundle MAY be single-signed, a withdrawing party need not anchor, and the §10.11 bundle-suppression rules apply; every party that actually signs and anchors publishes its own role-specific copy. A future one-transaction multi-party helper is an optimization only; a transaction co-signature MUST NOT substitute for an artifact signature, create a signature or publication duty that DACS-5 suppresses, or remove another role's applicable publication duty.
 
 **Logical vs native addresses (applies universally).** Throughout this document, addresses of the form dacs1:…, dacs2:…, dacs3:…, dacs4:…, dacs5:… are *logical* addresses: substrate-independent, human-readable, stable identifiers the protocol reasons about. Every `{jobId}` segment first satisfies CORE JID-1 and is inserted as its exact ASCII bytes. The DACS-5 role-specific bundle address `stor-{sha256(ASCII(jobId) || ASCII("-bundle-") || ASCII(role))}` (§10.4.2) is likewise a logical address in scope for the two mapping cases below; being hash-formed it carries no delimiter-encoding concern, and on the write-input case its published binding object is the §10.4.2 `BundleBinding`. Variable segments embedded in a logical address (e.g. the seller's primary claim, which itself contains colons) are delimiter-encoded per rule CF-4 (§B.1) so the logical string is unambiguously parseable back into its components on any substrate. Each substrate maps the logical address to its native addressing in one of two ways:
@@ -175,10 +175,19 @@ validator-body-signed.
 - 🟢 new l2ps.L2PS() / new l2ps.L2PS(rsaPrivateKey). DemosWork orchestration with WorkStep (id, context, content, output, depends_on, critical), BaseOperation, ConditionalOperation (SDK module @kynesyslabs/demosdk/demoswork). Storage Programs for agreement-hash anchoring and sealed-envelope commitments.
 - 🟡 CCI-keyed L2PS membership — bind subnet membership to CCI primary claim so channel signatures map to the same identity that holds value on-chain. The interim §8.3.2 binding-proof path is shipped as l2ps.binding: createMembershipBinding (attestation signed by the CCI primary key), anchorMembershipBinding (Storage Program at a deterministic collision-safe name), resolveMember (signature check + SP-owner check against impostor programs). Native CCI-keyed subnet membership (node-side enforcement) remains pending; the current native subnet API is RSA-key-based.
 - 🟡 L2PS channel message envelope API shipped as
-  `l2ps.channel.ChannelSession` in `@kynesyslabs/demosdk@4.0.16`, with
-  monotonic sequence and CH-6 channel reuse handling. Its shipped message wire
-  is **not** evidence for the frozen §8.3.3 `LegacyDemosChannelMessage`
-  historical read/import arm.
+  `l2ps.channel.ChannelSession` in `@kynesyslabs/demosdk@4.0.16` (git head
+  `d3620ae24f657ae7442e63e7adaefef7094b22e2`), with a monotonic sequence. Its
+  CH-6 channel-reuse check is **optional**: `open()` registers the `channelId`
+  only when the caller supplies a `channelIdRegistry`. Without one, two
+  sessions can open on the same `channelId`, each with its highest-seen
+  sequence starting at 0, so a signed offer from the earlier session verifies
+  in the later one. The SDK's `InMemoryChannelIdRegistry` lasts only as long
+  as the process. CH-6 therefore holds only when the verifier supplies its own
+  persistent `ChannelIdRegistry`, and an adapter that claims CH-6 support MUST
+  require one. The acceptance tests are `canonical-reused-session-channel`
+  (`canonical-channel-message-v0.6`) and `ch6-channelId-reused` (frozen
+  `channel-message-replay-v0.1`). The shipped message wire is **not** evidence for the frozen
+  §8.3.3 `LegacyDemosChannelMessage` historical read/import arm.
 
   `signChannelMessage` signs UTF-8 bytes of `"dacs-channelmsg:v1:"` followed by
   the lowercase-hex SHA-256 digest of the canonical unsigned message. It emits
@@ -193,7 +202,10 @@ validator-body-signed.
   arm. The `canonical-channel-message-v0.6` corpus executes this wire on both
   operations.
 
-  `signChannelMessage` also requires a `demos:0x<64hex>` sender. That
+  `signChannelMessage` also requires a `demos:` sender. The SDK's
+  `isDemosClaim` checks only that scheme; `demosClaimRefForAddress` emits
+  the canonical lowercase `demos:0x<64hex>` form, and `normalizeDemosAddress`
+  accepts the address with or without `0x`/`0X` in any case. That
   substrate-address notation is not a ClaimReference (A.1, DACS-1 §6.3.1), so
   a conforming producer's sender and signer use the registered
   `did:demos:agent:<64hex>` profile instead. The SDK's signed bytes follow the
@@ -234,16 +246,16 @@ This is a node/binding requirement, not something the DACS SDK can manufacture f
 ### A.5 SR-5 — Native Bridges / Liquidity Tanks
 
 - 🟢 LiquidityTank.sol (audited; 600+ lines; rotating 2/3 multisig + 15-day emergency recovery) deployed on **ETH Sepolia** (0x7AE3A8B899BE0D9E9de51b81a9912C0CEE128d88) and **Polygon Amoy** (0x57cA16EeE7fbeC69BFD46E4806B5d91e173dd600).
-- 🟢 SDK type BridgeOperation at kynesyslabs/sdks/src/bridge/nativeBridgeTypes.ts. RPC handler at kynesyslabs/node/src/libs/network/manageNativeBridge.ts. Tank addresses config at kynesyslabs/node/config/tankAddresses.json. **bridge_id** (16-char hash) is the canonical end-to-end tracking handle.
+- 🟡 SDK type `BridgeOperation` in `@kynesyslabs/demosdk@4.0.16` (git head `d3620ae24f657ae7442e63e7adaefef7094b22e2`) `src/bridge/nativeBridgeTypes.ts` has the fields `demoAddress`, `originChainType`, `originChain`, `destinationChainType`, `destinationChain`, `originAddress`, `destinationAddress`, `amount`, `token`, `txHash` and `status`. The flow has two steps. First, the node's native-bridge RPC compiles the operation into a `BridgeOperationCompiled`, whose `content.bridgeId` is set per compiled operation. Then the caller submits that compiled operation as a `nativeBridge` transaction with `demos.run.bridge.submit(compiled)` (`src/websdk/programmatic/bridge.ts`). The RPC handler is `src/libs/network/manageNativeBridge.ts` in `kynesyslabs/node` at `ac8f45f02fc9c25082ce9b83595c2e3916b49c5a` (read 2026-10-15). At that commit it returns an explicitly unsigned compiled operation, both its EVM and Solana parsers return `null`, and `config/tankAddresses.json` does not exist. The per-operation **bridgeId** is the end-to-end tracking handle.
 - 🟢 Trust model: **operated by a rotating Demos validator shard under 2/3 BFT multisig with 15-day deployer emergency recovery.** Not "no operator" — the operator is the substrate itself.
 - 🟢 MVP scope: USDC only; EVM-source; unidirectional. Gasless bridge operations (contract reimburses user gas from subsidy pool). BridgeOperation.status lifecycle: "empty" → "pending" → "completed" | "failed". XM SDK single-chain transfers (preparePay, prepareTransfer, prepareTransfers) for non-bridge rails. Storage Programs for deliver-storage-program and entitlement records.
 - 🟡 Phase 2: Solana tank programs (treasury Phases 3.3–3.4, SolanaAddressManagement class, vault management).
 - 🟡 Phase 3: Bidirectional + cross-chain shard rotation.
-- 🟡 Phase 4: Production polish + executeBridgeOperations consensus logic + cross-chain bridge message verification + emergency recovery mechanisms. Additional EVM tank deployments (currently 4 placeholder entries in tankAddresses.json). Mainnet deployments. Non-USDC stablecoin support. Native EntitlementRecord registry (optional; Stor-backed is fine for v0.1).
+- 🟡 Phase 4: Production polish + executeBridgeOperations consensus logic + cross-chain bridge message verification + emergency recovery mechanisms. Additional EVM tank deployments, plus a published route registry (the earlier-cited node `config/tankAddresses.json` does not exist at the pinned node commit). Mainnet deployments. Non-USDC stablecoin support. Native EntitlementRecord registry (optional; Stor-backed is fine for v0.1).
 - 🔵 AP2 (Google → FIDO Alliance, April 2026) — DACS-4 carries as a rail envelope. x402 (Coinbase + Cloudflare + Anthropic) — DACS-4 carries as a rail envelope. Rubic Bridge (third-party DEX aggregator, wrapped by SDK at @kynesyslabs/demosdk/bridge) — alternative cross-chain rail with explicit third-party trust disclosure.
 - 🔵 **HTLC contracts (generic atomic-swap pattern)** — pay-cross-chain-htlc is a first-class supported rail in DACS-4 v0.1. **The reference implementation in agent-commerce-demo uses HTLCs today for the fx-rfq cross-chain settlement** (929 LOC: real Solana Anchor program + Base Sepolia EVM HTLC contract; lock/reveal/refund implemented end-to-end). This predates Native Bridges Phase 1 deployment. The reference implementation will migrate to pay-cross-chain-liquidity-tank as Phase 1 stabilises; until then both rails are documented honestly. ERC-20, SPL (standard token interfaces). ERC-8183 escrow (proposed; future rail).
 
-**v0.1 cross-chain settlement scope.** pay-cross-chain-liquidity-tank is supported **only** for the rails currently live in tankAddresses.json (ETH Sepolia, Polygon Amoy; USDC; unidirectional EVM source). All other tank rails in the registry are 🟡 to-add and will unlock as Native Bridges Phase 2–4 ship. pay-cross-chain-htlc is the path the reference implementation runs today; v0.1 keeps both first-class.
+**v0.1 cross-chain settlement scope.** Production availability of pay-cross-chain-liquidity-tank is **unavailable/experimental**. It stays so until a pinned node commit returns a complete, signed compiled operation and publishes the route registry it cites; rail selection MUST NOT treat the rail as live before then. The intended initial scope is ETH Sepolia and Polygon Amoy, USDC, unidirectional EVM source. Conformance fixtures use only `mocked` availability. All other tank rails in the registry are 🟡 to-add and will unlock as Native Bridges Phase 2–4 ship. pay-cross-chain-htlc is the path the reference implementation runs today; v0.1 keeps both first-class.
 
 ### RSC v2 capability requirement
 

@@ -412,7 +412,7 @@ def validate_listing_shape(listing, *, now=None, supported=None):
     capabilities = listing.get("requiredCapabilities")
     if capabilities is not None and (
         not isinstance(capabilities, list)
-        or any(item not in _CAPABILITIES for item in capabilities)
+        or any(not isinstance(item, str) or item not in _CAPABILITIES for item in capabilities)
     ):
         return False, "invalid requiredCapabilities", artifact_type, domain
 

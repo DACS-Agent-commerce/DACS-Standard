@@ -550,6 +550,17 @@ class ListingShapeWrongTypeTests(unittest.TestCase):
                     listing["pipeline"][index]["kind"] = value
                     self.assert_shape_failure(listing, "invalid or unsupported pipeline")
 
+    def test_wrong_typed_capability_item_is_a_shape_failure(self):
+        listing = _legacy_listing()
+        listing["requiredCapabilities"] = ["SR-1"]
+        self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+        for name, value in _wrong_typed("SR-1"):
+            for items in ([value], ["SR-1", value]):
+                with self.subTest(capability=name, preceded_by_valid=len(items) > 1):
+                    listing = _legacy_listing()
+                    listing["requiredCapabilities"] = items
+                    self.assert_shape_failure(listing, "invalid requiredCapabilities")
+
 
 class RetainedAdmissionTests(unittest.TestCase):
     def test_retained_partial_bridge_cannot_mint_but_rejects_substitution(self):

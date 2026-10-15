@@ -170,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(241, self.data["count"])
+        self.assertEqual(246, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -352,6 +352,26 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ('return _result("error", "unsupported AP2 protocolVersion")', "pass", 1, "pass", [
                 "fv-ap2-protocol-version-unsupported", "fv-ap2-sr3-protocol-version-unsupported",
             ]),
+            # The reference-kind guard alone decides a well-formed x402
+            # reference that names the supported protocolVersion.
+            ('return _result("error", "malformed signed AP2 reference")', "pass", 1, None, [
+                "fv-provider-reference-x402-not-ap2",
+            ]),
+            # FV-6: a trusted authority the signed profile does not pin.
+            ('            or authority_ref not in policy["authorityRefs"]\n', "", 1, "pass", [
+                "fv-head-authority-outside-profile",
+            ]),
+            # FV entry: an absent key for a signer trusted authority names is
+            # missing authority; treating it as a bad signature gives fail.
+            ('return "indeterminate", "trusted key for the authenticated phase orchestrator unavailable", None', "pass", 1, "fail", [
+                "fv-trusted-party-key-for-orchestrator-absent",
+            ]),
+            ("        if authority_ref not in keys:\n            continue\n", "", 1, "fail", [
+                "fv-trusted-observation-authority-key-absent",
+            ]),
+            ('return _result("indeterminate", "trusted key for the profile provider unavailable")', "pass", 1, "fail", [
+                "fv-trusted-provider-key-absent",
+            ]),
         ]
         for old, new, count, mutant_decision, names in guards:
             module = mutant(old, new, count)
@@ -365,6 +385,48 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                         self.assertNotEqual(case["expected"], result["decision"], result["reason"])
                     else:
                         self.assertEqual(mutant_decision, result["decision"], result["reason"])
+
+    def test_empty_or_signerless_trusted_key_maps_are_indeterminate(self):
+        """FV entry: missing trusted authority is indeterminate.
+
+        Override merging cannot empty a map, so these replace the map
+        directly. A checked bad signature stays fail even when another
+        signer's key is missing (FV-10), and a self-asserted rail signer
+        outside a configured steward map is not a steward.
+        """
+        depth = self.cases["fv-block-depth-canonical-success"]
+        provider = self.cases["fv-provider-receipt-canonical-success"]
+        party = self.trust["partyKeys"]
+        orchestrator, buyer = "did:demos:orchestrator", "did:demos:buyer"
+
+        def run(case, name, keys, mutate=None):
+            trust = merge(self.trust, case.get("trustedOverrides"))
+            trust[name] = keys
+            value = copy.deepcopy(case["input"])
+            if mutate:
+                mutate(value)
+            return verify_finality(value, trust)
+
+        def other_signature(value):
+            signature = value["agreement"]["signatures"][0]
+            self.assertEqual(buyer, signature["party"])
+            signature["value"] = value["agreement"]["signatures"][1]["value"]
+
+        rows = [
+            (depth, "partyKeys", {}, None, "indeterminate"),
+            (depth, "partyKeys", {"did:demos:outsider": party[buyer]}, None, "indeterminate"),
+            (depth, "partyKeys", {orchestrator: party[orchestrator]}, None, "indeterminate"),
+            (depth, "partyKeys", {orchestrator: party[orchestrator], buyer: party[buyer]}, other_signature, "fail"),
+            (depth, "stewardKeys", {}, None, "indeterminate"),
+            (depth, "stewardKeys", {"did:demos:other-steward": party[buyer]}, None, "fail"),
+            (depth, "observationAuthorityKeys", {}, None, "indeterminate"),
+            (depth, "observationAuthorityKeys", {"rpc-a": self.trust["observationAuthorityKeys"]["rpc-a"]}, None, "indeterminate"),
+            (provider, "providerAuthorityKeys", {}, None, "indeterminate"),
+            (provider, "providerAuthorityKeys", {"provider:other": party[buyer]}, None, "indeterminate"),
+        ]
+        for case, name, keys, mutate, expected in rows:
+            with self.subTest(case=case["name"], map=name, keys=sorted(keys)):
+                self.assertEqual(expected, run(case, name, keys, mutate)["decision"])
 
     def test_ap2_fixtures_carry_the_pinned_ap2_protocol_version(self):
         # One AP2 wire version across the repository: the FV oracle implements

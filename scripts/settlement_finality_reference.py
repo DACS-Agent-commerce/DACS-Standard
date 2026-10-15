@@ -180,10 +180,13 @@ def _public_key(keys: Any, signer: Any) -> bytes | None:
 
 
 def _trusted_key_map(trusted: dict, name: str) -> tuple[str, str] | None:
-    """Classify one verifier-local key map: missing is ``indeterminate`` and
-    malformed is ``error`` (FV entry); a usable map returns ``None``."""
+    """Classify one verifier-local key map: missing or empty is
+    ``indeterminate`` and malformed is ``error`` (FV entry); a usable map
+    returns ``None``. Callers treat an absent entry for a signer that trusted
+    authority names (session orchestrator or party, profile authority or
+    provider) as missing authority, not as a bad signature."""
     keys = trusted.get(name)
-    if keys is None:
+    if keys is None or keys == {}:
         return "indeterminate", f"trusted {name} unavailable"
     if not isinstance(keys, dict) or any(
         _public_key(keys, signer) is None for signer in keys
@@ -322,13 +325,18 @@ def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str
         signer = signature["party"]
         if signer in signed or signer not in party_claims.values():
             return "fail", "agreement signer is duplicate or not a session party", None
-        if not _verify_ed25519(
-            trusted.get("partyKeys"), signer, AGREEMENT_DOMAIN, digest, signature["value"]
-        ):
-            return "fail", "agreement signature does not verify", None
         signed.add(signer)
     if signed != set(party_claims.values()):
         return "fail", "agreement lacks a required party signature", None
+    # Check every signature a trusted key covers before reporting a session
+    # party's absent key, so a bad signature is not hidden (FV-10).
+    for signature in signatures:
+        if signature["party"] in trusted["partyKeys"] and not _verify_ed25519(
+            trusted["partyKeys"], signature["party"], AGREEMENT_DOMAIN, digest, signature["value"]
+        ):
+            return "fail", "agreement signature does not verify", None
+    if not signed <= set(trusted["partyKeys"]):
+        return "indeterminate", "trusted key for an authenticated session party unavailable", None
     return "pass", "agreement authenticated", terms
 
 
@@ -703,6 +711,8 @@ def _verify_evidence(evidence: Any, trusted: dict) -> tuple[str, str, dict | Non
     key_state = _trusted_key_map(trusted, "partyKeys")
     if key_state is not None:
         return key_state[0], key_state[1], None
+    if signature["signer"] not in trusted["partyKeys"]:
+        return "indeterminate", "trusted key for the authenticated phase orchestrator unavailable", None
     digest = artifact_hash(evidence, "signature")
     if not _verify_ed25519(
         trusted.get("partyKeys"), signature["signer"], EVIDENCE_DOMAIN, digest, signature["value"]
@@ -872,22 +882,31 @@ def _verify_authority(observation: dict, profile: dict, path_ids: list[str], tru
     key_state = _trusted_key_map(trusted, "observationAuthorityKeys")
     if key_state is not None:
         return key_state
+    keys = trusted["observationAuthorityKeys"]
+    seen = set()
     valid = set()
     for attestation in attestations:
         authority_ref = attestation.get("authorityRef")
         if (
-            authority_ref in valid
+            authority_ref in seen
             or authority_ref not in policy["authorityRefs"]
             or attestation.get("algorithm") != "ed25519"
         ):
             return "fail", "duplicate, substituted, or unsupported observation authority"
+        seen.add(authority_ref)
+        # A profile-pinned authority without a trusted key cannot count
+        # toward the quorum; it is missing authority, not a bad signature.
+        if authority_ref not in keys:
+            continue
         if not _verify_ed25519(
-            trusted.get("observationAuthorityKeys"), authority_ref,
+            keys, authority_ref,
             CHAIN_AUTHORITY_DOMAIN, payload_hash, attestation.get("value"),
         ):
             return "fail", "observation authority signature does not verify"
         valid.add(authority_ref)
     if len(valid) < policy["threshold"]:
+        if seen - valid:
+            return "indeterminate", "trusted key for a profile-pinned observation authority unavailable"
         return "indeterminate", "authenticated observation quorum is incomplete"
     return "pass", "authenticated observation quorum verified"
 
@@ -1626,6 +1645,11 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
     key_state = _trusted_key_map(trusted, "providerAuthorityKeys")
     if key_state is not None:
         return _result(*key_state)
+    if (
+        signature["signer"] == profile.get("providerId")
+        and signature["signer"] not in trusted["providerAuthorityKeys"]
+    ):
+        return _result("indeterminate", "trusted key for the profile provider unavailable")
     digest = artifact_hash(attestation, "signature")
     if not _verify_ed25519(
         trusted.get("providerAuthorityKeys"), signature["signer"],

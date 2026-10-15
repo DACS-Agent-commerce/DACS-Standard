@@ -76,13 +76,20 @@ SEEDS = {
     "validator-a": "71" * 32,
     "validator-b": "72" * 32,
     "validator-c": "73" * 32,
+    # Genuine signers the verifier-local trust input holds no key for.
+    "orchestrator-unconfigured": "45" * 32,
+    "rpc-d": "54" * 32,
+    "rpc-other": "55" * 32,
+    "provider-unconfigured": "62" * 32,
 }
 CLAIMS = {
     "steward": "did:demos:steward",
     "buyer": "did:demos:buyer",
     "seller": "did:demos:seller",
     "orchestrator": "did:demos:orchestrator",
+    "orchestrator-unconfigured": "did:demos:orchestrator-unconfigured",
     "provider": "provider:example",
+    "provider-unconfigured": "provider:unconfigured",
 }
 # The AP2 wire version the fixtures carry; it is the one version the
 # reference implements (AP2_PROTOCOL_VERSIONS).
@@ -1836,6 +1843,10 @@ def build_rejection_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-provider-context-malformed", "error", "the provider context lacks its providerRef", changed("provider-receipt", lambda v: v["context"].pop("providerRef"))),
         case("fv-provider-evidence-two-references", "error", "the signed provider evidence carries two AP2 references", changed("provider-receipt", lambda v: (v["evidence"]["paymentTxRefs"].append(copy.deepcopy(v["evidence"]["paymentTxRefs"][0])), factory.resign_evidence(v["evidence"])))),
         case("fv-provider-reference-not-ap2", "error", "the signed provider evidence carries an EVM event reference", changed("provider-receipt", lambda v: (v["evidence"].__setitem__("paymentTxRefs", [factory.transaction_ref("block-depth", "provider-as-evm")]), factory.resign_evidence(v["evidence"])))),
+        case("fv-provider-reference-x402-not-ap2", "error", "the signed provider evidence carries a well-formed x402 event reference that names the supported protocolVersion; only the AP2 reference kind decides it", changed("provider-receipt", lambda v: (v["evidence"].__setitem__("paymentTxRefs", [{
+            "kind": "x402-event", "httpResource": "https://payments.example/x402", "paymentReceiptHash": "ab" * 32,
+            "settlementTxHash": factory.tx_id("provider-as-x402"), "chainId": 1, "logIndex": 0, "protocolVersion": AP2_PROTOCOL_VERSION,
+        }]), factory.resign_evidence(v["evidence"])))),
     ])
 
     # Composite models (FV-9).
@@ -1998,6 +2009,64 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-trusted-party-keys-malformed", "error", "the trusted party key map is a list", depth, trusted_overrides={"partyKeys": []}),
         case("fv-trusted-party-key-value-malformed", "error", "a trusted party key is not a 32-byte Base64URL value", depth, trusted_overrides={"partyKeys": {CLAIMS["orchestrator"]: "not-a-key"}}),
     ])
+
+    # FV entry: a present map that lacks the key of a signer trusted authority
+    # names is missing authority (indeterminate), not a bad signature.
+    def unconfigured_orchestrator(value):
+        factory.resign_evidence(value["evidence"], key_name="orchestrator-unconfigured")
+
+    unconfigured_session = changed("block-depth", unconfigured_orchestrator)
+    vectors.append(case(
+        "fv-trusted-party-key-for-orchestrator-absent", "indeterminate",
+        "the authenticated phase orchestrator genuinely signs the evidence, but the trusted party key map holds no key for it",
+        unconfigured_session,
+        trusted_overrides={"sessionAuthorityByJob": {unconfigured_session["evidence"]["jobId"]: {"phaseOrchestrator": CLAIMS["orchestrator-unconfigured"]}}},
+    ))
+
+    def pin_authorities(value, pinned, signers):
+        value["rail"]["consumerFinalityProfile"]["settlement"]["observation"]["authorityRefs"] = list(pinned)
+        factory.rebind_rail(value)
+        observation = value["context"]["observation"]
+        factory.sign_chain_authority(observation, signers=signers)
+        observation["authorityEvidence"]["sourceRefs"] = list(pinned)
+
+    vectors.append(case(
+        "fv-trusted-observation-authority-key-absent", "indeterminate",
+        "the signed profile pins rpc-d and rpc-d genuinely attests the head, but the trusted observation authority key map holds no key for it; the quorum is incomplete",
+        changed("block-depth", lambda v: pin_authorities(v, ("rpc-a", "rpc-b", "rpc-d"), ("rpc-a", "rpc-d"))),
+    ))
+
+    def unconfigured_provider(value):
+        value["rail"]["consumerFinalityProfile"]["providerId"] = CLAIMS["provider-unconfigured"]
+        value["rail"]["asset"]["provider"] = CLAIMS["provider-unconfigured"]
+        factory.rebind_rail(value)
+        value["context"]["providerId"] = CLAIMS["provider-unconfigured"]
+
+    unconfigured = changed("provider-receipt", unconfigured_provider)
+    unconfigured_hash = unconfigured["context"]["responseAttestation"]["contentHash"]
+    unconfigured_attestation = copy.deepcopy(factory.trusted["providerAttestations"][unconfigured_hash])
+    unconfigured_attestation["providerId"] = CLAIMS["provider-unconfigured"]
+    unconfigured_attestation["signature"] = {"signer": CLAIMS["provider-unconfigured"], "algorithm": "ed25519", "value": ""}
+    unconfigured_attestation["signature"]["value"] = factory.sign_digest(
+        "provider-unconfigured", PROVIDER_ATTESTATION_DOMAIN, artifact_hash(unconfigured_attestation, "signature")
+    )
+    vectors.append(case(
+        "fv-trusted-provider-key-absent", "indeterminate",
+        "the signed profile names a provider that genuinely signs the response attestation, but the trusted provider key map holds no key for it",
+        unconfigured, trusted_overrides={"providerAttestations": {unconfigured_hash: unconfigured_attestation}},
+    ))
+
+    # FV-6: only authorities the signed profile pins count toward the
+    # threshold, even when the verifier trusts another authority's key.
+    vectors.append(case(
+        "fv-head-authority-outside-profile", "fail",
+        "rpc-other genuinely attests the head and the verifier holds its key, but the signed profile pins only rpc-a, rpc-b and rpc-c",
+        changed("block-depth", lambda v: (
+            factory.sign_chain_authority(v["context"]["observation"], signers=("rpc-a", "rpc-other")),
+            v["context"]["observation"]["authorityEvidence"].__setitem__("sourceRefs", ["rpc-a", "rpc-b", "rpc-c"]),
+        )),
+        trusted_overrides={"observationAuthorityKeys": {"rpc-other": b64u(factory.keys["rpc-other"].public_key().public_bytes_raw())}},
+    ))
 
     def pinned_validator_set(name, note, validator_set):
         value = factory.model_input("bft-final")

@@ -37,8 +37,8 @@
     "authority": "verifier-owned and bound to exact session plus participant identities",
     "legacyImportExempt": true
   },
-  "count": 66,
-  "hash": "291b16947f9361ec1d641a4a631449c46b33bddee7db338944daa309fda6d1de",
+  "count": 67,
+  "hash": "fe5a910cf1b2e5ac2a1e7ba7b024ba0d73d784502f974087a702712dc5f7d6b8",
   "vectors": [
     {
       "name": "canonical-valid-first",
@@ -1735,6 +1735,59 @@
           "signer": "did:example:dacs-349-ecdsa",
           "algorithm": "ecdsa-secp256k1",
           "value": "vXY_6vQjRE4hns0DkNAmpdjQceDQPmm205QXvtQV_ZkF0F0LB6eGtj8CKXkrABxVS3T2lB0FpeFMsRW-G34bmQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
+      }
+    },
+    {
+      "name": "canonical-ecdsa-der-long-form-length",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the genuine DER signature with a long-form SEQUENCE length is BER, not canonical DER",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MIFFAiEAvXY_6vQjRE4hns0DkNAmpdjQceDQPmm205QXvtQV_ZkCIAXQXQsHp4a2PwIpeSsAHFVLdPaUHQWl4UyxFb4bfhuZ"
         }
       },
       "ctx": {

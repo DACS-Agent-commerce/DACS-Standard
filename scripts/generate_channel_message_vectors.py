@@ -488,6 +488,12 @@ def build_vectors() -> list[dict]:
     ecdsa_fixed_width["signature"]["value"] = b64url(
         ecdsa_r.to_bytes(32, "big") + ecdsa_s.to_bytes(32, "big")
     )
+    # The genuine DER with its SEQUENCE length in non-minimal long form.
+    ecdsa_der = utils.encode_dss_signature(ecdsa_r, ecdsa_s)
+    ecdsa_long_form = copy.deepcopy(ecdsa_valid)
+    ecdsa_long_form["signature"]["value"] = b64url(
+        b"\x30\x81" + ecdsa_der[1:2] + ecdsa_der[2:]
+    )
 
     sr1_unsigned = unsigned_message(sequence=3, sender=SR1_REF)
     sr1_valid = sign_current_sr1(sr1_unsigned)
@@ -607,6 +613,9 @@ def build_vectors() -> list[dict]:
         case("canonical-ecdsa-fixed-width-r-s", "fail", ecdsa_fixed_width,
              ctx=context(lastSequence=1),
              note="the genuine (r, s) as 64-byte r || s is not the canonical DER encoding"),
+        case("canonical-ecdsa-der-long-form-length", "fail", ecdsa_long_form,
+             ctx=context(lastSequence=1),
+             note="the genuine DER signature with a long-form SEQUENCE length is BER, not canonical DER"),
         case("canonical-sr1-aggregate-valid", "pass", sr1_valid,
              ctx=context(lastSequence=2),
              note="authenticated SR-1 root fixture verifies the canonical current payload"),

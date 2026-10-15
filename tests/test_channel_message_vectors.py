@@ -1801,10 +1801,16 @@ class ChannelMessageVectorTests(unittest.TestCase):
             {key: match.group(1) if match else None for key, match in pinned.items()},
         )
         for key, (name, label) in documents.items():
+            # The front-matter status line, not a mention anywhere in the text.
+            heading = "DACS Core" if label == "CORE" else label
+            status = re.search(
+                r"^(?:> |\*\*Stage:\*\*[^\n]*?\*\*Status:\*\* )Draft — \*\*%s v([0-9]+\.[0-9]+)\*\*"
+                % re.escape(heading),
+                "\n".join(show(f"spec/{name}.md").splitlines()[:12]), re.M,
+            )
             with self.subTest(module=name):
-                self.assertIn(
-                    f"{label} v{CURRENT_MODULE_VERSIONS[key]}", show(f"spec/{name}.md")
-                )
+                self.assertIsNotNone(status, f"pinned {name}.md has no front-matter status line")
+                self.assertEqual(CURRENT_MODULE_VERSIONS[key], status.group(1))
 
         # The same pin with one module version outside its tuple refuses.
         vector = next(
@@ -1841,9 +1847,16 @@ class ChannelMessageVectorTests(unittest.TestCase):
                 )
             return original(algorithm, public_key, signature, payload)
 
+        def long_form_tolerant(algorithm, public_key, signature, payload):
+            # BER read: a one-byte long-form SEQUENCE length is accepted.
+            if algorithm == "ecdsa-secp256k1" and signature[:2] == b"\x30\x81":
+                signature = b"\x30" + signature[2:]
+            return original(algorithm, public_key, signature, payload)
+
         for name, wrong in (
             ("canonical-ecdsa-high-s", high_s_tolerant),
             ("canonical-ecdsa-fixed-width-r-s", fixed_width_tolerant),
+            ("canonical-ecdsa-der-long-form-length", long_form_tolerant),
         ):
             vector = by_name[name]
             with self.subTest(vector=name):

@@ -891,9 +891,32 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
                 raise QualificationError("recipe family cannot be resolved")
             return found[0]
 
+        def inventory_blind(registry, scheme, method, explicit_version):
+            # Wrong implementation: the definition bodies present are taken
+            # as the whole admitted inventory.
+            if registry.get("recipeDefinitions") is None:
+                return method
+            candidates = [
+                definition for definition in registry["recipeDefinitions"]
+                if definition["scheme"] == scheme
+            ]
+            status, definition = _recipe_for_selected_method(candidates, method, explicit_version)
+            if status != "pass":
+                raise QualificationError("recipe family cannot be resolved")
+            return definition["defaultMethod"]["kind"]
+
+        ambiguous = next(
+            registry for registry in self.data["recipeRegistries"]
+            if registry["recipeRegistryVersion"] == 11
+        )
+        # Distinct versions, so the duplicate-version guard cannot decide it.
+        self.assertEqual(
+            [1, 2], sorted(definition["recipeVersion"] for definition in ambiguous["recipeDefinitions"])
+        )
         for name, wrong in (
             ("vet-claim-requirement-alternative-ownership-ambiguous", first_owner),
             ("vet-claim-requirement-explicit-pin-lacks-alternative", any_version_owner),
+            ("vet-claim-requirement-alternative-ownership-definition-missing", inventory_blind),
         ):
             with self.subTest(vector=name):
                 self.assertEqual("error", evaluate(vectors[name]["input"], self.data))

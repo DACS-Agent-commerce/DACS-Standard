@@ -92,7 +92,7 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
         cls.cases = {vector["name"]: vector for vector in cls.data["vectors"]}
 
     def test_set_hash_binds_the_complete_replay_inputs(self):
-        self.assertEqual(34, self.data["count"])
+        self.assertEqual(35, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         encoded = canonical(self.data["vectors"])
         self.assertEqual(
@@ -771,6 +771,13 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
             "historical-bb6-candidate-not-dereferenceable": original_candidates(retrievable),
             "historical-original-party-map-not-authenticated": request_party_map(),
             "historical-original-budget-differs": request_budget(),
+            # LAB-2 read as accepting the presented original binding without
+            # reproducing BB-6 over the other authorized candidates.
+            "historical-original-selection-not-reproducible": original_candidates(
+                lambda item, evidence, dependencies, verifier_config:
+                    item.get("nativeAddress")
+                    == evidence["originalMapping"]["binding"]["nativeAddress"]
+            ),
             "current-bb6-candidate-not-dereferenceable": mock.patch.object(
                 D5, "_resolve_current_use_role", side_effect=current_retrievable
             ),

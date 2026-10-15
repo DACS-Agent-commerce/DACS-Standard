@@ -1424,6 +1424,29 @@ def _lab_authority_replays() -> list[tuple]:
         "LAB-2 original per-signer budget",
     ))
 
+    # LAB-2: the presented original binding must be the one BB-6 selects. A
+    # second genuine, retrievable buyer binding of the same bundle at a lower
+    # native address is the reproducible selection instead.
+    factory, request = _binding_job()
+    original = _era(request)["originalMapping"]
+    bundle = factory.dependencies["bundlesByNativeAddress"][
+        original["binding"]["nativeAddress"]
+    ]
+    for index in range(200):
+        other = factory.legacy_bundle_binding(
+            bundle, "buyer", HISTORICAL_BINDING_JOB_ID + f":historical-selected-copy-{index}:buyer"
+        )
+        if other["nativeAddress"] < original["binding"]["nativeAddress"]:
+            break
+    else:
+        raise AssertionError("no lower-address original copy")
+    factory.dependencies["bundlesByNativeAddress"][other["nativeAddress"]] = bundle
+    original["selectionContext"]["candidateBindings"].append(other)
+    cases.append(_replay_case(
+        factory, request, "historical-original-selection-not-reproducible", "indeterminate",
+        "LAB-2 original BB-6 selection",
+    ))
+
     # BB-7: an authorized current candidate that cannot be fetched.
     factory, request = _binding_job()
     role_request = request["roles"]["buyer"]

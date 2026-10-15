@@ -41,7 +41,7 @@ python3 scripts/validate_implementation_manifests.py
 
 Implementation support claims use the optional normative
 [`ImplementationManifest`](implementation-manifest.schema.json) reporting shape.
-Four validated examples live in [`implementation-manifests/`](implementation-manifests/).
+Six validated examples live in [`implementation-manifests/`](implementation-manifests/).
 They pin this vector manifest by commit and SHA-256 hash; live-only tests remain
 separate and cannot substitute for deterministic cases.
 

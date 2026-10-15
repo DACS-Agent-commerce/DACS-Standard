@@ -33,11 +33,24 @@ class ImplementationManifestTests(unittest.TestCase):
 
     def test_repository_examples_are_valid(self):
         paths = sorted(EXAMPLE_DIR.glob("*.json"))
-        self.assertEqual(len(paths), 4)
+        self.assertEqual(len(paths), 6)
         for path in paths:
             with self.subTest(path=path.name):
                 manifest = json.loads(path.read_text(encoding="utf-8"))
                 self.assertEqual(self.validate(manifest), [])
+
+    def test_fixed_price_pay_dem_examples_stay_illustrative(self):
+        readme = (EXAMPLE_DIR / "README.md").read_text(encoding="utf-8")
+        for role in ("seller", "buyer"):
+            name = f"fixed-price-pay-dem-{role}.json"
+            with self.subTest(example=name):
+                manifest = load_example(name)
+                self.assertIn(name, readme)
+                self.assertEqual(manifest["roles"], [role])
+                self.assertTrue(manifest["implementation"]["name"].startswith("illustrative-"))
+                self.assertTrue(manifest["implementation"]["repository"].startswith("https://example.invalid/"))
+                self.assertEqual(manifest["liveTests"], [])
+        self.assertIn("not a claim about any implementation", readme)
 
     def test_schema_and_workflow_pin_versioned_validation(self):
         schema_errors = []

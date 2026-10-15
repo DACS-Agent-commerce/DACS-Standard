@@ -24,9 +24,9 @@ DACS-5.
 
 ## Current rules
 
-Rules are listed by labelled family; each family's rules are in the cited
-section. "—" marks a section whose procedure has no labelled family. The
-"Covers" wording follows the [rule-ID index](rule-id-index.md).
+Rules are listed by labelled family, defined mainly in the cited section.
+Some families span other sections. "—" marks a section whose procedure has no
+labelled family. The "Covers" wording follows the [rule-ID index](rule-id-index.md).
 
 | Stage | Section | Rule families | Covers |
 |-------|---------|---------------|--------|
@@ -54,7 +54,7 @@ section. "—" marks a section whose procedure has no labelled family. The
 | Settle | §9.5.1 | LAA-* | Legacy agreement activation |
 | Settle | §9.5.8 | SB-* | Session-bound settlement evidence |
 | Settle | §9.5.9 | — | `pay-dem` procedure and `bft-final` finality |
-| Settle | §9.6.1 | DV-* | `deliver-storage-program` content hash and access modes |
+| Settle | §9.6.1 | DV-* | Deliverable access / privacy (private delivery, credential handover) |
 | Settle | §9.7.0 | FV-*, FRC-* | Consumer-verifiable finality and finality resolution |
 | Settle | §9.7.0 | FP-*, PDE-* | Final settlement data propagation and phase-bound delivery evidence |
 | Settle | §9.9.1 | PIPE-* | Pipeline shape and phase ordering |
@@ -67,8 +67,9 @@ section. "—" marks a section whose procedure has no labelled family. The
 
 ## Known gaps
 
-Open issues, and open pull requests whose base is `next`, numbered #274 or
-later, that affect the rows above (read on 2026-10-15).
+Open issues, and open pull requests whose base is `next`, that affect the
+rows above, including related optional design work. All 33 open items were
+enumerated on 2026-10-15; the list has no issue-number cutoff.
 
 | Number | Kind | Section | What is open |
 |--------|------|---------|--------------|
@@ -77,10 +78,18 @@ later, that affect the rows above (read on 2026-10-15).
 | #408 | issue | §6.3.4 | A full verifier-owned Listing admission evaluator in the conformance reference |
 | #386 | issue | §B.7 | Algorithm-specific signature and key profiles, including Ed25519 |
 | #331 | issue | §7.8.1 | Authenticated provenance for the counterparty requirement in VPC-2 |
+| #383 | issue | §7.4, §7.7.1, §7.12 | Same-claim multi-method quorum and trust-domain independence; current alternatives remain OR choices |
+| #292 | issue | §8.6, §10.4 | A proposed batched deal-close commitment preserving per-party evidence and the existing gates before effects |
 | #410 | issue | §9.5.1 | PB-* cases that no committed vector exercises yet |
 | #426 | draft PR | §9.7.0 and others | Vectors for FV-1..FV-10 guards and other recently merged rules, with some clarifications |
 | #374 | issue | §10.5 | Binding reputation derivations to a complete per-claim session set |
 | #356, #371 | issue, draft PR | — | A pre-normative delivery-or-remedy profile; its first binding is an EVM escrow rail, not `pay-dem` |
+| #99 | issue | §8.7, §10.10 | An optional DACS-X dispute-output interface and deterministic fixture contract |
+
+Related conformance work remains open in #270: a neutral suite shared across
+implementations. It concerns evidence for the rules above rather than a new
+FP-DEM procedure. The older issue #220 concerns provider-rail reversals and
+does not apply to the DEM rail.
 
 Two issues on this path are still open although pull requests for them have
 merged into `next`: #381 (§10.4; merged #391 and #417) and #382 (§9.7.0;

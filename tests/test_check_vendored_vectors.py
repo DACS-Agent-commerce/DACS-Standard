@@ -156,25 +156,38 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(self.result_for(report, "alpha-v0.1")["changes"], ["spec"])
         self.assertEqual(self.result_for(report, "beta-v0.1")["changes"], ["hash"])
 
-    def test_values_canonical_json_refuses_are_uncheckable(self):
+    def test_refused_canonical_hash_uses_verified_declared_encoding(self):
         name = "wide-int-v0.1"
-        wide = make_set(name, [{"name": "w1", "expected": "fail", "input": BIG}])
-        standard_path = self.standard / "conformance" / "vectors" / "security" / f"{name}.json"
-        write_json(standard_path, wide)
-        write_json(self.vendored_set(name), wide)
-        for replacement in (BIG, BIG + 1, float(BIG), str(BIG)):
+        data = make_set(name, [{"input": BIG}])
+        path = self.standard / "conformance" / "vectors" / f"{name}.json"
+        write_json(path, data)
+        for replacement in (BIG, BIG + 1, str(BIG)):
             with self.subTest(replacement=replacement):
-                self.edit_vendored(name, lambda data: data["vectors"][0].update(input=replacement))
+                write_json(self.vendored_set(name), make_set(name, [{"input": replacement}]))
                 code, report = self.run_checker()
                 result = self.result_for(report, name)
-                self.assertEqual((code, result["status"], result["comparison"]), (2, "uncheckable", "uncheckable"))
+                self.assertEqual(code, 0 if replacement == BIG else 1)
+                self.assertEqual(result["status"], "match" if replacement == BIG else "drifted")
+                self.assertEqual(result["comparison"], "declared-encoding-sha256+parsed-json")
                 self.assertIn("safe-integer", result["comparisonNote"])
                 self.assertIsNone(result["contentHash"]["standard"])
-                self.assertTrue(report["uncheckable"])
-                self.assertEqual(result["changes"], [] if replacement == BIG and type(replacement) is int else ["vectors"])
-        # Either side alone can make the required check unavailable.
-        write_json(standard_path, make_set(name, [{"input": 1}]))
-        write_json(self.vendored_set(name), wide)
+                self.assertIsNotNone(result["comparisonHash"]["standard"])
+                self.assertIn("declared-encoding", CHECKER.render_text(report))
+                self.assertFalse(report["uncheckable"])
+
+    def test_neither_hash_available_is_uncheckable(self):
+        name = "wide-int-v0.1"
+        data = make_set(name, [{"input": BIG}])
+        data["hash"] = "0" * 64
+        write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
+        write_json(self.vendored_set(name), data)
+        code, report = self.run_checker()
+        result = self.result_for(report, name)
+        self.assertEqual((code, result["status"]), (2, "uncheckable"))
+        self.assertTrue(report["uncheckable"])
+        self.assertIn("no canonical or verified declared-encoding hash", result["comparisonNote"])
+        # A valid hash on only one side is insufficient for a match.
+        write_json(self.vendored_set(name), make_set(name, [{"input": BIG}]))
         code, report = self.run_checker()
         self.assertEqual((code, self.result_for(report, name)["status"]), (2, "uncheckable"))
 
@@ -191,22 +204,46 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertIn("differs as exact JSON", result["comparisonNote"])
         self.assertIn("differs as exact JSON", CHECKER.render_text(report))
 
-    def test_unhashable_missing_and_extra_sets_are_uncheckable(self):
+    def test_missing_and_extra_status_is_independent_of_hash_availability(self):
         name = "wide-int-v0.1"
-        data = make_set(name, [{"input": BIG}])
-        for presence, base in (
-            ("missing", self.standard / "conformance" / "vectors"),
-            ("extra", self.vendored),
+        for status, side, base in (
+            ("missing", "standard", self.standard / "conformance" / "vectors"),
+            ("extra", "vendored", self.vendored),
         ):
-            with self.subTest(presence=presence):
-                path = base / f"{name}.json"
-                write_json(path, data)
-                code, report = self.run_checker()
-                result = self.result_for(report, name)
-                self.assertEqual((code, result["status"], result["changes"]),
-                                 (2, "uncheckable", [presence]))
-                self.assertIn("required hash unavailable", CHECKER.render_text(report))
-                path.unlink()
+            for hash_available in (True, False):
+                with self.subTest(status=status, hash_available=hash_available):
+                    data = make_set(name, [{"input": BIG}])
+                    if not hash_available:
+                        data["hash"] = "0" * 64
+                    path = base / f"{name}.json"
+                    write_json(path, data)
+                    code, report = self.run_checker()
+                    result = self.result_for(report, name)
+                    self.assertEqual((code, result["status"]), (1 if hash_available else 2, status))
+                    self.assertEqual(report["summary"][status], 1)
+                    self.assertEqual(report["summary"]["uncheckable"], 0 if hash_available else 1)
+                    self.assertIn(status.upper(), CHECKER.render_text(report))
+                    if not hash_available:
+                        self.assertTrue(result["comparisonNote"].startswith(side + ":"))
+                        self.assertIn("hash unavailable", CHECKER.render_text(report))
+                    path.unlink()
+
+    def test_symlinked_subdirectory_is_bad_input(self):
+        storage = self.tmp / "storage"
+        (self.vendored / "security").rename(storage)
+        (self.vendored / "security").symlink_to(storage, target_is_directory=True)
+        code, report = self.run_checker()
+        self.assertEqual(code, 2)
+        self.assertIn("symlinked directory", report["error"])
+        (self.vendored / "security").unlink()
+        (self.vendored / "loop").symlink_to(self.vendored, target_is_directory=True)
+        code, report = self.run_checker()
+        self.assertEqual(code, 2)
+        self.assertIn("symlinked directory", report["error"])
+
+    def test_float_zero_sign_is_preserved_but_spelling_is_not(self):
+        self.assertFalse(CHECKER.same_json([0.0], [-0.0]))
+        self.assertTrue(CHECKER.same_json([0.1], json.loads("[0.1000000000000000055511151231257827]")))
 
     def test_canonical_number_equality_does_not_hide_drift(self):
         name = "number-v0.1"
@@ -314,21 +351,23 @@ class RepositoryVectorSetTests(unittest.TestCase):
             code = CHECKER.main([*map(str, argv), "--json"])
         return code, json.loads(out.getvalue())
 
-    def test_repository_sets_report_refused_hashes_as_uncheckable(self):
+    def test_repository_sets_have_computed_comparison_hashes(self):
         code, report = self.run_checker(ROOT / "conformance" / "vectors")
         security_sets = sorted((ROOT / "conformance" / "vectors" / "security").glob("*.json"))
-        self.assertEqual(code, 2)
-        refused = {"canonical-json-v0.1", "cci-xm-rail-chain-applicability-v0.5",
-                   "registry-bootstrap-v0.1", "sr2-logical-native-resolution-v0.1"}
-        self.assertEqual({r["set"] for r in report["sets"] if r["status"] == "uncheckable"}, refused)
-        self.assertEqual(report["summary"]["match"], len(security_sets) - len(refused))
+        self.assertEqual(code, 0)
+        self.assertEqual(report["summary"]["match"], len(security_sets))
+        self.assertFalse(report["uncheckable"])
         for result in report["sets"]:
-            if result["status"] == "match":
-                self.assertIsNotNone(result["contentHash"]["standard"])
-                self.assertIsNotNone(result["contentHash"]["vendored"])
-        text = CHECKER.render_text(report)
-        for name in refused:
-            self.assertIn(f"UNCHECKABLE  {name}", text)
+            self.assertEqual(result["status"], "match")
+            self.assertTrue(all(result["comparisonHash"].values()))
+            if result["contentHash"]["standard"] is None:
+                self.assertEqual(result["comparison"], "declared-encoding-sha256+parsed-json")
+                source = json.loads((ROOT / "conformance" / "vectors" / result["standardPath"]).read_text())
+                digest = hashlib.sha256(CHECKER.canonical_encodings(source["vectors"])[result["hashEncoding"]]).hexdigest()
+                self.assertEqual(digest, source["hash"])
+                self.assertEqual(result["comparisonHash"]["standard"], digest)
+            else:
+                self.assertEqual(result["comparison"], "canonical-json-sha256+exact-json")
         self.assertTrue(all(r["standardPath"].startswith("security/") for r in report["sets"]))
 
     def test_revision_mode_reads_committed_sets(self):
@@ -340,8 +379,8 @@ class RepositoryVectorSetTests(unittest.TestCase):
                 (vendored / relative).parent.mkdir(parents=True, exist_ok=True)
                 (vendored / relative).write_bytes(raw)
             code, report = self.run_checker(vendored, "--rev", V04_COMMIT)
-            expected_code = 2 if report["uncheckable"] else 0
-            self.assertEqual(code, expected_code)
+            self.assertEqual(code, 0)
+            self.assertFalse(report["uncheckable"])
             self.assertEqual(report["standard"]["commit"], V04_COMMIT)
             self.assertGreater(report["summary"]["match"], 0)
             first = next(r for r in report["sets"] if r["status"] == "match")
@@ -350,7 +389,8 @@ class RepositoryVectorSetTests(unittest.TestCase):
             data["vectors"].pop()
             path.write_text(json.dumps(data), encoding="utf-8")
             code, report = self.run_checker(vendored, "--rev", V04_COMMIT)
-            self.assertEqual(code, 2 if report["uncheckable"] else 1)
+            self.assertEqual(code, 1)
+            self.assertFalse(report["uncheckable"])
             changed = next(r for r in report["sets"] if r["set"] == first["set"])
             self.assertEqual(changed["changes"], ["vectors", "count"])
 

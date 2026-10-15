@@ -56,27 +56,40 @@ python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev v0.4
 python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --json
 ```
 
-It reports changes to `vectors`, `count`, declared `hash`, or `spec`, as well
-as missing and extra sets. It also counts JSON files ignored because they
-are not vector sets. Incomplete set objects are bad input.
+Point the tool at the directory holding vector sets, such as `vectors/`,
+rather than a copy of the whole `conformance/` tree. Incomplete set objects
+and symlinked subdirectories are bad input. Other JSON files are counted as
+ignored.
 
-The required vector hash is:
+It reports changes to `vectors`, `count`, declared `hash`, or `spec`, as well
+as missing and extra sets. The checker computes this content hash separately
+from each set's declared `hash`, whose encoding varies by set:
 
 ```text
 sha256(canonical_json(vectors))
 ```
 
-The checker uses `canonical_json` from `scripts/validate_conformance_vectors.py`.
-It also requires exact, type-strict parsed JSON equality, so Unicode
-normalization or a change from `1.0` to `1` is drift even when hashes agree.
-Formatting and object member order do not affect this comparison.
+It uses `canonical_json` from `scripts/validate_conformance_vectors.py`.
+When that function refuses a set, the checker verifies its declared hash
+using the compact encodings accepted by `scripts/validate_security_vectors.py`
+and compares computed hashes under the selected encoding. Text and JSON
+output label this mode `declared-encoding-sha256+parsed-json` and name the
+encoding. The four current sets containing integers beyond the CORE §B.2
+safe range use this mode, so a self-check can pass without changing vectors.
+This is a non-normative tooling choice.
 
-The exit status is 0 when every set matches, 1 on drift, and 2 on bad input
-or an unavailable required hash. Exit 2 takes precedence over drift.
-Sets whose values `canonical_json` refuses are reported as `uncheckable`.
-Four current sets intentionally contain integers beyond the CORE §B.2 safe
-range, so even a self-check exits 2. T-07's full-corpus hash check remains
-blocked until the required hash rule or those source sets are resolved.
+Both modes also compare type-strict parsed values: Unicode normalization,
+`1.0` versus `1`, and float zero-sign changes are drift. Numbers use Python's
+parsed values; spelling and precision lost during parsing are not compared.
+Formatting is ignored. Canonical hashing ignores object member order; the
+fallback mode must reproduce a declared hash under a validator-accepted
+encoding.
+
+Exit 0 means every set matches, exit 1 means drift, and exit 2 means bad input
+or a set with neither a canonical nor a verified declared-encoding hash.
+Such a set is `uncheckable`; a known missing or extra set retains that status
+and also contributes to the separate uncheckable count. Exit 2 takes
+precedence over drift.
 
 For a runnable five-stage builder path, see the dependency-free
 [`walkthrough/`](./walkthrough/) reference tool. It verifies the current signed

@@ -18,7 +18,8 @@ An object with any required set member must have all five members.
 
 Each set is reported as ``match``, ``drifted``, ``missing`` (in the Standard,
 not vendored), ``extra`` (vendored, not in the Standard), or ``uncheckable``
-when the required content hash is unavailable. A matched set has drifted when
+when neither supported content hash is available. Missing/extra status is
+retained independently of hash availability. A matched set has drifted when
 any of these differ:
 
 - ``vectors``: sha256(canonical_json(vectors)) on each side, using
@@ -26,7 +27,12 @@ any of these differ:
   parsed JSON equality. This also detects Unicode normalization and integral
   float changes that canonicalization hides. ``canonical_json`` refuses some
   values on purpose, such as integers outside the CORE §B.2 safe range.
-  A refusal makes the set uncheckable, even if its exact JSON is identical;
+  On refusal, use a declared-encoding hash verified with the encodings accepted
+  by ``validate_security_vectors``. The report labels that comparison mode.
+  Numbers compare as parsed Python values, preserving int/float types; numeric
+  spelling and precision lost during parsing are not compared. Canonical
+  hashing ignores member order; the fallback must reproduce a declared hash
+  under a validator-accepted encoding;
 - ``count``: the vendored ``count`` differs from the Standard's, or from the
   vendored ``vectors`` length;
 - ``hash``: the vendored declared ``hash`` differs from the Standard's;
@@ -35,6 +41,7 @@ any of these differ:
 
 Exit status: 0 when every set matches, 1 when any set is drifted, missing or
 extra, 2 on any uncheckable set or bad input (unreadable paths or revision,
+symlinked subdirectories,
 invalid or excessively nested JSON, a set file missing a required member,
 or two files declaring the same set). Exit 2 takes precedence over drift.
 
@@ -46,6 +53,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import subprocess
 import sys
@@ -56,6 +64,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate_conformance_vectors import canonical_json  # noqa: E402
+from validate_security_vectors import canonical_encodings  # noqa: E402
 
 VECTORS_DIR = "conformance/vectors"
 REQUIRED_MEMBERS = {"set": str, "spec": str, "count": int, "hash": str, "vectors": list}
@@ -76,6 +85,12 @@ class VectorSet:
     vectors: list[Any]
     content_hash: str | None
     hash_error: str | None
+    encoded_hashes: dict[str, str]
+    declared_encodings: list[str]
+
+    @property
+    def uncheckable(self) -> bool:
+        return self.content_hash is None and not self.declared_encodings
 
 
 def _unique_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -114,6 +129,17 @@ def parse_set(raw: bytes, label: str) -> VectorSet | None:
         raise BadInput(f"{label}: vectors are too deeply nested to hash") from exc
     except (TypeError, ValueError) as exc:
         hash_error = str(exc)
+    encoded_hashes = {}
+    if content_hash is None:
+        try:
+            encoded_hashes = {
+                encoding: hashlib.sha256(raw).hexdigest()
+                for encoding, raw in canonical_encodings(data["vectors"]).items()
+            }
+        except RecursionError as exc:
+            raise BadInput(f"{label}: vectors are too deeply nested to hash") from exc
+        except (TypeError, ValueError, UnicodeError):
+            pass
     return VectorSet(
         name=data["set"],
         path=label,
@@ -123,6 +149,9 @@ def parse_set(raw: bytes, label: str) -> VectorSet | None:
         vectors=data["vectors"],
         content_hash=content_hash,
         hash_error=hash_error,
+        encoded_hashes=encoded_hashes,
+        declared_encodings=[encoding for encoding, digest in encoded_hashes.items()
+                            if digest == data["hash"]],
     )
 
 
@@ -154,6 +183,10 @@ def read_tree(base: Path) -> list[tuple[str, bytes]]:
 
     for dirpath, dirnames, filenames in os.walk(base, onerror=onerror):
         dirnames.sort()
+        for dirname in dirnames:
+            path = Path(dirpath) / dirname
+            if path.is_symlink():
+                raise BadInput(f"symlinked directory is not supported: {path}")
         for filename in sorted(filenames):
             if not filename.endswith(".json"):
                 continue
@@ -196,13 +229,15 @@ def read_revision(standard: Path, rev: str) -> tuple[str, list[tuple[str, bytes]
 
 
 def same_json(left: Any, right: Any) -> bool:
-    """Exact JSON value equality that keeps types apart (``true`` != ``1``, ``1`` != ``1.0``)."""
+    """Parsed-value equality preserving types and float zero signs, not numeric spelling."""
     if type(left) is not type(right):
         return False
     if isinstance(left, dict):
         return left.keys() == right.keys() and all(same_json(left[k], right[k]) for k in left)
     if isinstance(left, list):
         return len(left) == len(right) and all(same_json(a, b) for a, b in zip(left, right))
+    if isinstance(left, float) and left == right == 0:
+        return math.copysign(1, left) == math.copysign(1, right)
     return left == right
 
 
@@ -214,20 +249,38 @@ def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
         raise BadInput(f"set {standard.name!r}: vectors are too deeply nested to compare") from exc
     comparison = "canonical-json-sha256+exact-json"
     note = None
-    uncheckable = standard.content_hash is None or vendored.content_hash is None
+    uncheckable = standard.uncheckable or vendored.uncheckable
+    encoding = None
+    hashes = {"standard": standard.content_hash, "vendored": vendored.content_hash}
     if standard.content_hash is not None and vendored.content_hash is not None:
         if standard.content_hash != vendored.content_hash or not exact:
             changes.append("vectors")
         if standard.content_hash == vendored.content_hash and not exact:
             note = "equal under canonical_json; differs as exact JSON (Unicode normalization or number form)"
     else:
-        comparison = "uncheckable"
         note = "; ".join(
             f"{side}: {vector_set.hash_error}"
             for side, vector_set in (("standard", standard), ("vendored", vendored))
             if vector_set.content_hash is None
         )
+        if not uncheckable:
+            comparison = "declared-encoding-sha256+parsed-json"
+            encoding = (standard.declared_encodings or vendored.declared_encodings)[0]
+            try:
+                hashes = {
+                    side: vector_set.encoded_hashes.get(encoding) or hashlib.sha256(
+                        canonical_encodings(vector_set.vectors)[encoding]).hexdigest()
+                    for side, vector_set in (("standard", standard), ("vendored", vendored))
+                }
+            except RecursionError as exc:
+                raise BadInput(f"set {standard.name!r}: vectors are too deeply nested to hash") from exc
+            note = f"canonical_json unavailable ({note}); compared using {encoding}"
+        else:
+            comparison = "uncheckable"
+            note = f"no canonical or verified declared-encoding hash ({note})"
         if not exact:
+            changes.append("vectors")
+        elif not uncheckable and hashes["standard"] != hashes["vendored"]:
             changes.append("vectors")
     if vendored.count != standard.count or vendored.count != len(vendored.vectors):
         changes.append("count")
@@ -243,6 +296,9 @@ def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
         "vendoredPath": vendored.path,
         "comparison": comparison,
         "comparisonNote": note,
+        "uncheckable": uncheckable,
+        "hashEncoding": encoding,
+        "comparisonHash": hashes,
         "contentHash": {"standard": standard.content_hash, "vendored": vendored.content_hash},
         "count": {
             "standard": standard.count,
@@ -255,12 +311,13 @@ def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
 
 
 def one_sided(vector_set: VectorSet, status: str) -> dict[str, Any]:
-    side = "standardPath" if status == "missing" else "vendoredPath"
-    result = {"set": vector_set.name, "status": status, side: vector_set.path, "spec": vector_set.spec}
-    if vector_set.content_hash is None:
+    side = "standard" if status == "missing" else "vendored"
+    result = {"set": vector_set.name, "status": status, f"{side}Path": vector_set.path,
+              "spec": vector_set.spec, "uncheckable": vector_set.uncheckable}
+    if vector_set.uncheckable:
         result.update(
-            status="uncheckable", changes=[status], comparison="uncheckable",
-            comparisonNote=f"{side}: {vector_set.hash_error}",
+            comparison="uncheckable",
+            comparisonNote=f"{side}: no canonical or verified declared-encoding hash ({vector_set.hash_error})",
         )
     return result
 
@@ -286,12 +343,14 @@ def check(vendored_dir: Path, standard: Path, rev: str | None) -> dict[str, Any]
             results.append(compare(standard_sets[name], vendored_sets[name]))
     summary = {"standard": len(standard_sets), "vendored": len(vendored_sets)}
     summary["ignoredJson"] = {"standard": standard_ignored, "vendored": vendored_ignored}
-    for status in ("match", "drifted", "missing", "extra", "uncheckable"):
+    for status in ("match", "drifted", "missing", "extra"):
         summary[status] = sum(1 for result in results if result["status"] == status)
+    summary["uncheckable"] = sum(1 for result in results if result["uncheckable"])
     return {
         "standard": {"path": str(standard), "revision": rev, "commit": commit},
         "vendored": str(vendored_dir),
         "hashRule": HASH_RULE,
+        "fallbackHashRule": "sha256(vectors encoded as verified by validate_security_vectors)",
         "drift": any(r["status"] in ("drifted", "missing", "extra") or r.get("changes") for r in results),
         "uncheckable": summary["uncheckable"] > 0,
         "summary": summary,
@@ -312,15 +371,21 @@ def render_text(report: dict[str, Any]) -> str:
     for result in report["sets"]:
         status = result["status"]
         if status == "match":
+            if result["hashEncoding"]:
+                lines.append(f"MATCH    {result['set']}  ({result['comparison']}: {result['hashEncoding']})")
             continue
         if status == "missing":
             lines.append(f"MISSING  {result['set']}  (standard {result['standardPath']})")
+            if result["uncheckable"]:
+                lines.append(f"  hash unavailable: {result['comparisonNote']}")
             continue
         if status == "extra":
             lines.append(f"EXTRA    {result['set']}  (vendored {result['vendoredPath']})")
+            if result["uncheckable"]:
+                lines.append(f"  hash unavailable: {result['comparisonNote']}")
             continue
         if status == "uncheckable":
-            lines.append(f"UNCHECKABLE  {result['set']}  (required hash unavailable: {result['comparisonNote']})")
+            lines.append(f"UNCHECKABLE  {result['set']}  (hash unavailable: {result['comparisonNote']})")
             if result["changes"]:
                 lines.append(f"  observed differences: {', '.join(result['changes'])}")
             continue
@@ -328,11 +393,13 @@ def render_text(report: dict[str, Any]) -> str:
             f"DRIFTED  {result['set']}  (standard {result['standardPath']}, "
             f"vendored {result['vendoredPath']})"
         )
+        if result["hashEncoding"]:
+            lines.append(f"  comparison: {result['comparison']} ({result['hashEncoding']})")
         for change in result["changes"]:
             if change == "vectors":
-                hashes = result["contentHash"]
+                hashes = result["comparisonHash"]
                 lines.append(
-                    f"  vectors: {HASH_RULE} standard {hashes['standard']}, "
+                    f"  vectors: {result['comparison']} standard {hashes['standard']}, "
                     f"vendored {hashes['vendored']}"
                 )
                 if result["comparisonNote"]:

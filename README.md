@@ -2,9 +2,9 @@
 
 **An open standard for verifiable agent-to-agent commerce.**
 
-[![Status: v0.1](https://img.shields.io/badge/status-v0.1%20draft-2B36D9)](./CHANGELOG.md)
+[![Release: v0.4](https://img.shields.io/badge/release-v0.4%20draft-2B36D9)](./spec/PROFILE.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-FF4808)](./LICENSE)
-[![Spec](https://img.shields.io/badge/spec-v0.1-010109)](./spec/)
+[![Profile: DACS v0.1](https://img.shields.io/badge/profile-DACS%20v0.1-010109)](./spec/PROFILE.md)
 
 Autonomous agents are transacting with agents they have never met. Open standards
 exist for *fragments* of what a transaction requires — identity registries, payment
@@ -88,7 +88,8 @@ substrate-to-primitive mapping and production status. The unified SDK is [`@kyne
 | [`conformance/vectors/`](./conformance/vectors/) | Machine-readable happy-path, negative-path, and core artifact example JSON fixtures with a stdlib validator. |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Normative change history. Start here if you implemented against an earlier draft. |
 | [`ROADMAP.md`](./ROADMAP.md) | Anticipated follow-on work (informative). What's deferred beyond v0.1 and why — no committed dates. |
-| [`IMPLEMENTATION_READINESS.md`](./IMPLEMENTATION_READINESS.md) | Additive validation, example, and contributor-support improvements that strengthen implementation readiness without changing v0.1 conformance semantics. |
+| [`docs/fp-dem-current-rules.md`](./docs/fp-dem-current-rules.md) | Non-normative map of the current rules and open issues for fixed-price `pay-dem` sessions with storage-program delivery. |
+| [`IMPLEMENTATION_READINESS.md`](./IMPLEMENTATION_READINESS.md) | Historical record of an earlier implementation-readiness branch. |
 
 **New here?** Read the [builders guide](./docs/builders-guide.md) first, then the
 [flow trace](./docs/flow-trace.md), then the [specification](./spec/CORE.md).
@@ -97,8 +98,12 @@ substrate-to-primitive mapping and production status. The unified SDK is [`@kyne
 
 ## Status
 
-DACS **v0.1** is the first publicly released version. It is a draft standard under
-active development and we are actively seeking implementation feedback.
+**DACS v0.1** is the stable, unqualified profile name: the common baseline the five
+stage documents share. **v0.4** is the latest coordinated release (tag `v0.4`); it
+pins one version of each document on that baseline. The `next` branch is
+unreleased. [PROFILE](./spec/PROFILE.md) records both and the status of `next`.
+DACS is a draft standard under active development, and we are actively seeking
+implementation feedback.
 
 **Live today** (on Demos): SR-1 cross-substrate identity (CCI), SR-2 anchored
 storage, SR-3 consensus-backed proxy (DAHR). **Substrate-live, SDK ergonomics on

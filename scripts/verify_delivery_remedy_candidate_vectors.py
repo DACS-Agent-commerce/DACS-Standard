@@ -39,43 +39,75 @@ DEFAULT_VECTOR_PACK = (
 DEFAULT_DEPLOYMENT_PACK = (
     ROOT / "conformance/fixtures/delivery-remedy/deployment-capabilities-v0.1.json"
 )
-# The exact external sources this verifier's verdicts follow.  A lifecycle
-# pack written against other sources is refused before any vector runs.
-VECTOR_SOURCE_PINS = {
-    "canonicalErc": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-8183.md",
-    "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol",
-    "ulid": "https://github.com/ulid/spec/blob/d0c7170df4517939e70129b4d6462cc162f2d5bf/README.md",
+# The candidate's External pins, which fix the exact text each binding rule
+# follows, plus the two further sources this pack reads: the ERC-8183
+# reference contract whose divergences the deployment pack checks, and the
+# ULID range of a JID (DRAA-1).  A lifecycle pack written against other
+# sources is refused before any vector runs.
+EXTERNAL_SOURCE_PINS = {
+    "canonicalErc8183": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-8183.md",
+    "eip1271": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-1271.md",
+    "eip155": "https://github.com/ethereum/EIPs/blob/c1a1eb21b465c9c42704a8a5743ad0694aedbff7/EIPS/eip-155.md",
+    "eip55": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-55.md",
+    "eip1052": "https://github.com/ethereum/EIPs/blob/c1a1eb21b465c9c42704a8a5743ad0694aedbff7/EIPS/eip-1052.md",
+    "erc2771": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-2771.md",
+    "rfc8785": "https://www.rfc-editor.org/rfc/rfc8785",
     "demosSdk": {
         "package": "@kynesyslabs/demosdk",
-        "version": "4.0.5",
-        "integrity": "sha512-p4OZy04Zw6G8kUJZA8MlR6koI2dc8jiD6LJP5Ga4uvxie1I52UjgCRfYKAEUHUPrF7hlnIafYVQ+pK0FlgyXWA==",
-        "source": "build/storage/StorageProgram.js",
+        "version": "4.0.16",
+        "integrity": "sha512-nVhp1uC+tFGzhew9c8XIajTMmELopx7gd0joqqzDd2XyUuFDcqrda51NYqvX5C8+L3Xgnie/mRf7JRqZ7r3tHA==",
     },
+    "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol",
+    "ulid": "https://github.com/ulid/spec/blob/d0c7170df4517939e70129b4d6462cc162f2d5bf/README.md",
 }
+# DRG-2: the DACS-Standard `next` commit the candidate is checked against, and
+# the documents whose text this verifier implements.  The pack pins each
+# document's SHA-256, so a pack and a checkout whose texts differ are refused.
+DACS_CHECKED_AGAINST = "df7bc202ebdc179a59d61a8221072f33f482b933"
+PINNED_DOCUMENTS = (
+    "docs/delivery-or-remedy-candidate.md",
+    "spec/CORE.md",
+    "spec/DACS-1-IDENTIFY.md",
+    "spec/DACS-2-VET.md",
+    "spec/DACS-3-NEGOTIATE.md",
+    "spec/DACS-4-SETTLE.md",
+    "spec/DACS-5-VERIFY.md",
+    "spec/DEMOS-MAPPING.md",
+)
 
 # A ULID: 26 Crockford base-32 digits, at most 7ZZZZZZZZZZZZZZZZZZZZZZZZZ
 # (ulid/spec, "Overflow Errors when Parsing Base32 Strings").
 JID_RE = re.compile(r"^[0-7][0-9A-HJKMNP-TV-Z]{25}$")
 HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 BYTES32_RE = re.compile(r"^0x[0-9a-f]{64}$")
+# DRW-3: the DACS-4 SB-1 spelling of an EVM transaction hash.
 EVM_TX_RE = re.compile(r"^0x[0-9a-f]{64}$")
-# A Demos Storage Program native address: `stor-` and the first 40 lower-case
-# hex digits of a SHA-256 digest (DACS-5 §10.4.2, DACS-1 §6.3.4), as the
-# walkthrough emits.  A 64-digit `stor-` value is a logical address there, and
-# DACS-4 §9.6.1 gives the deliverable no logical address in that form.
-NATIVE_STORAGE_LOCATOR_RE = re.compile(r"^stor-[0-9a-f]{40}$")
+# DRW-1: an EVM address in a DACS artifact field, and the address component
+# of a `cci-xm:evm` claim, which may also be upper-case or EIP-55 mixed case.
+EVM_ADDRESS_RE = re.compile(r"0x[0-9a-f]{40}")
+CLAIM_ADDRESS_RE = re.compile(r"0x[0-9a-fA-F]{40}")
+# DRW-2: an EVM code hash.
+CODE_HASH_RE = re.compile(r"0x[0-9a-f]{64}")
+ZERO_ADDRESS = "0x" + "00" * 20
+ZERO_BYTES32 = "0x" + "00" * 32
+# EIP-1052: EXTCODEHASH of an account with no code, keccak-256 of no bytes.
+EMPTY_CODE_HASH = "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+# Minimal unsigned decimal text: DRJ-1's native job ID, a token amount.
+UNSIGNED_DECIMAL_RE = re.compile(r"0|[1-9][0-9]*")
 # A CORE CD-1 canonical decimal `PriceTerm.amount`.
 CANONICAL_DECIMAL_RE = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?")
 # ERC-20 `decimals()` is a uint8.
 MAX_TOKEN_DECIMALS = 255
-# An ERC-20 amount is a uint256, so the candidate rail's `paymentToken` can
-# neither escrow nor transfer a budget above 2^256 - 1 (78 decimal digits).
+# An ERC-20 amount and an ERC-8183 job ID are uint256 values, so no budget or
+# job above 2^256 - 1 (78 decimal digits) exists.
 UINT256_MAX_TEXT = str(2 ** 256 - 1)
 # CORE §B.2 numeric safe-magnitude constraint: every JSON number is finite and
 # at most 2^53 - 1 in magnitude.
 SAFE_INTEGER_MAX = 2 ** 53 - 1
+# DRW-4: the largest unix-second value; 1000 times it is still a safe integer.
+MAX_SECONDS = 9007199254740
 # The deepest array/object nesting a lifecycle or a pack file may have.  The
-# pack's deepest lifecycle nests 7 levels, and the packs themselves 9.  JCS
+# pack's deepest lifecycle nests 8 levels, and the packs themselves 10.  JCS
 # canonicalisation, `json.dumps` and `copy.deepcopy` recurse once or more per
 # level, and a lifecycle a few hundred levels deep exhausts CPython's default
 # 1,000-frame recursion limit; 64 leaves room for producer extensions and stays
@@ -88,24 +120,36 @@ MALFORMED_INPUT_ERRORS: tuple[type[Exception], ...] = (
     AttributeError, IndexError, KeyError, TypeError, ValueError, RecursionError,
 )
 
+# Each signed type's signing domain: the candidate's `dacs-x-` domains, the
+# DACS-3 payee-bound agreement, and DACS-4 `DeliveryEvidence` (PDE-2).
 DOMAINS = {
+    "bilateralAgreement": "dacs-payee-bound-agreement:v1:",
+    "railDefinition": "dacs-x-job-escrow-rail:v1:",
     "agreement": "dacs-x-delivery-remedy-agreement:v1:",
     "job": "dacs-x-escrow-job-ref:v1:",
     "funding": "dacs-x-escrow-funding-evidence:v1:",
-    "delivery": "dacs-evidence:v1:",
+    "delivery": "dacs-delivery-evidence:v1:",
     "evaluation": "dacs-x-execution-evaluation:v1:",
+    "disputeCase": "dacs-x-dispute-case:v1:",
     "dispute": "dacs-x-dispute-outcome:v1:",
     "decision": "dacs-x-escrow-decision:v1:",
     "terminal": "dacs-x-escrow-terminal-evidence:v1:",
 }
+# DREB-1: the native `description` prefix of candidate §8.1.
+DESCRIPTION_PREFIX = "dacs-x-delivery-remedy:v1:"
 
-# The synthetic fixture resolver is a verifier-pinned trust anchor (DRV-1).
-# `publicKeys` in a vector covers only DACS parties.
+# The synthetic fixture resolver and registry steward are verifier-pinned
+# trust anchors (DRV-1, DRR-2).  `publicKeys` in a vector covers only DACS
+# parties.
 FIXTURE_RESOLVER_CLAIM = "did:demos:agent:" + "99" * 32
 PINNED_RESOLVER_KEYS = {
     FIXTURE_RESOLVER_CLAIM: "iln7hKoVj-cofK9mAaE1yj8OiplfupJiIg1nFjqhqfA",
 }
 RESOLVER_DOMAIN = "dacs-x-delivery-remedy-fixture-resolver:v1:"
+FIXTURE_STEWARD_CLAIM = "did:demos:agent:" + "98" * 32
+PINNED_STEWARD_KEYS = {
+    FIXTURE_STEWARD_CLAIM: "GzHKEuDmLJEe7Wq8-7G2IBYBZPnCipaIm5481wc3n4A",
+}
 RESOLVER_EVIDENCE_FIELDS = {
     "resolverEvidenceVersion",
     "resolver",
@@ -115,24 +159,37 @@ RESOLVER_EVIDENCE_FIELDS = {
     "contractAddress",
     "nativeJobId",
     "eventObservationsHash",
-    "terminalCall",
+    "transactions",
     "priorTerminals",
     "nativeState",
     "deliveryDigestAnchor",
+    "decisionAnchor",
     "statuses",
     "signature",
 }
+# One lifecycle transaction as the resolver authenticated it (DRF-8): its
+# entrypoint selector and calldata decoded under the DRC-17 pins, the native
+# caller and outer submitter (DREB-21, DREB-22), and the native status before
+# and after it (DRL-10).  `priorNativeStatus` is null only for `createJob`.
+TRANSACTION_FIELDS = {
+    "txHash", "entrypoint", "calldata", "nativeCaller", "outerSubmitter",
+    "nativeCallerAccountType", "priorNativeStatus", "nativeStatusAfter",
+}
+EVALUATOR_ACCOUNT_TYPES = {"eoa", "eip1271"}
 # The block in which the exact delivery digest was anchored, or null when the
 # resolver has no such evidence (DRP-9).  A synthetic fixture boundary.
 DIGEST_ANCHOR_FIELDS = {"deliverable", "blockNumber", "blockTimestampSec"}
-TERMINAL_CALL_FIELDS = {"txHash", "outerSubmitter", "nativeCaller", "nativeCallerAccountType"}
+# The finalized SR-2 anchor of the decision, or null when unavailable: the
+# consensus timestamp of the Demos block that finalized it (DRC-15, DRC-19).
+DECISION_ANCHOR_FIELDS = {"substrate", "finalizedBlockTimestampSec"}
 # One terminal transaction the resolver observed before this lifecycle's
 # terminal event, for this native job or consuming this decision.
 PRIOR_TERMINAL_FIELDS = {
     "chainId", "contractAddress", "nativeJobId", "txHash", "logIndex", "decisionHash",
 }
 # Resolved native job state and immutable capability facts (DREB-13, DREB-15,
-# DREB-16, DREB-20, DRL-7, DRT-7).  The verifier reads them only from here.
+# DREB-16, DREB-20, DRL-7, DRT-7), and the code the resolver found at every
+# action block (DRJ-5, DRJ-11).  The verifier reads them only from here.
 NATIVE_STATE_FIELDS = {
     "submissionCutoffEnforced",
     "expiryRecoveryAtSec",
@@ -141,44 +198,60 @@ NATIVE_STATE_FIELDS = {
     "evaluatorFeeBP",
     "evaluatorBindingMode",
     "evaluatorAdapter",
+    "escrowRuntimeBytecodeHash",
+    "paymentTokenRuntimeBytecodeHash",
+    "implementationAddress",
 }
-# The fixture's delivery SettlementEvidence: the DACS-4 §9.7 members that a
-# successful storage-program delivery carries (DRE-2, DRP-7).  A failure
-# outcome adds `reason` and may omit the deliverable members, which §9.7
-# makes optional.  §9.7 has no phase-index member; the phase is the single
-# agreement-bound delivery step (DRP-3, DRA-11).
+# DACS-4 `DeliveryEvidence` for a storage-program delivery (PDE-1, PDE-4).  A
+# failure outcome adds `reason` and may omit the deliverable members.  The
+# `attestationRef` and `credentialDelivery` members belong to the other
+# deliver-* kinds, which this pack does not model.
 DELIVERY_EVIDENCE_FIELDS = {
-    "evidenceVersion", "jobId", "phase", "outcome", "deliverableContentHash",
-    "deliverableAnchor", "observedAt", "signature",
+    "deliveryEvidenceVersion", "jobId", "phaseIndex", "phase", "outcome",
+    "deliverableContentHash", "deliverableAnchor", "observedAt", "signature",
 }
 DELIVERABLE_FIELDS = {"deliverableContentHash", "deliverableAnchor"}
-# The deliver-* kinds DACS-4 defines, and the one this pack models.  The
-# fixture SettlementEvidence has no `attestationRef` (DACS-4 DPA-6) and no
-# entitlement binding, so attested-payload and entitlement deliveries are not
-# supported here (DRP-3) and never verify.
+# The deliver-* kinds DACS-4 defines, and the one this pack models.
 DACS4_DELIVERY_KINDS = {
     "deliver-storage-program", "deliver-entitlement", "deliver-attested-payload",
 }
 MODELLED_DELIVERY_KINDS = {"deliver-storage-program"}
 DELIVERY_OUTCOMES = {"success", "failure"}
 EVALUATION_RESULTS = {"accept", "reject", "indeterminate"}
+CRITERION_OUTCOMES = {"satisfied", "unsatisfied", "indeterminate"}
 DECISION_DISPOSITIONS = {"release-to-provider", "refund-to-client"}
+DECISION_STAGES = {"pre-submission", "post-submission"}
 TERMINAL_STATES = {"released", "rejected-refund", "expired-refund"}
-# The only evaluation results that can authorize a settlement, and the one
-# disposition each authorizes.  Every other result fails closed.
-SETTLEMENT_AUTHORIZATIONS = {
-    "accept": "release-to-provider",
-    "reject": "refund-to-client",
+DISPUTE_ROLES = {"buyer", "seller", "evaluator"}
+# The pipeline's candidate phase kinds (DRG-3) and the commit phase's
+# `agreementPhase` values (DRP-14).  This pack models the payee-bound arm only:
+# the identity-bound arm needs the CORE IBH-1 through IBH-6 gates.
+COMMIT_PHASE_KIND = "x-commit-delivery-or-remedy-agreement"
+ESCROW_PHASE_KIND = "x-job-escrow"
+AGREEMENT_PHASES = {"commit-payee-bound-agreement", "commit-identity-bound-payee-agreement"}
+MODELLED_AGREEMENT_PHASE = "commit-payee-bound-agreement"
+# DACS-3 §8.5: the five agreement discriminators; exactly one is present.
+AGREEMENT_DISCRIMINATORS = (
+    "agreementVersion", "payeeBoundAgreementVersion", "identityBoundAgreementVersion",
+    "identityBoundPayeeAgreementVersion", "sealedSelectionAgreementVersion",
+)
+BILATERAL_MEMBERS = {
+    "payeeBoundAgreementVersion", "jobId", "listingRef", "parties", "terms",
+    "derivedFromPattern", "generatedAt", "signatures",
 }
+AGREEMENT_PARTY_MEMBERS = {"role", "bundleHash", "primaryClaim", "vetRecordRef"}
+AGREEMENT_PARTY_ROLES = {"buyer", "seller", "bidder-non-winning"}
+AGREEMENT_TERMS_MEMBERS = {"deliverable", "price", "deadline", "payoutBindings"}
+PAYOUT_BINDING_MEMBERS = {"railId", "phaseIndex", "payeeAddress"}
 
-# Every resolver status and the rule an `unavailable` outcome reports, in
-# reporting priority.  A new status is added here and nowhere else.
+# The §11.3 resolver statuses and the rule an `unavailable` outcome reports,
+# in reporting priority.  A new status is added here and nowhere else.
 UNAVAILABLE_STATUS_RULES = {
-    "decisionOrdering": "DRD-10",
     "fundingFinality": "DRF-6",
     "deliveryFinality": "DRE-5",
     "decisionFinality": "DRD-4",
     "terminalFinality": "DRT-9",
+    "transitionResolution": "DRL-12",
     "nativeStateResolution": "DRL-3",
     "codeResolution": "DRJ-7",
     "authorityResolution": "DRJ-7",
@@ -186,21 +259,24 @@ UNAVAILABLE_STATUS_RULES = {
     "agreementResolution": "DRV-2",
 }
 EXTERNAL_EVIDENCE_FIELDS = frozenset(UNAVAILABLE_STATUS_RULES)
-# Each candidate artifact's version discriminator; the candidate fixes every
-# one at "1" (candidate §§5-7).  §9 step 1 rejects any other value before a
-# type-specific read, and step 2 makes a missing one malformed.
+EXTERNAL_STATES = {"verified", "not-applicable", "unavailable", "contradictory"}
+# Each signed candidate artifact's version discriminator, and DACS-4
+# `DeliveryEvidence`'s; every one is "1" (candidate §§5-7, PDE-1).  §9 step 1
+# rejects any other value before a type-specific read, and step 2 makes a
+# missing one malformed.
 ARTIFACT_VERSION_FIELDS = {
     "job": "escrowJobRefVersion",
     "funding": "escrowFundingEvidenceVersion",
+    "delivery": "deliveryEvidenceVersion",
     "evaluation": "executionEvaluationVersion",
+    "disputeCase": "disputeCaseVersion",
     "dispute": "disputeOutcomeVersion",
     "decision": "escrowDecisionVersion",
     "terminal": "escrowTerminalEvidenceVersion",
 }
-# The members each candidate type requires (candidate §§5-7), other than its
-# version discriminator and signature, which have their own checks.  An
-# ExecutionEvaluation's `deliveryEvidenceRef` is decided by the reference
-# stage (DRD-3), which names the delivery it must bind.
+# The members each type requires (candidate §§5-7, DACS-4 `DeliveryEvidence`),
+# other than its version discriminator and signature, which have their own
+# checks.
 REQUIRED_ARTIFACT_MEMBERS = {
     "job": {
         "jobId", "deliveryOrRemedyAgreementHash", "railDefinitionRef", "chainId",
@@ -210,29 +286,150 @@ REQUIRED_ARTIFACT_MEMBERS = {
         "jobId", "deliveryOrRemedyAgreementHash", "escrowJobRef", "fundPhaseIndex", "token",
         "amountBaseUnits", "fundingEventRefs", "finality", "observedAt",
     },
+    "delivery": {"jobId", "phaseIndex", "phase", "outcome", "observedAt"},
     "evaluation": {
-        "jobId", "evaluationSeq", "deliveryOrRemedyAgreementHash", "escrowJobRef", "result",
-        "finding", "subjectEvidenceRefs",
+        "jobId", "evaluationSeq", "deliveryOrRemedyAgreementHash", "escrowJobRef",
+        "deliveryEvidenceRef", "criterionResults", "result", "finding", "subjectEvidenceRefs",
+    },
+    "disputeCase": {
+        "jobId", "caseId", "deliveryOrRemedyAgreementHash", "openedByRole", "subjectEvidenceRefs",
     },
     "dispute": {
         "jobId", "caseId", "revision", "deliveryOrRemedyAgreementHash", "caseRef",
         "subjectBundleRefs", "subjectEvidenceRefs", "finding",
     },
     "decision": {
-        "jobId", "deliveryOrRemedyAgreementHash", "escrowJobRef", "basisRef", "disposition",
+        "jobId", "deliveryOrRemedyAgreementHash", "escrowJobRef", "decisionStage", "basisRef",
+        "disposition",
     },
     "terminal": {
         "jobId", "deliveryOrRemedyAgreementHash", "escrowJobRef", "fundingEvidenceRef",
-        "terminalState", "disposition", "token", "amountBaseUnits", "recipient",
-        "terminalEventRefs", "finality", "observedAt",
+        "terminalPhaseIndex", "terminalState", "disposition", "token", "amountBaseUnits",
+        "recipient", "terminalEventRefs", "finality", "observedAt",
     },
 }
-# The one rail this verifier implements: its discriminators, and the §8.4
-# capability and decision-ordering profiles it is written against.
-RAIL_DISCRIMINATORS = {"railVersion": 1, "railType": "evm-erc8183"}
-CAPABILITY_PROFILE = "dacs-delivery-gate-v1"
-DECISION_ORDERING_PROFILE = "synthetic-single-chain-finalized-before-terminal-v1"
-EXTERNAL_STATES = {"verified", "not-applicable", "unavailable", "contradictory"}
+OPTIONAL_ARTIFACTS = ("evaluationRule", "delivery", "evaluation", "disputeCase", "dispute", "decision")
+
+# The rail: a signed `JobEscrowRailDefinition` (candidate §2.2) that extends
+# the DACS-4 `RailDefinition` envelope.  `consumerFinalityProfile` is optional
+# in DACS-4; a rail without one is not selectable (DRR-4).
+RAIL_MEMBERS = {
+    "jobEscrowRailVersion", "railVersion", "railId", "railType", "asset", "network",
+    "phaseHandler", "parameters", "availability", "governance", "signature",
+}
+RAIL_ID_RE = re.compile(r"x-evm-erc8183:([1-9][0-9]*):([A-Z0-9]+)")
+MAX_RAIL_ID_LENGTH = 64
+ASSET_MEMBERS = {"kind", "chainId", "contract", "symbol", "decimals"}
+NETWORK_MEMBERS = {"kind", "chainId", "rpcAttestation"}
+RPC_ATTESTATIONS = {"consensus-backed-proxy", "evm-rpc"}
+RAIL_AVAILABILITIES = {"live", "operator_gated", "closed_data", "bilateral", "mocked", "disabled", "failed"}
+GOVERNANCE_REQUIRED = {"proposedBy", "acceptedAt", "anchoring"}
+GOVERNANCE_OPTIONAL = {"supersedes", "emergency", "deprecated", "deprecationReason"}
+GOVERNANCE_ANCHORINGS = {"in-code", "single-signer", "multisig"}
+# DRC-14: every literal-typed `ERC8183ProfileParameters` field and its value.
+PROFILE_LITERALS = {
+    "canonicalErcRevision": "ethereum/ERCs@a078cab5cc8e9581c15f76c091ed96eed28f02f7",
+    "hook": ZERO_ADDRESS,
+    "deadlineProfile": "separate-submission-cutoff-v1",
+    "decisionOrderingProfile": "anchor-final-before-terminal-v1",
+    "platformFeeBP": 0,
+    "evaluatorFeeBP": 0,
+    "capabilityProfile": "dacs-delivery-gate-v1",
+}
+PROFILE_FIELDS = set(PROFILE_LITERALS) | {
+    "implementationRevision", "entrypoints", "events", "configurationEvidence",
+    "nativeStatusMap", "chainId", "contractAddress", "runtimeBytecodeHash", "paymentToken",
+    "paymentTokenRuntimeBytecodeHash", "tokenDecimals", "finalityBlocks",
+    "minimumEvaluationWindowSec", "maxCrossSubstrateSkewMs",
+}
+OPTIONAL_PROFILE_FIELDS = {"implementationAddress", "implementationRuntimeBytecodeHash"}
+IMPLEMENTATION_REVISION_RE = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[0-9a-f]{40}")
+CAPABILITY_PROFILE = PROFILE_LITERALS["capabilityProfile"]
+NATIVE_STATUSES = ("Open", "Funded", "Submitted", "Completed", "Rejected", "Expired")
+# The fixture implementation's ABI, which the rail pins through DRC-17 and
+# this verifier decodes (DRC-18): each entrypoint and event signature with the
+# names its decoded calldata and logs carry.  The events have the canonical
+# ERC-8183 argument sets, with the reference contract's `hook` on
+# `JobCreated`; the job ID, the first argument of every event, is the log's
+# job topic.  What the canonical surface lacks, a DREB-13-capable
+# implementation adds: a separate submission cutoff in `createJob` and a
+# configuration event that carries it with the pre-submission policy (DRJ-3),
+# and the expected prior status in `reject` (DRD-13).
+FIXTURE_ENTRYPOINTS = {
+    "createJob": (
+        "createJob(address,address,uint256,uint256,string,address)",
+        ("provider", "evaluator", "expiredAt", "submissionCutoff", "description", "hook"),
+    ),
+    "fund": ("fund(uint256,uint256)", ("jobId", "expectedBudget")),
+    "submit": ("submit(uint256,bytes32)", ("jobId", "deliverable")),
+    "complete": ("complete(uint256,bytes32)", ("jobId", "reason")),
+    "reject": ("reject(uint256,bytes32,uint8)", ("jobId", "reason", "expectedStatus")),
+    "claimRefund": ("claimRefund(uint256)", ("jobId",)),
+}
+FIXTURE_EVENTS = {
+    "JobCreated": (
+        "JobCreated(uint256,address,address,address,uint256,address)",
+        ("client", "provider", "evaluator", "expiredAt", "hook"),
+    ),
+    "JobConfigured": (
+        "JobConfigured(uint256,uint256,string)", ("submissionCutoff", "preSubmissionRefundPolicy"),
+    ),
+    "JobFunded": ("JobFunded(uint256,address,uint256)", ("client", "amount")),
+    "JobSubmitted": ("JobSubmitted(uint256,address,bytes32)", ("provider", "deliverable")),
+    "JobCompleted": ("JobCompleted(uint256,address,bytes32)", ("evaluator", "reason")),
+    "PaymentReleased": ("PaymentReleased(uint256,address,uint256)", ("recipient", "amount")),
+    "JobRejected": ("JobRejected(uint256,address,bytes32)", ("rejector", "reason")),
+    "Refunded": ("Refunded(uint256,address,uint256)", ("client", "amount")),
+    "JobExpired": ("JobExpired(uint256)", ()),
+}
+CONFIGURATION_EVIDENCE = {
+    "event": "JobConfigured",
+    "submissionCutoffField": "submissionCutoff",
+    "preSubmissionPolicyField": "preSubmissionRefundPolicy",
+}
+# The Solidity type of each named ABI value: an address, a uint, bytes32, or a
+# string.  Decoded uints are minimal decimal text, so a uint256 stays exact.
+ABI_VALUE_TYPES = {
+    "address": {"provider", "evaluator", "hook", "client", "recipient", "rejector"},
+    "uint": {
+        "expiredAt", "submissionCutoff", "jobId", "expectedBudget", "expectedStatus", "amount",
+    },
+    "bytes32": {"deliverable", "reason"},
+    "string": {"description", "preSubmissionRefundPolicy"},
+}
+# Candidate §4.1: the ERC-8183 state crosswalk, keyed on the prior native
+# status, the entrypoint, and the caller's role (`any` for `claimRefund`).
+# Each row gives the events it requires, the native status after it, and the
+# portable and terminal states (DRL-10).  `JobConfigured` is the fixture
+# implementation's DRC-17 configuration event, emitted by `createJob`.
+CROSSWALK = {
+    (None, "createJob", "client"): (("JobCreated", "JobConfigured"), "Open", "created", None),
+    ("Open", "reject", "client"): (("JobRejected",), "Rejected", "cancelled", None),
+    ("Open", "fund", "client"): (("JobFunded",), "Funded", "funded", None),
+    ("Funded", "submit", "provider"): (("JobSubmitted",), "Submitted", "submitted", None),
+    ("Submitted", "complete", "evaluator"): (
+        ("JobCompleted", "PaymentReleased"), "Completed", "released", "released",
+    ),
+    ("Funded", "reject", "evaluator"): (
+        ("JobRejected", "Refunded"), "Rejected", "refunded", "rejected-refund",
+    ),
+    ("Submitted", "reject", "evaluator"): (
+        ("JobRejected", "Refunded"), "Rejected", "refunded", "rejected-refund",
+    ),
+    ("Funded", "claimRefund", "any"): (("JobExpired", "Refunded"), "Expired", "refunded", "expired-refund"),
+    ("Submitted", "claimRefund", "any"): (
+        ("JobExpired", "Refunded"), "Expired", "refunded", "expired-refund",
+    ),
+}
+CROSSWALK_EVENTS = sorted({name for row in CROSSWALK.values() for name in row[0]} - {"JobConfigured"})
+TERMINAL_ENTRYPOINTS = {
+    "released": "complete", "rejected-refund": "reject", "expired-refund": "claimRefund",
+}
+TERMINAL_EVENTS = {
+    "released": ("JobCompleted", "PaymentReleased"),
+    "rejected-refund": ("JobRejected", "Refunded"),
+    "expired-refund": ("JobExpired", "Refunded"),
+}
 PORTABLE_STATES = {"created", "funded", "submitted", "released", "refunded", "cancelled"}
 PORTABLE_TRANSITIONS = {
     ("created", "funded"),
@@ -242,20 +439,14 @@ PORTABLE_TRANSITIONS = {
     ("submitted", "released"),
     ("submitted", "refunded"),
 }
-ZERO_BYTES32 = "0x" + "00" * 32
 DRC_RULES = {f"DRC-{number}" for number in range(1, 14)}
-PROFILE_FIELDS = {
-    "minimumEvaluationWindowSec",
-    "deadlineProfile",
-    "finalityBlocks",
-    "decisionOrderingProfile",
-    "platformFeeBP",
-    "evaluatorFeeBP",
-    "capabilityProfile",
-}
 # DACS-2 `AttestationRef` members and anchor kinds.
 ATTESTATION_REF_FIELDS = {"anchor", "contentHash", "signer"}
 ATTESTATION_ANCHOR_KINDS = {"storage-program", "ipfs", "https"}
+EVENT_REF_FIELDS = {"kind", "chainId", "txHash", "logIndex"}
+# One resolver-authenticated EVM log (DRF-8): its block, the block at the
+# rail's confirmation depth (null until it exists), and its decoded topics
+# and data.  Block identities are fixture-chain preimages.
 EVENT_INPUT_FIELDS = {
     "eventRef",
     "txHashPreimageUtf8",
@@ -263,44 +454,78 @@ EVENT_INPUT_FIELDS = {
     "blockHash",
     "blockHashPreimageUtf8",
     "blockTimestampSec",
-    "confirmations",
     "contractAddress",
     "nativeJobId",
     "eventName",
+    "topic0",
     "arguments",
-    # The block timestamp of the confirmation at the rail's finality depth:
-    # DACS-4 block-depth `finalityObservedAt` is exactly this time.
-    "finalityBlockTimestampSec",
+    "finalityBlock",
 }
-# A canonical EVM account claim: `cci-xm:evm:<chainId>:<address>` with
-# optional `?` parameters (DACS-1 EVM cci-xm settlement-chain profile).
-EVM_CLAIM_RE = re.compile(r"cci-xm:evm:([1-9][0-9]*):([^?]+)(?:\?(.*))?", re.DOTALL)
-# One CORE CF-2(c) canonical parameter: the reserved `:`, `?`, `&`, `=` and
-# `%` appear only percent-encoded with upper-case hex.
+BLOCK_FIELDS = {"blockNumber", "blockHash", "blockHashPreimageUtf8", "blockTimestampSec"}
+# DACS-1 §6.3.1 ClaimReference grammar: a lower-case scheme (CF-2(a) for any
+# hashed or signed reference), and one CORE CF-2(c) canonical parameter: the
+# reserved `:`, `?`, `&`, `=` and `%` appear only percent-encoded with
+# upper-case hex.
+CLAIM_SCHEME_RE = re.compile(r"[a-z][a-z0-9-]*")
 CLAIM_PARAMETER_RE = re.compile(r"(?:[^:?&=%]|%[0-9A-F]{2})+=(?:[^:?&=%]|%[0-9A-F]{2})*")
-EVM_ADDRESS_RE = re.compile(r"0x[0-9a-fA-F]{40}")
-# AccountabilityFinding members and its closed classification set (candidate §6.3).
+# DACS-1 §6.3.1: the Demos agent DID key is 64 lower-case hex digits, and an
+# EVM `cci-xm` identifier is `evm:<chainId>:<address>`.
+DEMOS_AGENT_PREFIX = "demos:agent:"
+DEMOS_AGENT_KEY_RE = re.compile(r"[0-9a-f]{64}")
+EVM_IDENTIFIER_RE = re.compile(r"evm:([1-9][0-9]*):(.*)", re.DOTALL)
+EVM_ACCOUNT_CLAIM_RE = re.compile(r"cci-xm:evm:([1-9][0-9]*):([^?]*)(?:\?.*)?", re.DOTALL)
+# AccountabilityFinding members and its closed classification set (candidate §6.4).
 FINDING_FIELDS = {"classification", "faultedParty", "rationaleCode"}
 FINDING_CLASSIFICATIONS = {
     "seller-fulfilled", "seller-fault", "buyer-fault", "evaluator-unavailable",
     "substrate-failure", "no-fault", "indeterminate",
 }
-# DRT-14: every (terminal state, finding classification) row of the candidate
-# §7 projection table, with "any refund" and "any terminal state" expanded.
-# A terminal with no finding is decided by DRT-13 and the decision rules.
-PROJECTION_ROWS = {
-    ("released", "seller-fulfilled"),
-    ("rejected-refund", "seller-fault"),
-    ("rejected-refund", "buyer-fault"),
-    ("expired-refund", "seller-fault"),
-    ("expired-refund", "evaluator-unavailable"),
-    ("expired-refund", "substrate-failure"),
-    ("rejected-refund", "no-fault"),
-    ("expired-refund", "no-fault"),
-    ("released", "indeterminate"),
-    ("rejected-refund", "indeterminate"),
-    ("expired-refund", "indeterminate"),
+# Candidate §6.2: the `evaluator-judgement-v1` matrix, from the derived result
+# to the findings and the disposition it permits (none for indeterminate).
+RULE_KIND = "evaluator-judgement-v1"
+EVALUATION_RULE_FIELDS = {"evaluationRuleVersion", "ruleKind", "jobId", "criteria"}
+RESULT_FINDINGS = {
+    "accept": {"seller-fulfilled"},
+    "reject": {"seller-fault", "buyer-fault", "no-fault", "substrate-failure"},
+    "indeterminate": {"indeterminate", "evaluator-unavailable"},
 }
+SETTLEMENT_AUTHORIZATIONS = {
+    "accept": "release-to-provider",
+    "reject": "refund-to-client",
+}
+# Candidate §6.4: the dispute-outcome authorization table, from the finding to
+# the disposition it permits; a release only at the post-submission stage.
+DISPUTE_DISPOSITIONS = {
+    "seller-fulfilled": "release-to-provider",
+    "seller-fault": "refund-to-client",
+    "buyer-fault": "refund-to-client",
+    "no-fault": "refund-to-client",
+    "substrate-failure": "refund-to-client",
+}
+# DRT-14: the candidate §7 projection table, (terminal state, finding) to the
+# buyer-anchored and seller-anchored DACS-5 outcomes and the faulted party,
+# with "any refund" expanded.  A null outcome is "no (fault) projection".  An
+# expired-refund seller fault holds only when the seller failed to submit, and
+# `indeterminate` projects nothing for any terminal state.  Every other pair
+# projects no buyer or seller fault and remains an annotation.
+NO_PROJECTION = (None, None, "none")
+PROJECTION_TABLE = {
+    ("released", "seller-fulfilled"): ("completed", "completed", "none"),
+    ("rejected-refund", "seller-fault"): ("failed-counterparty", "failed-perm", "seller"),
+    ("rejected-refund", "buyer-fault"): ("failed-perm", "failed-counterparty", "buyer"),
+    ("expired-refund", "seller-fault"): ("failed-counterparty", "failed-perm", "seller"),
+    ("expired-refund", "evaluator-unavailable"): NO_PROJECTION,
+    ("rejected-refund", "substrate-failure"): ("failed-substrate", "failed-substrate", "none"),
+    ("expired-refund", "substrate-failure"): ("failed-substrate", "failed-substrate", "none"),
+    ("rejected-refund", "no-fault"): NO_PROJECTION,
+    ("expired-refund", "no-fault"): NO_PROJECTION,
+}
+PROJECTION_FIELDS = {
+    "buyerAnchoredOutcome", "sellerAnchoredOutcome", "faultedParty",
+    "releaseAloneEstablishesNonFinancialCompletion",
+}
+PROJECTED_OUTCOMES = {None, "completed", "failed-counterparty", "failed-perm", "failed-substrate"}
+PROJECTED_FAULTS = {"none", "buyer", "seller"}
 
 
 def nesting_within(value: Any, limit: int) -> bool:
@@ -353,6 +578,91 @@ def artifact_hash(value: dict[str, Any]) -> str:
     return content_hash(unsigned_artifact(value))
 
 
+def document_pins(root: Path = ROOT) -> dict[str, str]:
+    """The SHA-256 of each pinned document in the checkout at ``root``."""
+    return {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in PINNED_DOCUMENTS}
+
+
+# Keccak-256 (the pre-SHA-3 padding Ethereum uses), for EIP-55 checksums and
+# for the DRC-17 selectors and topics.  `hashlib.sha3_256` pads differently.
+_KECCAK_ROUND_CONSTANTS = (
+    0x0000000000000001, 0x0000000000008082, 0x800000000000808A, 0x8000000080008000,
+    0x000000000000808B, 0x0000000080000001, 0x8000000080008081, 0x8000000000008009,
+    0x000000000000008A, 0x0000000000000088, 0x0000000080008009, 0x000000008000000A,
+    0x000000008000808B, 0x800000000000008B, 0x8000000000008089, 0x8000000000008003,
+    0x8000000000008002, 0x8000000000000080, 0x000000000000800A, 0x800000008000000A,
+    0x8000000080008081, 0x8000000000008080, 0x0000000080000001, 0x8000000080008008,
+)
+# The rotation offset of lane (x, y), indexed [x][y].
+_KECCAK_ROTATIONS = (
+    (0, 36, 3, 41, 18), (1, 44, 10, 45, 2), (62, 6, 43, 15, 61),
+    (28, 55, 25, 21, 56), (27, 20, 39, 8, 14),
+)
+_LANE_MASK = (1 << 64) - 1
+
+
+def _keccak_f1600(lanes: list[int]) -> list[int]:
+    for constant in _KECCAK_ROUND_CONSTANTS:
+        parity = [lanes[x] ^ lanes[x + 5] ^ lanes[x + 10] ^ lanes[x + 15] ^ lanes[x + 20] for x in range(5)]
+        lanes = [
+            lanes[i] ^ parity[(i - 1) % 5]
+            ^ (((parity[(i + 1) % 5] << 1) | (parity[(i + 1) % 5] >> 63)) & _LANE_MASK)
+            for i in range(25)
+        ]
+        rotated = [0] * 25
+        for x in range(5):
+            for y in range(5):
+                lane, offset = lanes[x + 5 * y], _KECCAK_ROTATIONS[x][y]
+                rotated[y + 5 * ((2 * x + 3 * y) % 5)] = (
+                    (lane << offset) | (lane >> (64 - offset))
+                ) & _LANE_MASK
+        lanes = [
+            rotated[i] ^ (~rotated[(i + 1) % 5 + 5 * (i // 5)] & rotated[(i + 2) % 5 + 5 * (i // 5)])
+            for i in range(25)
+        ]
+        lanes[0] ^= constant
+    return lanes
+
+
+def keccak256(data: bytes) -> bytes:
+    rate = 136
+    padded = bytearray(data)
+    padded.append(0x01)
+    padded.extend(bytes(-len(padded) % rate))
+    padded[-1] |= 0x80
+    lanes = [0] * 25
+    for start in range(0, len(padded), rate):
+        for index in range(rate // 8):
+            offset = start + 8 * index
+            lanes[index] ^= int.from_bytes(padded[offset:offset + 8], "little")
+        lanes = _keccak_f1600(lanes)
+    return b"".join(lane.to_bytes(8, "little") for lane in lanes[:4])
+
+
+def selector_of(signature: str) -> str:
+    """The 4-byte selector of a Solidity function signature (DRC-17)."""
+    return "0x" + keccak256(signature.encode("ascii"))[:4].hex()
+
+
+def topic_of(signature: str) -> str:
+    """The 32-byte `topic0` of a Solidity event signature (DRC-17)."""
+    return "0x" + keccak256(signature.encode("ascii")).hex()
+
+
+def evm_claim_address_valid(address: Any) -> bool:
+    """DRW-1: `0x` and 40 hex digits, all lower-case, all upper-case, or valid EIP-55."""
+    if not isinstance(address, str) or CLAIM_ADDRESS_RE.fullmatch(address) is None:
+        return False
+    digits = address[2:]
+    if digits in (digits.lower(), digits.upper()):
+        return True
+    digest = keccak256(digits.lower().encode("ascii")).hex()
+    return all(
+        char == (char.upper() if int(digest[index], 16) >= 8 else char.lower())
+        for index, char in enumerate(digits)
+    )
+
+
 def base64url_decode(value: Any) -> bytes:
     if not isinstance(value, str) or not value or "=" in value:
         raise ValueError("signature is not unpadded Base64URL")
@@ -387,19 +697,75 @@ def signature_valid(
     return True
 
 
-def attestation_ref_valid(ref: Any, artifact: Any) -> bool:
-    return (
-        attestation_ref_shape_valid(ref)
-        and isinstance(artifact, dict)
-        and ref["contentHash"] == artifact_hash(artifact)
-    )
+def claim_parameters_canonical(text: str) -> bool:
+    """Whether a ClaimReference parameter string is in CORE CF-2(c) form."""
+    pairs = text.split("&")
+    if not all(CLAIM_PARAMETER_RE.fullmatch(pair) for pair in pairs):
+        return False
+    keys = [pair.split("=", 1)[0] for pair in pairs]
+    return keys == sorted(keys)
+
+
+class Claim(NamedTuple):
+    """A canonical ClaimReference and its CORE CF-3 identity.
+
+    ``evm`` is the chain ID and 20-byte address of a `cci-xm:evm` claim in
+    the PB-2 profile; two such claims compare by those values (DRW-5).
+    """
+
+    scheme: str
+    identifier: str
+    identity: tuple[Any, ...]
+    evm: tuple[int, bytes] | None
+
+
+def parse_claim(value: Any) -> Claim | None:
+    """A ClaimReference in CORE CF-2 canonical byte form, or None.
+
+    DACS-1 §6.3.1 grammar.  A signed artifact embeds the CF-2 form: a
+    lower-case scheme, an NFC identifier, and sorted, percent-encoded
+    parameters.  Any other spelling is malformed rather than repaired (DRV-3).
+    A `did:demos:agent:` key is 64 lower-case hex digits; DACS-1 makes a reader
+    reject an upper-case key rather than lowercase it.  A `cci-xm:evm` claim
+    with a canonical, safe chain ID has a DRW-1 address component.  Parameters
+    never contribute to identity (CF-3).
+    """
+    if not isinstance(value, str):
+        return None
+    scheme, separator, rest = value.partition(":")
+    identifier, question, parameters = rest.partition("?")
+    if not separator or CLAIM_SCHEME_RE.fullmatch(scheme) is None or not identifier:
+        return None
+    if unicodedata.normalize("NFC", identifier) != identifier:
+        return None
+    if question and not claim_parameters_canonical(parameters):
+        return None
+    if scheme == "did" and identifier.startswith(DEMOS_AGENT_PREFIX) and (
+        DEMOS_AGENT_KEY_RE.fullmatch(identifier[len(DEMOS_AGENT_PREFIX):]) is None
+    ):
+        return None
+    evm = None
+    match = EVM_IDENTIFIER_RE.fullmatch(identifier) if scheme == "cci-xm" else None
+    if match is not None and int(match.group(1)) <= SAFE_INTEGER_MAX:
+        if not evm_claim_address_valid(match.group(2)):
+            return None
+        evm = (int(match.group(1)), bytes.fromhex(match.group(2)[2:]))
+    identity = (scheme, "evm", *evm) if evm is not None else (scheme, identifier)
+    return Claim(scheme, identifier, identity, evm)
+
+
+def claim_identity(value: Any) -> tuple[Any, ...] | None:
+    """A canonical ClaimReference's CORE CF-3 identity (with DRW-5), or None."""
+    claim = parse_claim(value)
+    return None if claim is None else claim.identity
 
 
 def attestation_ref_shape_valid(ref: Any) -> bool:
     """Whether ``ref`` is a DACS-2 `AttestationRef` (DACS-2 §8.4).
 
     `{anchor: {kind, locator}, contentHash, signer?}`: the anchor kind is one
-    of the three DACS-2 kinds and the optional signer is a ClaimReference.
+    of the three DACS-2 kinds and the optional signer is a canonical
+    ClaimReference.
     """
     if not isinstance(ref, dict) or not {"anchor", "contentHash"} <= set(ref) <= ATTESTATION_REF_FIELDS:
         return False
@@ -413,79 +779,64 @@ def attestation_ref_shape_valid(ref: Any) -> bool:
         and bool(anchor["locator"])
         and isinstance(ref["contentHash"], str)
         and HASH_RE.fullmatch(ref["contentHash"]) is not None
-        and ("signer" not in ref or claim_identity(ref["signer"]) is not None)
+        and ("signer" not in ref or parse_claim(ref["signer"]) is not None)
     )
 
 
-def _event_ref_check(
-    ref_value: Any, chain_id: Any, rule: str, label: str
-) -> dict[str, str] | None:
-    if not isinstance(ref_value, dict) or set(ref_value) != {
-        "kind", "chainId", "txHash", "logIndex"
-    }:
-        return result("error", "DRV-3", f"{label} event reference is malformed")
-    tx_hash = ref_value.get("txHash")
-    log_index = ref_value.get("logIndex")
-    if (
-        ref_value.get("kind") != "evm-event"
-        or ref_value.get("chainId") != chain_id
-        or not isinstance(tx_hash, str)
-        or EVM_TX_RE.fullmatch(tx_hash) is None
-        or type(log_index) is not int
-        or log_index < 0
-    ):
-        return result("rejected", rule, f"{label} event identity is not canonical")
-    return None
-
-
-def _event_identity(ref_value: Any) -> tuple[Any, Any, Any, Any] | None:
-    if not isinstance(ref_value, dict):
-        return None
-    identity = (
-        ref_value.get("kind"),
-        ref_value.get("chainId"),
-        ref_value.get("txHash"),
-        ref_value.get("logIndex"),
+def attestation_ref_valid(ref: Any, artifact: Any) -> bool:
+    return (
+        attestation_ref_shape_valid(ref)
+        and isinstance(artifact, dict)
+        and ref["contentHash"] == artifact_hash(artifact)
     )
-    # Used as a lookup key, where Python would take `false` for log index 0.
-    if not all(isinstance(part, str) or type(part) is int for part in identity):
-        return None
-    return identity
 
 
-def _finality_check(
-    finality: Any,
-    minimum_confirmations: int,
-    observation: dict[str, Any],
+def logical_address(job_id: str, suffix: str) -> str:
+    """A candidate §6.5 logical address in the `dacs4:x-job-escrow:` family."""
+    return f"dacs4:x-job-escrow:{job_id}:{suffix}"
+
+
+def _numeric_segment_noncanonical(locator: str, expected: str) -> bool:
+    """Whether ``locator`` differs from ``expected`` only in a numeric segment's spelling (DRAA-2)."""
+    given, wanted = locator.split(":"), expected.split(":")
+    return locator != expected and len(given) == len(wanted) and all(
+        left == right or (
+            re.fullmatch(r"[+-]?[0-9]+", left) is not None
+            and UNSIGNED_DECIMAL_RE.fullmatch(right) is not None
+            and int(left) == int(right)
+        )
+        for left, right in zip(given, wanted)
+    )
+
+
+def _ref_check(
+    ref: Any,
+    artifact: Any,
+    locator: str | None,
     rule: str,
     label: str,
+    signers: tuple[str, ...],
 ) -> dict[str, str] | None:
-    """Check a signed DACS-4 record; its event's depth was checked when observed.
+    """Resolve one `AttestationRef` to the exact artifact at its logical address.
 
-    For block-depth finality, `finalityObservedAt` is the block timestamp of
-    the Nth confirmation (DACS-4 §9.5), which the resolver attests with the
-    event; any other time, earlier or later, is not that record's.
+    A malformed reference is `error` (§9 step 2).  A numeric address segment
+    spelled other than as minimal unsigned decimal is `error` too (DRAA-2).
+    A reference that names another address or content hash is `fail` under
+    ``rule``, and an optional `signer` that is none of the artifact's
+    authenticated ``signers`` contradicts it (DRV-6).
     """
-    if not isinstance(finality, dict) or set(finality) != {
-        "model", "finalityBlocks", "finalityObservedAt"
-    }:
-        return result("error", "DRV-3", f"{label} finality is not an exact DACS-4 block-depth record")
-    finality_blocks = finality.get("finalityBlocks")
-    observed_at = finality.get("finalityObservedAt")
-    if (
-        type(finality_blocks) is not int
-        or finality_blocks <= 0
-        or type(observed_at) is not int
-        or observed_at < 0
-    ):
-        return result("error", "DRV-3", f"{label} finality record is malformed")
-    if finality.get("model") != "block-depth" or finality_blocks != minimum_confirmations:
-        return result("rejected", rule, f"{label} finality does not match the rail profile")
-    if (
-        observed_at < observation["blockTimestampSec"] * 1000
-        or observed_at != observation["finalityBlockTimestampSec"] * 1000
-    ):
-        return result("rejected", rule, f"{label} finality time is not its confirmation-depth block time")
+    if not attestation_ref_shape_valid(ref):
+        return result("error", "DRV-3", f"{label} reference is not a DACS-2 AttestationRef")
+    if locator is not None and ref["anchor"]["locator"] != locator:
+        if _numeric_segment_noncanonical(ref["anchor"]["locator"], locator):
+            return result("error", "DRAA-2", f"{label} reference spells a numeric address segment non-minimally")
+        return result("fail", rule, f"{label} reference does not name its logical address")
+    if locator is not None and ref["anchor"]["kind"] != "storage-program":
+        return result("fail", rule, f"{label} reference is not an SR-2 storage-program anchor")
+    if not isinstance(artifact, dict) or ref["contentHash"] != artifact_hash(artifact):
+        return result("fail", rule, f"{label} reference does not resolve to the exact artifact")
+    if "signer" in ref and claim_identity(ref["signer"]) not in {claim_identity(signer) for signer in signers}:
+        return result("fail", "DRV-6", f"{label} reference names a signer other than the artifact's")
     return None
 
 
@@ -503,7 +854,7 @@ def price_base_units(amount: str, decimals: int) -> str | None:
     decimal text: the fraction is padded to `decimals` digits and the leading
     zeros are stripped.  No `int` or float is involved, so an amount of any
     length converts exactly.  None when the amount has more fractional digits
-    than the token carries (excess precision, DACS-4 §9.13).
+    than the token carries: no whole number of base units equals it (DRA-10).
     """
     whole, _, fraction = amount.partition(".")
     if len(fraction) > decimals:
@@ -511,62 +862,30 @@ def price_base_units(amount: str, decimals: int) -> str | None:
     return (whole + fraction.ljust(decimals, "0")).lstrip("0") or "0"
 
 
-def claim_identity(claim: Any) -> tuple[str, str] | None:
-    """A ClaimReference's CORE CF-3 identity: (scheme, identifier) only.
-
-    The scheme is compared lower-cased and the identifier NFC-normalised
-    (CF-2(a), CF-1); `?` parameters are advisory and do not contribute.
-    """
-    if not isinstance(claim, str):
-        return None
-    scheme, separator, rest = claim.partition(":")
-    identifier = rest.split("?", 1)[0]
-    if not separator or not scheme or not identifier:
-        return None
-    return scheme.lower(), unicodedata.normalize("NFC", identifier)
+def _is_unix_ms(value: Any) -> bool:
+    """DRW-4: a unix-millisecond timestamp is a non-negative JSON safe integer."""
+    return type(value) is int and 0 <= value <= SAFE_INTEGER_MAX
 
 
-def claim_parameters_canonical(text: str) -> bool:
-    """Whether a ClaimReference parameter string is in CORE CF-2(c) form."""
-    pairs = text.split("&")
-    if not all(CLAIM_PARAMETER_RE.fullmatch(pair) for pair in pairs):
-        return False
-    keys = [pair.split("=", 1)[0] for pair in pairs]
-    return keys == sorted(keys)
+def _is_unix_sec(value: Any) -> bool:
+    """DRW-4: a unix-second timestamp is a non-negative integer of at most 9007199254740."""
+    return type(value) is int and 0 <= value <= MAX_SECONDS
 
 
-def parse_canonical_evm_claim(value: Any) -> tuple[int, str] | None:
-    """Return the chain ID and account of a canonical EVM account claim.
-
-    Unknown parameters are ignored (DACS-1), but must be in CF-2 canonical
-    form, since the claim is embedded in a signed overlay.  The address is
-    opaque to chain applicability; an EVM hexadecimal address is returned
-    lower-cased, since its letter case (EIP-55) does not change the account,
-    and any other address is returned as written and so matches no native
-    EVM account.
-    """
-    if not isinstance(value, str):
-        return None
-    match = EVM_CLAIM_RE.fullmatch(value)
-    if match is None:
-        return None
-    parameters = match.group(3)
-    if parameters is not None and not claim_parameters_canonical(parameters):
-        return None
-    address = match.group(2)
-    if EVM_ADDRESS_RE.fullmatch(address) is not None:
-        address = address.lower()
-    return int(match.group(1)), address
+def _amount_valid(value: Any) -> bool:
+    return isinstance(value, str) and UNSIGNED_DECIMAL_RE.fullmatch(value) is not None and within_uint256(value)
 
 
 # Rule labels for `error`.  Candidate §9 step 2 makes a malformed input
 # `error`; DRV-3, the malformed-encoding rule, forbids repairing it, so those
-# results cite DRV-3.  The candidate names no rule for §9 step 1, an unsupported
-# artifact discriminator (phase kind, overlay, resolver-evidence or manifest
-# version, capability profile); those keep the fixture label DRV-2, pending a
-# named §9 step-1 rule in #371.  An unsupported deliver-* kind is the DRP-3
-# exception: DRP-3 requires a supported one.  Otherwise DRV-2 is unavailable
-# RPC data, which stays `indeterminate`.
+# results cite DRV-3, or the §3.1 wire rule (DRW-1 to DRW-4) the encoding
+# breaks.  §9 step 1 makes an unsupported discriminator `error`; where the
+# candidate names the rule (DRR-6 for the rail, DRE-9 for the evaluation rule,
+# DRP-14 for the commit phase, DRC-14 for a profile literal) the result cites
+# it, and the other discriminators (phase kind, artifact, overlay,
+# resolver-evidence or manifest version, implementation ABI) keep the fixture
+# label DRV-2, pending a named §9 step-1 rule in #371.  Otherwise DRV-2 is
+# unavailable RPC data, which stays `indeterminate`.
 def result(verdict: str, rule: str, detail: str) -> dict[str, str]:
     return {"result": verdict, "rule": rule, "detail": detail}
 
@@ -719,13 +1038,14 @@ def materialize_vector(pack: dict[str, Any], vector: dict[str, Any]) -> dict[str
     return value
 
 
+
 def _delivery_expected(value: dict[str, Any]) -> bool:
     """Whether the lifecycle has delivery evidence, supplied or not.
 
     It has when the record is supplied, or when the signed terminal evidence
     references one and the lifecycle names its native submission event.  A
     referenced record the caller did not supply is then `indeterminate`
-    (candidate §9 step 5, §11.3 case 5), not absent.
+    (candidate §9 step 5, §11.3 case I5), not absent.
     """
     artifacts = value["artifacts"]
     return artifacts.get("delivery") is not None or (
@@ -746,84 +1066,115 @@ def _decision_expected(artifacts: dict[str, Any]) -> bool:
     )
 
 
+def role_accounts(agreement: dict[str, Any]) -> dict[str, str]:
+    """Each role's EVM account: the lower-case DRW-1 spelling of its claim's 20 bytes."""
+    return {
+        role: "0x" + parse_claim(agreement[role]["evmAccountClaim"]).evm[1].hex()
+        for role in ("buyer", "seller", "evaluator")
+    }
+
+
 def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
     pipeline = value.get("pipeline")
-    agreement = value["artifacts"]["agreement"]
+    artifacts = value["artifacts"]
+    agreement = artifacts["agreement"]
+    rail = artifacts["railDefinition"]
     if not isinstance(pipeline, list) or not pipeline:
         return result("error", "DRV-3", "pipeline must be a non-empty array")
     if not all(isinstance(step, dict) and isinstance(step.get("kind"), str) for step in pipeline):
         return result("error", "DRV-3", "every pipeline step must have a kind")
+    # §9 step 1.  A payment phase is a DRP-4 finding and an unsupported
+    # delivery a DRP-3 finding below, not unsupported kinds.  An unprefixed
+    # candidate name is not the `x-` name (DRG-3), so it is an unknown kind.
+    supported_kinds = {COMMIT_PHASE_KIND, ESCROW_PHASE_KIND, *DACS4_DELIVERY_KINDS, "rate"}
+    if any(
+        step["kind"] not in supported_kinds and not step["kind"].startswith(("pay-", "deliver-"))
+        for step in pipeline
+    ):
+        return result("error", "DRV-2", "pipeline contains an unsupported phase kind")
 
-    escrow_indexes = [i for i, step in enumerate(pipeline) if step["kind"] == "job-escrow"]
+    escrow_indexes = [i for i, step in enumerate(pipeline) if step["kind"] == ESCROW_PHASE_KIND]
     if len(escrow_indexes) != 2:
-        return result("rejected", "DRP-1", "pipeline does not contain exactly two escrow steps")
+        return result("fail", "DRP-1", "pipeline does not contain exactly two x-job-escrow steps")
     fund_index, terminal_index = escrow_indexes
     fund = pipeline[fund_index]
     terminal = pipeline[terminal_index]
     for step in (fund, terminal):
         if not isinstance(step.get("parameters"), dict):
-            return result("error", "DRV-3", "job-escrow parameters must be an object")
+            return result("error", "DRV-3", "x-job-escrow parameters must be an object")
     # Escrow indexes ascend, so the actions alone fix the fund-then-terminal
     # order.  Both phases' rails are bound to the selected rail later (DRP-5).
     if fund["parameters"].get("action") != "fund" or terminal["parameters"].get("action") != "terminal":
-        return result("rejected", "DRP-2", "escrow actions are not fund then terminal")
+        return result("fail", "DRP-2", "escrow actions are not fund then terminal")
 
     delivery_indexes = [i for i, step in enumerate(pipeline) if step["kind"].startswith("deliver-")]
     if len(delivery_indexes) != 1 or not (fund_index < delivery_indexes[0] < terminal_index):
-        return result("rejected", "DRP-3", "exactly one delivery must occur between escrow steps")
+        return result("fail", "DRP-3", "exactly one delivery must occur between escrow steps")
     # DRP-3 names the delivery's kind: it must be a supported deliver-* step,
     # and this pack supports only the kind it models.  The signed delivery
     # evidence must name this step's kind (DRE-2), so relabelling the step
     # cannot select other checks.
     if pipeline[delivery_indexes[0]]["kind"] not in MODELLED_DELIVERY_KINDS:
-        return result("rejected", "DRP-3", "the delivery between escrow steps is not a deliver-* kind this pack supports")
+        return result("fail", "DRP-3", "the delivery between escrow steps is not a deliver-* kind this pack supports")
     if any(step["kind"].startswith("pay-") for step in pipeline):
-        return result("rejected", "DRP-4", "ordinary payment phases cannot accompany the escrow pair")
-    supported_kinds = {
-        "commit-delivery-or-remedy-agreement",
-        "job-escrow",
-        *DACS4_DELIVERY_KINDS,
-        "rate",
-    }
-    # Payment phases are DRP-4 findings above, and an unsupported delivery a
-    # DRP-3 finding, not unsupported kinds.
-    if any(
-        step["kind"] not in supported_kinds and not step["kind"].startswith("pay-")
-        for step in pipeline
+        return result("fail", "DRP-4", "ordinary payment phases cannot accompany the escrow pair")
+    commits =[i for i, step in enumerate(pipeline) if step["kind"] == COMMIT_PHASE_KIND]
+    if len(commits) != 1 or commits[0] > fund_index:
+        return result("fail", "DRP-14", "the pipeline does not commit the agreements once, before funding")
+    commit_parameters = pipeline[commits[0]].get("parameters")
+    if (
+        not isinstance(commit_parameters, dict)
+        or set(commit_parameters) != {"agreementPhase"}
+        or commit_parameters["agreementPhase"] not in tuple(AGREEMENT_PHASES)
     ):
-        return result("error", "DRV-2", "pipeline contains an unsupported phase kind")
+        return result("error", "DRP-14", "unsupported commit-phase agreementPhase")
+    if commit_parameters["agreementPhase"] != MODELLED_AGREEMENT_PHASE:
+        return result("error", "DRV-2", "unsupported agreement phase: this pack models the payee-bound commit only")
     if (
         agreement.get("fundPhaseIndex") != fund_index
         or agreement.get("deliveryPhaseIndex") != delivery_indexes[0]
         or agreement.get("terminalPhaseIndex") != terminal_index
     ):
-        return result("rejected", "DRA-11", "agreement phase indexes do not match the pipeline")
+        return result("fail", "DRA-11", "agreement phase indexes do not match the pipeline")
     execution = value.get("executionContext")
     if not isinstance(execution, dict):
         return result("error", "DRV-3", "executionContext must be an object")
-    if execution.get("acceptedRails") != [agreement.get("railDefinitionRef")]:
-        return result("rejected", "DRP-10", "job escrow is not selected through acceptedRails")
-    commitment = execution.get("commitmentReceipt")
-    if not isinstance(commitment, dict) or commitment != {
-        "status": "finalized",
-        "jobId": agreement.get("jobId"),
-        "agreementHash": agreement.get("agreementHash"),
+    # Both steps naming this rail is checked against the agreement later (DRP-5).
+    accepted = execution.get("acceptedRails")
+    selected = [
+        ref for ref in accepted
+        if isinstance(ref, dict) and ref.get("railId") == rail["railId"]
+    ] if isinstance(accepted, list) else []
+    if len(selected) != 1:
+        return result("fail", "DRP-10", "job escrow is not selected through one acceptedRails entry")
+    # DRR-3: the PaymentRailRef resolves to the selected rail definition.
+    if not set(selected[0]) <= {"railId", "railVersion"} or selected[0].get("railVersion", rail["railVersion"]) != rail["railVersion"]:
+        return result("fail", "DRR-3", "the acceptedRails reference does not resolve to the selected rail definition")
+    # DRP-11: the commit phase's two receipts, the bilateral agreement's and
+    # the overlay's, are finalized for this job before any lock.
+    receipts = execution.get("commitmentReceipts")
+    if not isinstance(receipts, dict) or receipts != {
+        "agreement": {
+            "status": "finalized", "jobId": agreement["jobId"],
+            "contentHash": artifact_hash(artifacts["bilateralAgreement"]),
+        },
+        "overlay": {"status": "finalized", "jobId": agreement["jobId"], "contentHash": artifact_hash(agreement)},
     }:
-        return result("rejected", "DRP-11", "funding is not gated by the finalized commitment")
+        return result("fail", "DRP-11", "funding is not gated by both finalized commit receipts")
     if execution.get("fundingFinalizedBeforeDelivery") is not True:
-        return result("rejected", "DRP-6", "delivery began before finalized funding evidence")
+        return result("fail", "DRP-6", "delivery began before finalized funding evidence")
     # A boolean or a float is not an integer count, though Python compares
-    # `true` and `1.0` equal to 1.
+    # `false` and `0.0` equal to 0.
     if type(execution.get("dacs5PurchaseCount")) is not int:
         return result("error", "DRV-3", "dacs5PurchaseCount must be an integer")
-    if execution["dacs5PurchaseCount"] != 1:
-        return result("rejected", "DRP-8", "the escrow pair was counted as more than one purchase")
+    if execution["dacs5PurchaseCount"] != 0:
+        return result("fail", "DRP-8", "before promotion the escrow pair contributes no DACS-5 purchase or volume")
     expected_gate = (
         "delivery-returned"
         if _delivery_expected(value)
         else (
             "pre-submission-decision"
-            if _decision_expected(value["artifacts"])
+            if _decision_expected(artifacts)
             else "submission-cutoff"
         )
     )
@@ -831,7 +1182,66 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
         execution.get("terminalGate") != expected_gate
         or execution.get("lateDeliveryDisabled") is not True
     ):
-        return result("rejected", "DRP-12", "terminal execution did not satisfy the delivery/cutoff gate")
+        return result("fail", "DRP-12", "terminal execution did not satisfy the delivery/cutoff gate")
+    return None
+
+
+def _member_issue(artifacts: dict[str, Any]) -> dict[str, str] | None:
+    """§9 step 2: every member a later stage reads has its declared encoding (§3.1)."""
+    job, funding, terminal = artifacts["job"], artifacts["funding"], artifacts["terminal"]
+    for name in ("funding", "delivery", "terminal"):
+        artifact = artifacts.get(name)
+        if artifact is not None and not _is_unix_ms(artifact.get("observedAt")):
+            return result("error", "DRW-4", f"{name} observedAt is not a unix-millisecond safe integer")
+    for name, field in (("funding", "fundPhaseIndex"), ("delivery", "phaseIndex"), ("terminal", "terminalPhaseIndex")):
+        artifact = artifacts.get(name)
+        if artifact is not None and (type(artifact.get(field)) is not int or artifact[field] < 0):
+            return result("error", "DRV-3", f"{name} {field} is not a non-negative integer")
+    for artifact, field in ((job, "contractAddress"), (funding, "token"), (terminal, "token"), (terminal, "recipient")):
+        address = artifact.get(field)
+        if not isinstance(address, str) or EVM_ADDRESS_RE.fullmatch(address) is None:
+            return result("error", "DRW-1", f"{field} is not 0x and 40 lower-case hexadecimal digits")
+    for artifact, field in ((job, "contractAddress"), (funding, "token"), (terminal, "token")):
+        if artifact[field] == ZERO_ADDRESS:
+            return result("fail", "DRW-1", f"{field} is the zero address")
+    runtime = job.get("runtimeBytecodeHash")
+    if not isinstance(runtime, str) or CODE_HASH_RE.fullmatch(runtime) is None:
+        return result("error", "DRW-2", "runtimeBytecodeHash is not 0x and 64 lower-case hexadecimal digits")
+    if runtime in (EMPTY_CODE_HASH, ZERO_BYTES32):
+        return result("fail", "DRW-2", "runtimeBytecodeHash is the empty-code or zero hash")
+    # Compared with `==` later, where Python would take 8453.0 for 8453.
+    if type(job.get("chainId")) is not int:
+        return result("error", "DRV-3", "job chain ID must be an integer")
+    if not all(_amount_valid(artifact.get("amountBaseUnits")) for artifact in (funding, terminal)):
+        return result("error", "DRV-3", "a token amount is not minimal unsigned decimal text within uint256")
+    for name, fields in (
+        ("evaluation", ("subjectEvidenceRefs",)),
+        ("disputeCase", ("subjectEvidenceRefs",)),
+        ("dispute", ("subjectBundleRefs", "subjectEvidenceRefs")),
+    ):
+        artifact = artifacts.get(name)
+        if artifact is not None and any(
+            field in artifact and (
+                not isinstance(artifact[field], list)
+                or not all(attestation_ref_shape_valid(ref) for ref in artifact[field])
+            )
+            for field in fields
+        ):
+            return result("error", "DRV-3", f"{name} subject references are not an array of AttestationRefs")
+    dispute = artifacts.get("dispute")
+    if dispute is not None and "recommendedDisposition" in dispute and (
+        dispute["recommendedDisposition"] not in tuple(DECISION_DISPOSITIONS)
+    ):
+        return result("error", "DRV-3", "recommendedDisposition is outside the closed value set")
+    if terminal.get("disposition") not in tuple(DECISION_DISPOSITIONS):
+        return result("error", "DRV-3", "terminal disposition is outside the closed value set")
+    for name, field in (
+        ("terminal", "decisionRef"), ("terminal", "deliveryEvidenceRef"),
+        ("decision", "deliveryEvidenceRef"), ("dispute", "supersedesOutcomeRef"),
+    ):
+        artifact = artifacts.get(name)
+        if artifact is not None and field in artifact and not attestation_ref_shape_valid(artifact[field]):
+            return result("error", "DRV-3", f"{name} {field} is not a DACS-2 AttestationRef")
     return None
 
 
@@ -841,15 +1251,25 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
         return result("error", "DRV-3", "required candidate artifacts are missing")
     if not all(isinstance(artifacts[name], dict) for name in required):
         return result("error", "DRV-3", "candidate artifacts must be objects")
+    for name in OPTIONAL_ARTIFACTS:
+        if artifacts.get(name) is not None and not isinstance(artifacts[name], dict):
+            return result("error", "DRV-3", f"{name} must be an object")
     agreement = artifacts["agreement"]
     job_id = agreement.get("jobId")
     if not isinstance(job_id, str) or JID_RE.fullmatch(job_id) is None:
         return result("error", "DRAA-1", "jobId is not canonical JID form")
-    if agreement.get("deliveryOrRemedyAgreementVersion") != "1":
+    if "deliveryOrRemedyAgreementVersion" not in agreement:
+        return result("error", "DRV-3", "agreement overlay has no deliveryOrRemedyAgreementVersion discriminator")
+    if agreement["deliveryOrRemedyAgreementVersion"] != "1":
         return result("error", "DRV-2", "unsupported agreement overlay version")
+    # PDE-1: a historical delivery-shaped SettlementEvidence carries
+    # `evidenceVersion`; this profile requires current DeliveryEvidence (DRP-7).
+    delivery = artifacts.get("delivery")
+    if delivery is not None and "evidenceVersion" in delivery and "deliveryEvidenceVersion" not in delivery:
+        return result("fail", "DRP-7", "a historical delivery-shaped SettlementEvidence does not satisfy this profile")
     for name, field in ARTIFACT_VERSION_FIELDS.items():
         artifact = artifacts.get(name)
-        if not isinstance(artifact, dict):
+        if artifact is None:
             continue
         if field not in artifact:
             return result("error", "DRV-3", f"{name} has no {field} discriminator")
@@ -858,87 +1278,258 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
         # §9 step 2.  A missing signature is decided by the signature stage.
         if not REQUIRED_ARTIFACT_MEMBERS[name] <= set(artifact):
             return result("error", "DRV-3", f"{name} is missing a required member")
-    if artifacts["bilateralAgreement"].get("agreementVersion") != "1":
+    # DACS-3 §8.5: exactly one agreement discriminator, and this profile's
+    # commit phase selects the payee-bound type.
+    bilateral = artifacts["bilateralAgreement"]
+    discriminators = [field for field in AGREEMENT_DISCRIMINATORS if field in bilateral]
+    if not discriminators:
+        return result("error", "DRV-3", "bilateral agreement has no version discriminator")
+    if discriminators != ["payeeBoundAgreementVersion"] or bilateral["payeeBoundAgreementVersion"] != "1":
         return result("error", "DRV-2", "unsupported bilateral agreement version")
-    rail = artifacts["railDefinition"]
-    # Exact JSON types: Python would take `true` or 1.0 for rail version 1.
-    if any(
-        type(rail.get(name)) is not type(expected) or rail[name] != expected
-        for name, expected in RAIL_DISCRIMINATORS.items()
-    ):
-        return result("error", "DRV-2", "unsupported rail version or type")
-    # Only offline fixtures are accepted, so the rail must say so too.
-    if rail.get("availability") != "mocked" or rail.get("fixtureOnly") is not True:
-        return result("error", "DRV-1", "only an offline fixture rail is accepted")
-    profile = rail.get("profileParameters")
-    if isinstance(profile, dict) and (
-        profile.get("capabilityProfile") != CAPABILITY_PROFILE
-        or profile.get("decisionOrderingProfile") != DECISION_ORDERING_PROFILE
-    ):
-        return result("error", "DRV-2", "unsupported rail capability or decision-ordering profile")
-    if not isinstance(agreement.get("budgetBaseUnits"), str) or re.fullmatch(
-        r"(?:0|[1-9][0-9]*)", agreement["budgetBaseUnits"]
-    ) is None:
-        return result("error", "DRA-10", "budgetBaseUnits is not minimal unsigned decimal")
-    # Every native amount must equal the budget (DREB-11, DRF-2, DRT-5, DRT-6),
-    # so this bounds them too.
-    if not within_uint256(agreement["budgetBaseUnits"]):
-        return result("error", "DRV-3", "budgetBaseUnits exceeds the uint256 range of a token amount")
     # Compared with `==` later, where Python would take `true` for 1.
     if any(
         type(agreement.get(name)) is not int
         for name in ("fundPhaseIndex", "deliveryPhaseIndex", "terminalPhaseIndex")
-    ) or type(artifacts["funding"].get("fundPhaseIndex")) is not int:
+    ):
         return result("error", "DRV-3", "phase indexes must be integers")
-    # Compared with `==` later, where Python would take 8453.0 for 8453.
-    if type(artifacts["railDefinition"].get("chainId")) is not int or type(artifacts["job"].get("chainId")) is not int:
-        return result("error", "DRV-3", "rail and job chain IDs must be integers")
-    # Every token, contract, and job-hook address is later compared with these.
-    if not all(
-        isinstance(rail.get(name), str) and re.fullmatch(r"0x[0-9a-f]{40}", rail[name]) is not None
-        for name in ("paymentToken", "contractAddress", "jobHook")
-    ):
-        return result("error", "DRV-3", "rail payment token, contract, and job hook must be lower-case EVM addresses")
-    for name in ("job", "funding", "delivery", "evaluation", "dispute", "decision", "terminal"):
+    for name in ("job", "funding", "delivery", "evaluation", "disputeCase", "dispute", "decision", "terminal"):
         artifact = artifacts.get(name)
-        if artifact is not None and not isinstance(artifact, dict):
-            return result("error", "DRV-3", f"{name} must be an object")
         if artifact is not None and artifact.get("jobId") != job_id:
-            return result("rejected", "DRD-8", f"{name} is bound to another job")
-    dispute = artifacts.get("dispute")
-    if dispute is not None and (
-        not isinstance(dispute.get("caseId"), str)
-        or JID_RE.fullmatch(dispute["caseId"]) is None
+            return result("fail", "DRD-8", f"{name} is bound to another job")
+    for name in ("disputeCase", "dispute"):
+        artifact = artifacts.get(name)
+        if artifact is not None and (
+            not isinstance(artifact.get("caseId"), str) or JID_RE.fullmatch(artifact["caseId"]) is None
+        ):
+            return result("error", "DRAA-1", "caseId is not canonical JID form")
+    # DRJ-1: minimal unsigned decimal text of a uint256; job 0 is admitted.
+    native_job = artifacts["job"].get("nativeJobId")
+    if (
+        not isinstance(native_job, str)
+        or UNSIGNED_DECIMAL_RE.fullmatch(native_job) is None
+        or not within_uint256(native_job)
     ):
-        return result("error", "DRAA-1", "caseId is not canonical JID form")
-    job = artifacts["job"]
-    # ERC-8183 job IDs start at 1 (`++jobCounter`; job 0 is `InvalidJob`).
-    if not isinstance(job.get("nativeJobId"), str) or re.fullmatch(
-        r"[1-9][0-9]*", job["nativeJobId"]
-    ) is None:
-        return result("error", "DRJ-1", "nativeJobId is not a minimal positive decimal job ID")
+        return result("error", "DRJ-1", "nativeJobId is not minimal unsigned decimal text within uint256")
     evaluation = artifacts.get("evaluation")
     if evaluation is not None:
         sequence = evaluation.get("evaluationSeq")
         if type(sequence) is not int or sequence < 0:
             return result("error", "DRAA-2", "evaluationSeq is not minimal unsigned integer form")
         elif sequence != 0:
-            return result("rejected", "DRAA-6", "first evaluation sequence is not zero")
-    if evaluation is not None and evaluation.get("result") not in tuple(EVALUATION_RESULTS):
-        return result("error", "DRV-3", "evaluation result is outside the closed value set")
+            return result("fail", "DRAA-6", "first evaluation sequence is not zero")
+        if evaluation.get("result") not in tuple(EVALUATION_RESULTS):
+            return result("error", "DRV-3", "evaluation result is outside the closed value set")
     decision = artifacts.get("decision")
     if decision is not None and decision.get("disposition") not in tuple(DECISION_DISPOSITIONS):
         return result("error", "DRV-3", "decision disposition is outside the closed value set")
+    if decision is not None and decision.get("decisionStage") not in tuple(DECISION_STAGES):
+        return result("error", "DRV-3", "decision stage is outside the closed value set")
     # Checked here, before any stage uses it as a lookup key: an array or
     # object would otherwise escape the four results as a TypeError.
     terminal_state = artifacts["terminal"].get("terminalState")
     if not isinstance(terminal_state, str) or terminal_state not in TERMINAL_STATES:
         return result("error", "DRV-3", "terminal state is outside the closed value set")
+    dispute = artifacts.get("dispute")
     if dispute is not None:
         if type(dispute.get("revision")) is not int or dispute["revision"] < 0:
             return result("error", "DRAA-2", "dispute revision is not minimal unsigned integer form")
         if any(field in dispute for field in ("transfer", "recipient", "amountBaseUnits")):
-            return result("rejected", "DRX-1", "DisputeOutcome directly claims a transfer")
+            return result("fail", "DRX-1", "DisputeOutcome directly claims a transfer")
+    case = artifacts.get("disputeCase")
+    if case is not None and case.get("openedByRole") not in tuple(DISPUTE_ROLES):
+        return result("error", "DRV-3", "dispute case openedByRole is outside the closed value set")
+    return _member_issue(artifacts)
+
+
+def _abi_pin_issue(params: dict[str, Any]) -> dict[str, str] | None:
+    """DRC-17: complete pins that derive from their signatures; DRC-18 decodes only through them."""
+    entrypoints, events = params["entrypoints"], params["events"]
+    if not isinstance(entrypoints, list) or not all(
+        isinstance(pin, dict) and set(pin) == {"name", "signature", "selector"}
+        and all(isinstance(pin[field], str) for field in pin)
+        for pin in entrypoints
+    ):
+        return result("error", "DRC-17", "entrypoint pins are malformed")
+    if sorted(pin["name"] for pin in entrypoints) != sorted(FIXTURE_ENTRYPOINTS):
+        return result("error", "DRC-17", "the entrypoint pins are not one per profile entrypoint")
+    if any(pin["selector"] != selector_of(pin["signature"]) for pin in entrypoints):
+        return result("error", "DRC-17", "an entrypoint selector does not derive from its signature")
+    if not isinstance(events, list) or not all(
+        isinstance(pin, dict) and set(pin) == {"name", "signature", "topic0"}
+        and all(isinstance(pin[field], str) for field in pin)
+        for pin in events
+    ):
+        return result("error", "DRC-17", "event pins are malformed")
+    names = [pin["name"] for pin in events]
+    if len(names) != len(set(names)) or not set(CROSSWALK_EVENTS) <= set(names):
+        return result("error", "DRC-17", "the event pins do not name every crosswalk event once")
+    if any(pin["topic0"] != topic_of(pin["signature"]) for pin in events):
+        return result("error", "DRC-17", "an event topic0 does not derive from its signature")
+    configuration = params["configurationEvidence"]
+    if (
+        not isinstance(configuration, dict)
+        or set(configuration) != set(CONFIGURATION_EVIDENCE)
+        or configuration.get("event") not in names
+    ):
+        return result("error", "DRC-17", "configurationEvidence does not name a pinned event and its fields")
+    status_map = params["nativeStatusMap"]
+    if (
+        not isinstance(status_map, list)
+        or not all(
+            isinstance(entry, dict) and set(entry) == {"nativeValue", "nativeStatus"}
+            and type(entry["nativeValue"]) is int and isinstance(entry["nativeStatus"], str)
+            for entry in status_map
+        )
+        or len({entry["nativeValue"] for entry in status_map}) != len(status_map)
+        or sorted(entry["nativeStatus"] for entry in status_map) != sorted(NATIVE_STATUSES)
+    ):
+        return result("error", "DRC-17", "nativeStatusMap does not map each native value to one crosswalk status")
+    # DRC-18: this verifier decodes the fixture implementation's ABI only.
+    if (
+        {pin["name"]: pin["signature"] for pin in entrypoints}
+        != {name: signature for name, (signature, _names) in FIXTURE_ENTRYPOINTS.items()}
+        or {pin["name"]: pin["signature"] for pin in events}
+        != {name: signature for name, (signature, _names) in FIXTURE_EVENTS.items()}
+        or configuration != CONFIGURATION_EVIDENCE
+    ):
+        return result("error", "DRV-2", "unsupported implementation ABI")
+    return None
+
+
+def _rail_check(value: dict[str, Any]) -> dict[str, str] | None:
+    """Authenticate the selected `JobEscrowRailDefinition` (candidate §2.2, §8.4).
+
+    Its discriminators first (DRR-6), then its encodings, the DRC-14 literals
+    and the DRC-17 pins, then the registry steward's signature (DRR-2) and
+    the bindings between its members (DRR-1, DRR-4, DRR-5, DRR-7, DRC-16).
+    """
+    rail = value["artifacts"]["railDefinition"]
+    if rail.get("jobEscrowRailVersion") != "1":
+        return result("error", "DRR-6", "unsupported job-escrow rail version")
+    if rail.get("railType") != "x-evm-erc8183":
+        return result("error", "DRR-6", "unsupported rail type")
+    if rail.get("phaseHandler") != ESCROW_PHASE_KIND:
+        return result("error", "DRR-6", "unsupported rail phase handler")
+    missing = RAIL_MEMBERS - set(rail)
+    if missing & {"asset", "network"}:
+        return result("error", "DRR-7", "the rail has no asset or network member")
+    if "governance" in missing:
+        return result("error", "DRR-8", "the rail has no governance member")
+    if missing or not set(rail) <= RAIL_MEMBERS | {"consumerFinalityProfile"}:
+        return result("error", "DRV-3", "rail definition members are not the JobEscrowRailDefinition's")
+    version = rail["railVersion"]
+    if type(version) is not int or not 0 < version <= SAFE_INTEGER_MAX:
+        return result("error", "DRV-3", "railVersion is not a positive safe integer")
+    params = rail["parameters"]
+    if not isinstance(params, dict) or not PROFILE_FIELDS <= set(params) <= PROFILE_FIELDS | OPTIONAL_PROFILE_FIELDS:
+        return result("error", "DRV-3", "rail parameters are not ERC8183ProfileParameters")
+    # Exact JSON types: Python would take `false` for 0.
+    if any(
+        type(params[name]) is not type(expected) or params[name] != expected
+        for name, expected in PROFILE_LITERALS.items()
+    ):
+        return result("error", "DRC-14", "a literal-typed profile field has another value")
+    revision = params["implementationRevision"]
+    if not isinstance(revision, str) or IMPLEMENTATION_REVISION_RE.fullmatch(revision) is None:
+        return result("error", "DRC-14", "implementationRevision is not <owner>/<repository>@<commit>")
+    pins = _abi_pin_issue(params)
+    if pins:
+        return pins
+    chain_id = params["chainId"]
+    if type(chain_id) is not int or not 0 < chain_id <= SAFE_INTEGER_MAX:
+        return result("error", "DRV-3", "rail chain ID is not a positive safe integer")
+    for field in ("contractAddress", "paymentToken", "implementationAddress"):
+        if field in params and (
+            not isinstance(params[field], str) or EVM_ADDRESS_RE.fullmatch(params[field]) is None
+        ):
+            return result("error", "DRW-1", f"rail {field} is not 0x and 40 lower-case hexadecimal digits")
+    for field in ("runtimeBytecodeHash", "paymentTokenRuntimeBytecodeHash", "implementationRuntimeBytecodeHash"):
+        if field in params and (
+            not isinstance(params[field], str) or CODE_HASH_RE.fullmatch(params[field]) is None
+        ):
+            return result("error", "DRW-2", f"rail {field} is not 0x and 64 lower-case hexadecimal digits")
+    decimals = params["tokenDecimals"]
+    if type(decimals) is not int or not 0 <= decimals <= MAX_TOKEN_DECIMALS:
+        return result("error", "DRV-3", "rail token decimals are not a uint8")
+    if type(params["finalityBlocks"]) is not int or params["finalityBlocks"] <= 0:
+        return result("error", "DRV-3", "rail finality depth must be a positive integer")
+    if type(params["minimumEvaluationWindowSec"]) is not int:
+        return result("error", "DREB-14", "minimum evaluation window must be an integer")
+    if not _is_unix_ms(params["maxCrossSubstrateSkewMs"]):
+        return result("error", "DRC-15", "maxCrossSubstrateSkewMs is not a non-negative safe integer")
+    asset, network = rail["asset"], rail["network"]
+    if (
+        not isinstance(asset, dict) or set(asset) != ASSET_MEMBERS
+        or not isinstance(network, dict) or set(network) != NETWORK_MEMBERS
+    ):
+        return result("error", "DRR-7", "rail asset or network members are not the DACS-4 erc20 and evm arms")
+    if not isinstance(asset["contract"], str) or EVM_ADDRESS_RE.fullmatch(asset["contract"]) is None:
+        return result("error", "DRW-1", "rail asset contract is not 0x and 40 lower-case hexadecimal digits")
+    if network["rpcAttestation"] not in tuple(RPC_ATTESTATIONS) or not isinstance(asset["symbol"], str):
+        return result("error", "DRV-3", "rail asset symbol or network attestation is malformed")
+    rail_id = rail["railId"]
+    match = RAIL_ID_RE.fullmatch(rail_id) if isinstance(rail_id, str) else None
+    if match is None or len(rail_id) > MAX_RAIL_ID_LENGTH or int(match.group(1)) != chain_id or match.group(2) != asset["symbol"]:
+        return result("error", "DRR-1", "railId is not x-evm-erc8183:<chainId>:<asset symbol> within 64 characters")
+    availability = rail["availability"]
+    if not isinstance(availability, str) or availability not in RAIL_AVAILABILITIES:
+        return result("error", "DRV-3", "rail availability is not a DACS-4 RailAvailability")
+    governance = rail["governance"]
+    if (
+        not isinstance(governance, dict)
+        or not GOVERNANCE_REQUIRED <= set(governance) <= GOVERNANCE_REQUIRED | GOVERNANCE_OPTIONAL
+        or parse_claim(governance["proposedBy"]) is None
+        or not _is_unix_ms(governance["acceptedAt"])
+        or governance["anchoring"] not in tuple(GOVERNANCE_ANCHORINGS)
+        or ("supersedes" in governance and (
+            type(governance["supersedes"]) is not int or not 0 < governance["supersedes"] < version
+        ))
+    ):
+        return result("error", "DRR-8", "rail governance is not the DACS-4 RailDefinition governance member")
+    # §9 step 3: the registry steward signs the rail (DRR-2, RD-1).
+    signature = rail["signature"]
+    signer = signature.get("signer") if isinstance(signature, dict) else None
+    if not isinstance(signer, str) or signer not in PINNED_STEWARD_KEYS or not signature_valid(
+        rail, signature, signer, PINNED_STEWARD_KEYS, DOMAINS["railDefinition"]
+    ):
+        return result("fail", "DRR-2", "rail definition is not signed by the pinned registry steward")
+    if asset["kind"] != "erc20" or network["kind"] != "evm":
+        return result("fail", "DRR-7", "rail asset and network are not the erc20 and evm kinds")
+    if (
+        type(asset["chainId"]) is not int or type(network["chainId"]) is not int
+        or not asset["chainId"] == network["chainId"] == chain_id
+    ):
+        return result("fail", "DRR-7", "rail asset, network, and parameters name different chains")
+    if asset["contract"] != params["paymentToken"] or type(asset["decimals"]) is not int or asset["decimals"] != decimals:
+        return result("fail", "DRR-7", "rail asset contract or decimals differ from the parameters")
+    if ZERO_ADDRESS in (params["contractAddress"], params["paymentToken"]):
+        return result("fail", "DRW-1", "the rail contract or payment token is the zero address")
+    if any(params.get(field) in (EMPTY_CODE_HASH, ZERO_BYTES32) for field in (
+        "runtimeBytecodeHash", "paymentTokenRuntimeBytecodeHash", "implementationRuntimeBytecodeHash",
+    )):
+        return result("fail", "DRW-2", "a pinned code hash is the empty-code or zero hash")
+    profile = rail.get("consumerFinalityProfile")
+    if profile is None:
+        return result("fail", "DRR-4", "the rail has no consumerFinalityProfile and is not selectable")
+    settlement = profile.get("settlement") if isinstance(profile, dict) else None
+    if not isinstance(profile, dict) or profile.get("finalityProfileVersion") != "1" or not isinstance(settlement, dict):
+        return result("error", "DRV-3", "consumerFinalityProfile is malformed")
+    if profile.get("model") != "block-depth" or settlement.get("kind") != "block-depth":
+        return result("fail", "DRR-4", "consumerFinalityProfile is not the block-depth model")
+    if (
+        settlement.get("networkId") != f"eip155:{chain_id}"
+        or type(settlement.get("requiredDepth")) is not int
+        or settlement["requiredDepth"] != params["finalityBlocks"]
+    ):
+        return result("fail", "DRC-16", "the finality profile's network or depth differs from the rail parameters")
+    # RAV-R2: a `mocked` rail is selectable only in an explicitly configured
+    # non-production mode.  This verifier is that mode and runs only offline
+    # fixtures, so it accepts nothing else; a disabled or failed rail is never
+    # selectable (DRR-5).
+    if availability in ("disabled", "failed"):
+        return result("fail", "DRR-5", "a disabled or failed rail is not selectable")
+    if availability != "mocked":
+        return result("error", "DRV-1", "only an offline mocked fixture rail is accepted")
     return None
 
 
@@ -958,15 +1549,56 @@ def _canonical_record_check(value: dict[str, Any]) -> dict[str, str] | None:
             return result("error", "DRV-3", f"{name} canonical record must be an object")
         encoded = jcs_canonicalize(unsigned_artifact(artifact)).encode("utf-8")
         digest = hashlib.sha256(encoded).hexdigest()
-        expected_native = (
-            "dacs-delivery-remedy:v1:" + digest if name == "agreement" else "0x" + digest
-        )
+        expected_native = DESCRIPTION_PREFIX + digest if name == "agreement" else "0x" + digest
         if record != {
             "canonicalUtf8Hex": encoded.hex(),
             "contentHash": digest,
             "mappedNativeValue": expected_native,
         }:
-            return result("rejected", "DREB-2", f"{name} canonical bytes or mapped value are stale")
+            return result("fail", "DREB-2", f"{name} canonical bytes or mapped value are stale")
+    return None
+
+
+def _bilateral_shape_issue(bilateral: dict[str, Any]) -> str | None:
+    """§9 step 2 for the DACS-3 `PayeeBoundAgreementDocument` (DACS-3 §8.5)."""
+    if not BILATERAL_MEMBERS <= set(bilateral):
+        return "bilateral agreement is missing a PayeeBoundAgreementDocument member"
+    parties = bilateral["parties"]
+    if not isinstance(parties, list) or not all(
+        isinstance(party, dict) and AGREEMENT_PARTY_MEMBERS <= set(party)
+        and isinstance(party["role"], str) and party["role"] in AGREEMENT_PARTY_ROLES
+        and parse_claim(party["primaryClaim"]) is not None
+        for party in parties
+    ):
+        return "bilateral agreement parties are not AgreementParty entries"
+    terms = bilateral["terms"]
+    if not isinstance(terms, dict) or not AGREEMENT_TERMS_MEMBERS <= set(terms):
+        return "bilateral agreement terms are missing a member"
+    price = terms["price"]
+    # A price with DACS-4's optional `unit` is not read: a fixture limitation
+    # that fails closed (README, synthetic proof limits), not a candidate rule.
+    if (
+        not isinstance(price, dict)
+        or set(price) != {"amount", "currency"}
+        or not isinstance(price["amount"], str)
+        or CANONICAL_DECIMAL_RE.fullmatch(price["amount"]) is None
+        or not isinstance(price["currency"], str)
+    ):
+        return "agreement price is not a CD-1 PriceTerm"
+    if not _is_unix_ms(terms["deadline"]):
+        return "agreement deadline is not a unix-millisecond safe integer"
+    bindings = terms["payoutBindings"]
+    if not isinstance(bindings, list) or not all(
+        isinstance(binding, dict) and set(binding) == PAYOUT_BINDING_MEMBERS
+        and isinstance(binding["railId"], str) and type(binding["phaseIndex"]) is int
+        and binding["phaseIndex"] >= 0 and isinstance(binding["payeeAddress"], str)
+        for binding in bindings
+    ):
+        return "agreement payout bindings are not PayoutBinding entries"
+    if "rail" in terms and not (isinstance(terms["rail"], dict) and isinstance(terms["rail"].get("railId"), str)):
+        return "agreement terms.rail is not a PaymentRailRef"
+    if not isinstance(bilateral["signatures"], list):
+        return "bilateral agreement signatures must be an array"
     return None
 
 
@@ -976,113 +1608,166 @@ def _agreement_check(value: dict[str, Any]) -> dict[str, str] | None:
     public_keys = value["publicKeys"]
     bilateral = artifacts["bilateralAgreement"]
     rail = artifacts["railDefinition"]
+    params = rail["parameters"]
 
-    if not attestation_ref_valid(agreement.get("agreementRef"), bilateral):
-        return result("rejected", "DRA-1", "bilateral agreement reference does not resolve exactly")
-    if agreement.get("agreementHash") != artifact_hash(bilateral):
-        return result("rejected", "DRA-2", "bilateral agreement hash mismatch")
-    if bilateral.get("jobId") != agreement.get("jobId"):
-        return result("rejected", "DRA-1", "bilateral agreement is for another job")
-    if not attestation_ref_valid(agreement.get("railDefinitionRef"), rail):
-        return result("rejected", "DRA-12", "rail definition reference does not resolve exactly")
-    # DRA-10: the budget is the agreed price converted with the pinned token
-    # decimals, as DACS-4 §9.5.2 steps 2 and 3 convert a PriceTerm: the
-    # currency is the rail asset's symbol, and amount × 10^decimals is exact.
-    # A price with DACS-4's optional `unit` is not read: a fixture limitation
-    # that fails closed (README, synthetic proof limits), not a candidate rule.
-    price = bilateral.get("price")
-    decimals = rail.get("tokenDecimals")
-    if (
-        not isinstance(price, dict)
-        or set(price) != {"amount", "currency"}
-        or not isinstance(price["amount"], str)
-        or CANONICAL_DECIMAL_RE.fullmatch(price["amount"]) is None
-        or not isinstance(price["currency"], str)
-        or not isinstance(rail.get("paymentTokenSymbol"), str)
-        or type(decimals) is not int
-        or not 0 <= decimals <= MAX_TOKEN_DECIMALS
-    ):
-        return result("error", "DRV-3", "agreement price or pinned token decimals are malformed")
-    # DACS-4 §9.13: a price more precise than the token's decimals is an
-    # error, not a budget mismatch: no base-unit amount equals it.
-    base_units = price_base_units(price["amount"], decimals)
-    if base_units is None:
-        return result("error", "DRV-3", "agreement price has more fractional digits than the pinned token decimals")
-    # DACS-4 §9.3: an agreed `PriceTerm.amount` MUST be strictly greater than
-    # zero.  CD-1 makes "0" the only spelling of zero, and it has no sign.
-    if price["amount"] == "0":
-        return result("rejected", "DRA-10", "agreement price is not strictly greater than zero")
-    if price["currency"] != rail["paymentTokenSymbol"]:
-        return result("rejected", "DRA-10", "agreement price currency is not the pinned payment token")
-    # Both are minimal unsigned decimal text, so equal strings are equal amounts.
-    if base_units != agreement["budgetBaseUnits"]:
-        return result(
-            "rejected", "DRA-10",
-            "budgetBaseUnits is not the agreement price converted with the pinned token decimals",
-        )
-
+    # §9 step 2: the DACS-3 agreement's and the overlay's encodings.
+    issue = _bilateral_shape_issue(bilateral)
+    if issue:
+        return result("error", "DRV-3", issue)
     role_bindings = {role: agreement.get(role) for role in ("buyer", "seller", "evaluator")}
     if not all(isinstance(binding, dict) for binding in role_bindings.values()):
         return result("error", "DRV-3", "agreement role bindings must be objects")
     claims = {role: binding.get("primaryClaim") for role, binding in role_bindings.items()}
     identities = {role: claim_identity(claim) for role, claim in claims.items()}
     if not all(identity is not None for identity in identities.values()):
-        return result("error", "DRV-3", "agreement primary claims must be ClaimReferences")
-    # The overlay adds an evaluator to the existing commercial agreement; it
-    # keeps that agreement's buyer and seller in their roles.  Parties are
-    # matched by CORE CF-3 identity throughout.
-    if (claim_identity(bilateral.get("buyer")), claim_identity(bilateral.get("seller"))) != (
-        identities["buyer"], identities["seller"]
-    ):
-        return result("rejected", "DRA-1", "bilateral agreement parties are not the overlay's buyer and seller")
-    if identities["evaluator"] in {identities["buyer"], identities["seller"]}:
-        return result("rejected", "DRA-6", "evaluator primary claim collides with a commercial party")
-    if value.get("bundleRequiredSigners") != [claims["buyer"], claims["seller"]]:
-        return result("rejected", "DRA-13", "evaluator overlay signature changed the bilateral bundle parties")
-    if agreement.get("preSubmissionRefundPolicy") != "evaluator-rejection":
-        return result("rejected", "DRA-15", "pre-submission refund policy is unsupported by this profile")
-    if agreement.get("disclosurePolicy") not in (
-        "public-evidence-only", "explicit-party-supplied"
-    ):
-        return result("rejected", "DRQ-1", "unsupported evidence-disclosure policy")
+        return result("error", "DRV-3", "agreement primary claims must be canonical ClaimReferences")
+    for role, binding in role_bindings.items():
+        text = binding.get("evmAccountClaim")
+        match = EVM_ACCOUNT_CLAIM_RE.fullmatch(text) if isinstance(text, str) else None
+        if match is not None and not evm_claim_address_valid(match.group(2)):
+            return result(
+                "error", "DRW-1",
+                f"{role} EVM account address is not 0x and 40 hex digits in one case or valid EIP-55",
+            )
+        if parse_claim(text) is None:
+            return result("error", "DRV-3", f"{role} EVM account claim is not a canonical ClaimReference")
+    if not _is_unix_sec(agreement.get("submissionCutoffSec")) or not _is_unix_sec(agreement.get("evaluationDeadlineSec")):
+        return result("error", "DRA-19", "submission cutoff and evaluation deadline are not unix seconds within the DRW-4 bound")
+    budget = agreement.get("budgetBaseUnits")
+    if not isinstance(budget, str) or UNSIGNED_DECIMAL_RE.fullmatch(budget) is None:
+        return result("error", "DRA-10", "budgetBaseUnits is not minimal unsigned decimal")
+    # Every native amount must equal the budget (DREB-11, DRF-2, DRT-5, DRT-6),
+    # so this bounds them too.
+    if not within_uint256(budget):
+        return result("error", "DRV-3", "budgetBaseUnits exceeds the uint256 range of a token amount")
 
+    # §9 step 3: the bilateral agreement is the exact one both commercial
+    # parties signed for this job (DRA-1, DRA-2).
+    parties = [party for party in bilateral["parties"] if party["role"] in ("buyer", "seller")]
+    by_role = {party["role"]: party for party in parties}
+    issue = _ref_check(
+        agreement.get("agreementRef"), bilateral, None, "DRA-1", "bilateral agreement",
+        tuple(party["primaryClaim"] for party in parties),
+    )
+    if issue:
+        return issue
+    if bilateral.get("jobId") != agreement.get("jobId"):
+        return result("fail", "DRA-1", "bilateral agreement is for another job")
+    signatures = bilateral["signatures"]
+    if len(parties) != 2 or set(by_role) != {"buyer", "seller"} or len(signatures) != 2 or not all(
+        any(
+            signature_valid(bilateral, signature, party["primaryClaim"], public_keys, DOMAINS["bilateralAgreement"], "party")
+            for signature in signatures
+        )
+        for party in parties
+    ):
+        return result("fail", "DRA-1", "the bilateral agreement is not signed by exactly its buyer and seller")
+    if agreement.get("agreementHash") != artifact_hash(bilateral):
+        return result("fail", "DRA-2", "bilateral agreement hash mismatch")
+    issue = _ref_check(
+        agreement.get("railDefinitionRef"), rail, None, "DRP-5", "rail definition",
+        (rail["signature"]["signer"],),
+    )
+    if issue:
+        return issue
+    # DRA-17: the overlay keeps the bilateral agreement's buyer and seller,
+    # matched by CF-3 identity and with byte-exact bundle and Vet bindings.
+    for role in ("buyer", "seller"):
+        party, binding = by_role[role], role_bindings[role]
+        if (
+            claim_identity(party["primaryClaim"]) != identities[role]
+            or canonical_bytes(party["bundleHash"]) != canonical_bytes(binding.get("bundleHash"))
+            or canonical_bytes(party["vetRecordRef"]) != canonical_bytes(binding.get("vetRecordRef"))
+        ):
+            return result("fail", "DRA-17", f"overlay {role} binding differs from the bilateral agreement's party")
+    # DRA-3, DRA-18: one valid signature per role, each by its role's claim.
     signatures = agreement.get("signatures")
-    by_role = {
-        signature.get("role"): signature
-        for signature in (signatures if isinstance(signatures, list) else [])
-        if isinstance(signature, dict) and isinstance(signature.get("role"), str)
-    }
     if (
         not isinstance(signatures, list)
         or len(signatures) != 3
-        or set(by_role) != {"buyer", "seller", "evaluator"}
+        or not all(isinstance(signature, dict) for signature in signatures)
     ):
-        return result("rejected", "DRA-3", "agreement needs exactly one signature per role")
-    for role, claim in claims.items():
-        if not signature_valid(
-            agreement, by_role[role], claim, public_keys, DOMAINS["agreement"], "party"
-        ):
-            return result("rejected", "DRA-3", f"invalid {role} agreement signature")
+        return result("fail", "DRA-3", "agreement needs exactly one signature per role")
+    roles = [signature.get("role") for signature in signatures]
+    if not all(isinstance(role, str) for role in roles) or sorted(roles) != ["buyer", "evaluator", "seller"]:
+        return result("fail", "DRA-18", "the overlay signature roles are not buyer, seller, and evaluator once each")
+    for signature in signatures:
+        role = signature["role"]
+        if claim_identity(signature.get("party")) != identities[role]:
+            return result("fail", "DRA-18", f"the {role} signature's party is not the {role}'s primary claim")
+        if not signature_valid(agreement, signature, signature["party"], public_keys, DOMAINS["agreement"], "party"):
+            return result("fail", "DRA-3", f"invalid {role} agreement signature")
+    if identities["evaluator"] in {identities["buyer"], identities["seller"]}:
+        return result("fail", "DRA-6", "evaluator primary claim collides with a commercial party")
+    if value.get("bundleRequiredSigners") != [claims["buyer"], claims["seller"]]:
+        return result("fail", "DRA-13", "evaluator overlay signature changed the bilateral bundle parties")
+    if agreement.get("preSubmissionRefundPolicy") != "evaluator-rejection":
+        return result("error", "DRA-15", "unsupported pre-submission refund policy for this profile")
+    if agreement.get("disclosurePolicy") not in ("public-evidence-only", "explicit-party-supplied"):
+        return result("error", "DRQ-1", "unsupported evidence-disclosure policy")
+    terms = bilateral["terms"]
+    if agreement["evaluationDeadlineSec"] * 1000 > terms["deadline"]:
+        return result("fail", "DRA-19", "the evaluation deadline is later than the agreement deadline")
+    # DRA-22: the agreement's terms.rail is the selected acceptedRails entry.
+    selected = next(
+        ref for ref in value["executionContext"]["acceptedRails"]
+        if isinstance(ref, dict) and ref.get("railId") == rail["railId"]
+    )
+    if "rail" not in terms or canonical_bytes(terms["rail"]) != canonical_bytes(selected):
+        return result("fail", "DRA-22", "the agreement's terms.rail is not the selected acceptedRails reference")
+    # DRA-21, DRA-10: the agreed price is in the rail's asset, and the budget
+    # is that price converted with the pinned token decimals (DACS-4 §9.5.2
+    # steps 2 and 3).
+    price = terms["price"]
+    if price["currency"] != rail["asset"]["symbol"]:
+        return result("fail", "DRA-21", "the agreement price currency is not the rail asset symbol")
+    # DACS-4 §9.3: an agreed `PriceTerm.amount` MUST be strictly greater than
+    # zero.  CD-1 makes "0" the only spelling of zero, and it has no sign.
+    if price["amount"] == "0":
+        return result("fail", "DRA-10", "agreement price is not strictly greater than zero")
+    # None when the price is not a whole number of token base units, which no
+    # budget equals.  Both are otherwise minimal unsigned decimal text, so
+    # equal strings are equal amounts.
+    base_units = price_base_units(price["amount"], params["tokenDecimals"])
+    if base_units != budget:
+        return result(
+            "fail", "DRA-10",
+            "budgetBaseUnits is not the agreement price converted with the pinned token decimals",
+        )
 
-    chain_id = rail.get("chainId")
-    accounts: dict[str, str] = {}
+    chain_id = params["chainId"]
+    accounts: dict[str, bytes] = {}
     for role, binding in role_bindings.items():
-        parsed = parse_canonical_evm_claim(binding.get("evmAccountClaim"))
-        if parsed is None or parsed[0] != chain_id:
-            return result("rejected", "DRA-5", f"{role} EVM account claim is not canonical for the rail")
-        accounts[role] = parsed[1]
+        claim = parse_claim(binding["evmAccountClaim"])
+        if claim.evm is None or claim.evm[0] != chain_id:
+            return result("fail", "DRA-5", f"{role} EVM account claim is not the DACS EIP-155 form for the rail chain")
+        accounts[role] = claim.evm[1]
+    if bytes(20) in accounts.values():
+        return result("fail", "DRW-1", "the zero address cannot be a client, provider, or evaluator")
     if accounts["evaluator"] in {accounts["buyer"], accounts["seller"]}:
-        return result("rejected", "DRA-7", "evaluator account collides with client or provider")
+        return result("fail", "DRA-7", "evaluator account collides with client or provider")
+    # DRA-20: one payout binding, keyed by the escrow rail and fund phase, pays
+    # the seller's account.
+    bindings = terms["payoutBindings"]
+    if len(bindings) != 1 or (bindings[0]["railId"], bindings[0]["phaseIndex"]) != (
+        rail["railId"], agreement["fundPhaseIndex"]
+    ):
+        return result("fail", "DRA-20", "the agreement needs exactly one payout binding keyed by the escrow rail and fund phase")
+    payee = bindings[0]["payeeAddress"]
+    if not evm_claim_address_valid(payee):
+        return result("error", "DRW-1", "the payout binding's payee address is not a DRW-1 EVM address")
+    if bytes.fromhex(payee[2:]) != accounts["seller"]:
+        return result("fail", "DRA-20", "the payout binding does not pay the seller's EVM account")
     for role, native_field in (("buyer", "client"), ("seller", "provider"), ("evaluator", "evaluator")):
-        if value["native"].get(native_field) != accounts[role]:
-            return result("rejected", f"DREB-{7 + list(('buyer', 'seller', 'evaluator')).index(role)}", f"native {native_field} mismatch")
+        if value["native"].get(native_field) != "0x" + accounts[role].hex():
+            return result("fail", f"DREB-{7 + list(('buyer', 'seller', 'evaluator')).index(role)}", f"native {native_field} mismatch")
 
     evaluator = role_bindings["evaluator"]
     requirement = evaluator.get("requirement")
     if not isinstance(requirement, dict) or evaluator.get("requirementHash") != content_hash(requirement):
-        return result("rejected", "DRA-8", "evaluator requirement hash mismatch")
+        return result("fail", "DRA-8", "evaluator requirement hash mismatch")
     if value.get("evaluatorVetResult") != "pass":
-        return result("rejected", "DRA-9", "evaluator Vet result is not pass")
+        return result("fail", "DRA-9", "evaluator Vet result is not pass")
     return None
 
 
@@ -1093,17 +1778,21 @@ def _component_signature_check(value: dict[str, Any]) -> dict[str, str] | None:
         for role in ("buyer", "seller", "evaluator")
     }
     orchestrator = value.get("orchestratorClaim")
-    if not isinstance(orchestrator, str):
+    if parse_claim(orchestrator) is None:
         return result("error", "DRV-3", "orchestratorClaim is required")
+    case = artifacts.get("disputeCase")
     signers = {
         "job": orchestrator,
         "funding": orchestrator,
         "delivery": orchestrator,
         "evaluation": claims["evaluator"],
+        # DRX-7: the opening role's primary claim signs the case.
+        "disputeCase": None if case is None else claims[case["openedByRole"]],
         "dispute": claims["evaluator"],
         "decision": claims["evaluator"],
         "terminal": orchestrator,
     }
+    rules = {"evaluation": "DRE-1", "decision": "DRD-1", "disputeCase": "DRX-7", "dispute": "DRX-7"}
     for name, signer in signers.items():
         artifact = artifacts.get(name)
         if artifact is None:
@@ -1111,11 +1800,7 @@ def _component_signature_check(value: dict[str, Any]) -> dict[str, str] | None:
         if not signature_valid(
             artifact, artifact.get("signature"), signer, value["publicKeys"], DOMAINS[name]
         ):
-            signature_rule = {
-                "evaluation": "DRE-1",
-                "decision": "DRD-1",
-            }.get(name, "DRV-4")
-            return result("rejected", signature_rule, f"invalid {name} signature")
+            return result("fail", rules.get(name, "DRV-4"), f"invalid {name} signature")
     return None
 
 
@@ -1124,23 +1809,60 @@ def _selected_rail_check(value: dict[str, Any]) -> dict[str, str] | None:
     artifacts = value["artifacts"]
     agreement = artifacts["agreement"]
     rail = artifacts["railDefinition"]
+    params = rail["parameters"]
     job = artifacts["job"]
-    if job.get("railDefinitionRef") != agreement.get("railDefinitionRef"):
-        return result("rejected", "DRP-5", "escrow job does not use the agreement-selected rail")
+    if canonical_bytes(job.get("railDefinitionRef")) != canonical_bytes(agreement.get("railDefinitionRef")):
+        return result("fail", "DRP-5", "escrow job does not use the agreement-selected rail")
     if any(
-        step.get("parameters", {}).get("rail") != rail.get("railId")
+        step["parameters"].get("rail") != rail["railId"]
         for step in value["pipeline"]
-        if step["kind"] == "job-escrow"
+        if step["kind"] == ESCROW_PHASE_KIND
     ):
-        return result("rejected", "DRP-5", "escrow phases do not name the agreement-selected rail")
+        return result("fail", "DRP-5", "escrow phases do not name the agreement-selected rail")
+    # DRJ-10: the job is at the rail's pinned chain, contract, and code.
     if (
-        job.get("chainId") != rail.get("chainId")
-        or job.get("contractAddress") != rail.get("contractAddress")
-        or value["native"].get("chainId") != rail.get("chainId")
+        job["chainId"] != params["chainId"]
+        or job["contractAddress"] != params["contractAddress"]
+        or job["runtimeBytecodeHash"] != params["runtimeBytecodeHash"]
     ):
-        return result("rejected", "DRJ-2", "escrow job targets another chain or contract than the selected rail")
-    if job.get("runtimeBytecodeHash") != rail.get("runtimeBytecodeHash"):
-        return result("rejected", "DRJ-5", "escrow job runtime code differs from the selected rail")
+        return result("fail", "DRJ-10", "escrow job chain, contract, or runtime code differs from the rail's pins")
+    if value["native"].get("chainId") != params["chainId"]:
+        return result("fail", "DRJ-2", "native chain differs from the selected rail's")
+    return None
+
+
+def _evaluation_rule_check(value: dict[str, Any]) -> dict[str, str] | None:
+    """Resolve the overlay's evaluation rule (DRE-8, DRE-9).
+
+    The overlay binds the rule by content hash; it carries no signature of its
+    own.  A rule the caller did not supply is decided later as `indeterminate`.
+    """
+    artifacts = value["artifacts"]
+    rule = artifacts.get("evaluationRule")
+    if rule is None:
+        return None
+    if rule.get("evaluationRuleVersion") != "1" or rule.get("ruleKind") != RULE_KIND:
+        return result("error", "DRE-9", "unsupported evaluation rule version or kind")
+    criteria = rule.get("criteria")
+    if set(rule) != EVALUATION_RULE_FIELDS or not isinstance(criteria, list) or not all(
+        isinstance(criterion, dict) and set(criterion) == {"criterionId", "statement"}
+        and isinstance(criterion["criterionId"], str) and bool(criterion["criterionId"])
+        and isinstance(criterion["statement"], str)
+        for criterion in criteria
+    ):
+        return result("error", "DRV-3", "evaluation rule is not an exact EvaluationRule")
+    agreement = artifacts["agreement"]
+    issue = _ref_check(
+        agreement.get("evaluationRuleRef"), rule, logical_address(agreement["jobId"], "evaluation-rule"),
+        "DRE-8", "evaluation rule", (),
+    )
+    if issue:
+        return issue
+    if rule["jobId"] != agreement["jobId"]:
+        return result("fail", "DRE-8", "the evaluation rule is for another job")
+    identifiers = [criterion["criterionId"] for criterion in criteria]
+    if not identifiers or len(identifiers) != len(set(identifiers)):
+        return result("fail", "DRE-9", "evaluation rule criteria are empty or repeat an identifier")
     return None
 
 
@@ -1155,25 +1877,26 @@ def _resolver_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     if not isinstance(signer, str) or signer not in PINNED_RESOLVER_KEYS or not signature_valid(
         resolver, resolver.get("signature"), signer, PINNED_RESOLVER_KEYS, RESOLVER_DOMAIN
     ):
-        return result("rejected", "DRV-1", "resolver evidence is not authenticated by the pinned resolver")
+        return result("fail", "DRV-1", "resolver evidence is not authenticated by the pinned resolver")
     artifacts = value["artifacts"]
     rail = artifacts["railDefinition"]
     inputs = value.get("reproductionInputs")
     observations = inputs.get("nativeEventInputs") if isinstance(inputs, dict) else None
     if resolver.get("eventObservationsHash") != content_hash(observations):
-        return result("rejected", "DRV-1", "native event observations are not the resolver-authenticated set")
+        return result("fail", "DRV-1", "native event observations are not the resolver-authenticated set")
     if (
         resolver.get("jobId") != artifacts["agreement"].get("jobId")
         or resolver.get("railDefinitionHash") != artifact_hash(rail)
-        or resolver.get("chainId") != rail.get("chainId")
-        or resolver.get("contractAddress") != rail.get("contractAddress")
+        or resolver.get("chainId") != rail["parameters"]["chainId"]
+        or resolver.get("contractAddress") != rail["parameters"]["contractAddress"]
         or resolver.get("nativeJobId") != artifacts["job"].get("nativeJobId")
     ):
-        return result("rejected", "DRV-6", "resolver evidence describes another job, rail, or contract")
-
-    call = resolver.get("terminalCall")
-    if not isinstance(call, dict) or set(call) != TERMINAL_CALL_FIELDS:
-        return result("error", "DRV-3", "resolver terminal call record is malformed")
+        return result("fail", "DRV-6", "resolver evidence describes another job, rail, or contract")
+    transactions = resolver.get("transactions")
+    if not isinstance(transactions, list) or not transactions or not all(
+        _transaction_valid(item) for item in transactions
+    ):
+        return result("error", "DRV-3", "resolver transaction records are malformed")
     history = resolver.get("priorTerminals")
     if not isinstance(history, list) or not all(_prior_terminal_valid(item) for item in history):
         return result("error", "DRV-3", "resolver terminal history is malformed")
@@ -1181,12 +1904,34 @@ def _resolver_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
         return result("error", "DRV-3", "resolver native state is malformed")
     if not _digest_anchor_valid(resolver.get("deliveryDigestAnchor")):
         return result("error", "DRV-3", "resolver delivery-digest anchor is malformed")
+    if not _decision_anchor_valid(resolver.get("decisionAnchor")):
+        return result("error", "DRV-3", "resolver decision anchor is malformed")
     statuses = resolver.get("statuses")
     if not isinstance(statuses, dict) or set(statuses) != EXTERNAL_EVIDENCE_FIELDS:
         return result("error", "DRV-3", "resolver status set is incomplete")
     if any(not isinstance(state, str) or state not in EXTERNAL_STATES for state in statuses.values()):
         return result("error", "DRV-3", "unknown resolver status")
     return None
+
+
+def _transaction_valid(item: Any) -> bool:
+    if not isinstance(item, dict) or set(item) != TRANSACTION_FIELDS:
+        return False
+    prior = item["priorNativeStatus"]
+    return (
+        isinstance(item["txHash"], str)
+        and EVM_TX_RE.fullmatch(item["txHash"]) is not None
+        and isinstance(item["entrypoint"], str)
+        and re.fullmatch(r"0x[0-9a-f]{8}", item["entrypoint"]) is not None
+        and isinstance(item["calldata"], dict)
+        and all(
+            isinstance(item[name], str) and EVM_ADDRESS_RE.fullmatch(item[name]) is not None
+            for name in ("nativeCaller", "outerSubmitter")
+        )
+        and isinstance(item["nativeCallerAccountType"], str)
+        and (prior is None or type(prior) is int)
+        and type(item["nativeStatusAfter"]) is int
+    )
 
 
 def _prior_terminal_valid(item: Any) -> bool:
@@ -1196,9 +1941,9 @@ def _prior_terminal_valid(item: Any) -> bool:
     return (
         type(item["chainId"]) is int
         and isinstance(item["contractAddress"], str)
-        and re.fullmatch(r"0x[0-9a-f]{40}", item["contractAddress"]) is not None
+        and EVM_ADDRESS_RE.fullmatch(item["contractAddress"]) is not None
         and isinstance(item["nativeJobId"], str)
-        and re.fullmatch(r"(?:0|[1-9][0-9]*)", item["nativeJobId"]) is not None
+        and UNSIGNED_DECIMAL_RE.fullmatch(item["nativeJobId"]) is not None
         and isinstance(item["txHash"], str)
         and EVM_TX_RE.fullmatch(item["txHash"]) is not None
         and type(item["logIndex"]) is int
@@ -1214,22 +1959,24 @@ def _native_state_valid(state: Any) -> bool:
     if not isinstance(state, dict) or set(state) != NATIVE_STATE_FIELDS:
         return False
     adapter = state["evaluatorAdapter"]
+    implementation = state["implementationAddress"]
     payout = state["preterminalProviderPayoutBaseUnits"]
     return (
         type(state["submissionCutoffEnforced"]) is bool
-        and type(state["expiryRecoveryAtSec"]) is int
-        and state["expiryRecoveryAtSec"] >= 0
-        and isinstance(payout, str)
-        and re.fullmatch(r"(?:0|[1-9][0-9]*)", payout) is not None
-        and within_uint256(payout)
+        and _is_unix_sec(state["expiryRecoveryAtSec"])
+        and _amount_valid(payout)
         and all(
             type(state[name]) is int and state[name] >= 0
             for name in ("platformFeeBP", "evaluatorFeeBP")
         )
         and isinstance(state["evaluatorBindingMode"], str)
-        and (
-            adapter is None
-            or (isinstance(adapter, str) and re.fullmatch(r"0x[0-9a-f]{40}", adapter) is not None)
+        and all(
+            item is None or (isinstance(item, str) and EVM_ADDRESS_RE.fullmatch(item) is not None)
+            for item in (adapter, implementation)
+        )
+        and all(
+            isinstance(state[name], str) and CODE_HASH_RE.fullmatch(state[name]) is not None
+            for name in ("escrowRuntimeBytecodeHash", "paymentTokenRuntimeBytecodeHash")
         )
     )
 
@@ -1242,10 +1989,20 @@ def _digest_anchor_valid(anchor: Any) -> bool:
         and set(anchor) == DIGEST_ANCHOR_FIELDS
         and isinstance(anchor["deliverable"], str)
         and BYTES32_RE.fullmatch(anchor["deliverable"]) is not None
-        and all(
-            type(anchor[name]) is int and anchor[name] >= 0
-            for name in ("blockNumber", "blockTimestampSec")
-        )
+        and type(anchor["blockNumber"]) is int
+        and anchor["blockNumber"] >= 0
+        and _is_unix_sec(anchor["blockTimestampSec"])
+    )
+
+
+def _decision_anchor_valid(anchor: Any) -> bool:
+    if anchor is None:
+        return True
+    return (
+        isinstance(anchor, dict)
+        and set(anchor) == DECISION_ANCHOR_FIELDS
+        and anchor["substrate"] == "demos"
+        and _is_unix_sec(anchor["finalizedBlockTimestampSec"])
     )
 
 
@@ -1263,58 +2020,103 @@ def _finding_check(value: dict[str, Any]) -> dict[str, str] | None:
         if not isinstance(finding, dict):
             return result("error", "DRV-3", f"{name} finding must be an object")
         classification = finding.get("classification")
-        faulted_party = finding.get("faultedParty")
         if (
             not {"classification", "rationaleCode"} <= set(finding) <= FINDING_FIELDS
             or not isinstance(classification, str)
             or classification not in FINDING_CLASSIFICATIONS
             or not isinstance(finding["rationaleCode"], str)
             or not finding["rationaleCode"]
+            or ("faultedParty" in finding and parse_claim(finding["faultedParty"]) is None)
         ):
             return result("error", "DRV-3", f"{name} finding is not an exact AccountabilityFinding")
+        # DRX-5: `faultedParty` is present only for a party fault, and names
+        # that agreement party under CF-3 identity.
         if classification in parties:
-            if claim_identity(faulted_party) != claim_identity(parties[classification]):
-                return result("rejected", "DRX-5", "faultedParty does not match the classified agreement party")
-        elif faulted_party is not None:
-            return result("rejected", "DRX-6", "non-party-fault finding names a faulted party")
+            if claim_identity(finding.get("faultedParty")) != claim_identity(parties[classification]):
+                return result("fail", "DRX-5", "faultedParty does not match the classified agreement party")
+        elif "faultedParty" in finding:
+            return result("fail", "DRX-6", "non-party-fault finding names a faulted party")
+    return None
+
+
+def _evaluation_check(value: dict[str, Any]) -> dict[str, str] | None:
+    """Re-derive the evaluation's result and finding under the bound rule (DRE-6, DRE-10).
+
+    The candidate §6.2 matrix for `evaluator-judgement-v1`: every criterion
+    satisfied is `accept`, any unsatisfied is `reject`, otherwise
+    `indeterminate`, and each result permits its own findings.
+    """
+    artifacts = value["artifacts"]
+    evaluation, rule = artifacts.get("evaluation"), artifacts.get("evaluationRule")
+    if evaluation is None or rule is None:
+        return None
+    outcomes = evaluation.get("criterionResults")
+    if not isinstance(outcomes, list) or not all(
+        isinstance(item, dict) and set(item) == {"criterionId", "outcome"}
+        and isinstance(item["criterionId"], str)
+        and isinstance(item["outcome"], str) and item["outcome"] in CRITERION_OUTCOMES
+        for item in outcomes
+    ):
+        return result("error", "DRV-3", "criterion results are not exact {criterionId, outcome} entries")
+    if [item["criterionId"] for item in outcomes] != [criterion["criterionId"] for criterion in rule["criteria"]]:
+        return result("fail", "DRE-10", "criterion results are not one per rule criterion, in rule order")
+    observed = {item["outcome"] for item in outcomes}
+    derived = "accept" if observed == {"satisfied"} else "reject" if "unsatisfied" in observed else "indeterminate"
+    if evaluation["result"] != derived:
+        return result("fail", "DRE-10", "the evaluation result contradicts its criterion outcomes")
+    if evaluation["finding"]["classification"] not in RESULT_FINDINGS[derived]:
+        return result("fail", "DRE-10", "the finding is not one the rule matrix permits for the result")
     return None
 
 
 def _reference_check(value: dict[str, Any]) -> dict[str, str] | None:
     a = value["artifacts"]
-    agreement_hash = artifact_hash(a["agreement"])
-    for name in ("job", "funding", "evaluation", "dispute", "decision", "terminal"):
+    agreement = a["agreement"]
+    job_id = agreement["jobId"]
+    evaluator = agreement["evaluator"]["primaryClaim"]
+    orchestrator = value["orchestratorClaim"]
+    agreement_hash = artifact_hash(agreement)
+    for name in ("job", "funding", "evaluation", "disputeCase", "dispute", "decision", "terminal"):
         artifact = a.get(name)
         if artifact is not None and artifact.get("deliveryOrRemedyAgreementHash") != agreement_hash:
-            # Funding binds the exact overlay (DRF-1); for every other
-            # artifact a valid signature cannot override the overlay (DRV-4).
+            # Funding binds the exact overlay (DRF-1), and a dispute case the
+            # outcome's (DRX-7); for every other artifact a valid signature
+            # cannot override the overlay (DRV-4).
             return result(
-                "rejected", "DRF-1" if name == "funding" else "DRV-4",
+                "fail", {"funding": "DRF-1", "disputeCase": "DRX-7"}.get(name, "DRV-4"),
                 f"{name} binds another agreement overlay",
             )
-    if not attestation_ref_valid(a["funding"].get("escrowJobRef"), a["job"]):
-        return result("rejected", "DRF-1", "funding job reference mismatch")
-    if not attestation_ref_valid(a["terminal"].get("escrowJobRef"), a["job"]):
-        return result("rejected", "DRT-4", "terminal job reference mismatch")
-    for name in ("evaluation", "decision"):
+    job_locator = logical_address(job_id, "job")
+    for name, rule in (("funding", "DRF-1"), ("terminal", "DRT-4"), ("evaluation", "DRD-8"), ("decision", "DRD-8")):
         artifact = a.get(name)
-        if artifact is not None and not attestation_ref_valid(artifact.get("escrowJobRef"), a["job"]):
-            return result("rejected", "DRD-8", f"{name} job reference does not resolve to this escrow job")
-    if not attestation_ref_valid(a["terminal"].get("fundingEvidenceRef"), a["funding"]):
-        return result("rejected", "DRT-11", "terminal funding reference mismatch")
+        if artifact is not None:
+            issue = _ref_check(artifact.get("escrowJobRef"), a["job"], job_locator, rule, f"{name} escrow job", (orchestrator,))
+            if issue:
+                return issue
+    issue = _ref_check(
+        a["terminal"].get("fundingEvidenceRef"), a["funding"], logical_address(job_id, "funding"),
+        "DRT-11", "terminal funding evidence", (orchestrator,),
+    )
+    if issue:
+        return issue
     if a.get("delivery") is not None:
         delivery_ref = a.get("deliveryRef")
-        if not attestation_ref_valid(delivery_ref, a["delivery"]):
-            return result("rejected", "DRE-2", "delivery reference mismatch")
+        # PDE-2: DeliveryEvidence is anchored at dacs4:delivery:{jobId}:{phaseIndex}.
+        issue = _ref_check(
+            delivery_ref, a["delivery"], f"dacs4:delivery:{job_id}:{agreement['deliveryPhaseIndex']}",
+            "DRE-2", "delivery evidence", (orchestrator,),
+        )
+        if issue:
+            return issue
         delivery_issue = _delivery_evidence_check(value)
         if delivery_issue:
             return delivery_issue
         for name in ("evaluation", "decision"):
             artifact = a.get(name)
-            if artifact is not None and artifact.get("deliveryEvidenceRef") != delivery_ref:
-                return result("rejected", "DRD-3", f"{name} does not bind the exact delivery")
-        if a["terminal"].get("deliveryEvidenceRef") != delivery_ref:
-            return result("rejected", "DRT-12", "terminal delivery reference mismatch")
+            if artifact is not None and canonical_bytes(artifact.get("deliveryEvidenceRef")) != canonical_bytes(delivery_ref):
+                return result("fail", "DRD-3", f"{name} does not bind the exact delivery")
+        if canonical_bytes(a["terminal"].get("deliveryEvidenceRef")) != canonical_bytes(delivery_ref):
+            return result("fail", "DRT-12", "terminal delivery reference mismatch")
     elif a.get("decision") is not None and not _delivery_expected(value):
         # Without delivery there is nothing to release (DRD-3), and only a
         # DisputeOutcome can authorize the pre-submission refund (DRD-9).
@@ -1323,49 +2125,78 @@ def _reference_check(value: dict[str, Any]) -> dict[str, str] | None:
         decision = a["decision"]
         basis = decision.get("basisRef")
         if decision.get("disposition") == "release-to-provider":
-            return result("rejected", "DRD-3", "a release decision has no delivery evidence to bind")
+            return result("fail", "DRD-3", "a release decision has no delivery evidence to bind")
         elif not isinstance(basis, dict) or basis.get("kind") != "dispute-outcome":
-            return result("rejected", "DRD-9", "a decision without delivery evidence must rest on a DisputeOutcome")
+            return result("fail", "DRD-9", "a decision without delivery evidence must rest on a DisputeOutcome")
     # A decision that a signed terminal references but the caller did not
     # supply is decided later as `indeterminate`; with no such reference, a
     # basis that no decision rests on is rejected.
     decision = a.get("decision")
     unsupplied_decision = decision is None and _decision_expected(a)
     if a.get("evaluation") is not None:
-        if not attestation_ref_valid(a.get("evaluationRef"), a["evaluation"]):
-            return result("rejected", "DRE-7", "evaluation reference mismatch")
-        if not unsupplied_decision and (decision is None or decision.get("basisRef") != {
+        evaluation = a["evaluation"]
+        issue = _ref_check(
+            a.get("evaluationRef"), evaluation,
+            logical_address(job_id, f"evaluation:{evaluation['evaluationSeq']}"),
+            "DRD-2", "evaluation", (evaluator,),
+        )
+        if issue:
+            return issue
+        if not unsupplied_decision and (decision is None or canonical_bytes(decision.get("basisRef")) != canonical_bytes({
             "kind": "execution-evaluation", "ref": a["evaluationRef"]
-        }):
-            return result("rejected", "DRD-2", "decision basis does not resolve to the evaluation")
+        })):
+            return result("fail", "DRD-2", "decision basis does not resolve to the evaluation")
     elif a.get("dispute") is not None:
-        if not attestation_ref_valid(a.get("disputeRef"), a["dispute"]):
-            return result("rejected", "DRX-2", "dispute outcome reference mismatch")
-        if not unsupplied_decision and (decision is None or decision.get("basisRef") != {
+        dispute = a["dispute"]
+        issue = _ref_check(
+            a.get("disputeRef"), dispute,
+            logical_address(job_id, f"dispute:{dispute['caseId']}:outcome:{dispute['revision']}"),
+            "DRD-2", "DisputeOutcome", (evaluator,),
+        )
+        if issue:
+            return issue
+        if not unsupplied_decision and (decision is None or canonical_bytes(decision.get("basisRef")) != canonical_bytes({
             "kind": "dispute-outcome", "ref": a["disputeRef"]
-        }):
-            return result("rejected", "DRD-2", "decision basis does not resolve to the dispute outcome")
-    if a.get("decision") is not None:
-        if not attestation_ref_valid(a.get("decisionRef"), a["decision"]):
-            return result("rejected", "DRD-4", "decision reference mismatch")
-        if a["terminal"].get("decisionRef") != a["decisionRef"]:
-            return result("rejected", "DRT-1", "terminal decision reference mismatch")
+        })):
+            return result("fail", "DRD-2", "decision basis does not resolve to the dispute outcome")
+        case = a.get("disputeCase")
+        if case is not None:
+            # DRX-7: the case at its own address, for the same case.
+            issue = _ref_check(
+                dispute.get("caseRef"), case, logical_address(job_id, f"dispute:{dispute['caseId']}:case"),
+                "DRX-7", "dispute case", (agreement[case["openedByRole"]]["primaryClaim"],),
+            )
+            if issue:
+                return issue
+            if case["caseId"] != dispute["caseId"]:
+                return result("fail", "DRX-7", "the dispute case is another case's")
+    if decision is not None:
+        # DRD-14: each decision stage has its own address.
+        issue = _ref_check(
+            a.get("decisionRef"), decision,
+            logical_address(job_id, f"decision:{decision['decisionStage']}"),
+            "DRD-4", "decision", (evaluator,),
+        )
+        if issue:
+            return issue
+        if canonical_bytes(a["terminal"].get("decisionRef")) != canonical_bytes(a["decisionRef"]):
+            # DRT-1 for a release, DRT-2 for an evaluator refund.
+            rule = "DRT-1" if a["terminal"]["terminalState"] == "released" else "DRT-2"
+            return result("fail", rule, "terminal decision reference mismatch")
     return None
 
 
 def _delivery_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
-    """Require the delivery SettlementEvidence of the agreed delivery phase (DRE-2, DRP-7).
+    """Require the signed current DACS-4 `DeliveryEvidence` of the agreed delivery phase (DRP-7, DRE-2).
 
-    The pipeline has exactly one delivery step, at the overlay's
-    `deliveryPhaseIndex` (DRP-3, DRA-11), so a delivery record for this job
-    whose `phase` is that step's kind is that step's evidence.  A success
-    carries the deliverable's content hash and anchor (DACS-4 §9.6.1); a
-    failure carries a `reason` and may omit either.  The outcome is not mapped
-    to a disposition here: whether a delivery supports release or refund is
-    decided by the evaluation under the bound evaluation rule.
+    PDE-2: its `jobId`, `phaseIndex`, and `phase` are the session job, the
+    overlay's `deliveryPhaseIndex`, and that step's kind.  PDE-4: a success
+    anchors the deliverable at `dacs4:deliverable:{jobId}:{phaseIndex}`.
+    DRP-7: only a `success` may be submitted natively or support a release.
     """
-    delivery = value["artifacts"]["delivery"]
-    phase_index = value["artifacts"]["agreement"]["deliveryPhaseIndex"]
+    a = value["artifacts"]
+    delivery = a["delivery"]
+    agreement = a["agreement"]
     outcome = delivery.get("outcome")
     failed = outcome == "failure"
     members = DELIVERY_EVIDENCE_FIELDS | {"reason"} if failed else DELIVERY_EVIDENCE_FIELDS
@@ -1374,7 +2205,6 @@ def _delivery_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     anchor = delivery.get("deliverableAnchor")
     if (
         not required <= set(delivery) <= members
-        or delivery["evidenceVersion"] != "1"
         or not isinstance(outcome, str)
         or outcome not in DELIVERY_OUTCOMES
         or (failed and not (isinstance(delivery["reason"], str) and delivery["reason"]))
@@ -1387,29 +2217,17 @@ def _delivery_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
             and set(anchor) == {"kind", "locator"}
             and all(isinstance(anchor[name], str) and anchor[name] for name in ("kind", "locator"))
         ))
-        or type(delivery["observedAt"]) is not int
-        or delivery["observedAt"] < 0
     ):
-        return result("error", "DRV-3", "delivery evidence is not an exact delivery SettlementEvidence")
+        return result("error", "DRV-3", "delivery evidence is not an exact DACS-4 DeliveryEvidence")
+    phase_index = agreement["deliveryPhaseIndex"]
+    if delivery["phaseIndex"] != phase_index:
+        return result("fail", "DRP-7", "delivery evidence is for another phase index than the overlay's delivery phase")
     if delivery["phase"] != value["pipeline"][phase_index]["kind"]:
-        return result("rejected", "DRE-2", "delivery evidence phase is not the agreed delivery step")
-    # DACS-4 §9.6.1 writes the deliverable as a Storage Program at
-    # dacs4:deliverable:{jobId}; its step 5 elides the anchor locator.  A
-    # storage-program success names that kind and either the logical address,
-    # which must be this job's, or a native Storage Program address (`stor-` and
-    # 40 lower-case hex digits), whose syntax alone is checked.  Neither is resolved, and the logical-to-native
-    # binding of a native locator is not proven (README, synthetic proof limits).
-    # The pipeline stage admitted only the storage-program delivery, so every
-    # anchor is checked whatever kind a producer names.
-    if "deliverableAnchor" in delivery:
-        logical = "dacs4:deliverable:" + value["artifacts"]["agreement"]["jobId"]
-        if anchor["kind"] != "storage-program" or not (
-            anchor["locator"] == logical or NATIVE_STORAGE_LOCATOR_RE.fullmatch(anchor["locator"])
-        ):
-            return result(
-                "rejected", "DRE-2",
-                "deliverable anchor is not a DACS-4 §9.6.1 storage program for this job",
-            )
+        return result("fail", "DRE-2", "delivery evidence phase is not the agreed delivery step")
+    if failed:
+        return result("fail", "DRP-7", "a failure DeliveryEvidence cannot be submitted natively or support a release")
+    if anchor != {"kind": "storage-program", "locator": f"dacs4:deliverable:{agreement['jobId']}:{phase_index}"}:
+        return result("fail", "DRE-2", "deliverable anchor is not this phase's PDE-3 storage-program address")
     return None
 
 
@@ -1427,9 +2245,6 @@ def _subject_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     evaluation = a.get("evaluation")
     if evaluation is None:
         return None
-    refs = evaluation.get("subjectEvidenceRefs")
-    if not isinstance(refs, list) or not all(attestation_ref_shape_valid(ref) for ref in refs):
-        return result("error", "DRV-3", "evaluation subject evidence references are malformed")
     # Each source reference was resolved exactly by an earlier stage.
     published = {
         ref_value["anchor"]["locator"]: (ref_value["anchor"]["kind"], artifact)
@@ -1441,12 +2256,12 @@ def _subject_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
         if artifact is not None
     }
     unresolved = False
-    for ref_value in refs:
+    for ref_value in evaluation["subjectEvidenceRefs"]:
         record = published.get(ref_value["anchor"]["locator"])
         if record is None:
             unresolved = True
         elif ref_value["anchor"]["kind"] != record[0] or ref_value["contentHash"] != artifact_hash(record[1]):
-            return result("rejected", "DRE-3", "a subject reference contradicts the authenticated record at its locator")
+            return result("fail", "DRE-3", "a subject reference contradicts the authenticated record at its locator")
     if unresolved:
         return result(
             "indeterminate", "DRE-5",
@@ -1457,14 +2272,14 @@ def _subject_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
 
 def _external_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     """Apply resolver outcomes; the record was authenticated by an earlier stage."""
-    external = value["resolverEvidence"]["statuses"]
+    resolver = value["resolverEvidence"]
+    external = resolver["statuses"]
     artifacts = value["artifacts"]
     decision_applicable = artifacts["terminal"].get("terminalState") != "expired-refund"
     applicable = dict.fromkeys(EXTERNAL_EVIDENCE_FIELDS, True)
     applicable.update({
         "deliveryFinality": _delivery_expected(value),
         "decisionFinality": decision_applicable,
-        "decisionOrdering": decision_applicable,
     })
     # An applicable status must not be `not-applicable`. An inapplicable one
     # must not vouch for or contradict evidence that does not exist. Its
@@ -1475,13 +2290,13 @@ def _external_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
         external[name] == "not-applicable" if needed
         else external[name] not in {"not-applicable", "unavailable"}
         for name, needed in applicable.items()
-    ):
+    ) or (not decision_applicable and resolver["decisionAnchor"] is not None):
         # The statuses are the pinned resolver's authenticated output; the
         # applicable set comes from the signed terminal and delivery evidence.
-        return result("rejected", "DRV-6", "authenticated resolver status applicability contradicts the lifecycle")
+        return result("fail", "DRV-6", "authenticated resolver status applicability contradicts the lifecycle")
     contradictory = sorted(name for name, state in external.items() if state == "contradictory")
     if contradictory:
-        return result("rejected", "DRV-6", "authenticated evidence contradicts: " + ", ".join(contradictory))
+        return result("fail", "DRV-6", "authenticated evidence contradicts: " + ", ".join(contradictory))
     unavailable = [
         name for name in UNAVAILABLE_STATUS_RULES
         if applicable[name] and external[name] == "unavailable"
@@ -1498,13 +2313,13 @@ def _external_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
 def _missing_record_check(value: dict[str, Any]) -> dict[str, str] | None:
     """Keep a referenced record that the caller did not supply `indeterminate`.
 
-    Candidate §9 step 5 and §11.3 case 5: a missing delivery, evaluation, or
-    decision artifact with no contradictory fact established is
-    `indeterminate`, not `rejected`.  Earlier stages reject a reference that
-    something present contradicts: a released or rejected terminal without a
-    decision reference (DRT-1, DRT-2, DRD-2), delivery evidence on a lifecycle
-    with no native submission (DRT-12), or a resolver record that marks the
-    evidence not applicable (DRV-6).
+    Candidate §9 step 5 and §11.3 cases I1 and I5: a missing evaluation rule,
+    delivery, evaluation, decision, or dispute case with no contradictory fact
+    established is `indeterminate`, not `fail`.  Earlier stages reject a
+    reference that something present contradicts: a released or rejected
+    terminal without a decision reference (DRT-1, DRT-2, DRD-2), delivery
+    evidence on a lifecycle with no native submission (DRT-12), or a resolver
+    record that marks the evidence not applicable (DRV-6).
     """
     a = value["artifacts"]
     if a.get("delivery") is None and _delivery_expected(value):
@@ -1516,6 +2331,10 @@ def _missing_record_check(value: dict[str, Any]) -> dict[str, str] | None:
     supplied = {"execution-evaluation": a.get("evaluation"), "dispute-outcome": a.get("dispute")}
     if isinstance(basis, dict) and basis.get("kind") in supplied and supplied[basis["kind"]] is None:
         return result("indeterminate", "DRD-2", "the evaluation or DisputeOutcome the decision rests on was not supplied")
+    if a.get("dispute") is not None and a.get("disputeCase") is None:
+        return result("indeterminate", "DRX-7", "the dispute case the DisputeOutcome rests on was not supplied")
+    if a.get("evaluationRule") is None:
+        return result("indeterminate", "DRE-8", "the evaluation rule the overlay binds was not supplied")
     return None
 
 
@@ -1528,21 +2347,100 @@ def _delivery_binding_check(value: dict[str, Any]) -> dict[str, str] | None:
     binding = value.get("deliveryBinding")
     if not _delivery_expected(value):
         if binding is not None or value["resolverEvidence"]["deliveryDigestAnchor"] is not None:
-            return result("rejected", "DRP-9", "deliveryless path carries a native submission binding or digest anchor")
+            return result("fail", "DRP-9", "deliveryless path carries a native submission binding or digest anchor")
         return None
     if not isinstance(binding, dict) or set(binding) != {"nativeSubmissionEvent"}:
         return result("error", "DRV-3", "deliveryBinding must name only the native submission event")
     return None
 
 
+def _event_ref_check(
+    ref_value: Any, chain_id: Any, rule: str, label: str
+) -> dict[str, str] | None:
+    if not isinstance(ref_value, dict) or set(ref_value) != EVENT_REF_FIELDS:
+        return result("error", "DRV-3", f"{label} event reference is malformed")
+    tx_hash = ref_value.get("txHash")
+    log_index = ref_value.get("logIndex")
+    if type(log_index) is not int or log_index < 0:
+        return result("error", "DRV-3", f"{label} event log index is not a non-negative integer")
+    # DRW-3: the DACS-4 SB-1 spelling of `txHash`; any other spelling is
+    # malformed and is not repaired.
+    if not isinstance(tx_hash, str) or EVM_TX_RE.fullmatch(tx_hash) is None:
+        return result("error", "DRW-3", f"{label} event transaction hash is not its SB-1 spelling")
+    if ref_value.get("kind") != "evm-event" or ref_value.get("chainId") != chain_id:
+        return result("fail", rule, f"{label} event reference is not an evm-event on the rail's chain")
+    return None
+
+
+def _event_identity(ref_value: Any) -> tuple[Any, Any, Any, Any] | None:
+    if not isinstance(ref_value, dict):
+        return None
+    identity = (
+        ref_value.get("kind"),
+        ref_value.get("chainId"),
+        ref_value.get("txHash"),
+        ref_value.get("logIndex"),
+    )
+    # Used as a lookup key, where Python would take `false` for log index 0.
+    if not all(isinstance(part, str) or type(part) is int for part in identity):
+        return None
+    return identity
+
+
+def block_preimage(chain_id: int, number: int, timestamp_sec: int) -> str:
+    """A fixture-chain block identity: a block is its chain, number, and timestamp."""
+    return f"fixture-evm:{chain_id}:block:{number}:{timestamp_sec}"
+
+
+def _block_valid(block: Any) -> bool:
+    return (
+        isinstance(block, dict)
+        and BLOCK_FIELDS <= set(block)
+        and type(block["blockNumber"]) is int
+        and block["blockNumber"] >= 0
+        and _is_unix_sec(block["blockTimestampSec"])
+        and isinstance(block["blockHash"], str)
+        and EVM_TX_RE.fullmatch(block["blockHash"]) is not None
+        and isinstance(block["blockHashPreimageUtf8"], str)
+    )
+
+
+def _block_reproduces(block: dict[str, Any], chain_id: int) -> bool:
+    preimage = block_preimage(chain_id, block["blockNumber"], block["blockTimestampSec"])
+    return (
+        block["blockHashPreimageUtf8"] == preimage
+        and block["blockHash"] == "0x" + hashlib.sha256(preimage.encode("utf-8")).hexdigest()
+    )
+
+
+def _abi_values_valid(values: Any, names: tuple[str, ...]) -> bool:
+    """Whether decoded calldata or log data has exactly the pinned signature's values (DRC-18)."""
+    if not isinstance(values, dict) or set(values) != set(names):
+        return False
+    for name in names:
+        item = values[name]
+        if name in ABI_VALUE_TYPES["address"]:
+            valid = isinstance(item, str) and EVM_ADDRESS_RE.fullmatch(item) is not None
+        elif name in ABI_VALUE_TYPES["uint"]:
+            valid = _amount_valid(item)
+        elif name in ABI_VALUE_TYPES["bytes32"]:
+            valid = isinstance(item, str) and BYTES32_RE.fullmatch(item) is not None
+        else:
+            valid = isinstance(item, str)
+        if not valid:
+            return False
+    return True
+
+
 def _native_event_input_check(
     value: dict[str, Any],
 ) -> tuple[dict[tuple[Any, Any, Any, Any], dict[str, Any]], dict[str, str] | None]:
-    """Match the resolver's observations to the lifecycle's event references.
+    """Match the resolver's observations to the lifecycle's event references (DRF-8, DRC-18).
 
-    Each signed event reference, plus the bound submission event of a
-    delivered lifecycle, needs exactly one observation.  Event time, depth,
-    and submission content are then read from those observations only.
+    Each signed event reference, the bound submission event of a delivered
+    lifecycle, and the creation transaction's DRC-17 configuration event need
+    exactly one observation, decoded under the rail's pinned `topic0`.  Event
+    time, finality, and arguments are then read from those observations only.
     """
     inputs = value["reproductionInputs"]
     event_inputs = inputs.get("nativeEventInputs")
@@ -1550,30 +2448,30 @@ def _native_event_input_check(
         return {}, result("error", "DRV-3", "native event inputs must be a non-empty array")
 
     artifacts = value["artifacts"]
-    chain_id = artifacts["railDefinition"].get("chainId")
+    params = artifacts["railDefinition"]["parameters"]
+    chain_id = params["chainId"]
     funding_refs = artifacts["funding"].get("fundingEventRefs")
     terminal_refs = artifacts["terminal"].get("terminalEventRefs")
     if not isinstance(funding_refs, list) or len(funding_refs) != 1:
-        return {}, result("rejected", "DRF-3", "candidate funding event set must identify exactly one event")
-    if not isinstance(terminal_refs, list) or len(terminal_refs) != 1:
-        return {}, result("rejected", "DRT-4", "candidate terminal event set must identify exactly one event")
-    terminal_name = {
-        "released": "JobCompleted",
-        "rejected-refund": "JobRejected",
-        "expired-refund": "JobExpired",
-    }.get(artifacts["terminal"].get("terminalState"))
+        return {}, result("fail", "DRF-3", "the funding event set is not the one JobFunded log")
+    terminal_names = TERMINAL_EVENTS[artifacts["terminal"]["terminalState"]]
+    if not isinstance(terminal_refs, list) or len(terminal_refs) != len(terminal_names):
+        return {}, result("fail", "DRT-4", "the terminal event set is not the crosswalk's two logs")
     delivered = artifacts.get("delivery") is not None
     # (label, reference, event name, reference rule, block rule, depth rule)
     expected: list[tuple[str, Any, Any, str, str, str]] = [
-        ("creation", artifacts["job"].get("creationEvent"), "JobCreated", "DRJ-3", "DRJ-3", "DRJ-2"),
-        ("funding", funding_refs[0], "JobFunded", "DRF-3", "DRF-6", "DRF-6"),
+        ("creation", artifacts["job"].get("creationEvent"), "JobCreated", "DRJ-2", "DRJ-2", "DRJ-2"),
+        ("funding", funding_refs[0], "JobFunded", "DRF-3", "DRF-8", "DRF-6"),
     ]
     if delivered:
         expected.append((
             "submission", value["deliveryBinding"]["nativeSubmissionEvent"],
             "JobSubmitted", "DRP-9", "DRP-9", "DRP-9",
         ))
-    expected.append(("terminal", terminal_refs[0], terminal_name, "DRT-4", "DRT-8", "DRT-8"))
+    expected += [
+        (f"terminal-{index}", terminal_refs[index], name, "DRT-4", "DRT-8", "DRT-8")
+        for index, name in enumerate(terminal_names)
+    ]
     for label, ref_value, _name, reference_rule, _block_rule, _depth_rule in expected:
         issue = _event_ref_check(ref_value, chain_id, reference_rule, label)
         if issue:
@@ -1588,99 +2486,114 @@ def _native_event_input_check(
             return {}, result("error", "DRV-3", "native event input identity is malformed")
         by_identity[identity] = event_input_value
     roles = {_event_identity(item[1]): item for item in expected}
+    # The one observation no artifact references is the creation
+    # transaction's configuration event.
+    extra = [identity for identity in by_identity if identity not in roles]
     if (
         len(roles) != len(expected)
-        or len(event_inputs) != len(expected)
-        or set(by_identity) != set(roles)
+        or len(event_inputs) != len(expected) + 1
+        or len(by_identity) != len(event_inputs)
+        or len(extra) != 1
+        or extra[0][2] != artifacts["job"]["creationEvent"]["txHash"]
     ):
-        return {}, result("rejected", "DRT-4", "native event inputs do not match the referenced event set")
-
-    rail_profile = artifacts["railDefinition"].get("profileParameters")
-    minimum_confirmations = (
-        rail_profile.get("finalityBlocks") if isinstance(rail_profile, dict) else None
+        return {}, result("fail", "DRT-4", "native event inputs do not match the referenced event set")
+    roles[extra[0]] = (
+        "configuration", None, params["configurationEvidence"]["event"], "DRJ-3", "DRJ-2", "DRJ-2",
     )
-    if type(minimum_confirmations) is not int or minimum_confirmations <= 0:
-        return {}, result("error", "DRV-3", "rail finality depth must be a positive integer")
+
+    topics = {pin["name"]: pin["topic0"] for pin in params["events"]}
+    finality_blocks = params["finalityBlocks"]
     records: dict[str, dict[str, Any]] = {}
+    blocks: dict[int, set[tuple[str, int]]] = {}
     for identity, event_input_value in by_identity.items():
-        label, ref_value, name, reference_rule, block_rule, _depth_rule = roles[identity]
+        label, _ref_value, name, reference_rule, block_rule, _depth_rule = roles[identity]
         tx_preimage = event_input_value["txHashPreimageUtf8"]
-        block_preimage = event_input_value["blockHashPreimageUtf8"]
+        finality = event_input_value["finalityBlock"]
         if (
             not isinstance(tx_preimage, str)
-            or type(event_input_value["blockNumber"]) is not int
-            or event_input_value["blockNumber"] < 0
-            or type(event_input_value["blockTimestampSec"]) is not int
-            or event_input_value["blockTimestampSec"] < 0
-            or type(event_input_value["confirmations"]) is not int
-            or event_input_value["confirmations"] < 0
-            or type(event_input_value["finalityBlockTimestampSec"]) is not int
-            or event_input_value["finalityBlockTimestampSec"] < 0
-            or not isinstance(event_input_value["blockHash"], str)
-            or EVM_TX_RE.fullmatch(event_input_value["blockHash"]) is None
-            or not isinstance(block_preimage, str)
+            or not _block_valid(event_input_value)
+            or not (finality is None or (_block_valid(finality) and set(finality) == BLOCK_FIELDS))
             or not isinstance(event_input_value["contractAddress"], str)
-            or not isinstance(event_input_value["nativeJobId"], str)
+            or not _amount_valid(event_input_value["nativeJobId"])
             or not isinstance(event_input_value["eventName"], str)
-            or not isinstance(event_input_value["arguments"], dict)
+            or not isinstance(event_input_value["topic0"], str)
         ):
             return {}, result("error", "DRV-3", "native event observation is malformed")
-        if ref_value["txHash"] != "0x" + hashlib.sha256(tx_preimage.encode("utf-8")).hexdigest():
-            return {}, result("rejected", reference_rule, "native event transaction preimage does not match")
-        expected_block_preimage = (
-            f"{tx_preimage}:block:{event_input_value['blockNumber']}:"
-            f"{event_input_value['blockTimestampSec']}"
-        )
-        if block_preimage != expected_block_preimage:
-            return {}, result("rejected", block_rule, "native event block identity preimage does not match")
-        if event_input_value["blockHash"] != "0x" + hashlib.sha256(
-            block_preimage.encode("utf-8")
-        ).hexdigest():
-            return {}, result("rejected", block_rule, "native event block-hash preimage does not match")
+        if event_input_value["eventRef"]["txHash"] != "0x" + hashlib.sha256(tx_preimage.encode("utf-8")).hexdigest():
+            return {}, result("fail", reference_rule, "native event transaction preimage does not match")
+        if not _block_reproduces(event_input_value, chain_id):
+            return {}, result("fail", block_rule, "native event block identity does not reproduce")
         if event_input_value["eventName"] != name:
-            return {}, result("rejected", "DRT-4", "native event selectors do not match the lifecycle")
+            return {}, result("fail", "DRT-4", "native event names do not match the lifecycle")
+        # DRC-18: a required log that does not match its pinned topic0 is not
+        # decoded under any signature.
+        if event_input_value["topic0"] != topics.get(name):
+            return {}, result("fail", "DRC-18", "a required event does not match its pinned topic0")
+        if not _abi_values_valid(event_input_value["arguments"], FIXTURE_EVENTS[name][1]):
+            return {}, result("error", "DRV-3", "decoded event data does not match the pinned event signature")
+        if finality is not None:
+            if not _block_reproduces(finality, chain_id):
+                return {}, result("fail", block_rule, "finality block identity does not reproduce")
+            # The Nth confirmation of an event at block n is block n + N - 1
+            # (DACS-4 ChainFinalityProfile: confirmations = head - inclusion + 1).
+            if finality["blockNumber"] != event_input_value["blockNumber"] + finality_blocks - 1:
+                return {}, result("fail", block_rule, "finality block is not at the rail's confirmation depth")
+            blocks.setdefault(finality["blockNumber"], set()).add((finality["blockHash"], finality["blockTimestampSec"]))
+        blocks.setdefault(event_input_value["blockNumber"], set()).add(
+            (event_input_value["blockHash"], event_input_value["blockTimestampSec"])
+        )
         records[label] = event_input_value
+    # DRF-8: one chain's blocks have one identity per height, and later
+    # blocks are later in time.  A block time that contradicts the block
+    # order is not authenticated chain time, wherever it appears.
+    anchor = value["resolverEvidence"]["deliveryDigestAnchor"]
+    if anchor is not None:
+        blocks.setdefault(anchor["blockNumber"], set()).add((None, anchor["blockTimestampSec"]))
+    heights = sorted(blocks)
+    if any(len({timestamp for _hash, timestamp in blocks[height]}) != 1 for height in heights) or any(
+        len({block_hash for block_hash, _timestamp in blocks[height]} - {None}) > 1 for height in heights
+    ) or any(
+        next(iter(blocks[earlier]))[1] >= next(iter(blocks[later]))[1]
+        for earlier, later in zip(heights, heights[1:])
+    ):
+        return {}, result("fail", "DRF-8", "authenticated block times contradict the block order")
     for label, _ref_value, name, _reference_rule, _block_rule, depth_rule in expected:
-        if records[label]["confirmations"] < minimum_confirmations:
+        if records[label]["finalityBlock"] is None:
             return {}, result(
                 "indeterminate", depth_rule,
                 f"{name} event has not reached the rail finality depth",
             )
+    if records["configuration"]["finalityBlock"] is None:
+        return {}, result("indeterminate", "DRJ-2", "the configuration event has not reached the rail finality depth")
+    ordered = [records["creation"], records["funding"]]
+    if delivered:
+        ordered.append(records["submission"])
+    ordered.append(records["terminal-0"])
+    if any(
+        earlier["blockNumber"] >= later["blockNumber"]
+        for earlier, later in zip(ordered, ordered[1:])
+    ) or records["configuration"]["eventRef"]["txHash"] != records["creation"]["eventRef"]["txHash"] or any(
+        records[f"terminal-{index}"]["eventRef"]["txHash"] != records["terminal-0"]["eventRef"]["txHash"]
+        for index in range(len(terminal_names))
+    ):
+        return {}, result("fail", "DRT-4", "native event observations are not one ordered transaction each")
 
     funded_at = records["funding"]["blockTimestampSec"]
     if value["native"].get("fundedAtSec") != funded_at:
-        return {}, result("rejected", "DRA-9", "caller funding time differs from the authenticated event block")
-    cutoff = artifacts["agreement"].get("submissionCutoffSec")
-    deadline = artifacts["agreement"].get("evaluationDeadlineSec")
-    if type(cutoff) is not int or type(deadline) is not int:
-        return {}, result("error", "DRV-3", "signed cutoff and deadline must be integers")
+        return {}, result("fail", "DRA-9", "caller funding time differs from the authenticated event block")
+    agreement = artifacts["agreement"]
     if (
-        terminal_name == "JobExpired"
-        and records["terminal"]["blockTimestampSec"] < deadline
+        artifacts["terminal"]["terminalState"] == "expired-refund"
+        and records["terminal-0"]["blockTimestampSec"] < agreement["evaluationDeadlineSec"]
     ):
-        return {}, result("rejected", "DREB-15", "expiry recovery executed before the evaluation deadline")
-    submitted_before_cutoff = False
-    ordered = [records["creation"], records["funding"]]
+        return {}, result("fail", "DREB-15", "expiry recovery executed before the evaluation deadline")
     if delivered:
         submitted = records["submission"]
-        anchor_issue = _delivery_digest_anchor_check(
-            artifacts["delivery"], value["resolverEvidence"]["deliveryDigestAnchor"], submitted
-        )
+        anchor_issue = _delivery_digest_anchor_check(artifacts["delivery"], anchor, submitted)
         if anchor_issue:
             return {}, anchor_issue
-        submitted_before_cutoff = submitted["blockTimestampSec"] < cutoff
-        if not submitted_before_cutoff:
-            return {}, result("rejected", "DREB-13", "native delivery was submitted at or after the cutoff")
-        ordered.append(submitted)
-    ordered.append(records["terminal"])
-    if any(
-        earlier["blockTimestampSec"] >= later["blockTimestampSec"]
-        or earlier["blockNumber"] >= later["blockNumber"]
-        for earlier, later in zip(ordered, ordered[1:])
-    ):
-        return {}, result("rejected", "DRT-4", "native event observations are not strictly ordered")
-    if value.get("submittedBeforeCutoff") is not submitted_before_cutoff:
-        return {}, result("rejected", "DRT-12", "submission classification contradicts authenticated event time")
+        if submitted["blockTimestampSec"] >= agreement["submissionCutoffSec"]:
+            return {}, result("fail", "DREB-13", "native delivery was submitted at or after the cutoff")
     return by_identity, None
 
 
@@ -1699,19 +2612,88 @@ def _delivery_digest_anchor_check(
     if anchor is None:
         return result("indeterminate", "DRP-9", "no authenticated evidence fixes the delivery digest before the native submission")
     if anchor["deliverable"] != "0x" + artifact_hash(delivery):
-        return result("rejected", "DRP-9", "the anchored digest is not this delivery evidence")
+        return result("fail", "DRP-9", "the anchored digest is not this delivery evidence")
     if anchor["blockNumber"] > submission["blockNumber"]:
-        return result("rejected", "DRP-9", "the delivery digest was fixed only after the native submission")
+        return result("fail", "DRP-9", "the delivery digest was fixed only after the native submission")
     if anchor["blockNumber"] == submission["blockNumber"]:
         return result("indeterminate", "DRP-9", "the digest anchor and the native submission share a block and cannot be ordered")
-    # An earlier block has an earlier timestamp, as lifecycle events do.
-    if (
-        anchor["blockNumber"] < submission["blockNumber"]
-        and anchor["blockTimestampSec"] >= submission["blockTimestampSec"]
-    ):
-        return result("rejected", "DRP-9", "the digest anchor's block time is not before the native submission")
     if delivery["observedAt"] > anchor["blockTimestampSec"] * 1000:
-        return result("rejected", "DRP-9", "the delivery evidence records a time after its digest was fixed")
+        return result("fail", "DRP-9", "the delivery evidence records a time after its digest was fixed")
+    return None
+
+
+def _transactions_by_label(value: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """The resolver's records of the creation, funding, submission, and terminal transactions."""
+    a = value["artifacts"]
+    labels = {a["job"]["creationEvent"]["txHash"]: "creation", a["funding"]["fundingEventRefs"][0]["txHash"]: "funding"}
+    if value.get("deliveryBinding") is not None:
+        labels[value["deliveryBinding"]["nativeSubmissionEvent"]["txHash"]] = "submission"
+    labels[a["terminal"]["terminalEventRefs"][0]["txHash"]] = "terminal"
+    return {labels[item["txHash"]]: item for item in value["resolverEvidence"]["transactions"] if item["txHash"] in labels}
+
+
+def _native_transaction_check(
+    value: dict[str, Any], observations: dict[tuple[Any, Any, Any, Any], dict[str, Any]],
+) -> dict[str, str] | None:
+    """Apply the candidate §4.1 crosswalk to the resolver's transaction records (DRL-10, DRL-11).
+
+    Each lifecycle transaction is decoded only through the rail's pinned
+    selectors (DRC-18), and its prior native status, entrypoint, caller, and
+    emitted logs must form one crosswalk row, each row starting where the
+    previous ended.  An evaluator action's caller is read from the
+    transaction, never from an event's actor field (DREB-21).
+    """
+    a = value["artifacts"]
+    params = a["railDefinition"]["parameters"]
+    transactions = value["resolverEvidence"]["transactions"]
+    by_label = _transactions_by_label(value)
+    lifecycle = ["creation", "funding", *(["submission"] if a.get("delivery") is not None else []), "terminal"]
+    if [item["txHash"] for item in transactions] != [by_label[label]["txHash"] for label in lifecycle if label in by_label] or list(by_label) != lifecycle:
+        return result("fail", "DRL-10", "the resolver's transaction records are not the lifecycle's transactions")
+    entrypoints = {pin["selector"]: pin["name"] for pin in params["entrypoints"]}
+    statuses = {entry["nativeValue"]: entry["nativeStatus"] for entry in params["nativeStatusMap"]}
+    accounts = role_accounts(a["agreement"])
+    roles = {accounts["buyer"]: "client", accounts["seller"]: "provider", accounts["evaluator"]: "evaluator"}
+    logs: dict[str, list[dict[str, Any]]] = {}
+    for item in observations.values():
+        logs.setdefault(item["eventRef"]["txHash"], []).append(item)
+    previous = None
+    for label in lifecycle:
+        record = by_label[label]
+        entrypoint = entrypoints.get(record["entrypoint"])
+        if entrypoint is None:
+            return result("fail", "DRC-18", "a lifecycle transaction does not call a pinned entrypoint selector")
+        if not _abi_values_valid(record["calldata"], FIXTURE_ENTRYPOINTS[entrypoint][1]):
+            return result("error", "DRV-3", "decoded calldata does not match the pinned entrypoint signature")
+        prior = record["priorNativeStatus"]
+        if (prior is not None and prior not in statuses) or record["nativeStatusAfter"] not in statuses:
+            return result("fail", "DRL-2", "a native status is absent from the rail's nativeStatusMap")
+        if label == "terminal" and entrypoint in ("complete", "reject"):
+            account_type = record["nativeCallerAccountType"]
+            if account_type not in EVALUATOR_ACCOUNT_TYPES:
+                return result("error", "DREB-18", "unsupported evaluator account type")
+            # DREB-18: this verifier supports no EIP-1271 chain and code.
+            if account_type == "eip1271":
+                return result("fail", "DREB-18", "this verifier supports no EIP-1271 evaluator account")
+            if record["nativeCaller"] != accounts["evaluator"]:
+                return result("fail", "DREB-21", "authenticated native caller is not the bound evaluator account")
+            if record["outerSubmitter"] != record["nativeCaller"]:
+                return result("fail", "DREB-22", "an EOA evaluator cannot have another transaction submitter")
+        prior_status = None if prior is None else statuses[prior]
+        role = roles.get(record["nativeCaller"])
+        row = CROSSWALK.get((prior_status, entrypoint, role)) or CROSSWALK.get((prior_status, entrypoint, "any"))
+        emitted = tuple(item["eventName"] for item in sorted(logs.get(record["txHash"], []), key=lambda item: item["eventRef"]["logIndex"]))
+        if (
+            row is None
+            or prior_status != previous
+            or emitted != row[0]
+            or statuses[record["nativeStatusAfter"]] != row[1]
+        ):
+            return result("fail", "DRL-11", "an authenticated transition is outside the candidate §4.1 crosswalk")
+        # DRD-13: the evaluator's reject binds the expected prior status.
+        if entrypoint == "reject" and int(record["calldata"]["expectedStatus"]) != prior:
+            return result("fail", "DRD-13", "the reject call does not bind the expected prior native status")
+        previous = row[1]
     return None
 
 
@@ -1724,9 +2706,7 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
         "publicTestSeedHex",
         "roleBundles",
         "vetRecords",
-        "evaluationRule",
         "deliveredArtifact",
-        "disputeCase",
         "runtimeBytecode",
         "nativeEventInputs",
     }
@@ -1737,7 +2717,7 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
         current = pending.pop()
         if isinstance(current, dict):
             if any("transcript" in str(key).lower() for key in current):
-                return result("rejected", "DRQ-3", "candidate inputs attempt to disclose transcript material")
+                return result("fail", "DRQ-3", "candidate inputs attempt to disclose transcript material")
             pending.extend(current.values())
         elif isinstance(current, list):
             pending.extend(current)
@@ -1745,6 +2725,9 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
     event_inputs, event_issue = _native_event_input_check(value)
     if event_issue:
         return event_issue
+    transaction_issue = _native_transaction_check(value, event_inputs)
+    if transaction_issue:
+        return transaction_issue
 
     seeds = inputs["publicTestSeedHex"]
     if not isinstance(seeds, dict) or set(seeds) != set(value["publicKeys"]):
@@ -1759,7 +2742,7 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
         except (TypeError, ValueError):
             return result("error", "DRV-3", "public test seed is malformed")
         if base64.urlsafe_b64encode(derived).decode("ascii").rstrip("=") != value["publicKeys"][claim]:
-            return result("rejected", "DRV-4", "public key does not derive from the committed test seed")
+            return result("fail", "DRV-4", "public key does not derive from the committed test seed")
 
     agreement = value["artifacts"]["agreement"]
     bundles = inputs["roleBundles"]
@@ -1773,123 +2756,176 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
         bundle = bundles.get(role)
         vet_record = vet_records.get(role)
         if not isinstance(bundle, dict) or binding.get("bundleHash") != artifact_hash(bundle):
-            return result("rejected", "DRA-4", f"{role} bundle input does not match the overlay")
+            return result("fail", "DRA-4", f"{role} bundle input does not match the overlay")
         if not attestation_ref_valid(binding.get("vetRecordRef"), vet_record):
-            return result("rejected", "DRA-4", f"{role} Vet record input does not resolve")
+            return result("fail", "DRA-4", f"{role} Vet record input does not resolve")
         if (
             vet_record.get("subject") != binding.get("primaryClaim")
             or vet_record.get("bundleHash") != binding.get("bundleHash")
             or vet_record.get("result") != "pass"
-            or type(funded_at) is not int
             or type(vet_record.get("validFromSec")) is not int
             or type(vet_record.get("validUntilSec")) is not int
             or not vet_record["validFromSec"] <= funded_at <= vet_record["validUntilSec"]
         ):
-            return result("rejected", "DRA-9" if role == "evaluator" else "DRA-4", f"{role} Vet input is not a fresh pass at funding")
+            return result("fail", "DRA-9" if role == "evaluator" else "DRA-4", f"{role} Vet input is not a fresh pass at funding")
     evaluator = agreement["evaluator"]
     if inputs["vetRecords"]["evaluator"].get("requirementHash") != evaluator.get("requirementHash"):
-        return result("rejected", "DRA-8", "evaluator Vet input used another requirement")
-    if not attestation_ref_valid(agreement.get("evaluationRuleRef"), inputs["evaluationRule"]):
-        return result("rejected", "DRE-6", "evaluation rule input does not resolve")
+        return result("fail", "DRA-8", "evaluator Vet input used another requirement")
 
     artifacts = value["artifacts"]
     delivered = inputs["deliveredArtifact"]
     if artifacts.get("delivery") is None:
         if delivered is not None:
-            return result("rejected", "DRP-7", "deliveryless path contains an unreferenced deliverable input")
-    elif "deliverableContentHash" not in artifacts["delivery"]:
-        # A failed delivery that names no deliverable has nothing to resolve.
-        if delivered is not None:
-            return result("rejected", "DRE-2", "delivery evidence names no deliverable for the delivered artifact input")
+            return result("fail", "DRP-7", "deliveryless path contains an unreferenced deliverable input")
+    # DV-1: the deliverable content hash is the SHA-256 of the exact
+    # delivered cleartext payload.
     elif (
         not isinstance(delivered, dict)
-        or artifacts["delivery"]["deliverableContentHash"] != content_hash(delivered)
+        or set(delivered) != {"payloadUtf8"}
+        or not isinstance(delivered["payloadUtf8"], str)
+        or artifacts["delivery"]["deliverableContentHash"]
+        != hashlib.sha256(delivered["payloadUtf8"].encode("utf-8")).hexdigest()
     ):
-        return result("rejected", "DRE-2", "delivered artifact input does not resolve")
-    dispute = inputs["disputeCase"]
-    if artifacts.get("dispute") is None:
-        if dispute is not None:
-            return result("rejected", "DRX-2", "non-dispute path contains a dispute-case input")
-    elif not attestation_ref_valid(artifacts["dispute"].get("caseRef"), dispute):
-        return result("rejected", "DRX-2", "dispute-case input does not resolve")
+        return result("fail", "DRE-2", "delivered payload input does not resolve")
 
     runtime = inputs["runtimeBytecode"]
-    if not isinstance(runtime, dict) or runtime.get("encoding") != "utf-8":
-        return result("error", "DRV-3", "runtime-bytecode preimage is malformed")
+    if not isinstance(runtime, dict) or set(runtime) != {"encoding", "value"} or runtime.get("encoding") != "hex":
+        return result("error", "DRV-3", "runtime-bytecode input is malformed")
     runtime_value = runtime.get("value")
-    if not isinstance(runtime_value, str):
-        return result("error", "DRV-3", "runtime-bytecode preimage must be text")
-    runtime_hash = hashlib.sha256(runtime_value.encode("utf-8")).hexdigest()
-    if runtime.get("sha256") != runtime_hash or artifacts["job"].get("runtimeBytecodeHash") != runtime_hash:
-        return result("rejected", "DRJ-5", "runtime-bytecode preimage does not match the job")
+    if not isinstance(runtime_value, str) or re.fullmatch(r"(?:[0-9a-f]{2})+", runtime_value) is None:
+        return result("error", "DRV-3", "runtime-bytecode input must be non-empty lower-case hex")
+    # DRW-2: the code hash is keccak-256 of the deployed runtime bytecode.
+    if artifacts["job"]["runtimeBytecodeHash"] != "0x" + keccak256(bytes.fromhex(runtime_value)).hex():
+        return result("fail", "DRJ-5", "runtime bytecode does not hash to the job's pinned code hash")
 
     return None
 
 
 def _native_event_semantics_check(value: dict[str, Any]) -> dict[str, str] | None:
-    """Compare authenticated event arguments with the signed artifacts they settle."""
+    """Compare the authenticated, pin-decoded logs and calldata with the signed artifacts they settle."""
     inputs = value["reproductionInputs"]["nativeEventInputs"]
     records = {item["eventName"]: item for item in inputs}
     artifacts = value["artifacts"]
     agreement = artifacts["agreement"]
     job = artifacts["job"]
     terminal = artifacts["terminal"]
+    params = artifacts["railDefinition"]["parameters"]
+    transactions = _transactions_by_label(value)
+    # DRJ-1: the job's numeric value is the creation event's job topic.
+    if int(records["JobCreated"]["nativeJobId"]) != int(job["nativeJobId"]):
+        return result("fail", "DRJ-1", "the creation event's job topic is not the job's native job ID")
     if any(
         item["contractAddress"] != job["contractAddress"]
-        or item["nativeJobId"] != job["nativeJobId"]
+        or int(item["nativeJobId"]) != int(job["nativeJobId"])
         for item in inputs
     ):
-        return result("rejected", "DRT-4", "native event targets another contract or job")
-    created = dict(records["JobCreated"]["arguments"])
-    if created.pop("description", None) != "dacs-delivery-remedy:v1:" + artifact_hash(agreement):
-        return result("rejected", "DREB-1", "native job description does not contain the exact overlay hash")
-    # Compared with `!=` below, where Python would take a float deadline for an int.
-    if any(type(created.get(name)) is not int for name in ("submissionCutoffSec", "expiredAt")):
-        return result("error", "DRV-3", "creation event deadlines must be integers")
-    accounts = {
-        role: parse_canonical_evm_claim(agreement[role]["evmAccountClaim"])[1]
-        for role in ("buyer", "seller", "evaluator")
-    }
-    # The job's hook is the rail's pin: an ERC-8183 hook can move value at
-    # `fund` or block a terminal call, so no other hook may be attached.
-    if created != {
-        "client": accounts["buyer"],
-        "provider": accounts["seller"],
-        "evaluator": accounts["evaluator"],
-        "submissionCutoffSec": agreement["submissionCutoffSec"],
-        "expiredAt": agreement["evaluationDeadlineSec"],
-        "hook": artifacts["railDefinition"]["jobHook"],
-    }:
-        return result("rejected", "DRJ-3", "creation/configuration event does not match the agreement")
-    funded = records["JobFunded"]["arguments"]
-    if funded != {
-        "token": artifacts["railDefinition"].get("paymentToken"),
-        "amountBaseUnits": agreement["budgetBaseUnits"],
-    }:
-        return result("rejected", "DRF-3", "funding event does not match the complete budget")
+        return result("fail", "DRT-4", "native event targets another contract or job")
+    accounts = role_accounts(agreement)
+    configuration = params["configurationEvidence"]
+    created = records["JobCreated"]["arguments"]
+    configured = records[configuration["event"]]["arguments"]
+    # DRJ-3: the creation and configuration events carry the job's parties,
+    # deadlines, policy, and hook, each matching the overlay and rail.
+    if (
+        (created["client"], created["provider"], created["evaluator"])
+        != (accounts["buyer"], accounts["seller"], accounts["evaluator"])
+        or int(created["expiredAt"]) != agreement["evaluationDeadlineSec"]
+        or int(configured[configuration["submissionCutoffField"]]) != agreement["submissionCutoffSec"]
+        or configured[configuration["preSubmissionPolicyField"]] != agreement["preSubmissionRefundPolicy"]
+        or created["hook"] != params["hook"]
+    ):
+        return result("fail", "DRJ-3", "creation and configuration events do not match the overlay and rail")
+    # DRJ-4: the description is decoded from the creating transaction's
+    # createJob calldata, which also carries what the events report.
+    calldata = transactions["creation"]["calldata"]
+    if calldata["description"] != DESCRIPTION_PREFIX + artifact_hash(agreement):
+        return result("fail", "DREB-1", "native job description is not the exact overlay binding")
+    if (
+        (calldata["provider"], calldata["evaluator"], calldata["hook"], calldata["expiredAt"])
+        != (created["provider"], created["evaluator"], created["hook"], created["expiredAt"])
+        or calldata["submissionCutoff"] != configured[configuration["submissionCutoffField"]]
+    ):
+        return result("fail", "DRV-6", "authenticated createJob calldata contradicts the creation events it emitted")
+    if records["JobFunded"]["arguments"] != {"client": accounts["buyer"], "amount": agreement["budgetBaseUnits"]}:
+        return result("fail", "DRF-3", "funding event does not lock the complete budget from the client")
     if artifacts.get("delivery") is not None:
         digest = "0x" + artifact_hash(artifacts["delivery"])
         # As an EVM transaction hash commits to its calldata, the synthetic
         # submission transaction identity commits to the submitted digest.
         if (
-            records["JobSubmitted"]["arguments"] != {"deliverable": digest}
+            records["JobSubmitted"]["arguments"]["deliverable"] != digest
+            or transactions["submission"]["calldata"]["deliverable"] != digest
             or not records["JobSubmitted"]["txHashPreimageUtf8"].endswith(":" + digest)
         ):
-            return result("rejected", "DRP-9", "the submission event and its transaction do not commit to the delivery digest")
-    terminal_name = {
-        "released": "JobCompleted",
-        "rejected-refund": "JobRejected",
-        "expired-refund": "JobExpired",
-    }[terminal["terminalState"]]
+            return result("fail", "DRP-9", "the submission event and its transaction do not commit to the delivery digest")
+    state_event, transfer_event = TERMINAL_EVENTS[terminal["terminalState"]]
+    transfer = records[transfer_event]["arguments"]
+    recipient = transfer["recipient"] if transfer_event == "PaymentReleased" else transfer["client"]
+    # DRT-4: the transfer log fixes one recipient and amount.
+    if (recipient, transfer["amount"]) != (terminal["recipient"], terminal["amountBaseUnits"]):
+        return result("fail", "DRT-4", "terminal transfer log does not match the claimed recipient and amount")
     decision = artifacts.get("decision")
-    if records[terminal_name]["arguments"] != {
-        "token": terminal["token"],
-        "amountBaseUnits": terminal["amountBaseUnits"],
-        "recipient": terminal["recipient"],
-        "reason": None if decision is None else "0x" + artifact_hash(decision),
-    }:
-        return result("rejected", "DRT-4", "terminal event does not match the claimed disposition")
+    expected_reason = None if decision is None else "0x" + artifact_hash(decision)
+    reasons = {records[state_event]["arguments"].get("reason"), transactions["terminal"]["calldata"].get("reason")}
+    if reasons != {expected_reason}:
+        if ZERO_BYTES32 in reasons:
+            return result("fail", "DREB-5", "zero decision reason is forbidden")
+        return result("fail", "DREB-6", "the native reason is not the decision's content hash")
     return None
+
+
+def _finality_check(
+    evidence: dict[str, Any], finality_blocks: int, observation: dict[str, Any], label: str,
+) -> dict[str, str] | None:
+    """DRW-6: a signed block-depth record of the rail's depth, observed at the confirmation-depth block.
+
+    For block-depth finality, `finalityObservedAt` is the block timestamp of
+    the Nth confirmation (DACS-4 §9.5), which the resolver attests with the
+    event; `observedAt` is the same chain time, so the record is a function of
+    authenticated chain facts.
+    """
+    finality = evidence.get("finality")
+    if not isinstance(finality, dict) or set(finality) != {
+        "model", "finalityBlocks", "finalityObservedAt"
+    }:
+        return result("error", "DRV-3", f"{label} finality is not an exact DACS-4 block-depth record")
+    if (
+        type(finality.get("finalityBlocks")) is not int
+        or finality["finalityBlocks"] <= 0
+        or not _is_unix_ms(finality.get("finalityObservedAt"))
+    ):
+        return result("error", "DRV-3", f"{label} finality record is malformed")
+    if finality.get("model") != "block-depth" or finality["finalityBlocks"] != finality_blocks:
+        return result("fail", "DRW-6", f"{label} finality does not match the rail profile")
+    observed_at = observation["finalityBlock"]["blockTimestampSec"] * 1000
+    if finality["finalityObservedAt"] != observed_at:
+        return result("fail", "DRW-6", f"{label} finality time is not its confirmation-depth block time")
+    if evidence["observedAt"] != observed_at:
+        return result("fail", "DRW-6", f"{label} observedAt is not its confirmation-depth block time")
+    return None
+
+
+def _decision_ordering_check(value: dict[str, Any], terminal_sec: int) -> dict[str, str] | None:
+    """DRC-15 and DRC-19: order the decision's finality before the terminal transaction.
+
+    `decisionFinalizedAtMs` is the consensus timestamp of the Demos block that
+    finalized the decision's anchor, in seconds times 1000; for its
+    one-second granularity the skew bound widens by 1000 ms.  A self-reported
+    time never orders the two (DRD-11).
+    """
+    anchor = value["resolverEvidence"]["decisionAnchor"]
+    if anchor is None:
+        return result("indeterminate", "DRD-10", "no authenticated decision anchor orders the decision")
+    skew = value["artifacts"]["railDefinition"]["parameters"]["maxCrossSubstrateSkewMs"] + 1000
+    decided = anchor["finalizedBlockTimestampSec"] * 1000
+    terminal = terminal_sec * 1000
+    if max(decided, terminal) + skew > SAFE_INTEGER_MAX:
+        return result("error", "DRW-4", "a decision-ordering sum exceeds the safe-integer bound")
+    if decided + skew < terminal:
+        return None
+    if decided > terminal + skew:
+        return result("fail", "DRD-11", "authenticated evidence finalizes the decision after the terminal transaction")
+    return result("indeterminate", "DRC-15", "the decision and terminal transaction cannot be ordered within the skew bound")
 
 
 def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
@@ -1897,16 +2933,19 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
     a = value["artifacts"]
     agreement = a["agreement"]
     rail = a["railDefinition"]
+    params = rail["parameters"]
     native = value["native"]
     state = value["resolverEvidence"]["nativeState"]
     terminal = a["terminal"]
     terminal_state = terminal.get("terminalState")
+    transactions = _transactions_by_label(value)
+    statuses = {entry["nativeValue"]: entry["nativeStatus"] for entry in params["nativeStatusMap"]}
+    # DRL-10, DRT-12: the pre/post-submission classification is the terminal
+    # transaction's authenticated prior native status.
+    submitted = statuses[transactions["terminal"]["priorNativeStatus"]] == "Submitted"
     history = native.get("portableStateHistory")
     if not isinstance(history, list) or not history:
         return result("error", "DRV-3", "portable state history must be a non-empty array")
-    # A release is reachable only from `submitted`; the references stage has
-    # already required delivery evidence for every release decision.
-    submitted = terminal_state == "released" or value.get("submittedBeforeCutoff") is True
     expected_history = [
         "created",
         "funded",
@@ -1915,11 +2954,13 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
     ]
     if history != expected_history:
         if any(not isinstance(item, str) or item not in PORTABLE_STATES for item in history):
-            return result("rejected", "DRL-2", "native state cannot be mapped to one portable state")
+            return result("fail", "DRL-2", "native state cannot be mapped to one portable state")
         elif any(pair not in PORTABLE_TRANSITIONS for pair in zip(history, history[1:])):
-            return result("rejected", "DRL-4", "portable state history contains an invalid or reopened transition")
+            return result("fail", "DRL-4", "portable state history contains an invalid or reopened transition")
         else:
-            return result("rejected", "DRL-1", "portable state history does not match the lifecycle evidence")
+            return result("fail", "DRL-1", "portable state history does not match the authenticated transitions")
+    if value.get("submittedBeforeCutoff") is not submitted:
+        return result("fail", "DRT-12", "submission classification contradicts the authenticated prior native status")
     mapping_sources = value["mappingSources"]
     expected_sources = {"agreementHash": artifact_hash(agreement)}
     if a.get("delivery") is not None:
@@ -1932,46 +2973,43 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
         declared_hash = mapping_sources[name]
         if declared_hash != expected_hash:
             if not isinstance(declared_hash, str) or HASH_RE.fullmatch(declared_hash) is None:
-                return result("rejected", "DREB-3", f"{name} is not 64 lowercase hexadecimal characters")
+                return result("fail", "DREB-3", f"{name} is not 64 lowercase hexadecimal characters")
             else:
-                return result("rejected", "DREB-2", f"{name} does not match the recomputed artifact hash")
+                return result("fail", "DREB-2", f"{name} does not match the recomputed artifact hash")
 
-    accounts = {
-        role: parse_canonical_evm_claim(agreement[role]["evmAccountClaim"])[1]
-        for role in ("buyer", "seller", "evaluator")
-    }
+    accounts = role_accounts(agreement)
     if native.get("contractAddress") != a["job"].get("contractAddress"):
-        return result("rejected", "DRJ-2", "native contract address mismatch")
+        return result("fail", "DRJ-2", "native contract address mismatch")
     if native.get("runtimeBytecodeHash") != a["job"].get("runtimeBytecodeHash"):
-        return result("rejected", "DRJ-5", "runtime bytecode hash mismatch")
+        return result("fail", "DRJ-5", "runtime bytecode hash mismatch")
+    # DRJ-5, DRJ-11: the code the resolver found at every action block is the
+    # pinned escrow code and payment-token code; this rail pins no
+    # implementation, so the escrow must not delegate.
+    if state["escrowRuntimeBytecodeHash"] != a["job"]["runtimeBytecodeHash"]:
+        return result("fail", "DRJ-5", "authenticated escrow code differs from the pinned runtime code")
+    if state["paymentTokenRuntimeBytecodeHash"] != params["paymentTokenRuntimeBytecodeHash"]:
+        return result("fail", "DRJ-11", "authenticated payment-token code differs from its pin")
+    if state["implementationAddress"] != params.get("implementationAddress"):
+        return result("fail", "DRJ-11", "the escrow delegates to an implementation the rail does not pin")
     if native.get("payoutReceiver") != accounts["seller"]:
-        return result("rejected", "DREB-10", "native payout receiver is not the bound seller account")
+        return result("fail", "DREB-10", "native payout receiver is not the bound seller account")
 
     cutoff = agreement["submissionCutoffSec"]
     deadline = agreement["evaluationDeadlineSec"]
-    profile = rail.get("profileParameters")
     # Exact bytes: Python's `==` would take `false` for 0.
-    if canonical_bytes(value["profileParameters"]) != canonical_bytes(profile):
-        return result("rejected", "DRP-5", "detached profile projection differs from the authenticated rail")
-    if not isinstance(profile, dict) or set(profile) != PROFILE_FIELDS:
-        return result("error", "DRV-3", "candidate rail profile shape is not exact")
-    if any(type(profile[name]) is not int for name in ("platformFeeBP", "evaluatorFeeBP")):
-        return result("error", "DRV-3", "rail profile fees must be integers")
-    minimum = profile["minimumEvaluationWindowSec"]
-    if type(minimum) is not int:
-        return result("error", "DREB-14", "minimum evaluation window must be an integer")
-    elif minimum <= 0:
-        return result("rejected", "DREB-14", "evaluation windows must be positive")
+    if canonical_bytes(value["profileParameters"]) != canonical_bytes(params):
+        return result("fail", "DRP-5", "detached profile projection differs from the authenticated rail")
+    minimum = params["minimumEvaluationWindowSec"]
+    if minimum <= 0:
+        return result("fail", "DREB-14", "evaluation windows must be positive")
     elif deadline - cutoff < minimum:
-        return result("rejected", "DREB-14", "evaluation window is shorter than the pinned minimum")
-    if profile["deadlineProfile"] != "separate-submission-cutoff-v1":
-        return result("rejected", "DREB-13", "unsupported native deadline profile")
+        return result("fail", "DREB-14", "evaluation window is shorter than the pinned minimum")
     if native.get("submissionCutoffSec") != cutoff or state["submissionCutoffEnforced"] is not True:
-        return result("rejected", "DREB-13", "native submission cutoff is not separately enforced")
+        return result("fail", "DREB-13", "native submission cutoff is not separately enforced")
     if native.get("expiredAt") != deadline:
-        return result("rejected", "DREB-12", "native expiredAt is not the evaluation deadline")
+        return result("fail", "DREB-12", "native expiredAt is not the evaluation deadline")
     if state["expiryRecoveryAtSec"] != deadline:
-        return result("rejected", "DREB-15", "native expiry recovery is not bound to the evaluation deadline")
+        return result("fail", "DREB-15", "native expiry recovery is not bound to the evaluation deadline")
 
     if a.get("delivery") is not None:
         expected_deliverable = "0x" + expected_sources["deliveryHash"]
@@ -1980,11 +3018,11 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
             if not isinstance(provided, str) or BYTES32_RE.fullmatch(provided) is None:
                 return result("error", "DRV-3", "native deliverable is not canonical bytes32 text")
             elif provided == ZERO_BYTES32:
-                return result("rejected", "DREB-5", "zero deliverable is forbidden")
+                return result("fail", "DREB-5", "zero deliverable is forbidden")
             else:
-                return result("rejected", "DREB-4", "deliverable is not the raw decoded content hash")
+                return result("fail", "DREB-4", "deliverable is not the raw decoded content hash")
     elif native.get("deliverable") is not None:
-        return result("rejected", "DRT-12", "a deliveryless lifecycle cannot carry a native deliverable")
+        return result("fail", "DRT-12", "a deliveryless lifecycle cannot carry a native deliverable")
 
     funding = a["funding"]
     event_inputs = {
@@ -1992,71 +3030,68 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
         for item in value["reproductionInputs"]["nativeEventInputs"]
     }
     funding_finality = _finality_check(
-        funding.get("finality"), profile["finalityBlocks"],
-        event_inputs[_event_identity(funding["fundingEventRefs"][0])], "DRF-6", "funding",
+        funding, params["finalityBlocks"],
+        event_inputs[_event_identity(funding["fundingEventRefs"][0])], "funding",
     )
     if funding_finality:
         return funding_finality
     budget = agreement["budgetBaseUnits"]
-    token = rail.get("paymentToken")
+    token = params["paymentToken"]
     if native.get("amountBaseUnits") != budget or native.get("token") != token:
-        return result("rejected", "DREB-11", "native token or budget does not match the agreement rail")
+        return result("fail", "DREB-11", "native token or budget does not match the agreement rail")
     if funding.get("amountBaseUnits") != budget or funding.get("token") != token:
-        return result("rejected", "DRF-2", "funding token or complete budget mismatch")
+        return result("fail", "DRF-2", "funding token or complete budget mismatch")
     if funding.get("fundPhaseIndex") != agreement.get("fundPhaseIndex"):
-        return result("rejected", "DRF-1", "funding phase index mismatch")
+        return result("fail", "DRF-1", "funding phase index mismatch")
     if state["preterminalProviderPayoutBaseUnits"] != "0":
-        return result("rejected", "DRL-7", "provider received value before terminal release")
-    if (
-        profile["platformFeeBP"] != 0
-        or profile["evaluatorFeeBP"] != 0
-        or state["platformFeeBP"] != profile["platformFeeBP"]
-        or state["evaluatorFeeBP"] != profile["evaluatorFeeBP"]
-    ):
-        return result("rejected", "DRT-7", "escrow fee is nonzero")
+        return result("fail", "DRL-7", "provider received value before terminal release")
+    if state["platformFeeBP"] != params["platformFeeBP"] or state["evaluatorFeeBP"] != params["evaluatorFeeBP"]:
+        return result("fail", "DRT-7", "escrow fee is nonzero")
 
     decision = a.get("decision")
     evaluation = a.get("evaluation")
     dispute = a.get("dispute")
     action = native.get("terminalAction")
     if terminal.get("amountBaseUnits") != budget or terminal.get("token") != token:
-        return result("rejected", "DRT-5", "terminal token or amount is not the complete budget")
+        return result("fail", "DRT-5", "terminal token or amount is not the complete budget")
     if native.get("terminalState") != terminal_state:
-        return result("rejected", "DRT-4", "native and DACS terminal states diverge")
-    terminal_finality = _finality_check(
-        terminal.get("finality"), profile["finalityBlocks"],
-        event_inputs[_event_identity(terminal["terminalEventRefs"][0])], "DRT-8", "terminal",
-    )
+        return result("fail", "DRT-4", "native and DACS terminal states diverge")
+    if terminal.get("terminalPhaseIndex") != agreement.get("terminalPhaseIndex"):
+        return result("fail", "DRT-15", "terminal phase index is not the overlay's")
+    terminal_observation = event_inputs[_event_identity(terminal["terminalEventRefs"][0])]
+    terminal_finality = _finality_check(terminal, params["finalityBlocks"], terminal_observation, "terminal")
     if terminal_finality:
         return terminal_finality
-    # The native caller, outer submitter, and caller account type come only
-    # from the resolver's authenticated record of the terminal transaction.
-    call = value["resolverEvidence"]["terminalCall"]
-    if call.get("txHash") != terminal["terminalEventRefs"][0]["txHash"]:
-        return result("rejected", "DREB-21", "authenticated call record is not for the terminal transaction")
 
     projection = value.get("reputationProjection")
-    if not isinstance(projection, dict) or set(projection) != {
-        "buyerFault", "sellerFault", "releaseAloneEstablishesNonFinancialCompletion"
-    } or any(type(projection.get(field)) is not bool for field in projection):
+    if (
+        not isinstance(projection, dict)
+        or set(projection) != PROJECTION_FIELDS
+        or not all(
+            projection[field] is None or (isinstance(projection[field], str) and projection[field] in PROJECTED_OUTCOMES)
+            for field in ("buyerAnchoredOutcome", "sellerAnchoredOutcome")
+        )
+        or not isinstance(projection["faultedParty"], str)
+        or projection["faultedParty"] not in PROJECTED_FAULTS
+        or type(projection["releaseAloneEstablishesNonFinancialCompletion"]) is not bool
+    ):
         return result("error", "DRV-3", "reputation projection is malformed")
+    # DRT-14: the projection is recomputed from the authenticated terminal
+    # state and finding.  An expiry's seller fault needs the seller not to
+    # have submitted; a pair the table does not list projects no fault.
     finding_artifact = evaluation if evaluation is not None else dispute
-    classification = (
-        finding_artifact.get("finding", {}).get("classification")
-        if isinstance(finding_artifact, dict)
-        else None
-    )
-    if classification is not None and (terminal_state, classification) not in PROJECTION_ROWS:
-        return result("rejected", "DRT-14", "the terminal state and finding have no projection-table row")
-    expected_faults = {
-        "buyerFault": classification == "buyer-fault",
-        "sellerFault": classification == "seller-fault",
-    }
-    if any(projection[field] is not expected for field, expected in expected_faults.items()):
+    classification = finding_artifact["finding"]["classification"] if finding_artifact is not None else None
+    if classification is None or (terminal_state == "expired-refund" and classification == "seller-fault" and submitted):
+        expected_projection = NO_PROJECTION
+    else:
+        expected_projection = PROJECTION_TABLE.get((terminal_state, classification), NO_PROJECTION)
+    if (
+        projection["buyerAnchoredOutcome"], projection["sellerAnchoredOutcome"], projection["faultedParty"]
+    ) != expected_projection:
         if decision is None:
-            return result("rejected", "DRT-13", "decisionless expiry invents buyer or seller fault")
+            return result("fail", "DRT-13", "decisionless expiry projects a fault no authenticated finding establishes")
         else:
-            return result("rejected", "DRT-14", "caller projection contradicts the authenticated finding")
+            return result("fail", "DRT-14", "caller projection contradicts the projection table")
 
     if decision is not None:
         expected_reason = "0x" + expected_sources["decisionHash"]
@@ -2065,66 +3100,75 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
             if not isinstance(provided_reason, str) or BYTES32_RE.fullmatch(provided_reason) is None:
                 return result("error", "DRV-3", "native decision reason is not canonical bytes32 text")
             elif provided_reason == ZERO_BYTES32:
-                return result("rejected", "DREB-5", "zero decision reason is forbidden")
+                return result("fail", "DREB-5", "zero decision reason is forbidden")
             else:
-                return result("rejected", "DREB-4", "reason is not the raw decoded decision hash")
-        account_type = call.get("nativeCallerAccountType")
-        if account_type not in ("eoa", "eip1271"):
-            return result("error", "DREB-18", "unsupported evaluator account type")
+                return result("fail", "DREB-4", "reason is not the raw decoded decision hash")
         if state["evaluatorBindingMode"] != "direct":
-            return result("rejected", "DREB-16", "native evaluator is not bound directly")
+            return result("fail", "DREB-16", "native evaluator is not bound directly")
         if state["evaluatorAdapter"] is not None:
-            return result("rejected", "DREB-20", "generic evaluator adapters are outside the profile")
-        if call.get("nativeCaller") != accounts["evaluator"]:
-            return result("rejected", "DREB-21", "authenticated native caller is not the bound evaluator account")
-        submitter = call.get("outerSubmitter")
-        if not isinstance(submitter, str) or re.fullmatch(r"0x[0-9a-f]{40}", submitter) is None:
-            return result("error", "DREB-22", "outer transaction submitter is malformed")
-        if account_type == "eoa" and submitter != call.get("nativeCaller"):
-            return result("rejected", "DREB-22", "an EOA evaluator cannot have another transaction submitter")
+            return result("fail", "DREB-20", "generic evaluator adapters are outside the profile")
         disposition = decision.get("disposition")
+        stage = decision["decisionStage"]
+        # DRD-14: the stage matches the delivery reference and the terminal
+        # transaction's prior native status, and a release is post-submission.
+        if (stage == "pre-submission") != ("deliveryEvidenceRef" not in decision):
+            return result("fail", "DRD-14", "the decision stage contradicts its delivery reference")
+        # A release binds its delivery (DRD-3), so this also makes every
+        # release decision post-submission.
+        if stage != ("post-submission" if submitted else "pre-submission"):
+            return result("fail", "DRD-14", "the decision stage contradicts the terminal transaction's prior native status")
         if evaluation is not None:
             evaluation_result = evaluation.get("result")
             if evaluation_result == "indeterminate":
-                return result("rejected", "DRE-4", "indeterminate evaluation cannot authorize a terminal action")
+                return result("fail", "DRE-4", "indeterminate evaluation cannot authorize a terminal action")
             elif SETTLEMENT_AUTHORIZATIONS.get(evaluation_result) != disposition:
-                return result("rejected", "DRD-2", "evaluation result does not authorize the decision disposition")
+                return result("fail", "DRD-2", "evaluation result does not authorize the decision disposition")
         elif dispute is not None:
-            if value.get("submittedBeforeCutoff") is not False:
-                return result("rejected", "DRD-12", "dispute-based decision is not a pre-submission path")
-            elif "deliveryEvidenceRef" in decision or "deliveryEvidenceRef" in terminal:
-                return result("rejected", "DRD-9", "pre-submission rejection carries delivery evidence")
-            elif dispute.get("recommendedDisposition") != disposition or disposition != "refund-to-client":
-                return result("rejected", "DRD-12", "dispute outcome does not authorize the refund")
+            # DRX-9: the current revision recommends exactly the decision's
+            # disposition, and the dispute-outcome table permits it for the
+            # finding at this stage.
+            if "recommendedDisposition" not in dispute:
+                return result("fail", "DRX-9", "a DisputeOutcome basis carries no recommended disposition")
+            if dispute["recommendedDisposition"] != disposition:
+                return result("fail", "DRX-9", "the decision disposition is not the recommended disposition")
+            if DISPUTE_DISPOSITIONS.get(classification) != disposition:
+                return result("fail", "DRX-9", "the dispute-outcome table does not permit this disposition for the finding")
+            if dispute["revision"] != 0 and "supersedesOutcomeRef" not in dispute:
+                return result("fail", "DRAA-7", "a later dispute revision does not reference the prior revision")
+            if "supersedesOutcomeRef" in dispute:
+                return result("indeterminate", "DRAA-7", "prior dispute revisions are not resolved by this pack")
         else:
             # DRD-2: a basis naming neither artifact resolves to nothing.
-            return result("rejected", "DRD-2", "decision has no authenticated evaluation or dispute basis")
+            return result("fail", "DRD-2", "decision has no authenticated evaluation or dispute basis")
         # The shape stage closed the disposition set to these two values.
         if disposition == "release-to-provider":
             if terminal_state != "released" or action != "complete":
-                return result("rejected", "DRD-5", "release decision maps to a non-release action")
+                return result("fail", "DRD-5", "release decision maps to a non-release action")
             if terminal.get("disposition") != disposition or terminal.get("recipient") != accounts["seller"]:
-                return result("rejected", "DRT-5", "release recipient or disposition mismatch")
+                return result("fail", "DRT-5", "release recipient or disposition mismatch")
             if projection["releaseAloneEstablishesNonFinancialCompletion"]:
                 return result(
-                    "rejected",
+                    "fail",
                     "DRL-6",
                     "financial release overclaims non-financial completion",
                 )
         else:
             if terminal_state != "rejected-refund" or action != "reject":
-                return result("rejected", "DRD-6", "refund decision maps to a non-rejection action")
+                return result("fail", "DRD-6", "refund decision maps to a non-rejection action")
             if terminal.get("disposition") != disposition or terminal.get("recipient") != accounts["buyer"]:
-                return result("rejected", "DRT-6", "refund recipient or disposition mismatch")
+                return result("fail", "DRT-6", "refund recipient or disposition mismatch")
+        ordering = _decision_ordering_check(value, terminal_observation["blockTimestampSec"])
+        if ordering:
+            return ordering
     else:
         if terminal_state != "expired-refund" or action != "claimRefund":
-            return result("rejected", "DRT-3", "decisionless terminal action is not expiry refund")
+            return result("fail", "DRT-3", "decisionless terminal action is not expiry refund")
         if "decisionRef" in terminal or native.get("reason") is not None:
-            return result("rejected", "DRD-7", "expiry recovery manufactures an evaluator decision")
+            return result("fail", "DRD-7", "expiry recovery manufactures an evaluator decision")
         if terminal.get("disposition") != "refund-to-client" or terminal.get("recipient") != accounts["buyer"]:
-            return result("rejected", "DRT-6", "expiry refund recipient mismatch")
-        if value["submittedBeforeCutoff"] != ("deliveryEvidenceRef" in terminal):
-            return result("rejected", "DRT-12", "expiry delivery-reference presence does not match submission state")
+            return result("fail", "DRT-6", "expiry refund recipient mismatch")
+        if submitted != ("deliveryEvidenceRef" in terminal):
+            return result("fail", "DRT-12", "expiry delivery-reference presence does not match submission state")
 
     return _native_event_semantics_check(value)
 
@@ -2177,7 +3221,7 @@ def _terminal_replay_check(
     for prior in current.attested:
         conflict = terminal_conflict(TerminalRecord(*prior), current)
         if conflict:
-            return result("rejected", *conflict)
+            return result("fail", *conflict)
     undecided = []
     for other in ledger.terminals():
         conflict = terminal_conflict(other, current)
@@ -2189,7 +3233,7 @@ def _terminal_replay_check(
         elif not precedes and current[:3] not in other.attested:
             undecided.append((conflict[0], "a later conflicting terminal's attested history omits this terminal"))
         elif precedes:
-            return result("rejected", *conflict)
+            return result("fail", *conflict)
     if undecided:
         return result("indeterminate", *undecided[0])
     return None
@@ -2206,13 +3250,16 @@ def _protocol_stages(
     """
     return (
         ("artifact-shape", lambda: _artifact_shape_check(value["artifacts"])),
+        ("rail", lambda: _rail_check(value)),
         ("pipeline", lambda: _pipeline_check(value)),
         ("agreement", lambda: _agreement_check(value)),
         ("component-signatures", lambda: _component_signature_check(value)),
         ("selected-rail", lambda: _selected_rail_check(value)),
+        ("evaluation-rule", lambda: _evaluation_rule_check(value)),
         ("references", lambda: _reference_check(value)),
         ("resolver-evidence", lambda: _resolver_evidence_check(value)),
         ("finding", lambda: _finding_check(value)),
+        ("evaluation", lambda: _evaluation_check(value)),
         ("canonical-records", lambda: _canonical_record_check(value)),
         ("delivery-binding", lambda: _delivery_binding_check(value)),
         ("resolver-statuses", lambda: _external_evidence_check(value)),
@@ -2280,7 +3327,7 @@ def _contained_lifecycle_check(value: Any) -> dict[str, str] | None:
 
 def _replay_verdict(terminal: TerminalRecord, ledger: DecisionLedger) -> dict[str, str]:
     return _terminal_replay_check(terminal, ledger) or result(
-        "verified", "DRV-7", "all applicable candidate checks passed"
+        "pass", "DRV-7", "all applicable candidate checks passed"
     )
 
 
@@ -2421,14 +3468,17 @@ def deployment_rule_statuses(manifest: Any) -> dict[str, str] | None:
     else:
         statuses["DRC-6"] = "fail"
 
+    # DRC-7: the per-job hook is the zero address and none can be attached
+    # later, so an immutable non-zero hook fails too.
     hook_mode = capabilities.get("hookMode")
     statuses["DRC-7"] = "unknown" if hook_mode is None else (
-        "pass" if isinstance(hook_mode, str) and hook_mode in {"absent", "immutable-nonblocking"} else "fail"
+        "pass" if hook_mode == "absent" else "fail"
     )
 
     token = capabilities.get("paymentTokenSemantics")
     token_flags = (
-        "transferFees", "rebasing", "callbacks", "pause", "blacklist", "externalBalanceMutation"
+        "transferFees", "rebasing", "callbacks", "pause", "blacklist", "upgradeable",
+        "externalBalanceMutation",
     )
     if not isinstance(token, dict) or any(token.get(name) is None for name in token_flags) or token.get("independentlyVerified") is None:
         statuses["DRC-8"] = "unknown"
@@ -2554,11 +3604,11 @@ def evaluate_deployment(manifest: Any) -> dict[str, Any]:
         key=lambda item: int(item.split("-")[1]),
     )
     if failed:
-        outcome: dict[str, Any] = result("rejected", failed[0], "failed deployment rules: " + ", ".join(failed))
+        outcome: dict[str, Any] = result("fail", failed[0], "failed deployment rules: " + ", ".join(failed))
     elif unknown:
         outcome = result("indeterminate", unknown[0], "unresolved deployment rules: " + ", ".join(unknown))
     else:
-        outcome = result("verified", "DRC-1..DRC-13", "all candidate deployment capability rules passed")
+        outcome = result("pass", "DRC-1..DRC-13", "all candidate deployment capability rules passed")
     outcome["ruleStatuses"] = statuses
     # Capability predicates come from the manifest itself.  Its own
     # fixtureOnly and registrationStatus labels cannot establish eligibility;
@@ -2584,8 +3634,22 @@ def verify_vector_pack(pack: Any) -> list[str]:
     }
     if not required.issubset(pack):
         return ["candidate vector pack is missing required top-level fields"]
-    if pack["sourcePins"] != VECTOR_SOURCE_PINS:
+    pins = pack["sourcePins"]
+    dacs = pins.get("dacs") if isinstance(pins, dict) else None
+    if (
+        not isinstance(dacs, dict)
+        or set(pins) != {"external", "dacs"}
+        or pins["external"] != EXTERNAL_SOURCE_PINS
+        or set(dacs) != {"checkedAgainst", "documents"}
+        or dacs["checkedAgainst"] != DACS_CHECKED_AGAINST
+        or not isinstance(dacs["documents"], dict)
+        or set(dacs["documents"]) != set(PINNED_DOCUMENTS)
+    ):
         return ["candidate vector pack source pins are not the verifier's"]
+    current = document_pins()
+    changed = [path for path in PINNED_DOCUMENTS if dacs["documents"][path] != current[path]]
+    if changed:
+        return [f"pinned document {path} differs from the checkout" for path in changed]
     errors: list[str] = []
     vectors = pack.get("vectors")
     if not isinstance(vectors, list) or not vectors:
@@ -2608,10 +3672,23 @@ def verify_vector_pack(pack: Any) -> list[str]:
             for rule, reason in blocked.items()
         ):
             errors.append(f"{field} must map rule IDs to non-empty reasons")
-    if isinstance(pack["promotionBlockedRules"], dict) and isinstance(pack["promotionBlockedProofs"], dict) and (
-        set(pack["promotionBlockedRules"]) & set(pack["promotionBlockedProofs"])
-    ):
-        errors.append("a rule cannot be both unexecuted and proof-blocked")
+    if isinstance(pack["promotionBlockedRules"], dict) and isinstance(pack["promotionBlockedProofs"], dict):
+        blocked_rules = set(pack["promotionBlockedRules"]) | set(pack["promotionBlockedProofs"])
+        if set(pack["promotionBlockedRules"]) & set(pack["promotionBlockedProofs"]):
+            errors.append("a rule cannot be both unexecuted and proof-blocked")
+        # A `pass` vector's rules are the rules it proves; a rule whose proof
+        # is blocked is never among them.
+        claimed = {
+            rule
+            for vector in vectors
+            if isinstance(vector, dict) and vector.get("expected") == "pass" and isinstance(vector.get("rules"), list)
+            for rule in vector["rules"]
+            if isinstance(rule, str)
+        }
+        if claimed & blocked_rules:
+            errors.append(
+                "a pass vector claims a promotion-blocked rule: " + ", ".join(sorted(claimed & blocked_rules))
+            )
     names: set[str] = set()
     by_name: dict[str, dict[str, Any]] = {}
     for vector in vectors:

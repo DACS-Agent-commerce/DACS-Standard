@@ -196,6 +196,22 @@ class ListingArtifactDispatchTests(unittest.TestCase):
                 ok, _ = listing_artifact.validate_sealed_session_deadline(bad, 100_000_000)
                 self.assertFalse(ok)
 
+    def test_sealed_session_deadline_rejects_wrong_typed_kinds(self):
+        sealed = {"kind": "negotiate-sealed-envelope", "parameters": {"commitDeadline": 100_060_000}}
+        for kind in ({}, {"kind": "negotiate-sealed-envelope"}, [], ["negotiate-sealed-envelope"],
+                     None, 0, 1.5, True):
+            for pipeline in ([{"kind": kind}], [copy.deepcopy(sealed), {"kind": kind}]):
+                with self.subTest(kind=kind, after_sealed=len(pipeline) > 1):
+                    self.assertEqual(
+                        listing_artifact.validate_sealed_session_deadline(
+                            {"pipeline": pipeline}, 100_000_000),
+                        (False, "invalid pipeline"),
+                    )
+        self.assertEqual(
+            listing_artifact.validate_sealed_session_deadline({"pipeline": [{}]}, 100_000_000),
+            (False, "invalid pipeline"),
+        )
+
     def test_listing_window_is_one_trusted_instant(self):
         listing = {"validity": {"notBefore": 100, "notAfter": 200}}
         self.assertTrue(listing_artifact.validate_listing_window(listing, 150)[0])

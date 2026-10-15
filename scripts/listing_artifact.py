@@ -116,9 +116,9 @@ def validate_sealed_session_deadline(listing, session_start):
         if not isinstance(pipeline, list):
             return False, "invalid pipeline"
         for step in pipeline:
-            if not isinstance(step, dict):
+            if not isinstance(step, dict) or not isinstance(step.get("kind"), str):
                 return False, "invalid pipeline"
-            if step.get("kind") not in {
+            if step["kind"] not in {
                 "negotiate-sealed-envelope",
                 "negotiate-sealed-envelope-procurement",
                 *COMPLETE_SEALED_NEGOTIATIONS,

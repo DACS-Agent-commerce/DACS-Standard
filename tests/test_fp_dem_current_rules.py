@@ -1,21 +1,64 @@
+import collections
 import importlib.util
 import re
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 MAP = ROOT / "docs" / "fp-dem-current-rules.md"
-SCRIPT_PATH = ROOT / "scripts" / "validate_rule_id_index.py"
+PIN = "df7bc202ebdc179a59d61a8221072f33f482b933"
+MODULES = ("CORE.md", "DACS-1-IDENTIFY.md", "DACS-2-VET.md", "DACS-3-NEGOTIATE.md",
+           "DACS-4-SETTLE.md", "DACS-5-VERIFY.md", "CONFORMANCE-PLAN.md")
+# Other rails, alternative payment, other negotiation patterns, metered pricing,
+# private negotiation channels and attested-payload delivery are outside FP-DEM.
+EXCLUDED = {"AMEND", "AP2", "APR", "DPA", "HTLC", "MTR", "RFQ", "SAC", "SE", "X402", "CH"}
+RULE = r"[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)?-?\d+"
 
 
-def load_index_validator():
-    spec = importlib.util.spec_from_file_location("validate_rule_id_index", SCRIPT_PATH)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def rule_family(rule):
+    return re.sub(r"\d+$", "", rule).rstrip("-")
+
+
+def definition_sections(sources):
+    """Locate definition labels, excluding incidental references and code comments."""
+    result = collections.defaultdict(set)
+    for name, text in sources.items():
+        section = None
+        for line in text.splitlines():
+            heading = re.match(r"^#{2,6}\s+(?:Chapter\s+)?§?([A-C]?\.?\d[\w.]*)", line)
+            if heading:
+                section = heading[1].rstrip(".")
+            labels = []
+            label = re.match(rf"^\s*(?:-\s+|\d+[a-z]?\.\s+)?(?:\*\*)?\(({RULE})\)", line)
+            if label:
+                labels = [label[1]]
+            if ("A conforming publisher MUST:" in line or "A conforming reader MUST:" in line
+                    or (line.startswith("**Conformance") and "MUST:" in line)):
+                labels = re.findall(rf"\(({RULE})\)", line)
+            if name == "CORE.md":
+                for prefix, rule in (
+                    ("**Rule CF-4 ", "CF-4"),
+                    ("- **Unicode normalisation (rule CF-1)", "CF-1"),
+                    ("- **Raw JSON admission (rule CF-5)", "CF-5"),
+                    ("- **Canonical decimal (rule CD-1)", "CD-1"),
+                ):
+                    if line.startswith(prefix):
+                        labels = [rule]
+            if line.startswith("**Phase disclosure."):
+                labels = re.findall(r"\((GOV-\d+)\)", line)
+            if line.startswith("**Reuse / caching."):
+                labels = ["VP-C1"]
+            if line.startswith("**Exact current delivery mapping (PDE-8)"):
+                labels = ["PDE-8"]
+            if name == "DACS-2-VET.md" and line.startswith("| ("):
+                labels = re.findall(rf"\(({RULE})\)", line)[:1]
+            for rule in labels:
+                if rule_family(rule) not in EXCLUDED:
+                    result[rule].add(section)
+    return dict(result)
 
 
 def table_rows(text, heading):
@@ -33,28 +76,48 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.text = MAP.read_text(encoding="utf-8")
-        cls.index = load_index_validator()
-        cls.secmap = cls.index.section_text()
+        cls.sources = {
+            name: subprocess.run(["git", "-C", str(ROOT), "show", f"{PIN}:spec/{name}"],
+                                 capture_output=True, text=True, check=True).stdout
+            for name in MODULES
+        }
+        cls.definitions = definition_sections(cls.sources)
 
-    def test_each_family_points_at_its_defining_section(self):
-        rows = table_rows(self.text, "## Current rules")
-        self.assertGreater(len(rows), 20)
-        checked = 0
-        for _stage, sections, families, _covers in rows:
-            refs = [s.rstrip(".") for s in re.findall(r"§([\w.]+)", sections)]
-            self.assertTrue(refs, f"row without a section: {sections!r}")
-            for ref in refs:
-                self.assertIn(ref, self.secmap, f"§{ref} is not a spec section")
-            if families == "—":
+    def test_each_rule_points_at_all_its_defining_sections_in_pinned_spec(self):
+        self.assertIn(f"`{PIN[:7]}`", self.text)
+        actual = {}
+        for _stage, sections, rules, _covers in table_rows(self.text, "## Current rules"):
+            if rules == "—":
                 continue
-            for family in re.findall(r"([A-Z][A-Z0-9-]*?)-?\*", families):
-                with self.subTest(family=family, sections=sections):
-                    cited = max(len(self.index.covered_numbers(family, ref, self.secmap)) for ref in refs)
-                    ranked = self.index.defining_sections(family, self.secmap)
-                    self.assertGreater(cited, 0)
-                    self.assertGreaterEqual(cited, ranked[0][0])
-                    checked += 1
-        self.assertGreater(checked, 30)
+            refs = set(re.findall(r"§([\w.]+)", sections))
+            self.assertTrue(refs)
+            self.assertNotIn("*", rules)
+            for rule in re.findall(RULE, rules):
+                self.assertNotIn(rule, actual, f"duplicate rule {rule}")
+                actual[rule] = refs
+        self.assertEqual(actual, self.definitions)
+        self.assertEqual(actual["DV-5"], {"9.6.2"})
+        self.assertEqual(actual["DV-6"], {"9.6.2"})
+        self.assertEqual(actual["PDE-8"], {"9.7.0", "10.4.3"})
+        self.assertEqual(actual["CD-1"], {"B.2"})
+
+    def test_definition_locator_covers_the_full_applicable_rule_inventory(self):
+        # Independently enumerate labels with the repo's existing rule-ID validator,
+        # so a missed definition format cannot silently reduce map coverage.
+        path = ROOT / "scripts" / "validate_rule_ids.py"
+        sys.path.insert(0, str(path.parent))
+        spec = importlib.util.spec_from_file_location("map_rule_ids", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        labels = module.defined_rule_ids("\n".join(self.sources.values()))
+        expected = {rule for rule in labels if rule_family(rule) not in EXCLUDED}
+        self.assertEqual(set(self.definitions), expected)
+
+    def test_issue_330_is_dispositioned_against_current_delivery_contract(self):
+        disposition = self.text.split("Issue #330 also remains open.", 1)[1]
+        for text in ("DeliveryEvidence", "PDE-5", "DV-5", "PDE-8", "§9.7", "§9.6.2", "§10.4.3"):
+            self.assertIn(text, disposition)
+        self.assertIn("without asserting a remaining normative defect", disposition)
 
     def test_gaps_name_issues_or_pull_requests_by_number(self):
         rows = table_rows(self.text, "## Known gaps")

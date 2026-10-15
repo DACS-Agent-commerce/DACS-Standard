@@ -24,52 +24,96 @@ DACS-5.
 
 ## Current rules
 
-Rules are listed by labelled family, defined mainly in the cited section.
-Some families span other sections. "—" marks a section whose procedure has no
-labelled family. The "Covers" wording follows the [rule-ID index](rule-id-index.md).
+Each rule ID is paired with its defining section at the pinned revision.
+Rules sharing a section occupy one row; split families have separate rows.
+"—" points to a procedure or contract without a labelled rule family.
+The "Covers" wording follows the [rule-ID index](rule-id-index.md).
 
-| Stage | Section | Rule families | Covers |
-|-------|---------|---------------|--------|
-| Shared | §B.1 | JID-* | Job identifier grammar and equality |
-| Shared | §B.1 / §B.2 | CF-* | Canonical form and raw JSON admission |
-| Shared | §B.7 | SIG-* | Domain-separated signatures |
-| Shared | §B.8 | SN-* | Session-nonce provenance |
-| Shared | §5.1 | SR2-* | SR-2 writes, receipts, and logical-to-native resolution |
-| Identify | §6.3.2 | BP-*, BR-* | IdentityBundle producers and readers |
-| Identify | §6.3.2.1 | IT-* | Identity-tier derivation |
-| Identify | §6.3.3 | MA-* | Bundle-requirement matching |
-| Identify | §6.3.4 | LP-*, LR-* | Listing publishers and readers |
-| Identify | §6.3.4 | LRR-* | Listing-time rail resolution and pay-phase binding |
-| Identify | §6.3.4 | RB-*, RSC-* | Listing revocation markers and revocation state |
-| Vet | §7.8 | VPC-* | Vet phase contract, where the pipeline has Vet phases |
+Conditional rules remain conditional: the Vet methods, registry anchoring,
+private delivery, credential handover, fee disclosure, reputation modes and
+implementation reporting below apply only where their source sections say so.
+This map does not select those options. Other payment rails, alternative
+payment selection, other negotiation patterns, metered pricing, private
+negotiation channels and attested-payload delivery are outside this shape.
+
+| Stage | Section | Rule IDs | Covers |
+|-------|---------|----------|--------|
+| Shared | §5.1 | SR2-1, SR2-2, SR2-3, SR2-4, SR2-5, SR2-6, SR2-7, SR2-8, SR2-9, SR2-10, SR2-11, SR2-12, SR2-13 | SR-2 write lifecycle, portable receipts, logical-to-native resolution, bounded discovery, visibility separation, and stage gates |
+| Shared | §11.1.1 | GOV-1 | Registry governance & phase disclosure |
+| Shared | §B.1 | CF-2, CF-3, CF-4 | Canonical form, raw JSON admission, and logical-address encoding |
+| Shared | §B.1 | JID-1, JID-2, JID-3, JID-4 | Canonical byte-exact job identifier grammar, derivation gate, and equality |
+| Shared | §B.2 | CD-1 | Canonical decimal handling |
+| Shared | §B.2 | CF-1, CF-5 | Canonical form, raw JSON admission, and logical-address encoding |
+| Shared | §B.2 | IBH-1, IBH-2, IBH-3, IBH-4, IBH-5, IBH-6 | Identity-bound agreement digest derivation, authenticated companion joins, and cross-stage enforcement |
+| Shared | §B.7 | SIG-1, SIG-2, SIG-3, SIG-4, SIG-5, SIG-6 | Universal domain-separated signatures |
+| Shared | §B.8 | SN-1, SN-2, SN-3, SN-4 | Session-nonce provenance (verifier-generated anti-replay) |
+| Identify | §6.3.1 | DCR-1, DCR-2, DCR-3, DCR-4, DCR-5, DCR-6, DCR-7, DCR-8 | Canonical DNS-domain identity, Demos legacy alias compatibility, deduplication, metadata, and control boundary |
+| Identify | §6.3.2 | BP-1, BP-2, BP-3, BP-4 | Bundle producers for IdentityBundle |
+| Identify | §6.3.2 | BR-1, BR-2, BR-3, BR-4, BR-5 | Bundle readers for IdentityBundle |
+| Identify | §6.3.2.1 | IT-1, IT-2, IT-3 | Deterministic identity-tier derivation |
+| Identify | §6.3.3 | MA-1, MA-2, MA-3 | Bundle-requirement matching |
+| Identify | §6.3.3 | PCR-1, PCR-2, PCR-3, PCR-4, PCR-5, PCR-6 | Presence-only ClaimRequirement matching, mixed Vet aggregation, and control/tier boundary |
+| Identify | §6.3.4 | LP-1, LP-2, LP-3, LP-4, LP-5, LP-6, LP-7 | Listing publishers |
+| Identify | §6.3.4 | LR-1, LR-2, LR-3 | Listing readers |
+| Identify | §6.3.4 | LRR-1, LRR-2, LRR-3, LRR-4, LRR-5, LRR-6 | Listing-time canonical payment-rail resolution and pay-phase binding |
+| Identify | §6.3.4 | RB-1, RB-2, RB-3, RB-4, RB-5, RB-6 | Listing-revocation marker binding, retained discovery, and fail-closed resolution |
+| Identify | §6.3.4 | RSC-1, RSC-2, RSC-3, RSC-4, RSC-5, RSC-6, RSC-7, RSC-8, RSC-9, RSC-10 | Current listing-revocation state head, append-only completeness proofs, and new-session admission |
+| Vet (if present) | §7.3.1 | CM-1, CM-2, CM-3, CM-4, CM-5 | Content-addressed anchoring |
+| Vet (if present) | §7.3.10 | DGCR-1, DGCR-2, DGCR-3, DGCR-4, DGCR-5, DGCR-6 | Persistent Demos GCR domain verification |
+| Vet (if present) | §7.4.1 | PRA-1, PRA-2, PRA-3, PRA-4, PRA-5 | Recipe parser applicability and selected-method execution |
+| Vet (if present) | §7.4.1 | PSP-1, PSP-2, PSP-3, PSP-4, PSP-5 | ParserSpec parse/match semantics |
+| Vet (if present) | §7.4.3 | RA-1, RA-2, RA-3, RA-4, RA-5, RA-6 | Recipe-family authoring and resolution |
+| Vet (if present) | §7.4.4 | GOV-2, GOV-3 | Registry governance & phase disclosure |
+| Vet (if present) | §7.4.4 | PA-1, PA-2, PA-3 | Progressive-anchoring phases |
+| Vet (if present) | §7.4.5 | RAV-1, RAV-2, RAV-3, RAV-4, RAV-5, RAV-6, RAV-7 | Recipe availability values and consumers |
+| Vet (if present) | §7.6.1 | VP-C1, VP-C2, VP-C3 | VerifyResult caching semantics |
+| Vet (if present) | §7.6.1 | VP-R1, VP-R2, VP-R3, VP-R4 | VerifyResult retry semantics |
+| Vet (if present) | §7.7 | WN-1, WN-2, WN-3, WN-4, WN-5, WN-6 | Verification warnings |
+| Vet (if present) | §7.7.1 | CRQ-1, CRQ-2, CRQ-3, CRQ-4 | ClaimRequirement candidate qualification before aggregation |
+| Vet (if present) | §7.8.1 | VPC-1, VPC-2, VPC-3, VPC-4, VPC-5 | Vet phase contract |
+| Negotiate | §8.5.3 | FS-1, FS-2, FS-3, FS-4, FS-5 | FeeSchedule disclosure on agreement artifacts |
+| Negotiate | §8.6 | CA-1, CA-2, CA-3, CA-4, CA-5, CA-6, CA-7, CA-8, CA-9, CA-10 | Agreement commitment phase validation |
+| Negotiate | §8.8 | PS-1, PS-2, PS-3 | Negotiation pattern selection |
+| Settle | §9.4.3 | RD-1, RD-2, RD-3, RD-4, RD-5, RD-6, RD-7 | Rail definition authoring and finality-profile requirements |
+| Settle | §9.4.4 | RAV-R1, RAV-R2, RAV-R3, RAV-R4, RAV-R5 | Rail availability values and orchestrators |
+| Settle | §9.5.1 | LAA-1, LAA-2, LAA-3, LAA-4, LAA-5, LAA-6, LAA-7 | Legacy agreement activation and historical-era admission |
+| Settle | §9.5.1 | PB-1, PB-2, PB-3 | Payee-destination binding (agreement carriage + identity-binding ladder + exact EIP-155 `cci-xm` rail applicability) |
+| Settle | §9.5.1 | PC-1, PC-2, PC-3, PC-4, PC-5, PC-6, PC-7 | Payment phase common contract |
+| Settle | §9.5.8 | SB-1, SB-2, SB-3 | Session-bound settlement evidence (full PC-2 address binding, signed event identity, deterministic projection, legacy replay, tx↔session binding, anti-double-count) |
+| Settle | §9.6.1 | DV-1, DV-2, DV-3, DV-4 | Deliverable access / privacy (private delivery, credential handover) |
+| Settle | §9.6.2 | DV-5, DV-6 | Deliverable access / privacy (private delivery, credential handover) |
+| Settle | §9.7.0 | FP-1, FP-2, FP-3, FP-4 | Final settlement data and transitive evidence/bundle propagation |
+| Settle | §9.7.0 | FRC-1, FRC-2, FRC-3, FRC-4, FRC-5, FRC-6, FRC-7, FRC-8, FRC-9, FRC-10, FRC-11 | Verifier-issued multi-authority finality resolution, retained conflict union, replay, and composite gating |
+| Settle | §9.7.0 | FV-1, FV-2, FV-3, FV-4, FV-5, FV-6, FV-7, FV-8, FV-9, FV-10 | Consumer-verifiable canonical settlement finality |
+| Settle | §9.7.0 | PDE-1, PDE-2, PDE-3, PDE-4, PDE-5, PDE-6, PDE-7 | Phase-bound delivery evidence, phase-indexed artifact addresses, exact entitlement-credential delivery binding, legacy reads, and DACS-5 one-to-one mapping |
+| Settle | §9.7.0, §10.4.3 | PDE-8 | Phase-bound delivery evidence, phase-indexed artifact addresses, exact entitlement-credential delivery binding, legacy reads, and DACS-5 one-to-one mapping |
+| Settle | §9.7.2 | FR-1, FR-2, FR-3, FR-4 | Disclosed-fee reconciliation (informational) |
+| Settle | §9.9.1 | PIPE-1, PIPE-2, PIPE-3, PIPE-4, PIPE-5, PIPE-6 | Pipeline shape and phase ordering |
+| Verify | §10.3.1 | ST-1, ST-2, ST-3, ST-4, ST-5, ST-6, ST-7, ST-8, ST-9, ST-10, ST-11 | Session state transitions |
+| Verify | §10.3.2 | SPA-1, SPA-2, SPA-3, SPA-4, SPA-5, SPA-6, SPA-7, SPA-8 | Signed participation admission, one-sided blame, and ordinary-rating admission |
+| Verify | §10.4 | LAB-1, LAB-2, LAB-3, LAB-4, LAB-5, LAB-6, LAB-7 | Current-use admission of original legacy bundle mappings and strictly pre-checkpoint receipts |
+| Verify | §10.4.2 | BB-1, BB-2, BB-3, BB-4, BB-5, BB-6, BB-7, BB-8 | Bundle logical→native binding (publication, carriage, verification, resolution, multiplicity-void, fail-closed, suppression diligence) |
+| Verify | §10.4.3 | SEB-1, SEB-2, SEB-3, SEB-4, SEB-5, SEB-6 | SettlementEvidence exact-set and phase-bijection validation |
+| Verify | §10.5 | AWT-1, AWT-2, AWT-3, AWT-4, AWT-5, AWT-6, AWT-7, AWT-8 | Standalone independently verified business-outcome occurrence window (narrower than combined current-use) |
+| Verify | §10.5.1 | CUAW-1, CUAW-2, CUAW-3, CUAW-4, CUAW-5, CUAW-6 | Exclusive composed current-use authenticated-window admission, all-job occurrence, and complete replay |
+| Verify | §10.5.1 | CUR-1, CUR-2, CUR-3, CUR-4, CUR-5, CUR-6, CUR-7, CUR-8 | Explicit all-or-nothing current-use dependency derivation and replay with its original window clock |
+| Verify | §10.5.1 | RSV-1, RSV-2, RSV-3, RSV-4 | SettlementEvidence semantic admission before reputation |
+| Verify | §10.6.1 | RT-1, RT-2 | Rating bounds and derivation handling |
+| Report | §14.10 | IM-1, IM-2, IM-3, IM-4, IM-5, IM-6, IM-7, IM-8 | Implementation manifest claims, capability status, and evidence |
 | Negotiate | §8.4.1 | — | `negotiate-fixed-price` procedure |
-| Negotiate | §8.5.1 | CD-* | Canonical decimal handling |
-| Negotiate | §8.5.3 | FS-* | `feeSchedule` disclosure |
-| Negotiate | §8.6 | CA-* | Agreement commitment phase validation |
-| Negotiate | §8.8 | PS-* | Negotiation pattern selection |
-| Settle | §9.4.3 | RD-* | Rail definitions and finality profiles |
-| Settle | §9.4.4 | RAV-R* | Rail availability |
-| Settle | §9.5.1 | PC-* | Payment phase common contract |
-| Settle | §9.5.1 | PB-* | Payee-destination binding |
-| Settle | §9.5.1 | LAA-* | Legacy agreement activation |
-| Settle | §9.5.8 | SB-* | Session-bound settlement evidence |
+| Negotiate | §8.5.1, §8.5.2 | — | Agreement serialisation and listing-conformance validation |
 | Settle | §9.5.9 | — | `pay-dem` procedure and `bft-final` finality |
-| Settle | §9.6.1 | DV-* | Deliverable access / privacy (private delivery, credential handover) |
-| Settle | §9.7.0 | FV-*, FRC-* | Consumer-verifiable finality and finality resolution |
-| Settle | §9.7.0 | FP-*, PDE-* | Final settlement data propagation and phase-bound delivery evidence |
-| Settle | §9.9.1 | PIPE-* | Pipeline shape and phase ordering |
-| Verify | §10.3.1 | ST-* | Session state transitions |
-| Verify | §10.3.2 | SPA-* | Signed participation admission |
-| Verify | §10.4.2 | BB-* | Bundle logical-to-native binding |
-| Verify | §10.4.3 | SEB-* | SettlementEvidence exact set and phase bijection |
-| Verify | §10.5.1 | RSV-* | SettlementEvidence admission before reputation |
-| Verify | §10.6.1 | RT-* | Rating bounds and derivation |
+| Settle | §9.6.1 | — | `deliver-storage-program` procedure |
+| Shared | §11.1.2 | — | Versioning and authenticated corrective-profile admission |
+| Verify | §10.4.1 | — | Bundle type, signature and required-signer validation |
 
 ## Known gaps
 
 Open issues, and open pull requests whose base is `next`, that affect the
 rows above, including related optional design work. All 33 open items were
-enumerated on 2026-10-15; the list has no issue-number cutoff.
+enumerated on 2026-10-15; the list has no issue-number cutoff. The disposition
+of #330 below was checked against the pinned specification and its open issue
+on 2026-10-16.
 
 | Number | Kind | Section | What is open |
 |--------|------|---------|--------------|
@@ -94,3 +138,11 @@ does not apply to the DEM rail.
 Two issues on this path are still open although pull requests for them have
 merged into `next`: #381 (§10.4; merged #391 and #417) and #382 (§9.7.0;
 merged #392 and #416).
+
+Issue #330 also remains open. Its original credential-delivery wire-binding
+concern is addressed in this revision by the distinct `DeliveryEvidence`
+shape (§9.7), PDE-5 (§9.7.0), DV-5 (§9.6.2), and PDE-8 (§10.4.3). Those sections
+separate current credential delivery from historical delivery-shaped
+`SettlementEvidence`. The issue body predates this shape and has no follow-up
+comments identifying a remaining gap. It is recorded here for reconciliation,
+without asserting a remaining normative defect or closing the issue.

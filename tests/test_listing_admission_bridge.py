@@ -228,6 +228,19 @@ class AdmitListingLegacyTests(unittest.TestCase):
         )
         self.assertEqual(verdict, "indeterminate")
 
+    def test_wrong_typed_boundary_is_unsupported(self):
+        for boundary in ({}, [], ["new-session"], None, 1, True):
+            with self.subTest(boundary=boundary):
+                self.assertEqual(
+                    listing_admission.admit_listing(
+                        self.listing,
+                        inclusion_key=self.key,
+                        session_boundary=boundary,
+                        native_binding=_native_binding(),
+                    ),
+                    ("indeterminate", "listing admission session boundary is unsupported", None),
+                )
+
     def test_native_cap_failure_is_rejected(self):
         verdict, reason, record = listing_admission.admit_listing(
             self.listing,

@@ -78,6 +78,10 @@ encoding. The four current sets containing integers beyond the CORE §B.2
 safe range use this mode, so a self-check can pass without changing vectors.
 This is a non-normative tooling choice.
 
+When the Standard supplies the verified encoding, the checker hashes the
+vendored copy under that encoding even if its own declared hash is stale or
+edited. Those changes report drift with exit 1.
+
 Both modes also compare type-strict parsed values: Unicode normalization,
 `1.0` versus `1`, and float zero-sign changes are drift. Numbers use Python's
 parsed values; spelling and precision lost during parsing are not compared.

@@ -32,7 +32,8 @@ any of these differ:
   Numbers compare as parsed Python values, preserving int/float types; numeric
   spelling and precision lost during parsing are not compared. Canonical
   hashing ignores member order; the fallback must reproduce a declared hash
-  under a validator-accepted encoding;
+  under a validator-accepted encoding. The Standard's verified encoding can
+  also hash a vendored copy whose own declared hash is stale or edited;
 - ``count``: the vendored ``count`` differs from the Standard's, or from the
   vendored ``vectors`` length;
 - ``hash``: the vendored declared ``hash`` differs from the Standard's;
@@ -249,7 +250,9 @@ def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
         raise BadInput(f"set {standard.name!r}: vectors are too deeply nested to compare") from exc
     comparison = "canonical-json-sha256+exact-json"
     note = None
-    uncheckable = standard.uncheckable or vendored.uncheckable
+    # The Standard's verified encoding remains usable after a vendored edit,
+    # even when the vendored copy no longer verifies its own declared hash.
+    uncheckable = standard.uncheckable or (vendored.uncheckable and not standard.declared_encodings)
     encoding = None
     hashes = {"standard": standard.content_hash, "vendored": vendored.content_hash}
     if standard.content_hash is not None and vendored.content_hash is not None:
@@ -274,6 +277,8 @@ def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
                 }
             except RecursionError as exc:
                 raise BadInput(f"set {standard.name!r}: vectors are too deeply nested to hash") from exc
+            except (TypeError, ValueError) as exc:
+                raise BadInput(f"set {standard.name!r}: vectors cannot be hashed using {encoding}: {exc}") from exc
             note = f"canonical_json unavailable ({note}); compared using {encoding}"
         else:
             comparison = "uncheckable"

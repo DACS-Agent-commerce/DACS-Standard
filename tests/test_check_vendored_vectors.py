@@ -175,6 +175,43 @@ class VendoredVectorDriftTests(unittest.TestCase):
                 self.assertIn("declared-encoding", CHECKER.render_text(report))
                 self.assertFalse(report["uncheckable"])
 
+    def test_fallback_vector_edit_with_stale_declared_hash_is_drift(self):
+        name = "wide-int-v0.1"
+        data = make_set(name, [{"input": BIG, "name": "original"}])
+        write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
+        write_json(self.vendored_set(name), data)
+        self.edit_vendored(name, lambda value: value["vectors"][0].update(name="edited"))
+        code, report = self.run_checker()
+        result = self.result_for(report, name)
+        self.assertEqual((code, result["status"], result["changes"]), (1, "drifted", ["vectors"]))
+        self.assertEqual(result["comparison"], "declared-encoding-sha256+parsed-json")
+        self.assertNotEqual(result["comparisonHash"]["standard"], result["comparisonHash"]["vendored"])
+        self.assertTrue(all(result["comparisonHash"].values()))
+        self.assertEqual(report["summary"]["uncheckable"], 0)
+
+    def test_fallback_declared_hash_edit_with_identical_vectors_is_drift(self):
+        name = "wide-int-v0.1"
+        data = make_set(name, [{"input": BIG}])
+        write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
+        write_json(self.vendored_set(name), dict(data, hash="0" * 64))
+        code, report = self.run_checker()
+        result = self.result_for(report, name)
+        self.assertEqual((code, result["status"], result["changes"]), (1, "drifted", ["hash"]))
+        self.assertEqual(result["comparison"], "declared-encoding-sha256+parsed-json")
+        self.assertEqual(result["comparisonHash"]["standard"], result["comparisonHash"]["vendored"])
+        self.assertEqual(result["comparisonHash"]["standard"], data["hash"])
+        self.assertEqual(report["summary"]["uncheckable"], 0)
+
+    def test_fallback_unencodable_vendored_copy_is_bad_input(self):
+        name = "wide-int-v0.1"
+        data = make_set(name, [{"input": BIG}])
+        write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
+        write_json(self.vendored_set(name), data)
+        self.edit_vendored(name, lambda value: value["vectors"][0].update(name="\ud800"))
+        code, report = self.run_checker()
+        self.assertEqual(code, 2)
+        self.assertIn("cannot be hashed", report["error"])
+
     def test_neither_hash_available_is_uncheckable(self):
         name = "wide-int-v0.1"
         data = make_set(name, [{"input": BIG}])
@@ -186,7 +223,7 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual((code, result["status"]), (2, "uncheckable"))
         self.assertTrue(report["uncheckable"])
         self.assertIn("no canonical or verified declared-encoding hash", result["comparisonNote"])
-        # A valid hash on only one side is insufficient for a match.
+        # A valid hash on the vendored side cannot choose the Standard's rule.
         write_json(self.vendored_set(name), make_set(name, [{"input": BIG}]))
         code, report = self.run_checker()
         self.assertEqual((code, self.result_for(report, name)["status"]), (2, "uncheckable"))

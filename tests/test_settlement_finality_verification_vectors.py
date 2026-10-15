@@ -2,8 +2,10 @@ import base64
 import copy
 import hashlib
 import json
+import re
 import subprocess
 import sys
+import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -168,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(208, self.data["count"])
+        self.assertEqual(241, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -281,6 +283,102 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 with mutant:
                     result = self.evaluate_case(case)
                 self.assertEqual("pass", result["decision"], result["reason"])
+
+    def test_isolating_cases_fail_a_verifier_missing_only_their_guard(self):
+        """Source mutants: each removes exactly one guard from the oracle.
+
+        A ``pass`` mutant verdict shows the case is otherwise valid; ``None``
+        requires only that the mutant's verdict differs from the expected one.
+        """
+        source = (ROOT / "scripts" / "settlement_finality_reference.py").read_text(encoding="utf-8")
+
+        def mutant(old, new, count):
+            self.assertEqual(count, source.count(old), old)
+            module = types.ModuleType("settlement_finality_guard_mutant")
+            module.__file__ = SFV.__file__
+            exec(compile(source.replace(old, new), SFV.__file__, "exec"), module.__dict__)
+            return module
+
+        guards = [
+            ('if _merkle_root(leaf_hash, proof["siblingHash"], proof["leafIndex"]) != proof["root"]:', "if False:", 1, "pass", [
+                "fv-transaction-proof-root-not-recomputed", "fv-event-proof-root-not-recomputed",
+                "fv-ap2-sr3-transaction-proof-root-not-recomputed", "fv-ap2-sr3-event-proof-root-not-recomputed",
+            ]),
+            ('hash_value(inclusion_header) != inclusion["id"]\n        or ', "", 2, "pass", [
+                "fv-inclusion-header-bytes-substitution", "fv-ap2-sr3-inclusion-header-bytes-substitution",
+            ]),
+            ('return "indeterminate", "SR-3 authenticated head observation is stale"', "pass", 1, "pass", [
+                "fv-ap2-sr3-native-head-stale-provider-fresh",
+            ]),
+            ('return "fail", "SR-3 authenticated head observation is from the future"', "pass", 1, "pass", [
+                "fv-ap2-sr3-native-head-future-provider-current",
+            ]),
+            ('if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != value:', "if False:", 1, "pass", [
+                "fv-evidence-signature-nonminimal-base64url", "fv-rail-signature-nonminimal-base64url",
+                "fv-agreement-signature-nonminimal-base64url", "fv-head-authority-signature-nonminimal-base64url",
+                "fv-bft-signature-nonminimal-base64url", "fv-provider-attestation-signature-nonminimal-base64url",
+            ]),
+            ('return "error", "unknown or malformed settlementFinality producer report value"', "pass", 1, None, [
+                "fv-producer-report-model-unknown", "fv-producer-report-depth-not-integer",
+                "fv-producer-report-depth-negative", "fv-producer-report-commitment-unknown",
+            ]),
+            ('return "indeterminate", f"trusted {name} unavailable"', "pass", 1, None, [
+                "fv-trusted-party-keys-unavailable", "fv-trusted-steward-keys-unavailable",
+                "fv-trusted-observation-authority-keys-unavailable", "fv-trusted-provider-authority-keys-unavailable",
+            ]),
+            ('return "error", f"malformed trusted {name}"', "pass", 1, None, [
+                "fv-trusted-party-keys-malformed", "fv-trusted-party-key-value-malformed",
+            ]),
+            ('return "error", "trusted validator set is empty"', "pass", 1, None, ["fv-bft-validator-set-empty"]),
+            ('return "error", "malformed trusted validator set member"', "pass", 1, "pass", [
+                "fv-bft-validator-set-member-malformed",
+            ]),
+            ('return "error", "malformed SR-3 receipt attestation locator"', "pass", 1, "pass", [
+                "fv-ap2-sr3-receipt-attestation-locator-not-https",
+            ]),
+            ("if expected_kind is not None and kind != expected_kind:\n        return False", "", 1, "pass", [
+                "fv-profile-settlement-kind-differs-from-model",
+            ]),
+            ('and observation.get("method") in {"light-client", "consensus-backed-proxy", "rpc-quorum"}\n', "", 1, "pass", [
+                "fv-profile-observation-method-unknown",
+            ]),
+            ('"keccak256": lambda preimage: keccak256(preimage).hex(),',
+             '"keccak256": lambda preimage: hashlib.sha3_256(preimage).hexdigest(),', 1, "pass", [
+                 "fv-htlc-keccak256-hashlock-is-sha3-256",
+             ]),
+            ('"keccak256": lambda preimage: keccak256(preimage).hex(),',
+             '"keccak256": lambda preimage: keccak256(preimage).hex(),\n    "sha3-256": lambda preimage: hashlib.sha3_256(preimage).hexdigest(),',
+             1, "pass", ["fv-htlc-hash-algorithm-sha3-256-unregistered"]),
+            ('return _result("error", "unsupported AP2 protocolVersion")', "pass", 1, "pass", [
+                "fv-ap2-protocol-version-unsupported", "fv-ap2-sr3-protocol-version-unsupported",
+            ]),
+        ]
+        for old, new, count, mutant_decision, names in guards:
+            module = mutant(old, new, count)
+            for name in names:
+                case = self.cases[name]
+                trust = merge(self.trust, case.get("trustedOverrides"))
+                with self.subTest(case=name):
+                    self.assertEqual(case["expected"], self.evaluate_case(case)["decision"])
+                    result = module.verify_finality(copy.deepcopy(case["input"]), trust)
+                    if mutant_decision is None:
+                        self.assertNotEqual(case["expected"], result["decision"], result["reason"])
+                    else:
+                        self.assertEqual(mutant_decision, result["decision"], result["reason"])
+
+    def test_ap2_fixtures_carry_the_pinned_ap2_protocol_version(self):
+        # One AP2 wire version across the repository: the FV oracle implements
+        # it, the FV corpus carries it, and the AP2 reference fixture pins it.
+        source = (TESTS / "test_ap2_reference_fixture.py").read_text(encoding="utf-8")
+        pinned = re.search(r'^PINNED_AP2_PROTOCOL_VERSION = "([^"]+)"$', source, re.M).group(1)
+        self.assertEqual(frozenset({pinned}), SFV.AP2_PROTOCOL_VERSIONS)
+        self.assertEqual(pinned, finality_fixtures.AP2_PROTOCOL_VERSION)
+        for case in self.data["vectors"]:
+            for ref in case["input"]["evidence"].get("paymentTxRefs", []):
+                if isinstance(ref, dict) and ref.get("kind") in {"ap2", "ap2-sr3"}:
+                    with self.subTest(case=case["name"]):
+                        expected = "1" if case["name"].endswith("protocol-version-unsupported") else pinned
+                        self.assertEqual(expected, ref["protocolVersion"])
 
     def test_every_finality_model_has_a_legitimate_control(self):
         controls = {

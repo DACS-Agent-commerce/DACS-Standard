@@ -46,16 +46,16 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
-| [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 39 | `error` / `fail` / `indeterminate` / `pass` |
+| [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 41 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
 | [`current-use-authenticated-window-v1.json`](current-use-authenticated-window-v1.json) | DACS-5 unallocated CUAW-1..CUAW-6 composing CUR-1..CUR-8 and AWT-1..AWT-8 | 15 | `indeterminate` / `pass` |
-| [`current-use-reputation-v1.json`](current-use-reputation-v1.json) | DACS-5 unallocated current-use candidate §10.4 LAB-1..LAB-7 and §10.5.1 CUR-1..CUR-8 | 32 | `fail` / `indeterminate` / `pass` |
+| [`current-use-reputation-v1.json`](current-use-reputation-v1.json) | DACS-5 unallocated current-use candidate §10.4 LAB-1..LAB-7 and §10.5.1 CUR-1..CUR-8 | 34 | `fail` / `indeterminate` / `pass` |
 | [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 63 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
-| [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 19 | `error` / `fail` / `indeterminate` / `pass` |
+| [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 398 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
 | [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 166 | `error` / `fail` / `indeterminate` / `pass` |
@@ -68,7 +68,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
-| [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 151 | `error` / `fail` / `indeterminate` / `pass` |
+| [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 156 | `error` / `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 60 | `error` / `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
@@ -91,7 +91,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 208 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 241 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -439,7 +439,7 @@ python3 -m unittest tests.test_payload_attestation_vectors -v
 
 ### `phase-bound-delivery-evidence-v0.7.json` — §9.7 PDE-1..PDE-8
 
-151 deterministic vectors execute the current `DeliveryEvidence` wire contract
+156 deterministic vectors execute the current `DeliveryEvidence` wire contract
 and its DACS-5 one-to-one mapping through fully shaped, three-party-signed
 `FaultAttestationBundle` artifacts. The attested-delivery positives resolve and
 execute the DPA-3..DPA-9 payload/method-evidence chain, while the companion SEB
@@ -458,7 +458,9 @@ zero; legacy single/repeated delivery; and exact buyer-only/encrypt-to-buyer
 credential binding. Credential negatives cover missing/mismatched refs, access
 mode, cleartext/ciphertext digest substitution, renewal replay, unsupported
 valid/readable overclaims at nested and top-level positions, and unresolvable
-private content. Seven named field mutations cover every leaf of the signed
+private content. PDE-5 shape cases cover a non-object or extra-member binding,
+a malformed signed `credentialRef`, and a malformed list of supplied credential
+resolutions (all `error`). An absent list is `indeterminate`. Seven named field mutations cover every leaf of the signed
 `credentialDelivery` binding: `credentialRef.ref.anchor.kind`,
 `credentialRef.ref.anchor.locator`, `credentialRef.ref.contentHash`,
 `credentialRef.ref.signer`, `credentialRef.accessModel`,
@@ -1644,7 +1646,7 @@ current, mixed, and frozen historical verdict with
 
 ### `claim-requirement-qualification-v0.3.json` — §7.7.1 CRQ-1..CRQ-4
 
-39 candidate vectors for qualifying authenticated, resolved `VerifyResult`
+41 candidate vectors for qualifying authenticated, resolved `VerifyResult`
 objects against the complete applicable `ClaimRequirement` predicate before
 decision classification. The set covers exact positive matching, absent
 listing constraints with an implicit session-start version pin, competing old
@@ -1670,7 +1672,9 @@ Three same-claim alternative cases use a registry whose `lei` recipe lists
 With no selected method, one qualified pass from either method satisfies the
 member beside a current fail from the other; alternatives are OR, not
 corroboration. A listing that selects `tlsnotary` excludes a default-method
-pass.
+pass. Two further cases are `error` under CRQ-2: one registry gives two `lei`
+families `tlsnotary`, so ownership is ambiguous; in the other, the
+requirement pins a recipe version that does not list `tlsnotary`.
 
 The inputs begin after reference, hash, signature, recipe-authority,
 attestation, and governing freshness validation. Those failures retain their
@@ -1923,7 +1927,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
 
-208 candidate cases execute consumer-verifiable settlement finality for
+239 candidate cases execute consumer-verifiable settlement finality for
 block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
 liquidity-tank profiles. The consumer derives the model and strength from the
 exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
@@ -1956,6 +1960,46 @@ hashlock, preimage, amount and timelock relations from authenticated bytes.
 Liquidity-tank verifies coordinator, source and destination arms and exact bridge,
 transfer, asset and amount binding.
 
+Further cases isolate guards that another guard would otherwise decide. Each
+changes only unsigned bytes, verifier-owned trust input, or the one artifact
+it re-signs, and a source-mutant test shows that removing just that guard
+changes the verdict:
+
+- Merkle roots are recomputed from leaf and sibling, for chain and `ap2-sr3`
+  native proofs.
+- The inclusion header hashes to its id, so the header bytes cannot commit to
+  another transaction tree.
+- The `ap2-sr3` native head freshness is checked apart from provider
+  freshness.
+- Non-minimal Base64URL spellings of genuine signatures are rejected on every
+  envelope (CORE SIG-6).
+- Unknown producer-report values are `error` (FV-2).
+- Missing trusted key maps are `indeterminate`; malformed ones, and empty or
+  malformed pinned validator sets, are `error`.
+- The `ap2-sr3` receipt anchor must be `https` (AP2-2).
+- A profile's settlement kind must equal its model, and its observation method
+  must be registered.
+- HTLC hashlocks use the registered §9.14 identifiers `sha256` and
+  `keccak256`. Keccak-256 is distinct from FIPS SHA3-256, and `sha3-256` is
+  unregistered.
+- AP2 references carry the pinned AP2 `protocolVersion` `0.2`, the version
+  `tests/test_ap2_reference_fixture.py` pins. A version whose rules the
+  verifier does not implement is `error` (§9.5.6 step 6).
+
+Some joins belong to this fixture codec, not to DACS-4:
+
+- `networkId` is `eip155:<chainId>` for EVM and `solana:<cluster>` for Solana,
+  and the rail ↔ profile network join uses those forms. `solana:<cluster>` is
+  a DACS fixture spelling, not CAIP-2's genesis-hash form.
+- The AP2 `rail.network.providerEndpoint` must be an `https` URL.
+- The liquidity-tank `parameters.{bridgeId, transferId}` and the profile's
+  `bridgeId` are static fixture values. In the shipped Demos SDK, `bridgeId`
+  is per compiled operation (DEMOS-MAPPING §A.5), and DACS-4 defines no tank
+  rail parameters.
+
+A production binding must register its own mapping for each of these before
+it relies on them.
+
 The same corpus executes the distinct DACS-5 finality-bound bundle and pointer,
 all six FV models, exact per-successful-payment authenticated LAA carriers,
 four-state LAA non-pass propagation, new/new and new/older authenticated
@@ -1983,7 +2027,7 @@ python3 -m unittest tests.test_settlement_finality_verification_vectors -v
 
 ### `finality-resolution-context-v1.json` — DACS-4 §9.7.0 FRC-1..FRC-11
 
-Nineteen candidate cases execute the all-authorities finality resolution
+Twenty-eight candidate cases execute the all-authorities finality resolution
 context over the fixture-only `dacs-finality-synthetic-fixture-v1` binding.
 Every case carries its complete verifier input and names the entry point it
 runs:
@@ -2013,9 +2057,17 @@ that falls back to the single-view contract accepts both. A third refuses a
 resolution context under a re-signed profile that does not select the
 capability. The FRC-8 cases refuse genuinely signed, acquired responses
 whose `finalityObservationResponseVersion` or arm `status` is outside the
-closed type. The FRC-2 case presents a second validly signed evidence record
-for the same transaction with the query issued for the first. It fails even
-though each signed view verifies on its own.
+closed type, or that carry an extra member at the top level or in either arm.
+The FRC-2 case presents a second validly signed evidence record for the same
+transaction with the query issued for the first. It fails even though each
+signed view verifies on its own.
+
+Four FRC-5 cases corrupt one verifier-local acquisition record each: another
+query nonce, a status other than `obtained`, a duplicate response hash, or an
+authority other than the signed responder. An FRC-9 case carries an unknown
+replay-record version. A malformed authenticated resolution policy is `error`,
+not missing authority. A source-mutant test removes each guard and shows the
+verdict changes.
 
 Regenerate and execute from the repository root:
 
@@ -2027,7 +2079,7 @@ python3 -m unittest tests.test_finality_resolution_context_vectors -v
 
 ### `current-use-reputation-v1.json` — unallocated #391+#392 LAB-1..LAB-7 / CUR-1..CUR-8
 
-Thirty-two candidate fixtures drive the complete stronger DACS-5 consumer path. Six
+Thirty-four candidate fixtures drive the complete stronger DACS-5 consumer path. Six
 compose the finality-bound bundle consumer with every FV model, exact RSV and
 applicable SB-3 checks; the provider-receipt case remains classified as
 provisional capture. Two retain the complete original requests for the legacy
@@ -2079,6 +2131,10 @@ Thirteen more negatives cover the remaining authority inputs of the buyer copy:
   `historical-bb6-candidate-not-dereferenceable` (LAB-2, `indeterminate`): the
   original BB-6 candidate set also holds an authorized binding whose signature
   fails, or a valid one whose copy cannot be fetched.
+- `historical-original-party-map-not-authenticated` and
+  `historical-original-budget-differs` (LAB-2, `fail`): the request's original
+  selection context adds an unauthenticated party-map entry, or a per-signer
+  budget other than the verifier's.
 - `current-bb6-candidate-not-dereferenceable` (BB-7, `indeterminate`): the
   current selection holds a valid authorized binding whose copy cannot be
   fetched.

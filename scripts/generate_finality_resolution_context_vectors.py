@@ -91,6 +91,7 @@ def signed_response(
     signed_time: int | float = OBSERVED_AT,
     transport_metadata: dict | None = None,
     version: str = "1",
+    extra_members: dict | None = None,
 ) -> dict:
     response = {
         "finalityObservationResponseVersion": version,
@@ -108,6 +109,7 @@ def signed_response(
     }
     if transport_metadata is not None:
         response["transportMetadata"] = copy.deepcopy(transport_metadata)
+    response.update(copy.deepcopy(extra_members or {}))
     digest = response_signature_hash(response)
     response["signature"]["value"] = b64u(
         key.sign((RESPONSE_DOMAIN + digest).encode("ascii"))
@@ -781,6 +783,77 @@ def document() -> dict:
     def verify_input(case_value: dict, payload: dict) -> dict:
         return {"value": copy.deepcopy(case_value), "authority": copy.deepcopy(payload)}
 
+    # FRC-8: the response and both arms are closed member sets.  Each
+    # response is genuinely signed and acquired; only one member is extra.
+    def closed_member_input(authority_id: str, arm: dict, **options) -> dict:
+        response = signed_response(
+            keys[authority_id + "-key"],
+            authority_id=authority_id,
+            key_id=authority_id + "-key",
+            query=authority.issued_query,
+            checkpoint=checkpoint,
+            arm=arm,
+            **options,
+        )
+        return replace_seat(
+            value, positive_payload,
+            {"response": response, "acquisition": acquisition(response, nonce, ACQUIRED_AT)},
+            authority_id,
+        )
+
+    response_extra_member_input = closed_member_input(
+        "observer-a", {"status": "observed", "observation": observation},
+        transport_metadata={"arrivalSequence": 2, "channel": "fixture-a"},
+        extra_members={"finalityHint": "final"},
+    )
+    observed_arm_extra_member_input = closed_member_input(
+        "observer-a",
+        {"status": "observed", "observation": observation, "finalityHint": "final"},
+        transport_metadata={"arrivalSequence": 2, "channel": "fixture-a"},
+    )
+    unavailable_arm_extra_member_input = closed_member_input(
+        "observer-b",
+        {"status": "unavailable", "reason": "maintenance", "retryAfterMs": 1000},
+        signed_time=ACQUIRED_AT - 100,
+    )
+
+    # FRC-5: each verifier-local acquisition record names the issued nonce,
+    # an obtained status, one response hash and the signed responder.
+    def with_records(mutate) -> dict:
+        payload = copy.deepcopy(positive_payload)
+        mutate(payload["acquisitionRecords"])
+        case_value = copy.deepcopy(value)
+        case_value["context"]["replay"]["acquisitionRecords"] = copy.deepcopy(
+            payload["acquisitionRecords"]
+        )
+        return verify_input(case_value, payload)
+
+    def observer_a_record(records: list) -> dict:
+        return next(item for item in records if item["authorityId"] == "observer-a")
+
+    other_nonce_input = with_records(
+        lambda records: observer_a_record(records).__setitem__("queryNonce", "fixture-query-nonce-other")
+    )
+    not_obtained_input = with_records(
+        lambda records: observer_a_record(records).__setitem__("status", "failed")
+    )
+    duplicate_record_input = with_records(
+        lambda records: records.append(copy.deepcopy(observer_a_record(records)))
+    )
+    other_responder_input = with_records(
+        lambda records: observer_a_record(records).__setitem__("authorityId", "observer-b")
+    )
+
+    # FV entry: malformed verifier-owned policy material is error, not missing.
+    malformed_policy_payload = copy.deepcopy(positive_payload)
+    malformed_policy_payload["policy"]["authorities"][0]["verificationKeys"][0][
+        "publicKey"
+    ] = "not-a-key"
+
+    # FRC-9: the replay record's version discriminator is closed.
+    unknown_replay = replay_record(value, positive_payload)
+    unknown_replay["finalityResolutionReplayVersion"] = "2"
+
     vectors = [
         {"name": "complete-all-authorities", "expected": "pass",
          "operation": "verify",
@@ -898,6 +971,54 @@ def document() -> dict:
                  "validly signed evidence for the same transaction is presented "
                  "with that query and its responses",
          "input": verify_input(other_evidence_value, positive_payload)},
+        {"name": "response-extra-member", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires a response "
+                 "carrying an extra top-level member",
+         "input": response_extra_member_input},
+        {"name": "response-observed-arm-extra-member", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires an observed "
+                 "arm carrying an extra member",
+         "input": observed_arm_extra_member_input},
+        {"name": "response-unavailable-arm-extra-member", "expected": "error",
+         "operation": "verify",
+         "note": "observer-b genuinely signs and the verifier acquires an "
+                 "unavailable arm carrying an extra member",
+         "input": unavailable_arm_extra_member_input},
+        {"name": "acquisition-record-other-nonce", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a's verifier-local acquisition record names another "
+                 "query nonce than the issued query",
+         "input": other_nonce_input},
+        {"name": "acquisition-record-not-obtained", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a's verifier-local acquisition record status is not "
+                 "obtained",
+         "input": not_obtained_input},
+        {"name": "acquisition-record-duplicate-response-hash", "expected": "error",
+         "operation": "verify",
+         "note": "two verifier-local acquisition records name observer-a's "
+                 "response hash",
+         "input": duplicate_record_input},
+        {"name": "acquisition-authority-differs-from-responder", "expected": "fail",
+         "operation": "verify",
+         "note": "the verifier-local acquisition record for observer-a's signed "
+                 "response names observer-b",
+         "input": other_responder_input},
+        {"name": "resolution-authority-policy-malformed", "expected": "error",
+         "operation": "verify",
+         "note": "the authenticated verifier-owned policy names a seat key that is "
+                 "not a 32-byte Base64URL value",
+         "input": verify_input(value, malformed_policy_payload)},
+        {"name": "replay-record-version-unknown", "expected": "error",
+         "operation": "replay",
+         "note": "the retained replay record's finalityResolutionReplayVersion "
+                 "is \"2\"",
+         "input": {
+             "replayRecord": unknown_replay,
+             "authority": serialize_authority(replay_payload),
+         }},
     ]
     return {
         "set": "finality-resolution-context-v1",

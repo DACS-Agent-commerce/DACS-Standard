@@ -856,6 +856,50 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
                 with self.subTest(corroborating=name):
                     self.assertEqual("fail", evaluate(vectors[name]["input"], self.data))
 
+    def test_alternative_ownership_must_be_unique_and_pinned(self):
+        # CRQ-2: missing or ambiguous ownership is error, and an explicit pin
+        # must belong to the owning family and support the selected method.
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+        module = sys.modules[__name__]
+
+        def owners(registry, scheme, method):
+            return sorted({
+                definition["defaultMethod"]["kind"]
+                for definition in registry["recipeDefinitions"]
+                if definition["scheme"] == scheme
+                and method in _recipe_method_kinds(definition)
+            })
+
+        def first_owner(registry, scheme, method, explicit_version):
+            # Wrong implementation: ambiguity is resolved instead of refused.
+            if registry.get("recipeDefinitions") is None:
+                return method
+            found = owners(registry, scheme, method)
+            if method in found:
+                return method
+            if found:
+                return found[0]
+            raise QualificationError("recipe family cannot be resolved")
+
+        def any_version_owner(registry, scheme, method, explicit_version):
+            # Wrong implementation: any version listing the method owns it,
+            # whatever version the requirement pins.
+            if registry.get("recipeDefinitions") is None:
+                return method
+            found = owners(registry, scheme, method)
+            if len(found) != 1:
+                raise QualificationError("recipe family cannot be resolved")
+            return found[0]
+
+        for name, wrong in (
+            ("vet-claim-requirement-alternative-ownership-ambiguous", first_owner),
+            ("vet-claim-requirement-explicit-pin-lacks-alternative", any_version_owner),
+        ):
+            with self.subTest(vector=name):
+                self.assertEqual("error", evaluate(vectors[name]["input"], self.data))
+                with mock.patch.object(module, "_owning_family", wrong):
+                    self.assertEqual("pass", evaluate(vectors[name]["input"], self.data))
+
     def test_new_preflight_and_reuse_controls_are_decision_bearing(self):
         vectors = {vector["name"]: vector for vector in self.data["vectors"]}
 

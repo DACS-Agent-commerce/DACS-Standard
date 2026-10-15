@@ -92,7 +92,7 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
         cls.cases = {vector["name"]: vector for vector in cls.data["vectors"]}
 
     def test_set_hash_binds_the_complete_replay_inputs(self):
-        self.assertEqual(32, self.data["count"])
+        self.assertEqual(34, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         encoded = canonical(self.data["vectors"])
         self.assertEqual(
@@ -710,6 +710,32 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
         def retrievable(item, evidence, dependencies, verifier_config):
             return item.get("nativeAddress") in dependencies["bundlesByNativeAddress"]
 
+        def request_party_map():
+            # LAB-2 read as trusting the party map carried in the request.
+            def mapping(bundle, evidence, original, receipt, dependencies,
+                        verifier_config, role_map, signer_map):
+                return real_mapping(bundle, evidence, original, receipt, dependencies,
+                                    verifier_config, role_map,
+                                    original["selectionContext"]["partyMap"])
+
+            return mock.patch.object(
+                D5, "_verify_original_binding_mapping", side_effect=mapping
+            )
+
+        def request_budget():
+            # LAB-2 read as trusting the per-signer budget carried in the request.
+            def mapping(bundle, evidence, original, receipt, dependencies,
+                        verifier_config, role_map, signer_map):
+                verifier_config = {
+                    **verifier_config, "bb6Budget": original["selectionContext"]["budget"],
+                }
+                return real_mapping(bundle, evidence, original, receipt, dependencies,
+                                    verifier_config, role_map, signer_map)
+
+            return mock.patch.object(
+                D5, "_verify_original_binding_mapping", side_effect=mapping
+            )
+
         real_role = D5._resolve_current_use_role
 
         def current_retrievable(job, role, role_request, dependencies, verifier_config,
@@ -743,6 +769,8 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
             ),
             "historical-bb6-authorized-candidate-invalid": original_candidates(verifies),
             "historical-bb6-candidate-not-dereferenceable": original_candidates(retrievable),
+            "historical-original-party-map-not-authenticated": request_party_map(),
+            "historical-original-budget-differs": request_budget(),
             "current-bb6-candidate-not-dereferenceable": mock.patch.object(
                 D5, "_resolve_current_use_role", side_effect=current_retrievable
             ),

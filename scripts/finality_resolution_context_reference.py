@@ -365,12 +365,30 @@ def with_acquisition(
     )
 
 
-def _authority_shape(authority: Any) -> bool:
+def _authority_present(authority: Any) -> bool:
+    """An authenticated verifier-owned authority object; anything else is
+    missing authority (``indeterminate``), never malformed material."""
     return (
         is_dataclass(authority)
         and not isinstance(authority, type)
         and authority.__class__.__name__ == "FinalityResolutionAuthority"
         and authority.authenticated is True
+    )
+
+
+def _authority_classification(authority: Any, unavailable: str) -> dict | None:
+    """FV entry rule: missing trusted authority is ``indeterminate``;
+    malformed trusted material is ``error``."""
+    if not _authority_present(authority):
+        return {"decision": "indeterminate", "reason": unavailable}
+    if not _authority_shape(authority):
+        return {"decision": "error", "reason": "malformed verifier-owned resolution authority"}
+    return None
+
+
+def _authority_shape(authority: Any) -> bool:
+    return (
+        _authority_present(authority)
         and authority.mode in {"current", "replay"}
         and _policy_shape(authority.policy)
         and isinstance(authority.issued_query, dict)
@@ -658,8 +676,11 @@ def _verify_finality_resolution_context(
             or not isinstance(context.get("replay"), dict)
         ):
             return {"decision": "error", "reason": "malformed finality resolution context"}
-        if not _authority_shape(authority):
-            return {"decision": "indeterminate", "reason": "verifier-owned resolution authority unavailable"}
+        classification = _authority_classification(
+            authority, "verifier-owned resolution authority unavailable"
+        )
+        if classification is not None:
+            return classification
         if authority.mode != required_mode:
             return {
                 "decision": "indeterminate",
@@ -896,7 +917,12 @@ def replay_finality_resolution(
         "retainedResponses",
     }) or replay_record.get("finalityResolutionReplayVersion") != "1":
         return {"decision": "error", "reason": "malformed finality resolution replay record"}
-    if not _authority_shape(authority) or authority.mode != "replay":
+    classification = _authority_classification(
+        authority, "recorded replay authority unavailable"
+    )
+    if classification is not None:
+        return classification
+    if authority.mode != "replay":
         return {"decision": "indeterminate", "reason": "recorded replay authority unavailable"}
     if (
         replay_record["policy"] != authority.policy
@@ -956,12 +982,11 @@ def verify_composite_resolution(
             })
             continue
         authority = leg["authority"]
-        if not _authority_shape(authority):
-            results.append({
-                "decision": "indeterminate",
-                "reason": "composite leg authority unavailable",
-                "legId": leg["legId"],
-            })
+        classification = _authority_classification(
+            authority, "composite leg authority unavailable"
+        )
+        if classification is not None:
+            results.append({**classification, "legId": leg["legId"]})
             continue
         query = authority.issued_query
         if not _query_shape(query):

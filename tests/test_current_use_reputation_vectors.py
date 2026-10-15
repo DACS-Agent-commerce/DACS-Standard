@@ -302,7 +302,7 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
             text=True,
         )
         data = json.loads(VECTORS.read_text(encoding="utf-8"))
-        self.assertEqual(32, data["count"])
+        self.assertEqual(34, data["count"])
         self.assertEqual(data["count"], len(data["vectors"]))
         self.assertEqual(generator.document()["hash"], data["hash"])
         self.assertIn("Synthetic", data["fixturePolicy"])

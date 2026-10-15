@@ -1748,6 +1748,24 @@ def build_vectors() -> list[dict]:
     def unresolved(case: dict) -> None:
         case["credentials"][0]["available"] = False
     vectors.append(make("credential-well-formed-but-unresolvable", "indeterminate", "unavailability never becomes fail or readable", credential_case, unresolved))
+
+    # PDE-5 binding shape and credential resolution, one branch per case.
+    vectors.append(make("credential-binding-not-object", "error", "the signed credentialDelivery binding is not an object", credential_case, mutate_credential(lambda e: e.__setitem__("credentialDelivery", "bound"))))
+    vectors.append(make("credential-binding-extra-member", "error", "the signed credentialDelivery binding carries a member outside its closed shape", credential_case, mutate_credential(lambda e: e["credentialDelivery"].update({"credentialUri": "https://example.invalid/key"}))))
+
+    def malformed_credential_ref(case: dict) -> None:
+        record = case["artifactRecords"][0]["artifact"]
+        record["credentialRef"]["ref"].pop("contentHash")
+        case["evidenceRecords"][0]["artifact"]["credentialDelivery"]["credentialRef"] = copy.deepcopy(record["credentialRef"])
+        refresh_entitlement_chain(case, 0)
+    vectors.append(make("credential-ref-malformed", "error", "the signed entitlement and binding name a credentialRef without a content hash", credential_case, malformed_credential_ref))
+
+    def credentials_set(value: Any) -> Callable[[dict], None]:
+        def apply(case: dict) -> None:
+            case["credentials"] = value
+        return apply
+    vectors.append(make("credential-resolution-unavailable", "indeterminate", "no credential resolution is supplied for a bound credentialRef", credential_case, credentials_set(None)))
+    vectors.append(make("credential-resolution-malformed", "error", "the credential resolution list holds a non-object entry", credential_case, credentials_set(["not-an-object"])))
     vectors.append(make("entitlement-without-credential-needs-no-binding", "pass", "credentialDelivery is absent iff the entitlement has no credentialRef", lambda: credential_case(include_credential=False)))
 
     vectors.append(make("failure-delivery-omits-success-closure", "pass", "failure evidence does not require success-only deliverable closure", failed_storage_case))

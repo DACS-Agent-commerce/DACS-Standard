@@ -52,6 +52,9 @@ PAYMENT_PHASE_BY_MODEL = {
     "liquidity-tank": {"pay-cross-chain-liquidity-tank"},
 }
 KNOWN_MODELS = frozenset(PAYMENT_PHASE_BY_MODEL)
+# AP2 wire versions whose rules this reference implements (DACS-4 §9.5.6
+# step 6); equals tests/test_ap2_reference_fixture.py's pinned version.
+AP2_PROTOCOL_VERSIONS = frozenset({"0.2"})
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -176,6 +179,19 @@ def _public_key(keys: Any, signer: Any) -> bytes | None:
     return raw if len(raw) == 32 else None
 
 
+def _trusted_key_map(trusted: dict, name: str) -> tuple[str, str] | None:
+    """Classify one verifier-local key map: missing is ``indeterminate`` and
+    malformed is ``error`` (FV entry); a usable map returns ``None``."""
+    keys = trusted.get(name)
+    if keys is None:
+        return "indeterminate", f"trusted {name} unavailable"
+    if not isinstance(keys, dict) or any(
+        _public_key(keys, signer) is None for signer in keys
+    ):
+        return "error", f"malformed trusted {name}"
+    return None
+
+
 def _verify_ed25519(keys: Any, signer: Any, domain: str, digest: str, value: Any) -> bool:
     key = _public_key(keys, signer)
     if key is None or not _sha256(digest):
@@ -296,10 +312,13 @@ def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str
     signatures = agreement.get("signatures")
     if not isinstance(signatures, list) or len(signatures) != 2:
         return "error", "agreement signatures malformed", None
+    if any(not _signature_shape(signature, "party") for signature in signatures):
+        return "error", "malformed agreement signature", None
+    key_state = _trusted_key_map(trusted, "partyKeys")
+    if key_state is not None:
+        return key_state[0], key_state[1], None
     signed = set()
     for signature in signatures:
-        if not _signature_shape(signature, "party"):
-            return "error", "malformed agreement signature", None
         signer = signature["party"]
         if signer in signed or signer not in party_claims.values():
             return "fail", "agreement signer is duplicate or not a session party", None
@@ -476,6 +495,9 @@ def _verify_rail(rail: Any, evidence: dict, agreement_terms: dict, trusted: dict
         return "error", "malformed rail signature", None
     digest = artifact_hash(rail, "signature")
     signer = signature["signer"]
+    key_state = _trusted_key_map(trusted, "stewardKeys")
+    if key_state is not None:
+        return key_state[0], key_state[1], None
     if not _verify_ed25519(
         trusted.get("stewardKeys"), signer, RAIL_DOMAIN, digest, signature["value"]
     ):
@@ -547,6 +569,13 @@ def _report_shape(report: Any, profile: dict) -> tuple[str, str]:
         required.add("finalityCommitmentLevel")
     if set(report) != required or not _finite_time(report.get("finalityObservedAt")):
         return "error", "malformed settlementFinality producer report"
+    # FV-2: malformed or unknown echo values are error before any comparison.
+    if (
+        report.get("model") not in KNOWN_MODELS
+        or "finalityBlocks" in required and not _safe_integer(report.get("finalityBlocks"), positive=True)
+        or "finalityCommitmentLevel" in required and report.get("finalityCommitmentLevel") not in COMMITMENT_RANK
+    ):
+        return "error", "unknown or malformed settlementFinality producer report value"
     if report.get("model") != model:
         return "fail", "producer report model differs from signed rail profile"
     if model == "block-depth" and report.get("finalityBlocks") != profile["settlement"]["requiredDepth"]:
@@ -671,6 +700,9 @@ def _verify_evidence(evidence: Any, trusted: dict) -> tuple[str, str, dict | Non
     signature = evidence["signature"]
     if signature.get("signer") != session.get("phaseOrchestrator"):
         return "fail", "evidence signer is not the authenticated phase orchestrator", None
+    key_state = _trusted_key_map(trusted, "partyKeys")
+    if key_state is not None:
+        return key_state[0], key_state[1], None
     digest = artifact_hash(evidence, "signature")
     if not _verify_ed25519(
         trusted.get("partyKeys"), signature["signer"], EVIDENCE_DOMAIN, digest, signature["value"]
@@ -835,10 +867,13 @@ def _verify_authority(observation: dict, profile: dict, path_ids: list[str], tru
     if not isinstance(attestations, list):
         return "error", "authority attestations are not an array"
     payload_hash = hash_value(_authority_payload(observation, path_ids))
+    if any(not _exact_object(attestation, {"authorityRef", "algorithm", "value"}) for attestation in attestations):
+        return "error", "malformed authority attestation"
+    key_state = _trusted_key_map(trusted, "observationAuthorityKeys")
+    if key_state is not None:
+        return key_state
     valid = set()
     for attestation in attestations:
-        if not _exact_object(attestation, {"authorityRef", "algorithm", "value"}):
-            return "error", "malformed authority attestation"
         authority_ref = attestation.get("authorityRef")
         if (
             authority_ref in valid
@@ -1328,12 +1363,72 @@ def _find_htlc_refs(refs: list, rail: dict) -> dict | None:
     return result if set(result) == {"sourceLock", "sourceClaim", "destinationLock", "destinationReveal"} else None
 
 
+_KECCAK_ROUND_CONSTANTS = (
+    0x0000000000000001, 0x0000000000008082, 0x800000000000808A, 0x8000000080008000,
+    0x000000000000808B, 0x0000000080000001, 0x8000000080008081, 0x8000000000008009,
+    0x000000000000008A, 0x0000000000000088, 0x0000000080008009, 0x000000008000000A,
+    0x000000008000808B, 0x800000000000008B, 0x8000000000008089, 0x8000000000008003,
+    0x8000000000008002, 0x8000000000000080, 0x000000000000800A, 0x800000008000000A,
+    0x8000000080008081, 0x8000000000008080, 0x0000000080000001, 0x8000000080008008,
+)
+_KECCAK_ROTATIONS = (
+    (0, 36, 3, 41, 18), (1, 44, 10, 45, 2), (62, 6, 43, 15, 61),
+    (28, 55, 25, 21, 56), (27, 20, 39, 8, 14),
+)
+_LANE_MASK = (1 << 64) - 1
+
+
+def _keccak_f1600(lanes: list[list[int]]) -> list[list[int]]:
+    def rotate(value: int, shift: int) -> int:
+        return ((value << shift) | (value >> (64 - shift))) & _LANE_MASK if shift else value
+
+    for constant in _KECCAK_ROUND_CONSTANTS:
+        parity = [lanes[x][0] ^ lanes[x][1] ^ lanes[x][2] ^ lanes[x][3] ^ lanes[x][4] for x in range(5)]
+        lanes = [
+            [lanes[x][y] ^ parity[(x - 1) % 5] ^ rotate(parity[(x + 1) % 5], 1) for y in range(5)]
+            for x in range(5)
+        ]
+        moved = [[0] * 5 for _ in range(5)]
+        for x in range(5):
+            for y in range(5):
+                moved[y][(2 * x + 3 * y) % 5] = rotate(lanes[x][y], _KECCAK_ROTATIONS[x][y])
+        lanes = [
+            [moved[x][y] ^ (~moved[(x + 1) % 5][y] & moved[(x + 2) % 5][y]) for y in range(5)]
+            for x in range(5)
+        ]
+        lanes[0][0] ^= constant
+    return lanes
+
+
+def keccak256(data: bytes, *, domain_padding: int = 0x01) -> bytes:
+    """Keccak-256 with the original 0x01 padding used by Ethereum.
+
+    ``hashlib.sha3_256`` is FIPS 202 SHA3-256 (padding 0x06) and yields a
+    different digest; ``domain_padding=0x06`` reproduces it as a self-check.
+    """
+    rate = 136
+    padded = bytearray(data) + bytes([domain_padding])
+    padded += b"\x00" * (-len(padded) % rate)
+    padded[-1] |= 0x80
+    lanes = [[0] * 5 for _ in range(5)]
+    for offset in range(0, len(padded), rate):
+        for index in range(rate // 8):
+            word = padded[offset + 8 * index:offset + 8 * index + 8]
+            lanes[index % 5][index // 5] ^= int.from_bytes(word, "little")
+        lanes = _keccak_f1600(lanes)
+    return b"".join(lanes[index % 5][index // 5].to_bytes(8, "little") for index in range(4))
+
+
+# DACS-4 §9.14 HTLC hash identifiers (HTLC-6); any other value is error.
+HTLC_HASH_ALGORITHMS = {
+    "sha256": lambda preimage: hashlib.sha256(preimage).hexdigest(),
+    "keccak256": lambda preimage: keccak256(preimage).hex(),
+}
+
+
 def _hash_preimage(algorithm: str, preimage: bytes) -> str | None:
-    if algorithm == "sha256":
-        return hashlib.sha256(preimage).hexdigest()
-    if algorithm == "sha3-256":
-        return hashlib.sha3_256(preimage).hexdigest()
-    return None
+    function = HTLC_HASH_ALGORITHMS.get(algorithm)
+    return None if function is None else function(preimage)
 
 
 def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, trusted: dict) -> dict:
@@ -1486,6 +1581,8 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
     ref = refs[0]
     if not _transaction_ref_shape(ref) or ref.get("kind") not in {"ap2", "ap2-sr3"}:
         return _result("error", "malformed signed AP2 reference")
+    if ref.get("protocolVersion") not in AP2_PROTOCOL_VERSIONS:
+        return _result("error", "unsupported AP2 protocolVersion")
     sr3 = ref.get("kind") == "ap2-sr3"
     if not sr3 and "receiptTransactionObservation" in context:
         return _result("error", "frozen AP2 reference must not carry SR-3 native transaction authority")
@@ -1526,6 +1623,9 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
     signature = attestation.get("signature")
     if not _signature_shape(signature, "signer"):
         return _result("error", "malformed provider response signature")
+    key_state = _trusted_key_map(trusted, "providerAuthorityKeys")
+    if key_state is not None:
+        return _result(*key_state)
     digest = artifact_hash(attestation, "signature")
     if not _verify_ed25519(
         trusted.get("providerAuthorityKeys"), signature["signer"],

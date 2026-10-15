@@ -26,6 +26,7 @@ try:
         RAIL_DOMAIN,
         artifact_hash,
         hash_value,
+        keccak256,
     )
 except ImportError:
     from jcs import canonicalize
@@ -40,6 +41,7 @@ except ImportError:
         RAIL_DOMAIN,
         artifact_hash,
         hash_value,
+        keccak256,
     )
 
 
@@ -82,6 +84,9 @@ CLAIMS = {
     "orchestrator": "did:demos:orchestrator",
     "provider": "provider:example",
 }
+# The AP2 wire version the fixtures carry; it is the one version the
+# reference implements (AP2_PROTOCOL_VERSIONS).
+AP2_PROTOCOL_VERSION = "0.2"
 MODEL_PHASE = {
     "block-depth": "pay-evm-erc20",
     "commitment-level": "pay-solana-spl",
@@ -247,6 +252,7 @@ class FixtureFactory:
         bft_signers=("validator-a", "validator-b"),
         parent_id: str | None = None,
         transaction_mutation=None,
+        observed_at: int = OBSERVED_AT,
     ) -> dict:
         event_proof = self.merkle_proof(
             "fixture-event-merkle-v1", "eventBytes", event, label + ":event"
@@ -317,7 +323,7 @@ class FixtureFactory:
             "authenticatedHead": {
                 "id": previous_id,
                 "position": str(head_position),
-                "observedAt": OBSERVED_AT,
+                "observedAt": observed_at,
                 "header": b64u(canonical_bytes(head_header)),
             },
             "ancestryProof": ancestry,
@@ -501,7 +507,7 @@ class FixtureFactory:
                 "sourceContract": "0x00000000000000000000000000000000000000a1",
                 "destinationContract": "0x00000000000000000000000000000000000000b2",
                 "sourceHashAlgorithm": "sha256",
-                "destinationHashAlgorithm": "sha3-256",
+                "destinationHashAlgorithm": "keccak256",
                 "timelockSourceSec": 7200,
                 "timelockDestSec": 3600,
                 "sourceFinalitySec": 600,
@@ -663,7 +669,7 @@ class FixtureFactory:
                 "kind": "ap2",
                 "mandateId": hashlib.sha256(b"fixture-mandate").hexdigest(),
                 "providerRef": "provider-charge-392",
-                "protocolVersion": "1",
+                "protocolVersion": AP2_PROTOCOL_VERSION,
             }
             context, attestation = self.provider_context(session, provider_ref)
             provider_ref["receiptAttestation"] = copy.deepcopy(context["responseAttestation"])
@@ -696,7 +702,7 @@ class FixtureFactory:
             preimage = b"fixture-htlc-preimage-392"
             encoded_preimage = b64u(preimage)
             source_hash = hashlib.sha256(preimage).hexdigest()
-            destination_hash = hashlib.sha3_256(preimage).hexdigest()
+            destination_hash = keccak256(preimage).hex()
             source_mined = 1_899_990_000_000
             destination_mined = source_mined + 700_000
             events = {}
@@ -844,7 +850,7 @@ class FixtureFactory:
             "kind": "ap2-sr3",
             "mandateId": hashlib.sha256(b"fixture-mandate").hexdigest(),
             "providerRef": "provider-charge-392",
-            "protocolVersion": "1",
+            "protocolVersion": AP2_PROTOCOL_VERSION,
         }
         context, attestation = self.provider_context(session, provider_ref)
         response_hash = attestation["responseHash"]
@@ -1494,6 +1500,7 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-production-codec-unavailable", "indeterminate", "synthetic vectors never claim a native production codec", factory.model_input("block-depth"), trusted_overrides={"policy": "production-native-unavailable"}),
     ])
     vectors.extend(build_rejection_vectors(factory))
+    vectors.extend(build_guard_isolation_vectors(factory))
     return vectors
 
 
@@ -1646,7 +1653,7 @@ def build_rejection_vectors(factory: FixtureFactory) -> list[dict]:
     observation("fv-observation-member-missing", "error", "the chain observation lacks ancestryProof", lambda o: o.pop("ancestryProof"))
     observation("fv-inclusion-header-bytes-malformed", "error", "the inclusion header bytes are not JSON", lambda o: o["inclusionBlock"].__setitem__("header", "AAAA"))
     observation("fv-inclusion-header-body-malformed", "error", "the inclusion header body lacks its transactions root", lambda o: o["inclusionBlock"].__setitem__("header", b64u(canonical_bytes({key: item for key, item in decode(o["inclusionBlock"]["header"]).items() if key != "transactionsRoot"}))))
-    observation("fv-inclusion-block-identity-substitution", "fail", "the inclusion block id is not the hash of its header", lambda o: o["inclusionBlock"].__setitem__("id", "00" * 32))
+    observation("fv-inclusion-block-identity-substitution", "fail", "a substituted inclusion block id is neither the hash of its header nor the parent of the first ancestry link", lambda o: o["inclusionBlock"].__setitem__("id", "00" * 32))
     observation("fv-ancestry-not-array", "error", "ancestryProof is an object", lambda o: o.__setitem__("ancestryProof", {}))
     observation("fv-ancestry-link-malformed", "error", "an ancestry link lacks its header", lambda o: o["ancestryProof"][0].pop("header"))
     observation("fv-ancestry-link-position-noncanonical", "error", "an ancestry link position is not a minimal decimal", lambda o: o["ancestryProof"][0].__setitem__("position", "0101"))
@@ -1861,6 +1868,203 @@ def build_rejection_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-evidence-amount-differs-from-agreement", "fail", "the signed evidence pays 6 while the agreement and the proven event settle 5", changed("block-depth", lambda v: (v["evidence"]["paymentAmount"].__setitem__("amount", "6"), factory.resign_evidence(v["evidence"])))),
         case("fv-single-chain-two-references", "error", "single-chain evidence carries two signed references", changed("block-depth", lambda v: (v["evidence"]["paymentTxRefs"].append(dict(v["evidence"]["paymentTxRefs"][0], logIndex=1)), factory.resign_evidence(v["evidence"])))),
     ])
+    return vectors
+
+
+B64URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+
+
+def nonminimal_b64u(value: str) -> str:
+    """Respell a 64-byte Base64URL value with a non-zero residual bit.
+
+    86 characters carry 516 bits, so the last character's low four bits are
+    unused; a lenient decoder returns the same 64 bytes for both spellings.
+    """
+    index = B64URL_ALPHABET.index(value[-1])
+    if len(value) != 86 or index & 0b1111:
+        raise ValueError("expected a canonical 64-byte Base64URL value")
+    return value[:-1] + B64URL_ALPHABET[index | 1]
+
+
+def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
+    """Cases that isolate an FV guard another guard used to decide.
+
+    Each case changes only bytes no signature covers, verifier-owned trust
+    input, or the one artifact it re-signs, so a verifier that omits only
+    the named guard returns ``pass``.
+    """
+    vectors = []
+    sr3_settlement = factory.trusted["sr3TransactionFinalityProfile"]["settlement"]
+
+    def decode(encoded):
+        return json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+
+    def changed(model, mutation):
+        value = factory.model_input(model)
+        mutation(value)
+        return value
+
+    def changed_sr3(mutation):
+        value = factory.provider_sr3_value()
+        mutation(value)
+        return value
+
+    def native(value):
+        return value["context"]["receiptTransactionObservation"]
+
+    # FV-5 Merkle recomputation: the claimed root still equals the genuine
+    # header transactionsRoot (or transaction eventsRoot); only the sibling
+    # the leaf hashes with changes.
+    def other_sibling(proof):
+        proof["siblingHash"] = "11" * 32
+
+    vectors.extend([
+        case("fv-transaction-proof-root-not-recomputed", "fail", "the transaction proof keeps the header's transactionsRoot, but its leaf and sibling hash to another root", changed("block-depth", lambda v: other_sibling(v["context"]["observation"]["transactionInclusionProof"]))),
+        case("fv-event-proof-root-not-recomputed", "fail", "the event proof keeps the transaction's eventsRoot, but its leaf and sibling hash to another root", changed("block-depth", lambda v: other_sibling(v["context"]["observation"]["selectedEventProof"]))),
+        case("fv-ap2-sr3-transaction-proof-root-not-recomputed", "fail", "the native transaction proof keeps the header's transactionsRoot, but its leaf and sibling hash to another root", changed_sr3(lambda v: other_sibling(native(v)["transactionInclusionProof"]))),
+        case("fv-ap2-sr3-event-proof-root-not-recomputed", "fail", "the native event proof keeps the transaction's eventsRoot, but its leaf and sibling hash to another root", changed_sr3(lambda v: other_sibling(native(v)["selectedEventProof"]))),
+    ])
+
+    # FV-5/FV-6 inclusion-header identity: the genuine inclusion id, parent
+    # and position stay (the ancestry and authority attestations cover them);
+    # the header bytes commit to another transaction tree whose proof verifies.
+    def forge_inclusion_header(observation):
+        proof = observation["transactionInclusionProof"]
+        proof["siblingHash"] = "22" * 32
+        proof["root"] = hashlib.sha256(
+            b"\x01" + bytes.fromhex(proof["leafHash"]) + bytes.fromhex(proof["siblingHash"])
+        ).hexdigest()
+        header = decode(observation["inclusionBlock"]["header"])
+        header["transactionsRoot"] = proof["root"]
+        observation["inclusionBlock"]["header"] = b64u(canonical_bytes(header))
+
+    vectors.extend([
+        case("fv-inclusion-header-bytes-substitution", "fail", "the inclusion header bytes commit to another transaction tree; the genuine id, parent and ancestry remain", changed("block-depth", lambda v: forge_inclusion_header(v["context"]["observation"]))),
+        case("fv-ap2-sr3-inclusion-header-bytes-substitution", "fail", "the native inclusion header bytes commit to another transaction tree; the genuine id, parent and ancestry remain", changed_sr3(lambda v: forge_inclusion_header(native(v)))),
+    ])
+
+    # FV-8 via FV-9: SR-3 native head freshness, separate from provider freshness.
+    def native_head_at(observed_at, label):
+        def mutate(value):
+            observation = native(value)
+            value["context"]["receiptTransactionObservation"] = factory.chain_observation(
+                sr3_settlement, observation["transactionRef"],
+                decode(observation["selectedEventProof"]["eventBytes"]), label,
+                observed_at=observed_at,
+            )
+        return mutate
+
+    vectors.extend([
+        case("fv-ap2-sr3-native-head-stale-provider-fresh", "indeterminate", "the verifier-owned SR-3 profile allows a 30 s native head; at 45 s the head is stale while the 60 s provider attestation is fresh", factory.provider_sr3_value(), trusted_overrides={"sr3TransactionFinalityProfile": {"settlement": {"observation": {"maxHeadAgeSec": 30}}}, "verificationTimeMs": OBSERVED_AT + 45_000}),
+        case("fv-ap2-sr3-native-head-future-provider-current", "fail", "the authenticated native head is observed after the verifier-local clock; the provider attestation is not", changed_sr3(native_head_at(VERIFICATION_TIME + 1_000, "ap2-sr3:future-head"))),
+    ])
+
+    # CORE SIG-6: a non-minimal Base64URL spelling of a genuine signature is
+    # rejected before verification, on every independently parsed envelope.
+    def respell(container, key="value"):
+        container[key] = nonminimal_b64u(container[key])
+
+    provider = factory.model_input("provider-receipt")
+    response_hash = provider["context"]["responseAttestation"]["contentHash"]
+    provider_signature = factory.trusted["providerAttestations"][response_hash]["signature"]["value"]
+    vectors.extend([
+        case("fv-evidence-signature-nonminimal-base64url", "fail", "the evidence signature decodes to the genuine bytes but is not the minimal Base64URL spelling", changed("block-depth", lambda v: respell(v["evidence"]["signature"]))),
+        case("fv-rail-signature-nonminimal-base64url", "fail", "the rail steward signature decodes to the genuine bytes but is not the minimal Base64URL spelling", changed("block-depth", lambda v: respell(v["rail"]["signature"]))),
+        case("fv-agreement-signature-nonminimal-base64url", "fail", "the buyer's agreement signature decodes to the genuine bytes but is not the minimal Base64URL spelling", changed("block-depth", lambda v: respell(v["agreement"]["signatures"][0]))),
+        case("fv-head-authority-signature-nonminimal-base64url", "fail", "a head authority signature decodes to the genuine bytes but is not the minimal Base64URL spelling", changed("block-depth", lambda v: respell(v["context"]["observation"]["authorityEvidence"]["attestations"][0]))),
+        case("fv-bft-signature-nonminimal-base64url", "fail", "a BFT certificate signature decodes to the genuine bytes but is not the minimal Base64URL spelling", changed("bft-final", lambda v: respell(v["context"]["observation"]["finalityCertificate"]["signatures"][0]))),
+        case("fv-provider-attestation-signature-nonminimal-base64url", "fail", "the trusted provider attestation signature decodes to the genuine bytes but is not the minimal Base64URL spelling", provider, trusted_overrides={"providerAttestations": {response_hash: {"signature": {"value": nonminimal_b64u(provider_signature)}}}}),
+    ])
+
+    # FV-2: unknown or malformed echo values are error, not a mismatch.
+    def report(name, note, model, member, item):
+        def mutate(value):
+            value["evidence"]["settlementFinality"][member] = item
+            factory.resign_evidence(value["evidence"])
+        vectors.append(case(name, "error", note, changed(model, mutate)))
+
+    report("fv-producer-report-model-unknown", "the signed producer report names an unregistered model", "block-depth", "model", "probabilistic")
+    report("fv-producer-report-depth-not-integer", "the signed producer report depth is a string", "block-depth", "finalityBlocks", "12")
+    report("fv-producer-report-depth-negative", "the signed producer report depth is negative", "block-depth", "finalityBlocks", -1)
+    report("fv-producer-report-commitment-unknown", "the signed producer report names an unregistered commitment", "commitment-level", "finalityCommitmentLevel", "rooted")
+
+    # FV entry: missing trusted authority is indeterminate; malformed is error.
+    depth = factory.model_input("block-depth")
+    vectors.extend([
+        case("fv-trusted-party-keys-unavailable", "indeterminate", "no trusted party key map is configured", depth, trusted_overrides={"partyKeys": None}),
+        case("fv-trusted-steward-keys-unavailable", "indeterminate", "no trusted steward key map is configured", depth, trusted_overrides={"stewardKeys": None}),
+        case("fv-trusted-observation-authority-keys-unavailable", "indeterminate", "no trusted observation authority key map is configured", depth, trusted_overrides={"observationAuthorityKeys": None}),
+        case("fv-trusted-provider-authority-keys-unavailable", "indeterminate", "no trusted provider authority key map is configured", factory.model_input("provider-receipt"), trusted_overrides={"providerAuthorityKeys": None}),
+        case("fv-trusted-party-keys-malformed", "error", "the trusted party key map is a list", depth, trusted_overrides={"partyKeys": []}),
+        case("fv-trusted-party-key-value-malformed", "error", "a trusted party key is not a 32-byte Base64URL value", depth, trusted_overrides={"partyKeys": {CLAIMS["orchestrator"]: "not-a-key"}}),
+    ])
+
+    def pinned_validator_set(name, note, validator_set):
+        value = factory.model_input("bft-final")
+        set_hash = hash_value(validator_set)
+        value["rail"]["consumerFinalityProfile"]["settlement"]["validatorSetRef"] = factory.reference("validator-set:" + name, set_hash)
+        factory.rebind_rail(value)
+        value["context"]["observation"]["finalityCertificate"]["validatorSetHash"] = set_hash
+        vectors.append(case(name, "error", note, value, trusted_overrides={"validatorSets": {set_hash: validator_set}}))
+
+    genuine_set = copy.deepcopy(factory.trusted["validatorSets"][factory.validator_set_hash])
+    pinned_validator_set("fv-bft-validator-set-empty", "the steward-pinned trusted validator set has no members", {"validators": []})
+    malformed_member = copy.deepcopy(genuine_set)
+    malformed_member["validators"][2]["publicKey"] = "not-a-key"
+    pinned_validator_set("fv-bft-validator-set-member-malformed", "a non-signing member of the steward-pinned validator set has a malformed key", malformed_member)
+
+    # AP2-2: the ap2-sr3 receiptAttestation names the fetched HTTPS resource.
+    def storage_locator(value):
+        ref = value["evidence"]["paymentTxRefs"][0]
+        locator = factory.reference("ap2-sr3:status", ref["receiptAttestation"]["contentHash"])
+        ref["receiptAttestation"] = copy.deepcopy(locator)
+        value["context"]["responseAttestation"] = copy.deepcopy(locator)
+        observation = native(value)
+        event = decode(observation["selectedEventProof"]["eventBytes"])
+        event["requestUrl"] = locator["anchor"]["locator"]
+        value["context"]["receiptTransactionObservation"] = factory.chain_observation(
+            sr3_settlement, observation["transactionRef"], event, "ap2-sr3:storage-locator"
+        )
+        factory.resign_evidence(value["evidence"])
+
+    vectors.append(case("fv-ap2-sr3-receipt-attestation-locator-not-https", "error", "the signed ap2-sr3 receiptAttestation anchor is a storage-program locator, which the native request also names", changed_sr3(storage_locator)))
+
+    # FV-1 profile shape (DACS-4 §9.4.3): kind equals model; closed method set.
+    def rail(name, note, model, mutate):
+        value = factory.model_input(model)
+        mutate(value["rail"])
+        factory.rebind_rail(value)
+        vectors.append(case(name, "error", note, value))
+
+    rail("fv-profile-settlement-kind-differs-from-model", "a steward-signed bft-final profile whose settlement kind is block-depth", "bft-final", lambda r: r["consumerFinalityProfile"].__setitem__("settlement", factory.chain_profile("block-depth", network="demos:mainnet")))
+    rail("fv-profile-observation-method-unknown", "a steward-signed profile names an unregistered observation method", "block-depth", lambda r: r["consumerFinalityProfile"]["settlement"]["observation"].__setitem__("method", "magic"))
+
+    # HTLC-6 / §9.14: keccak256 is Ethereum's Keccak-256, not FIPS SHA3-256,
+    # and FIPS SHA3-256 is not a registered identifier.
+    preimage = b"fixture-htlc-preimage-392"
+    sha3_hashlock = hashlib.sha3_256(preimage).hexdigest()
+
+    def destination_commits_sha3(value, algorithm):
+        for arm in ("destinationLock", "destinationReveal"):
+            factory.rebuild_observation_event(value, (arm,), lambda event: event.update({"hashAlgorithm": algorithm, "hashlock": sha3_hashlock}))
+
+    keccak_as_sha3 = factory.model_input("htlc-reveal")
+    destination_commits_sha3(keccak_as_sha3, "keccak256")
+    vectors.append(case("fv-htlc-keccak256-hashlock-is-sha3-256", "fail", "the keccak256 destination lock and reveal commit the FIPS SHA3-256 digest of the preimage", keccak_as_sha3))
+    sha3_rail = factory.model_input("htlc-reveal")
+    sha3_rail["rail"]["parameters"]["destinationHashAlgorithm"] = "sha3-256"
+    factory.rebind_rail(sha3_rail)
+    destination_commits_sha3(sha3_rail, "sha3-256")
+    vectors.append(case("fv-htlc-hash-algorithm-sha3-256-unregistered", "error", "the signed HTLC rail selects FIPS SHA3-256, which is not a registered hash identifier; the destination events commit it consistently", sha3_rail))
+
+    # §9.5.6 step 6: the AP2 protocolVersion selects the rules of its era; a
+    # version whose rules the verifier does not implement is error.
+    def other_ap2_version(value):
+        value["evidence"]["paymentTxRefs"][0]["protocolVersion"] = "1"
+        factory.resign_evidence(value["evidence"])
+
+    vectors.append(case("fv-ap2-protocol-version-unsupported", "error", "the signed frozen ap2 reference names AP2 protocolVersion 1, whose rules the verifier does not implement", changed("provider-receipt", other_ap2_version)))
+    vectors.append(case("fv-ap2-sr3-protocol-version-unsupported", "error", "the signed ap2-sr3 reference names AP2 protocolVersion 1, whose rules the verifier does not implement", changed_sr3(other_ap2_version)))
     return vectors
 
 

@@ -1406,6 +1406,24 @@ def _lab_authority_replays() -> list[tuple]:
         "LAB-2 original BB-6 candidate set",
     ))
 
+    # LAB-2: the original selection uses the verifier-authenticated party map
+    # and per-signer budget, never values carried in the request.
+    factory, request = _binding_job()
+    context = _era(request)["originalMapping"]["selectionContext"]
+    context["partyMap"]["did:example:unauthenticated-extra"] = "buyer"
+    cases.append(_replay_case(
+        factory, request, "historical-original-party-map-not-authenticated", "fail",
+        "LAB-2 original authenticated party map",
+    ))
+
+    factory, request = _binding_job()
+    context = _era(request)["originalMapping"]["selectionContext"]
+    context["budget"] += 1
+    cases.append(_replay_case(
+        factory, request, "historical-original-budget-differs", "fail",
+        "LAB-2 original per-signer budget",
+    ))
+
     # BB-7: an authorized current candidate that cannot be fetched.
     factory, request = _binding_job()
     role_request = request["roles"]["buyer"]

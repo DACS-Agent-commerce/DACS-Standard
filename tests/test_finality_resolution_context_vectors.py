@@ -4,6 +4,7 @@ import hashlib
 import json
 import subprocess
 import sys
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -387,7 +388,7 @@ class FinalityResolutionContextTests(unittest.TestCase):
         return case, copy.deepcopy(case["input"]["value"]), copy.deepcopy(case["input"]["authority"])
 
     def test_materialized_cases_execute_their_expectation(self):
-        self.assertEqual(19, self.data["count"])
+        self.assertEqual(28, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         self.assertEqual(
             hashlib.sha256(json.dumps(
@@ -404,6 +405,67 @@ class FinalityResolutionContextTests(unittest.TestCase):
                 self.assertEqual(case["expected"], result["decision"], result["reason"])
             decisions.add(result["decision"])
         self.assertEqual({"pass", "fail", "indeterminate", "error"}, decisions)
+
+    def test_closed_shape_and_acquisition_cases_fail_a_verifier_missing_their_guard(self):
+        """Source mutants: each removes one FRC-5/FRC-8/FRC-9 guard.
+
+        ``pass`` shows the case is otherwise valid; ``None`` requires only
+        that the mutant's verdict differs from the committed one.
+        """
+        source = (ROOT / "scripts" / "finality_resolution_context_reference.py").read_text(encoding="utf-8")
+
+        def mutant(old, new):
+            self.assertEqual(1, source.count(old), old)
+            module = types.ModuleType("finality_resolution_guard_mutant")
+            module.__file__ = FRC.__file__
+            # Dataclass processing resolves the defining module by name.
+            with mock.patch.dict(sys.modules, {module.__name__: module}):
+                exec(compile(source.replace(old, new), FRC.__file__, "exec"), module.__dict__)
+            return module
+
+        guards = [
+            ('if not _exact(response, required, {"transportMetadata"}):',
+             'if not isinstance(response, dict) or not required <= set(response):',
+             "pass", ["response-extra-member"]),
+            ('return _exact(arm, {"status", "observation"}) and', "return", "pass",
+             ["response-observed-arm-extra-member"]),
+            ('return _exact(arm, {"status", "reason"}) and', "return", None,
+             ["response-unavailable-arm-extra-member"]),
+            ('or record.get("queryNonce") != authority.issued_query.get("nonce")\n', "", "pass",
+             ["acquisition-record-other-nonce"]),
+            ('or record.get("status") != "obtained"\n', "", "pass",
+             ["acquisition-record-not-obtained"]),
+            ('or record["responseHash"] in records\n', "", "pass",
+             ["acquisition-record-duplicate-response-hash"]),
+            ('if acquisition["authorityId"] != response["authorityId"]:', "if False:", "pass",
+             ["acquisition-authority-differs-from-responder"]),
+            ('}) or replay_record.get("finalityResolutionReplayVersion") != "1":', "}):", "pass",
+             ["replay-record-version-unknown"]),
+            ('return {"decision": "error", "reason": "malformed verifier-owned resolution authority"}',
+             'return {"decision": "indeterminate", "reason": unavailable}', None,
+             ["resolution-authority-policy-malformed"]),
+        ]
+        for old, new, mutant_decision, names in guards:
+            module = mutant(old, new)
+            for name in names:
+                case = self.case(name)
+                payload = copy.deepcopy(case["input"])
+                with self.subTest(case=name):
+                    self.assertEqual(case["expected"], self.execute_vector(case)["decision"])
+                    if case["operation"] == "replay":
+                        result = module.replay_finality_resolution(
+                            payload["replayRecord"], self.authority(payload["authority"]),
+                            legacy_verifier=_verify_single_view_finality,
+                        )
+                    else:
+                        result = module.verify_finality_resolution_context(
+                            payload["value"], self.authority(payload["authority"]),
+                            legacy_verifier=_verify_single_view_finality,
+                        )
+                    if mutant_decision is None:
+                        self.assertNotEqual(case["expected"], result["decision"], result["reason"])
+                    else:
+                        self.assertEqual(mutant_decision, result["decision"], result["reason"])
 
     def test_materialized_replay_record_is_the_current_decision_record(self):
         case = self.case("recorded-policy-replay")

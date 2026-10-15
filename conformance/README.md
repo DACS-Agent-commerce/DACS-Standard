@@ -45,6 +45,26 @@ Six validated examples live in [`implementation-manifests/`](implementation-mani
 They pin this vector manifest by commit and SHA-256 hash; live-only tests remain
 separate and cannot substitute for deterministic cases.
 
+An implementation that copies the vector sets under `vectors/` into its own
+tree can check those copies for drift. The non-normative checker matches sets
+by their `set` name, in a flat directory or with the `security/` subdirectory
+kept, and compares them with this checkout or with a revision of it:
+
+```sh
+python3 scripts/check_vendored_vectors.py path/to/vendored/vectors
+python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev v0.4
+python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --json
+```
+
+It reports each set as missing, extra, or drifted in its `vectors`, `count`,
+declared `hash`, or `spec`. Vectors are compared by
+`sha256(canonical_json(vectors))`, using the same `canonical_json` as
+`scripts/validate_conformance_vectors.py`. A few sets hold values that
+`canonical_json` refuses on purpose, such as integers beyond the CORE §B.2
+safe range; those sets are compared as exact JSON, and the report names them.
+The exit status is 0 when every set matches, 1 on any drift, and 2 on bad
+input.
+
 For a runnable five-stage builder path, see the dependency-free
 [`walkthrough/`](./walkthrough/) reference tool. It verifies the current signed
 artifact chain, emits canonical bytes/hashes/signature payloads/refs, and executes

@@ -56,14 +56,27 @@ python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev v0.4
 python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --json
 ```
 
-It reports each set as missing, extra, or drifted in its `vectors`, `count`,
-declared `hash`, or `spec`. Vectors are compared by
-`sha256(canonical_json(vectors))`, using the same `canonical_json` as
-`scripts/validate_conformance_vectors.py`. A few sets hold values that
-`canonical_json` refuses on purpose, such as integers beyond the CORE §B.2
-safe range; those sets are compared as exact JSON, and the report names them.
-The exit status is 0 when every set matches, 1 on any drift, and 2 on bad
-input.
+It reports changes to `vectors`, `count`, declared `hash`, or `spec`, as well
+as missing and extra sets. It also counts JSON files ignored because they
+are not vector sets. Incomplete set objects are bad input.
+
+The required vector hash is:
+
+```text
+sha256(canonical_json(vectors))
+```
+
+The checker uses `canonical_json` from `scripts/validate_conformance_vectors.py`.
+It also requires exact, type-strict parsed JSON equality, so Unicode
+normalization or a change from `1.0` to `1` is drift even when hashes agree.
+Formatting and object member order do not affect this comparison.
+
+The exit status is 0 when every set matches, 1 on drift, and 2 on bad input
+or an unavailable required hash. Exit 2 takes precedence over drift.
+Sets whose values `canonical_json` refuses are reported as `uncheckable`.
+Four current sets intentionally contain integers beyond the CORE §B.2 safe
+range, so even a self-check exits 2. T-07's full-corpus hash check remains
+blocked until the required hash rule or those source sets are resolved.
 
 For a runnable five-stage builder path, see the dependency-free
 [`walkthrough/`](./walkthrough/) reference tool. It verifies the current signed

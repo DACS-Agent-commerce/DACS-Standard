@@ -13,17 +13,20 @@ A vector set is a JSON object with ``set``, ``spec``, ``count``, ``hash`` and
 Sets are found recursively under ``conformance/vectors/`` in the Standard
 checkout (its working tree, or ``--rev``) and under the vendored directory,
 and are matched by their ``set`` name, so the vendored layout may be flat or
-keep the ``security/`` subdirectory. Other JSON files are ignored.
+keep the ``security/`` subdirectory. Other JSON files are counted as ignored.
+An object with any required set member must have all five members.
 
 Each set is reported as ``match``, ``drifted``, ``missing`` (in the Standard,
-not vendored) or ``extra`` (vendored, not in the Standard). A matched set has
-drifted when any of these differ:
+not vendored), ``extra`` (vendored, not in the Standard), or ``uncheckable``
+when the required content hash is unavailable. A matched set has drifted when
+any of these differ:
 
 - ``vectors``: sha256(canonical_json(vectors)) on each side, using
-  ``validate_conformance_vectors.canonical_json``. ``canonical_json`` refuses
-  some values on purpose, such as integers outside the CORE §B.2 safe range.
-  When it refuses either side, the two ``vectors`` arrays are compared as
-  exact, type-strict JSON values instead, and the report says so;
+  ``validate_conformance_vectors.canonical_json``, plus exact, type-strict
+  parsed JSON equality. This also detects Unicode normalization and integral
+  float changes that canonicalization hides. ``canonical_json`` refuses some
+  values on purpose, such as integers outside the CORE §B.2 safe range.
+  A refusal makes the set uncheckable, even if its exact JSON is identical;
 - ``count``: the vendored ``count`` differs from the Standard's, or from the
   vendored ``vectors`` length;
 - ``hash``: the vendored declared ``hash`` differs from the Standard's;
@@ -31,8 +34,9 @@ drifted when any of these differ:
   sections and revision the set covers, differs from the Standard's.
 
 Exit status: 0 when every set matches, 1 when any set is drifted, missing or
-extra, 2 on bad input (unreadable paths or revision, invalid JSON, a set file
-missing a required member, or two files declaring the same set).
+extra, 2 on any uncheckable set or bad input (unreadable paths or revision,
+invalid or excessively nested JSON, a set file missing a required member,
+or two files declaring the same set). Exit 2 takes precedence over drift.
 
 Dependency-free stdlib, matching the other validators.
 """
@@ -95,9 +99,9 @@ def parse_set(raw: bytes, label: str) -> VectorSet | None:
             object_pairs_hook=_unique_members,
             parse_constant=_reject_constant,
         )
-    except ValueError as exc:
+    except (ValueError, RecursionError) as exc:
         raise BadInput(f"{label}: invalid JSON: {exc}") from exc
-    if not isinstance(data, dict) or "vectors" not in data:
+    if not isinstance(data, dict) or not REQUIRED_MEMBERS.keys() & data.keys():
         return None
     for member, kind in REQUIRED_MEMBERS.items():
         value = data.get(member)
@@ -106,6 +110,8 @@ def parse_set(raw: bytes, label: str) -> VectorSet | None:
     content_hash = hash_error = None
     try:
         content_hash = hashlib.sha256(canonical_json(data["vectors"])).hexdigest()
+    except RecursionError as exc:
+        raise BadInput(f"{label}: vectors are too deeply nested to hash") from exc
     except (TypeError, ValueError) as exc:
         hash_error = str(exc)
     return VectorSet(
@@ -120,11 +126,13 @@ def parse_set(raw: bytes, label: str) -> VectorSet | None:
     )
 
 
-def index_sets(files: list[tuple[str, bytes]], side: str) -> dict[str, VectorSet]:
+def index_sets(files: list[tuple[str, bytes]], side: str) -> tuple[dict[str, VectorSet], int]:
     sets: dict[str, VectorSet] = {}
+    ignored = 0
     for label, raw in files:
         vector_set = parse_set(raw, f"{side} {label}")
         if vector_set is None:
+            ignored += 1
             continue
         vector_set.path = label
         if vector_set.name in sets:
@@ -133,7 +141,7 @@ def index_sets(files: list[tuple[str, bytes]], side: str) -> dict[str, VectorSet
                 f"{sets[vector_set.name].path} and {label}"
             )
         sets[vector_set.name] = vector_set
-    return sets
+    return sets, ignored
 
 
 def read_tree(base: Path) -> list[tuple[str, bytes]]:
@@ -141,7 +149,10 @@ def read_tree(base: Path) -> list[tuple[str, bytes]]:
     if not base.is_dir():
         raise BadInput(f"{base} is not a directory")
     files = []
-    for dirpath, dirnames, filenames in os.walk(base):
+    def onerror(exc: OSError) -> None:
+        raise BadInput(f"cannot walk {base}: {exc}") from exc
+
+    for dirpath, dirnames, filenames in os.walk(base, onerror=onerror):
         dirnames.sort()
         for filename in sorted(filenames):
             if not filename.endswith(".json"):
@@ -197,15 +208,26 @@ def same_json(left: Any, right: Any) -> bool:
 
 def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
     changes = []
+    try:
+        exact = same_json(standard.vectors, vendored.vectors)
+    except RecursionError as exc:
+        raise BadInput(f"set {standard.name!r}: vectors are too deeply nested to compare") from exc
+    comparison = "canonical-json-sha256+exact-json"
+    note = None
+    uncheckable = standard.content_hash is None or vendored.content_hash is None
     if standard.content_hash is not None and vendored.content_hash is not None:
-        comparison = "canonical-json-sha256"
-        note = None
-        if standard.content_hash != vendored.content_hash:
+        if standard.content_hash != vendored.content_hash or not exact:
             changes.append("vectors")
+        if standard.content_hash == vendored.content_hash and not exact:
+            note = "equal under canonical_json; differs as exact JSON (Unicode normalization or number form)"
     else:
-        comparison = "exact-json"
-        note = standard.hash_error or vendored.hash_error
-        if not same_json(standard.vectors, vendored.vectors):
+        comparison = "uncheckable"
+        note = "; ".join(
+            f"{side}: {vector_set.hash_error}"
+            for side, vector_set in (("standard", standard), ("vendored", vendored))
+            if vector_set.content_hash is None
+        )
+        if not exact:
             changes.append("vectors")
     if vendored.count != standard.count or vendored.count != len(vendored.vectors):
         changes.append("count")
@@ -215,7 +237,7 @@ def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
         changes.append("spec")
     return {
         "set": standard.name,
-        "status": "drifted" if changes else "match",
+        "status": "uncheckable" if uncheckable else ("drifted" if changes else "match"),
         "changes": changes,
         "standardPath": standard.path,
         "vendoredPath": vendored.path,
@@ -234,7 +256,13 @@ def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
 
 def one_sided(vector_set: VectorSet, status: str) -> dict[str, Any]:
     side = "standardPath" if status == "missing" else "vendoredPath"
-    return {"set": vector_set.name, "status": status, side: vector_set.path, "spec": vector_set.spec}
+    result = {"set": vector_set.name, "status": status, side: vector_set.path, "spec": vector_set.spec}
+    if vector_set.content_hash is None:
+        result.update(
+            status="uncheckable", changes=[status], comparison="uncheckable",
+            comparisonNote=f"{side}: {vector_set.hash_error}",
+        )
+    return result
 
 
 def check(vendored_dir: Path, standard: Path, rev: str | None) -> dict[str, Any]:
@@ -243,10 +271,10 @@ def check(vendored_dir: Path, standard: Path, rev: str | None) -> dict[str, Any]
         standard_files = read_tree(standard / VECTORS_DIR)
     else:
         commit, standard_files = read_revision(standard, rev)
-    standard_sets = index_sets(standard_files, "standard")
+    standard_sets, standard_ignored = index_sets(standard_files, "standard")
     if not standard_sets:
         raise BadInput(f"no vector sets found under {VECTORS_DIR} in the Standard checkout")
-    vendored_sets = index_sets(read_tree(vendored_dir), "vendored")
+    vendored_sets, vendored_ignored = index_sets(read_tree(vendored_dir), "vendored")
 
     results = []
     for name in sorted(set(standard_sets) | set(vendored_sets)):
@@ -257,13 +285,15 @@ def check(vendored_dir: Path, standard: Path, rev: str | None) -> dict[str, Any]
         else:
             results.append(compare(standard_sets[name], vendored_sets[name]))
     summary = {"standard": len(standard_sets), "vendored": len(vendored_sets)}
-    for status in ("match", "drifted", "missing", "extra"):
+    summary["ignoredJson"] = {"standard": standard_ignored, "vendored": vendored_ignored}
+    for status in ("match", "drifted", "missing", "extra", "uncheckable"):
         summary[status] = sum(1 for result in results if result["status"] == status)
     return {
         "standard": {"path": str(standard), "revision": rev, "commit": commit},
         "vendored": str(vendored_dir),
         "hashRule": HASH_RULE,
-        "drift": summary["match"] != len(results),
+        "drift": any(r["status"] in ("drifted", "missing", "extra") or r.get("changes") for r in results),
+        "uncheckable": summary["uncheckable"] > 0,
         "summary": summary,
         "sets": results,
     }
@@ -289,20 +319,24 @@ def render_text(report: dict[str, Any]) -> str:
         if status == "extra":
             lines.append(f"EXTRA    {result['set']}  (vendored {result['vendoredPath']})")
             continue
+        if status == "uncheckable":
+            lines.append(f"UNCHECKABLE  {result['set']}  (required hash unavailable: {result['comparisonNote']})")
+            if result["changes"]:
+                lines.append(f"  observed differences: {', '.join(result['changes'])}")
+            continue
         lines.append(
             f"DRIFTED  {result['set']}  (standard {result['standardPath']}, "
             f"vendored {result['vendoredPath']})"
         )
         for change in result["changes"]:
             if change == "vectors":
-                if result["comparison"] == "exact-json":
-                    lines.append("  vectors: differ (compared as exact JSON)")
-                else:
-                    hashes = result["contentHash"]
-                    lines.append(
-                        f"  vectors: {HASH_RULE} standard {hashes['standard']}, "
-                        f"vendored {hashes['vendored']}"
-                    )
+                hashes = result["contentHash"]
+                lines.append(
+                    f"  vectors: {HASH_RULE} standard {hashes['standard']}, "
+                    f"vendored {hashes['vendored']}"
+                )
+                if result["comparisonNote"]:
+                    lines.append(f"  vectors: {result['comparisonNote']}")
             elif change == "count":
                 count = result["count"]
                 lines.append(
@@ -323,13 +357,10 @@ def render_text(report: dict[str, Any]) -> str:
     lines.append(
         f"{summary['standard']} standard sets, {summary['vendored']} vendored: "
         f"{summary['match']} match, {summary['drifted']} drifted, "
-        f"{summary['missing']} missing, {summary['extra']} extra."
+        f"{summary['missing']} missing, {summary['extra']} extra, {summary['uncheckable']} uncheckable."
     )
-    exact = [r["set"] for r in report["sets"] if r.get("comparison") == "exact-json"]
-    if exact:
-        lines.append(
-            f"Compared as exact JSON because canonical_json refuses their values: {', '.join(exact)}."
-        )
+    ignored = summary["ignoredJson"]
+    lines.append(f"Ignored JSON files: {ignored['standard']} standard, {ignored['vendored']} vendored.")
     return "\n".join(lines)
 
 
@@ -356,6 +387,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(report, indent=2) if args.json else render_text(report))
+    if report["uncheckable"]:
+        return 2
     return 1 if report["drift"] else 0
 
 

@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,7 +45,6 @@ STANDARD_SETS = {
         "beta-v0.1",
         [{"name": "b1", "expected": "fail", "input": "x"}, {"name": "b2", "expected": "pass", "input": True}],
     ),
-    "wide-int-v0.1": make_set("wide-int-v0.1", [{"name": "w1", "expected": "fail", "input": BIG}]),
 }
 
 
@@ -95,12 +95,13 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(report["hashRule"], "sha256(canonical_json(vectors))")
         self.assertEqual(
             report["summary"],
-            {"standard": 3, "vendored": 3, "match": 3, "drifted": 0, "missing": 0, "extra": 0},
+            {"standard": 2, "vendored": 2, "match": 2, "drifted": 0, "missing": 0, "extra": 0,
+             "uncheckable": 0, "ignoredJson": {"standard": 1, "vendored": 1}},
         )
         alpha = self.result_for(report, "alpha-v0.1")
         self.assertEqual(alpha["standardPath"], "security/alpha-v0.1.json")
         self.assertEqual(alpha["vendoredPath"], "security/alpha-v0.1.json")
-        self.assertEqual(alpha["comparison"], "canonical-json-sha256")
+        self.assertEqual(alpha["comparison"], "canonical-json-sha256+exact-json")
         self.assertEqual(alpha["contentHash"]["standard"], STANDARD_SETS["alpha-v0.1"]["hash"])
 
     def test_flat_vendored_layout_matches_by_set_name(self):
@@ -120,7 +121,7 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(beta["status"], "drifted")
         self.assertEqual(beta["changes"], ["vectors"])
         self.assertNotEqual(beta["contentHash"]["standard"], beta["contentHash"]["vendored"])
-        self.assertEqual(report["summary"]["match"], 2)
+        self.assertEqual(report["summary"]["match"], 1)
 
     def test_missing_set(self):
         self.vendored_set("alpha-v0.1").unlink()
@@ -155,23 +156,76 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(self.result_for(report, "alpha-v0.1")["changes"], ["spec"])
         self.assertEqual(self.result_for(report, "beta-v0.1")["changes"], ["hash"])
 
-    def test_values_canonical_json_refuses_are_compared_exactly(self):
-        code, report = self.run_checker()
-        wide = self.result_for(report, "wide-int-v0.1")
-        self.assertEqual((code, wide["status"], wide["comparison"]), (0, "match", "exact-json"))
-        self.assertIn("safe-integer", wide["comparisonNote"])
-        self.assertIsNone(wide["contentHash"]["standard"])
-        for replacement in (BIG + 1, float(BIG), str(BIG)):
+    def test_values_canonical_json_refuses_are_uncheckable(self):
+        name = "wide-int-v0.1"
+        wide = make_set(name, [{"name": "w1", "expected": "fail", "input": BIG}])
+        standard_path = self.standard / "conformance" / "vectors" / "security" / f"{name}.json"
+        write_json(standard_path, wide)
+        write_json(self.vendored_set(name), wide)
+        for replacement in (BIG, BIG + 1, float(BIG), str(BIG)):
             with self.subTest(replacement=replacement):
-                self.edit_vendored("wide-int-v0.1", lambda data: data["vectors"][0].update(input=replacement))
+                self.edit_vendored(name, lambda data: data["vectors"][0].update(input=replacement))
                 code, report = self.run_checker()
-                self.assertEqual(code, 1)
-                self.assertEqual(self.result_for(report, "wide-int-v0.1")["changes"], ["vectors"])
-        self.edit_vendored("beta-v0.1", lambda data: data["vectors"][1].update(input=1))
-        self.edit_vendored("wide-int-v0.1", lambda data: data["vectors"][0].update(input=BIG))
+                result = self.result_for(report, name)
+                self.assertEqual((code, result["status"], result["comparison"]), (2, "uncheckable", "uncheckable"))
+                self.assertIn("safe-integer", result["comparisonNote"])
+                self.assertIsNone(result["contentHash"]["standard"])
+                self.assertTrue(report["uncheckable"])
+                self.assertEqual(result["changes"], [] if replacement == BIG and type(replacement) is int else ["vectors"])
+        # Either side alone can make the required check unavailable.
+        write_json(standard_path, make_set(name, [{"input": 1}]))
+        write_json(self.vendored_set(name), wide)
         code, report = self.run_checker()
-        self.assertEqual(self.result_for(report, "beta-v0.1")["changes"], ["vectors"])
-        self.assertEqual(self.result_for(report, "wide-int-v0.1")["status"], "match")
+        self.assertEqual((code, self.result_for(report, name)["status"]), (2, "uncheckable"))
+
+    def test_canonical_unicode_equality_does_not_hide_drift(self):
+        name = "unicode-v0.1"
+        data = make_set(name, [{"input": "e\u0301"}])
+        write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
+        write_json(self.vendored_set(name), data)
+        self.edit_vendored(name, lambda value: value["vectors"][0].update(input="\u00e9"))
+        code, report = self.run_checker()
+        result = self.result_for(report, name)
+        self.assertEqual((code, result["status"], result["changes"]), (1, "drifted", ["vectors"]))
+        self.assertEqual(result["contentHash"]["standard"], result["contentHash"]["vendored"])
+        self.assertIn("differs as exact JSON", result["comparisonNote"])
+        self.assertIn("differs as exact JSON", CHECKER.render_text(report))
+
+    def test_unhashable_missing_and_extra_sets_are_uncheckable(self):
+        name = "wide-int-v0.1"
+        data = make_set(name, [{"input": BIG}])
+        for presence, base in (
+            ("missing", self.standard / "conformance" / "vectors"),
+            ("extra", self.vendored),
+        ):
+            with self.subTest(presence=presence):
+                path = base / f"{name}.json"
+                write_json(path, data)
+                code, report = self.run_checker()
+                result = self.result_for(report, name)
+                self.assertEqual((code, result["status"], result["changes"]),
+                                 (2, "uncheckable", [presence]))
+                self.assertIn("required hash unavailable", CHECKER.render_text(report))
+                path.unlink()
+
+    def test_canonical_number_equality_does_not_hide_drift(self):
+        name = "number-v0.1"
+        data = make_set(name, [{"input": 1.0}])
+        write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
+        write_json(self.vendored_set(name), data)
+        self.edit_vendored(name, lambda value: value["vectors"][0].update(input=1))
+        code, report = self.run_checker()
+        result = self.result_for(report, name)
+        self.assertEqual((code, result["status"], result["changes"]), (1, "drifted", ["vectors"]))
+        self.assertEqual(result["contentHash"]["standard"], result["contentHash"]["vendored"])
+        self.assertIn("differs as exact JSON", result["comparisonNote"])
+
+    def test_ignored_json_counts_are_reported(self):
+        write_json(self.vendored / "another-golden.json", {"signing": {}})
+        code, report = self.run_checker()
+        self.assertEqual(code, 0)
+        self.assertEqual(report["summary"]["ignoredJson"], {"standard": 1, "vendored": 2})
+        self.assertIn("Ignored JSON files: 1 standard, 2 vendored.", CHECKER.render_text(report))
 
     def test_text_report_names_each_problem(self):
         self.vendored_set("alpha-v0.1").unlink()
@@ -186,8 +240,7 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertIn("EXTRA    gamma-v0.1", text)
         self.assertIn("DRIFTED  beta-v0.1", text)
         self.assertIn("count: standard 2, vendored 5", text)
-        self.assertIn("3 standard sets, 3 vendored: 1 match, 1 drifted, 1 missing, 1 extra.", text)
-        self.assertIn("canonical_json refuses their values: wide-int-v0.1", text)
+        self.assertIn("2 standard sets, 2 vendored: 0 match, 1 drifted, 1 missing, 1 extra, 0 uncheckable.", text)
 
     def test_bad_input_exits_2(self):
         valid = copy.deepcopy(STANDARD_SETS["alpha-v0.1"])
@@ -196,6 +249,13 @@ class VendoredVectorDriftTests(unittest.TestCase):
             "duplicate member": '{"set": "alpha-v0.1", "set": "x", "vectors": []}',
             "NaN constant": '{"set": "alpha-v0.1", "spec": "s", "count": 1, "hash": "h", "vectors": [NaN]}',
             "missing hash": json.dumps({key: value for key, value in valid.items() if key != "hash"}),
+            "missing vectors": json.dumps({key: value for key, value in valid.items() if key != "vectors"}),
+            "set only": '{"set": "damaged-v0.1"}',
+            "spec only": '{"spec": "DACS-4"}',
+            "count only": '{"count": 0}',
+            "hash only": '{"hash": "h"}',
+            "vectors only": '{"vectors": []}',
+            "deep JSON": "[" * 200000 + "]" * 200000,
             "boolean count": json.dumps(dict(valid, count=True)),
             "duplicate set name": json.dumps(dict(valid)),
         }
@@ -207,6 +267,30 @@ class VendoredVectorDriftTests(unittest.TestCase):
                 code, report = self.run_checker(vendored=bad)
                 self.assertEqual(code, 2)
                 self.assertIn("error", report)
+        # A damaged expected set must also be bad input, rather than missing.
+        self.edit_vendored("alpha-v0.1", lambda data: data.pop("vectors"))
+        code, report = self.run_checker()
+        self.assertEqual(code, 2)
+        self.assertIn("'vectors'", report["error"])
+        write_json(self.vendored_set("alpha-v0.1"), valid)
+
+        # Exercise os.walk's error callback even when run with elevated filesystem access.
+        real_walk = CHECKER.os.walk
+        def denied_walk(base, **kwargs):
+            if base == self.vendored:
+                kwargs["onerror"](PermissionError("unreadable security directory"))
+            yield from real_walk(base, **kwargs)
+
+        with mock.patch.object(CHECKER.os, "walk", side_effect=denied_walk):
+            code, report = self.run_checker()
+        self.assertEqual(code, 2)
+        self.assertIn("unreadable security directory", report["error"])
+
+        for target in ("canonical_json", "same_json"):
+            with self.subTest(recursion=target), mock.patch.object(CHECKER, target, side_effect=RecursionError):
+                code, report = self.run_checker()
+                self.assertEqual(code, 2)
+                self.assertIn("too deeply nested", report["error"])
         empty_standard = self.tmp / "empty-standard"
         (empty_standard / "conformance" / "vectors").mkdir(parents=True)
         for label, kwargs, args in (
@@ -230,11 +314,21 @@ class RepositoryVectorSetTests(unittest.TestCase):
             code = CHECKER.main([*map(str, argv), "--json"])
         return code, json.loads(out.getvalue())
 
-    def test_repository_sets_match_themselves(self):
+    def test_repository_sets_report_refused_hashes_as_uncheckable(self):
         code, report = self.run_checker(ROOT / "conformance" / "vectors")
         security_sets = sorted((ROOT / "conformance" / "vectors" / "security").glob("*.json"))
-        self.assertEqual(code, 0)
-        self.assertEqual(report["summary"]["match"], len(security_sets))
+        self.assertEqual(code, 2)
+        refused = {"canonical-json-v0.1", "cci-xm-rail-chain-applicability-v0.5",
+                   "registry-bootstrap-v0.1", "sr2-logical-native-resolution-v0.1"}
+        self.assertEqual({r["set"] for r in report["sets"] if r["status"] == "uncheckable"}, refused)
+        self.assertEqual(report["summary"]["match"], len(security_sets) - len(refused))
+        for result in report["sets"]:
+            if result["status"] == "match":
+                self.assertIsNotNone(result["contentHash"]["standard"])
+                self.assertIsNotNone(result["contentHash"]["vendored"])
+        text = CHECKER.render_text(report)
+        for name in refused:
+            self.assertIn(f"UNCHECKABLE  {name}", text)
         self.assertTrue(all(r["standardPath"].startswith("security/") for r in report["sets"]))
 
     def test_revision_mode_reads_committed_sets(self):
@@ -246,17 +340,19 @@ class RepositoryVectorSetTests(unittest.TestCase):
                 (vendored / relative).parent.mkdir(parents=True, exist_ok=True)
                 (vendored / relative).write_bytes(raw)
             code, report = self.run_checker(vendored, "--rev", V04_COMMIT)
-            self.assertEqual(code, 0)
+            expected_code = 2 if report["uncheckable"] else 0
+            self.assertEqual(code, expected_code)
             self.assertEqual(report["standard"]["commit"], V04_COMMIT)
             self.assertGreater(report["summary"]["match"], 0)
-            first = report["sets"][0]
+            first = next(r for r in report["sets"] if r["status"] == "match")
             path = vendored / first["vendoredPath"]
             data = json.loads(path.read_text(encoding="utf-8"))
             data["vectors"].pop()
             path.write_text(json.dumps(data), encoding="utf-8")
             code, report = self.run_checker(vendored, "--rev", V04_COMMIT)
-            self.assertEqual(code, 1)
-            self.assertEqual(report["sets"][0]["changes"], ["vectors", "count"])
+            self.assertEqual(code, 2 if report["uncheckable"] else 1)
+            changed = next(r for r in report["sets"] if r["set"] == first["set"])
+            self.assertEqual(changed["changes"], ["vectors", "count"])
 
     def test_conformance_readme_documents_the_checker(self):
         readme = (ROOT / "conformance" / "README.md").read_text(encoding="utf-8")

@@ -52,6 +52,11 @@ agreement prints `cross-run CONVERGED` — attach that output (or the run
 files) to the tracking issue as the convergence evidence. Any divergence is
 listed per case and exits non-zero; a divergence is a finding about either an
 implementation or the set itself, and belongs on the set's tracking issue.
+For an object expected output that carries a `decision`, this protocol compares
+that semantic decision only. Advisory diagnostic members such as Vet `reasons`
+are retained in the fixture for debugging but are outside cross-run equality.
+JSON types remain distinct (`true` is not `1`); mathematical JSON numbers such
+as `1` and `1.0` compare equal after admitted parsing.
 
 An abstention is excluded from the displayed agreement denominator, cannot
 satisfy the vector's expected verdict, and makes the run `INCOMPLETE` with a

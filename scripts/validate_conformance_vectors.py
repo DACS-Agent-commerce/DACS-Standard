@@ -35,7 +35,14 @@ EXPECTED_STAGES = ["DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"]
 MANIFEST_REQUIRED_CASE = {"id", "area", "spec", "summary", "status", "want"}
 MANIFEST_STATUSES = {"golden", "candidate"}
 REGISTRY_CASE_ID = "sig-registry-closed"
+HISTORICAL_CHANNEL_DOMAIN = "dacs-channelmsg:v1:"
 GOLDEN_DECISIONS = {"pass", "fail", "indeterminate", "error"}
+AP2_GOLDEN_FIXTURE = "conformance/fixtures/settlement/settlement-ap2-reference.json"
+# Complete raw-byte authority for the authenticated AP2 reference fixture. An
+# intentional fixture revision updates this pin only after its oracle review.
+AP2_GOLDEN_FIXTURE_SHA256 = (
+    "93d43891b151347111184b2afda2cdc8d3990637f79b3cedd40a90e1ad32621b"
+)
 REQUIRED_TOP_LEVEL = {
     "vectorId",
     "title",
@@ -59,9 +66,14 @@ DOMAIN_RE = re.compile(r'"(dacs[-a-z0-9]*:v1:)"')
 # kind's "hash-excluded field(s)" from the CORE §B.2 per-artifact template.
 HASH_EXCLUDED = {
     "Listing": {"signature"},                              # §B.2
+    "VerifyResult": {"signature"},                         # §B.2 / §7.5
     "CompositeVerificationRecord": {"signature"},          # §B.2 / §7.7
     "AgreementDocument": {"signatures"},                   # DACS-3 §8.5 (L463: "omitting the `signatures` field")
+    "PayeeBoundAgreementDocument": {"signatures"},
+    "IdentityBoundAgreementDocument": {"signatures"},
+    "IdentityBoundPayeeAgreementDocument": {"signatures"},
     "SettlementEvidence": {"signature"},                   # §B.2 / §9.7
+    "DeliveryEvidence": {"signature"},                     # §B.2 / §9.7
     "AttestationBundle": {"signatures", "anchoredByRole"}, # DACS-5 §10.4.1 (signatures AND anchoredByRole)
 }
 
@@ -70,11 +82,57 @@ HASH_EXCLUDED = {
 # separator is registry-validated, never trusted as supplied by the vector.
 KIND_SEPARATOR = {
     "Listing": "dacs-listing:v1:",
+    "VerifyResult": "dacs-verifyresult:v1:",
     "CompositeVerificationRecord": "dacs-composite:v1:",
     "AgreementDocument": "dacs-agreement:v1:",
+    "PayeeBoundAgreementDocument": "dacs-payee-bound-agreement:v1:",
+    "IdentityBoundAgreementDocument": "dacs-identity-bound-agreement:v1:",
+    "IdentityBoundPayeeAgreementDocument": "dacs-identity-bound-payee-agreement:v1:",
     "SettlementEvidence": "dacs-evidence:v1:",
+    "DeliveryEvidence": "dacs-delivery-evidence:v1:",
     "AttestationBundle": "dacs-bundle:v1:",
 }
+
+# Kind -> the §B.2 body type discriminator that MUST be present with value "1" and
+# MUST NOT collide with another kind's discriminator. This binds the wrapper `kind`
+# to the artifact body before any hashing or signature work runs, so a wrapper
+# cannot smuggle a different artifact type past a reader that only dispatches on
+# the wrapper's `kind` label (CORE §11.2.5 version-signalling scope).
+BODY_DISCRIMINATORS = {
+    "Listing": "dacsVersion",
+    "VerifyResult": "resultVersion",
+    "CompositeVerificationRecord": "recordVersion",
+    "AgreementDocument": "agreementVersion",
+    "PayeeBoundAgreementDocument": "payeeBoundAgreementVersion",
+    "IdentityBoundAgreementDocument": "identityBoundAgreementVersion",
+    "IdentityBoundPayeeAgreementDocument": "identityBoundPayeeAgreementVersion",
+    "SettlementEvidence": "evidenceVersion",
+    "DeliveryEvidence": "deliveryEvidenceVersion",
+    "AttestationBundle": "bundleVersion",
+}
+
+DACS4_EVIDENCE_SELECTORS = frozenset({
+    "deliveryEvidenceVersion",
+    "evidenceVersion",
+    "finalityBoundEvidenceVersion",
+    "legacyTransitionEvidenceVersion",
+})
+
+# LR-2 size cap: the canonical JSON form of a Listing MUST NOT exceed 16,384 bytes
+# (DACS-1 §6.3.4). Enforced over the §B.2 signature-omitted canonical form.
+LISTING_SIZE_CAP = 16_384
+
+def lifecycle_evidence_kind_matches(kind: str, artifact: Any) -> bool:
+    """Bind a lifecycle wrapper to one exclusive supported DACS-4 selector."""
+    if kind not in {"DeliveryEvidence", "SettlementEvidence"}:
+        return True
+    if not isinstance(artifact, dict):
+        return False
+    expected = (
+        "deliveryEvidenceVersion" if kind == "DeliveryEvidence" else "evidenceVersion"
+    )
+    present = DACS4_EVIDENCE_SELECTORS.intersection(artifact)
+    return artifact.get(expected) == "1" and present == {expected}
 
 # The two lifecycle chains the generator (and write_vectors) regenerate end-to-end.
 # This is a FILE-SET for regeneration — deliberately distinct from the padded-Base64
@@ -124,12 +182,28 @@ def legacy_spelling_allowed(path: Path, data: dict) -> bool:
 def load_registered_domain_separators(root: Path = ROOT) -> set[str]:
     spec_text = specsource.spec_text(root)
     start_marker = "The v0.x registry of domain separators at this revision is closed:"
-    end_marker = "**Payload shape — single-hash vs composite.**"
+    end_marker = "**Historical read/import-only domain (not a current producer registry entry).**"
     start = spec_text.find(start_marker)
     end = spec_text.find(end_marker, start)
     if start == -1 or end == -1:
         return set()
     return set(DOMAIN_RE.findall(spec_text[start:end]))
+
+
+def load_historical_channel_domain(root: Path = ROOT) -> str | None:
+    """Parse the one frozen channel import domain outside the producer table."""
+
+    spec_text = specsource.spec_text(root)
+    start_marker = "**Historical read/import-only domain (not a current producer registry entry).**"
+    end_marker = "**Payload shape — single-hash vs composite.**"
+    start = spec_text.find(start_marker)
+    end = spec_text.find(end_marker, start)
+    if start == -1 or end == -1:
+        return None
+    domains = set(DOMAIN_RE.findall(spec_text[start:end]))
+    if len(domains) != 1:
+        return None
+    return domains.pop()
 
 
 def canonical_json(value: Any) -> bytes:
@@ -266,8 +340,8 @@ def is_within(path: Path, root: Path) -> bool:
     return True
 
 
-def fixture_exists(manifest_dir: Path, fixture: str) -> bool:
-    """Return true when a fixture path exists relative to common vector roots.
+def resolve_fixture_path(manifest_dir: Path, fixture: str) -> Path | None:
+    """Resolve a fixture path relative to the allowed common vector roots.
 
     PR #117-style golden outputs use repository-root paths such as
     `conformance/fixtures/example.json`, while smaller local harness tests may use
@@ -278,14 +352,41 @@ def fixture_exists(manifest_dir: Path, fixture: str) -> bool:
 
     fixture_path = Path(fixture)
     if fixture_path.is_absolute():
-        return False
+        return None
 
     allowed_roots = [manifest_dir, manifest_dir.parent]
     candidates = [manifest_dir / fixture_path, manifest_dir.parent / fixture_path]
-    return any(
-        candidate.is_file() and is_within(candidate, root)
-        for candidate, root in zip(candidates, allowed_roots)
-    )
+    for candidate, root in zip(candidates, allowed_roots):
+        if candidate.is_file() and is_within(candidate, root):
+            return candidate
+    return None
+
+
+def fixture_exists(manifest_dir: Path, fixture: str) -> bool:
+    return resolve_fixture_path(manifest_dir, fixture) is not None
+
+
+class DuplicateJsonMemberError(ValueError):
+    """Raised when a JSON object repeats an exact decoded member name."""
+
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in result:
+            raise DuplicateJsonMemberError(f"duplicate object member {name!r}")
+        result[name] = value
+    return result
+
+
+def parse_json_bytes_without_duplicates(raw: bytes) -> Any:
+    """Strictly decode UTF-8 JSON and reject duplicate members recursively.
+
+    Member names are compared exactly as decoded. They are deliberately not
+    normalised because signed JSON member names must remain byte-faithful.
+    """
+
+    return json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_json_object)
 
 
 def validate_vector(path: Path) -> list[str]:
@@ -364,8 +465,55 @@ def validate_vector(path: Path) -> list[str]:
                 )
             )
 
-        # §B.2 envelope content hash over the signature-omitted canonical form.
-        expected_hash = content_hash_uri(kind, artifact["artifact"])
+        # B8: bind the wrapper kind to the body type discriminator BEFORE any hash
+        # or signature work. A wrapper cannot relabel a different artifact type.
+        body = artifact["artifact"]
+        discriminator = BODY_DISCRIMINATORS[kind]
+        if not isinstance(body, dict) or body.get(discriminator) != "1":
+            errors.append(
+                fail(
+                    path,
+                    f"{artifact_id}: {kind} body must carry {discriminator}: '1'",
+                )
+            )
+        foreign = sorted(
+            other for other, field in BODY_DISCRIMINATORS.items()
+            if other != kind and isinstance(body, dict) and field in body
+        )
+        if foreign:
+            errors.append(
+                fail(
+                    path,
+                    f"{artifact_id}: {kind} body carries a foreign type discriminator: {foreign}",
+                )
+            )
+        if not lifecycle_evidence_kind_matches(kind, body):
+            errors.append(
+                fail(path, f"{artifact_id}: {kind} requires its exclusive evidence selector")
+            )
+            continue
+
+        # C12/C13: canonicalisation fails closed — an unsafe numeric magnitude or a
+        # non-JSON value is a controlled rejection, never an uncaught traceback, and
+        # an oversized Listing is rejected before any signature is considered.
+        try:
+            scope = signing_scope(kind, body)
+            canonical = canonical_json(scope)
+        except (ValueError, TypeError) as exc:
+            errors.append(
+                fail(path, f"{artifact_id}: canonical form is not an admissible DACS value: {exc}")
+            )
+            continue
+        if kind == "Listing" and len(canonical) > LISTING_SIZE_CAP:
+            errors.append(
+                fail(
+                    path,
+                    f"{artifact_id}: Listing canonical form exceeds the LR-2 size cap "
+                    f"({len(canonical)} > {LISTING_SIZE_CAP} bytes)",
+                )
+            )
+            continue
+        expected_hash = "sha256:" + hashlib.sha256(canonical).hexdigest()
         if artifact["contentHash"] != expected_hash:
             errors.append(
                 fail(
@@ -520,6 +668,34 @@ def validate_manifest(path: Path) -> list[str]:
                             f"{prefix}.want.separators MUST equal the sorted closed §B.7 registry",
                         )
                     )
+                historical = want.get("historicalImport")
+                parsed_historical_domain = load_historical_channel_domain(ROOT)
+                expected_historical = {
+                    "operation": "legacy-import",
+                    "separator": HISTORICAL_CHANNEL_DOMAIN,
+                    "digestFraming": "raw-sha256-bytes",
+                }
+                if parsed_historical_domain != HISTORICAL_CHANNEL_DOMAIN:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}: could not parse the one frozen historical channel domain",
+                        )
+                    )
+                if historical != expected_historical:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}.want.historicalImport MUST pin the separate frozen channel import domain",
+                        )
+                    )
+                if HISTORICAL_CHANNEL_DOMAIN in registry:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}.want.separators MUST exclude the historical import-only domain",
+                        )
+                    )
 
     golden_path = path.parent / "vectors" / "golden.json"
     if golden_path.exists():
@@ -528,11 +704,117 @@ def validate_manifest(path: Path) -> list[str]:
     return errors
 
 
+def validate_ap2_golden_output(
+    path: Path, manifest_dir: Path, settlement: dict[str, Any]
+) -> list[str]:
+    """Bind AP2 golden pins to the independently pinned reference fixture."""
+    errors: list[str] = []
+    decisions = settlement.get("decisions")
+    has_ap2_decision = (
+        isinstance(decisions, dict) and "ap2ReferencePass" in decisions
+    )
+    if not (
+        "ap2Fixture" in settlement
+        or "ap2EvidenceHash" in settlement
+        or "ap2JobId" in settlement
+        or has_ap2_decision
+    ):
+        return errors
+
+    required = ("ap2Fixture", "ap2EvidenceHash", "ap2JobId")
+    missing = [key for key in required if key not in settlement]
+    if not has_ap2_decision:
+        missing.append("decisions.ap2ReferencePass")
+    if missing:
+        errors.append(
+            fail(path, f"settlement AP2 golden is missing: {', '.join(missing)}")
+        )
+        return errors
+
+    fixture_name = settlement["ap2Fixture"]
+    if not isinstance(fixture_name, str) or not fixture_name.strip():
+        return [fail(path, "settlement.ap2Fixture MUST be a non-empty fixture path string")]
+    if fixture_name != AP2_GOLDEN_FIXTURE:
+        return [fail(path, f"settlement.ap2Fixture MUST equal {AP2_GOLDEN_FIXTURE}")]
+    fixture_path = resolve_fixture_path(manifest_dir, fixture_name)
+    if fixture_path is None:
+        return errors  # The structural fixture-existence check reports this.
+    try:
+        fixture_bytes = fixture_path.read_bytes()
+        fixture = parse_json_bytes_without_duplicates(fixture_bytes)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, DuplicateJsonMemberError) as exc:
+        return [fail(path, f"settlement.ap2Fixture is not valid JSON: {exc}")]
+
+    fixture_digest = hashlib.sha256(fixture_bytes).hexdigest()
+    if fixture_digest != AP2_GOLDEN_FIXTURE_SHA256:
+        return [
+            fail(
+                path,
+                "settlement.ap2Fixture is not the independently pinned canonical "
+                "AP2 reference fixture; complete raw-byte SHA-256 mismatch "
+                f"(expected {AP2_GOLDEN_FIXTURE_SHA256}, got {fixture_digest})",
+            )
+        ]
+
+    try:
+        evidence = fixture["evidence"]
+        if not isinstance(evidence, dict):
+            raise TypeError("evidence MUST be an object")
+        unsigned = dict(evidence)
+        signature = unsigned.pop("signature")
+        if not isinstance(signature, dict):
+            raise TypeError("evidence.signature MUST be an object")
+        computed_hash = hashlib.sha256(
+            jcs.canonicalize(unsigned).encode("utf-8")
+        ).hexdigest()
+        fixture_hash = fixture["evidenceHash"]
+        fixture_job_id = evidence["jobId"]
+        fixture_decision = fixture["expected"]["verdict"]
+    except (KeyError, OverflowError, TypeError, ValueError) as exc:
+        return [fail(path, f"settlement.ap2Fixture has invalid evidence: {exc}")]
+
+    if fixture_hash != computed_hash:
+        errors.append(
+            fail(
+                path,
+                "settlement.ap2Fixture evidenceHash MUST equal RFC 8785 SHA-256 "
+                f"of unsigned evidence ({computed_hash})",
+            )
+        )
+    if settlement["ap2EvidenceHash"] != computed_hash:
+        errors.append(
+            fail(
+                path,
+                "settlement.ap2EvidenceHash MUST equal the AP2 fixture's "
+                f"unsigned evidence hash ({computed_hash})",
+            )
+        )
+    if settlement["ap2JobId"] != fixture_job_id:
+        errors.append(
+            fail(
+                path,
+                "settlement.ap2JobId MUST equal the AP2 fixture evidence jobId "
+                f"({fixture_job_id})",
+            )
+        )
+    if decisions["ap2ReferencePass"] != fixture_decision:
+        errors.append(
+            fail(
+                path,
+                "settlement.decisions.ap2ReferencePass MUST equal the AP2 fixture "
+                f"verdict ({fixture_decision})",
+            )
+        )
+    return errors
+
+
 def validate_golden_outputs(path: Path, manifest_path: Path) -> list[str]:
     errors: list[str] = []
+    # Golden pins must have one reading: a duplicate member would let a
+    # last-wins and a first-wins consumer see different pinned values.
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        data = parse_json_bytes_without_duplicates(path.read_bytes())
+    except (UnicodeDecodeError, json.JSONDecodeError, DuplicateJsonMemberError) as exc:
         return [fail(path, f"invalid JSON: {exc}")]
 
     if not isinstance(data, dict):
@@ -541,7 +823,7 @@ def validate_golden_outputs(path: Path, manifest_path: Path) -> list[str]:
     manifest_dir = manifest_path.parent
     fixture_keys = {
         "bundle": ["fixture", "divergentSellerFixture", "htlc9Fixture"],
-        "settlement": ["fixture", "deliveryFixture"],
+        "settlement": ["fixture", "deliveryFixture", "ap2Fixture"],
     }
     for section, keys in fixture_keys.items():
         section_data = data.get(section)
@@ -581,6 +863,10 @@ def validate_golden_outputs(path: Path, manifest_path: Path) -> list[str]:
                         f"{section}.decisions.{decision_key} MUST be one of: {', '.join(sorted(GOLDEN_DECISIONS))}",
                     )
                 )
+
+    settlement = data.get("settlement")
+    if isinstance(settlement, dict):
+        errors.extend(validate_ap2_golden_output(path, manifest_dir, settlement))
 
     return errors
 

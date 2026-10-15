@@ -1,5 +1,7 @@
 # Operational builder guide outline
 
+> **#392 candidate boundary.** Existing settlement and reputation integrations keep their pinned contracts. Do not emit `FinalityBoundSettlementEvidence`, `FinalityBoundEvidenceFaultAttestationBundle`, or the reserved current-use derivation merely from a producer finality flag. The first two require the FV consumer's authenticated proof path; the combined derivation remains blocked on #391 historical-era/role admission. The in-repository finality authorities and proof bodies are deterministic test fixtures, not production keys or live proof-wire support.
+
 This is a non-normative outline for operators preparing to implement DACS in production. It complements the existing [builders guide](./builders-guide.md) by focusing on operational, capital, and settlement-finality questions that the v0.1 specification deliberately leaves to implementers.
 
 ## Executable starting point

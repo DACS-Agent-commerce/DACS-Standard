@@ -7,8 +7,8 @@
     "issue": "DACS-Agent-commerce/DACS-Standard#307",
     "generator": "hand-authored normative examples; independently recomputed by tests/test_cci_xm_rail_chain_applicability_vectors.py"
   },
-  "count": 28,
-  "hash": "4d6301bfc705ae230c58cc9820c218621f59848f2dc61f1e20ea972d0939881a",
+  "count": 31,
+  "hash": "eaf8f90e9d03bd6fb76eb644ee1e0af4f9dac75d2033ad30576f881eab34a3a2",
   "vectors": [
     {
       "name": "ethereum-mainnet-exact-chain-id-tier2",
@@ -556,6 +556,65 @@
       "want": {
         "railChain": null,
         "claimChain": "eip155:8453",
+        "tier2Applicable": false,
+        "bindingTier": null,
+        "maySubmitPayment": false,
+        "failedAt": "RD-5"
+      }
+    },
+    {
+      "name": "maximum-safe-chain-id-establishes-tier2",
+      "expected": "pass",
+      "claim": "cci-xm:evm:9007199254740991:opaque-address",
+      "railDefinition": {
+        "railId": "evm-erc20:max:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 9007199254740991},
+        "network": {"kind": "evm", "chainId": 9007199254740991}
+      },
+      "linkageDecision": "pass",
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": "eip155:9007199254740991",
+        "claimChain": "eip155:9007199254740991",
+        "tier2Applicable": true,
+        "bindingTier": 2,
+        "maySubmitPayment": true
+      }
+    },
+    {
+      "name": "oversized-textual-chain-remains-tier3-eligible",
+      "expected": "pass",
+      "claim": "cci-xm:evm:9007199254740992:opaque-address",
+      "railDefinition": {
+        "railId": "evm-erc20:max:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 9007199254740991},
+        "network": {"kind": "evm", "chainId": 9007199254740991}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": "eip155:9007199254740991",
+        "claimChain": null,
+        "tier2Applicable": false,
+        "bindingTier": 3,
+        "maySubmitPayment": true
+      }
+    },
+    {
+      "name": "unsafe-numeric-rail-rejects-before-tier-selection",
+      "expected": "error",
+      "claim": "cci-xm:evm:9007199254740992:opaque-address",
+      "railDefinition": {
+        "railId": "evm-erc20:unsafe:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 9007199254740992},
+        "network": {"kind": "evm", "chainId": 9007199254740992}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": null,
+        "claimChain": null,
         "tier2Applicable": false,
         "bindingTier": null,
         "maySubmitPayment": false,

@@ -17,7 +17,7 @@
     "cci-lei:984500PBSELLER000010": "BuwkmF-v_71CiQrUMIDkQHwQlKiJPWch4F_Q_DmHhNY",
     "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111": "yra4qKH2-KfQGZVE9e1w-c7fVuKT50z9cHUTdYQWaEE"
   },
-  "hash": "af662645c48dcda3f9f3341afb593f6f34951d2610bd92d5ccad9a9c992ca64a",
+  "hash": "8a5d8060ae4fbaf1e30880014be28e717b7eb1d1efd16d9106c7f264003bdaad",
   "count": 28,
   "vectors": [
     {
@@ -3159,7 +3159,7 @@
       "rule": "PB-3",
       "op": "pre-pay-destination-gate",
       "expected": "indeterminate",
-      "note": "SB-3 fallback semantics are settlement-evidence semantics and cannot downgrade an applicable-but-unresolvable tier-2 pre-pay gate.",
+      "note": "The separate SB-3 binding-required disposition cannot bypass or downgrade an applicable-but-unresolvable tier-2 pre-pay gate.",
       "listing": {
         "listingId": "did:demos:agent:pb-fixture/payee-binding-x402/1",
         "version": 1,

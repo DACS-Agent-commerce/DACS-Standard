@@ -1,0 +1,64 @@
+{
+  "candidate": {
+    "base": "ff8c289d22d07e09a1733b1ae7791100bfdbd923",
+    "head": "37010daa0a7c5900afcda6e314f1ae53f3afeb7b",
+    "origin": "https://github.com/DACS-Agent-commerce/DACS-Standard.git"
+  },
+  "caseFreeze": {
+    "casesMtimeUnixNs": 1789454589083631060,
+    "frozenBeforeRun": true,
+    "runStartedAtUnixNs": 1789454919868010000
+  },
+  "command": [
+    "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+    "/private/tmp/dacs-pr362-eval-20260915/eval_pr362.py"
+  ],
+  "digests": {
+    "/private/tmp/dacs-pr362-eval-20260915/cases.json": "cc07a0f2c6ca251a7afb1540d9b61780221eeec1c3639836c32294f995640f57",
+    "/private/tmp/dacs-pr362-eval-20260915/eval_pr362.py": "fc86ef06701e57e13aa04391e34f596582e819b70a17eaed46f395ae301aa870",
+    "/private/tmp/dacs-pr362-eval-20260915/grader-calibration.json": "de31d97894983b53839e8fb3fe53e59da54d3e25f361abfb923223dc866e89db",
+    "/private/tmp/dacs-pr362-eval-20260915/results.json": "958bdda04f9a7940ff2318b83d8e1f29052ff94901f1bbde5ce2c6c143d6d0ca",
+    "/private/tmp/dacs-repairs-20260914/pr362/conformance/vectors/security/presence-only-claim-requirement-v0.7.json": "a40a9dbb31613cef6a9eb60f24750f3628794a57d4c6c741c28cfaafce0e85f0",
+    "/private/tmp/dacs-repairs-20260914/pr362/scripts/generate_presence_only_claim_vectors.py": "4385caeea730c23353c209c4dd8f2b87d7b72ac1bd77adb54afd611b40a53458",
+    "/private/tmp/dacs-repairs-20260914/pr362/spec/CORE.md": "ab1138900bfe178b35df4b8b8553b8262636569ff868fa0566a59a645b2b3baf",
+    "/private/tmp/dacs-repairs-20260914/pr362/spec/DACS-2-VET.md": "10b2d0e0a867e290c2b573acf8afe0b3746dbe97c71423aaee68e89444f20985",
+    "/private/tmp/dacs-repairs-20260914/pr362/tests/test_presence_only_claim_vectors.py": "bce61ea91141050289255b296a30859fa18bec18edbf940255e8fe3038b28993"
+  },
+  "evaluationId": "dacs-standard-pr362-verifyresult-pilot-v1",
+  "limitations": [
+    "Narrow pilot only; PR #362 changes additional Standard surfaces that are not evaluated here.",
+    "The actual consumer accepts parsed Python objects; this pilot does not claim CORE CF-5 raw-byte admission coverage.",
+    "The independent canonical oracle deliberately rejects non-ASCII and fractional-number cases rather than claiming full RFC 8785 coverage.",
+    "No payment, delivery, chain, network, latency, memory, or production behavior was exercised.",
+    "Per-case forbiddenEffectsObserved records the asserted protocol decision guard only; the harness does not provide general filesystem, network, payment, or delivery effect tracing.",
+    "Evaluation evidence is not a contributor approval, maintainer approval, merge gate, or release authorization."
+  ],
+  "oracleScope": "Independent stdlib canonicalizer restricted to recursively safe ASCII strings/member names, booleans/null, arrays/objects, and integer JSON numbers with |n| <= 2^53-1. Floats and non-ASCII are rejected. In this domain Python Unicode sorting equals JCS UTF-16 sorting and stdlib integer serialization equals JCS.",
+  "permissions": {
+    "candidateWrites": false,
+    "liveSystems": false,
+    "network": false,
+    "outputRoot": "/private/tmp/dacs-pr362-eval-20260915"
+  },
+  "runtime": {
+    "cryptography": "46.0.5",
+    "implementation": "CPython",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.12.6",
+    "pythonExecutable": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3"
+  },
+  "schemaVersion": "1",
+  "statusVocabulary": [
+    "pass",
+    "fail",
+    "blocked",
+    "skipped",
+    "not_applicable"
+  ],
+  "verificationCommand": [
+    "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+    "/private/tmp/dacs-pr362-eval-20260915/eval_pr362.py",
+    "--verify-results",
+    "/private/tmp/dacs-pr362-eval-20260915/results.json"
+  ]
+}

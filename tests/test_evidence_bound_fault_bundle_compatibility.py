@@ -5,10 +5,14 @@ import copy
 import json
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import dacs5_reference as R
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +23,27 @@ def decode(value):
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
 
 
+def legacy_receipt_map(receipts):
+    """Adapt current fixture receipts to the frozen pre-SR-2 replay field.
+
+    The generated corpus is authoritative for current AnchorReceipt metadata. The
+    named archival EBFAB API additionally consumes the historical ``transaction``
+    spelling, whose value is deterministically recoverable from that metadata.
+    """
+    adapted = copy.deepcopy(receipts)
+    for receipt in adapted.values():
+        transaction_ref = receipt.get("transactionRef")
+        if (
+            "transaction" not in receipt
+            and isinstance(transaction_ref, dict)
+            and isinstance(transaction_ref.get("value"), str)
+        ):
+            receipt["transaction"] = "%s:%s" % (
+                receipt.get("substrate"), transaction_ref["value"]
+            )
+    return adapted
+
+
 class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -27,6 +52,28 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             claim: decode(value)
             for claim, value in cls.data["publicKeys"].items()
         }
+        cls.current_key_authority = R.trusted_verification_keys(cls.pubkeys)
+        cls.legacy_receipts = legacy_receipt_map(
+            cls.data["verifiedReceiptByCanonicalRef"]
+        )
+
+    def test_named_archival_derivation_accepts_released_copy_without_current_authority(self):
+        pair = next(case for case in self.data["pairCases"]
+                    if case["name"] == "ebfab-fab-older-cannot-erase-seb")
+        bundle = pair["copies"]["seller"]
+        party = next(p["primaryClaim"] for p in bundle["parties"]
+                     if p["role"] == "seller")
+        tagged = {
+            "bundle": bundle,
+            "selectedByRoleResolution": True,
+            "resolvedJobId": bundle["jobId"],
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "absent",
+        }
+        receipt = R.derive_legacy_job_bound(
+            party, [tagged], bundle["finalisedAt"] - 1, bundle["finalisedAt"] + 1)
+        self.assertEqual(receipt["bundleCount"], 1)
+        self.assertNotEqual(R._tagged_copy_validation_for_derive(tagged)[0], "pass")
 
     def test_public_keys_match_disclosed_seeds(self):
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -95,11 +142,11 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         authority = {R.canonical(ref).decode("utf-8"): resolution}
         session_authority = copy.deepcopy(self.data["sessionExecutionAuthorityByPhaseKey"])
         session_authority["0:pay-dem"]["phaseOrchestrator"] = "did:demos:orchestrator"
-        receipt = copy.deepcopy(next(iter(self.data["verifiedReceiptByCanonicalRef"].values())))
+        receipt = copy.deepcopy(next(iter(self.legacy_receipts.values())))
         receipt["contentHash"] = ref["contentHash"]
         receipt["writer"] = "did:demos:orchestrator"
         receipts = {R.canonical(ref).decode("utf-8"): receipt}
-        ok, reason, _ = R.validate_ebfab(
+        ok, reason, _ = R.validate_legacy_ebfab(
             bundle,
             self.data["listing"],
             self.pubkeys,
@@ -111,7 +158,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         self.assertTrue(ok, reason)
 
         session_authority["0:pay-dem"]["phaseOrchestrator"] = "did:demos:buyer"
-        ok, _, _ = R.validate_ebfab(
+        ok, _, _ = R.validate_legacy_ebfab(
             bundle,
             self.data["listing"],
             self.pubkeys,
@@ -129,7 +176,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 self.assertEqual(R.bundle_type(bundle), case["want"]["type"])
                 ok, _ = R._bundle_signatures_valid(bundle, self.pubkeys)
                 self.assertEqual(ok, case["want"]["signaturesValid"])
-                seb_ok, _, _ = R.validate_ebfab(
+                seb_ok, _, _ = R.validate_legacy_ebfab(
                     bundle,
                     self.data["listing"],
                     self.pubkeys,
@@ -139,7 +186,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                         self.data["bundleLifecycleByHash"].get(R.bundle_hash(bundle), {}),
                     ),
                     self.data["sessionExecutionAuthorityByPhaseKey"],
-                    self.data["verifiedReceiptByCanonicalRef"],
+                    self.legacy_receipts,
                 )
                 self.assertEqual(seb_ok, case["want"]["sebValid"])
 
@@ -170,14 +217,14 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     ok, reason = R._bundle_signatures_valid(bundle, self.pubkeys)
                     self.assertTrue(ok, reason)
                     if R.bundle_type(bundle) == "evidence-bound":
-                        seb_ok, seb_reason, _ = R.validate_ebfab(
+                        seb_ok, seb_reason, _ = R.validate_legacy_ebfab(
                             bundle,
                             self.data["listing"],
                             self.pubkeys,
                             self.data["referenceValidationByCanonicalRef"],
                             self.data["bundleLifecycleByHash"][R.bundle_hash(bundle)],
                             self.data["sessionExecutionAuthorityByPhaseKey"],
-                            self.data["verifiedReceiptByCanonicalRef"],
+                            self.legacy_receipts,
                         )
                         self.assertTrue(seb_ok, seb_reason)
                 self.assertEqual(R.divergence(copies[0], copies[1]), case["want"]["divergent"])
@@ -187,14 +234,14 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 self.assertEqual(R.bundle_type(authoritative), case["want"]["authoritativeType"])
                 self.assertEqual(R.bundle_hash(authoritative), case["want"]["authoritativeBundleHash"])
                 self.assertTrue(authoritative["settlementEvidence"])
-                seb_ok, reason, phase_keys = R.validate_ebfab(
+                seb_ok, reason, phase_keys = R.validate_legacy_ebfab(
                     authoritative,
                     self.data["listing"],
                     self.pubkeys,
                     self.data["referenceValidationByCanonicalRef"],
                     self.data["bundleLifecycleByHash"][R.bundle_hash(authoritative)],
                     self.data["sessionExecutionAuthorityByPhaseKey"],
-                    self.data["verifiedReceiptByCanonicalRef"],
+                    self.legacy_receipts,
                 )
                 self.assertEqual(seb_ok, case["want"]["sebValid"], reason)
                 self.assertEqual(phase_keys, ["0:pay-dem"])
@@ -218,20 +265,20 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
                 "sessionExecutionAuthorityByPhaseKey": self.data[
                     "sessionExecutionAuthorityByPhaseKey"],
-                "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
+                "verifiedReceiptByCanonicalRef": self.legacy_receipts,
                 "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(invalid)],
             },
             "selectedByRoleResolution": True,
             "resolvedJobId": invalid["jobId"],
         }
-        self.assertFalse(R._tagged_copy_valid_for_derive(tag))
+        self.assertFalse(R._tagged_legacy_copy_valid_for_derive(tag))
 
         valid_fab = next(
             case["copies"]["seller"]
             for case in self.data["pairCases"]
             if case["name"] == "ebfab-fab-older-cannot-erase-seb"
         )
-        derivation = R.derive_job_bound(
+        derivation = R.derive_legacy_job_bound(
             "did:demos:buyer",
             [
                 {
@@ -268,11 +315,11 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
                 "sessionExecutionAuthorityByPhaseKey": self.data[
                     "sessionExecutionAuthorityByPhaseKey"],
-                "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
+                "verifiedReceiptByCanonicalRef": self.legacy_receipts,
                 "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(valid_ebfab)],
             },
         }
-        derivation_with_losing_candidate = R.derive_job_bound(
+        derivation_with_losing_candidate = R.derive_legacy_job_bound(
             "did:demos:buyer",
             [valid_tag, {**tag, "selectedByRoleResolution": False}],
             valid_ebfab["finalisedAt"] - 1,
@@ -299,7 +346,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             "bundle": {"evidenceBoundFaultBundleVersion": "1"},
             "selectedByRoleResolution": False,
         }
-        derivation_with_malformed_loser = R.derive_job_bound(
+        derivation_with_malformed_loser = R.derive_legacy_job_bound(
             "did:demos:buyer",
             [valid_tag, malformed_losing_candidate],
             valid_ebfab["finalisedAt"] - 1,
@@ -311,7 +358,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             **malformed_losing_candidate,
             "resolvedJobId": valid_ebfab["jobId"],
         }
-        derivation_with_tagged_malformed_loser = R.derive_job_bound(
+        derivation_with_tagged_malformed_loser = R.derive_legacy_job_bound(
             "did:demos:buyer",
             [valid_tag, tagged_malformed_loser],
             valid_ebfab["finalisedAt"] - 1,
@@ -322,15 +369,15 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         invalid_discriminator = next(
             case["bundle"]
             for case in self.data["cases"]
-            if case["name"] == "known-plus-unknown-discriminator-reject"
+            if case["name"] == "dual-discriminator-reject"
         )
         invalid_discriminator_tag = {
             "bundle": invalid_discriminator,
             "selectedByRoleResolution": True,
             "resolvedJobId": invalid_discriminator["jobId"],
         }
-        self.assertFalse(R._tagged_copy_valid_for_derive(invalid_discriminator_tag))
-        discriminator_rejection = R.derive_job_bound(
+        self.assertFalse(R._tagged_legacy_copy_valid_for_derive(invalid_discriminator_tag))
+        discriminator_rejection = R.derive_legacy_job_bound(
             "did:demos:buyer",
             [
                 invalid_discriminator_tag,
@@ -348,7 +395,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
 
         withheld_job = {**tag, "bundle": dict(invalid)}
         withheld_job["bundle"].pop("jobId")
-        withheld_job_rejection = R.derive_job_bound(
+        withheld_job_rejection = R.derive_legacy_job_bound(
             "did:demos:buyer",
             [
                 withheld_job,
@@ -366,7 +413,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
 
         wrong_job_older = dict(valid_fab)
         wrong_job_older["jobId"] = "OLDER-COPY-WRONG-JOB"
-        wrong_job_fallback = R.derive_job_bound(
+        wrong_job_fallback = R.derive_legacy_job_bound(
             "did:demos:buyer",
             [
                 tag,
@@ -385,12 +432,46 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         missing_resolution_context = dict(tag)
         missing_resolution_context.pop("resolvedJobId")
         with self.assertRaisesRegex(ValueError, "trusted resolvedJobId"):
-            R.derive_job_bound(
+            R.derive_legacy_job_bound(
                 "did:demos:buyer",
                 [missing_resolution_context],
                 invalid["finalisedAt"] - 1,
                 invalid["finalisedAt"] + 1,
             )
+
+    def test_ebfab_tag_uses_only_its_named_authority(self):
+        bundle = next(
+            case["bundle"] for case in self.data["cases"]
+            if case["name"] == "valid-ebfab"
+        )
+        authority = {
+            "listing": self.data["listing"],
+            "publicKeys": self.pubkeys,
+            "referenceValidationByCanonicalRef": self.data[
+                "referenceValidationByCanonicalRef"
+            ],
+            "sessionExecutionAuthorityByPhaseKey": self.data[
+                "sessionExecutionAuthorityByPhaseKey"
+            ],
+            "verifiedReceiptByCanonicalRef": self.legacy_receipts,
+            "bundleLifecycle": self.data["bundleLifecycleByHash"][
+                R.bundle_hash(bundle)
+            ],
+        }
+        tag = {
+            "bundle": bundle,
+            "bundleAdmissionAuthority": {
+                "publicKeys": {"did:demos:unrelated": b"\x00" * 32},
+                "additionalCommitPhase": [],
+            },
+            "ebfabAuthority": authority,
+        }
+        self.assertTrue(R._tagged_legacy_copy_valid_for_derive(tag))
+
+        malformed_ebfab_authority = {**authority, "additionalCommitPhase": []}
+        self.assertFalse(R._tagged_legacy_copy_valid_for_derive({
+            **tag, "ebfabAuthority": malformed_ebfab_authority,
+        }))
 
     def test_job_bound_receipt_discriminator_and_job_binding_fail_closed(self):
         valid = next(
@@ -411,24 +492,24 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
                 "sessionExecutionAuthorityByPhaseKey": self.data[
                     "sessionExecutionAuthorityByPhaseKey"],
-                "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
+                "verifiedReceiptByCanonicalRef": self.legacy_receipts,
                 "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(valid)],
             },
         }
-        receipt = R.derive_job_bound(
+        receipt = R.derive_legacy_job_bound(
             "did:demos:buyer", [tag], valid["finalisedAt"] - 1, valid["finalisedAt"] + 1)
         self.assertTrue(R.require_job_bound_replayable_derivation(receipt)["ok"])
 
         missing = copy.deepcopy(receipt)
         missing["resolutionContext"][0].pop("resolvedJobId")
-        ok, reasons = R.validate_resolution_context(
+        ok, reasons = R.validate_legacy_resolution_context(
             missing, lambda _h: valid, anchor_deref=lambda _address: valid)
         self.assertFalse(ok)
         self.assertTrue(any("resolvedJobId must be a non-empty string" in reason for reason in reasons))
 
         mismatch = copy.deepcopy(receipt)
         mismatch["resolutionContext"][0]["resolvedJobId"] = "another-job"
-        ok, reasons = R.validate_resolution_context(
+        ok, reasons = R.validate_legacy_resolution_context(
             mismatch, lambda _h: valid, anchor_deref=lambda _address: valid)
         self.assertFalse(ok)
         self.assertTrue(any("winner copy jobId != trusted resolvedJobId" in reason for reason in reasons))
@@ -442,7 +523,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             with self.subTest(keys=sorted(mutation)):
                 self.assertFalse(R._require_supported_replay_derivation(mutation)["ok"])
                 self.assertEqual(
-                    R.replay_receipt(
+                    R.replay_legacy_receipt(
                         mutation,
                         lambda _h: valid,
                         "did:demos:buyer",
@@ -460,18 +541,18 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         ebfab = pair["copies"]["buyer"]
         fab = pair["copies"]["seller"]
         job_id = ebfab["jobId"]
-        buyer_address = R.logical_address(job_id, "buyer")
-        seller_address = R.logical_address(job_id, "seller")
+        buyer_address = R.legacy_logical_address(job_id, "buyer")
+        seller_address = R.legacy_logical_address(job_id, "seller")
         authority = {
             "listing": self.data["listing"],
             "publicKeys": self.pubkeys,
             "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
             "sessionExecutionAuthorityByPhaseKey": self.data[
                 "sessionExecutionAuthorityByPhaseKey"],
-            "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
+            "verifiedReceiptByCanonicalRef": self.legacy_receipts,
             "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(ebfab)],
         }
-        receipt = R.derive_job_bound(
+        receipt = R.derive_legacy_job_bound(
             "did:demos:buyer",
             [
                 {
@@ -513,8 +594,8 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             "pubkeys": self.pubkeys,
             "anchor_deref": lambda address: by_address.get(address),
         }
-        self.assertEqual(R.replay_receipt(*replay_args, **replay_kwargs), (False, None))
-        same, replayed = R.replay_receipt(
+        self.assertEqual(R.replay_legacy_receipt(*replay_args, **replay_kwargs), (False, None))
+        same, replayed = R.replay_legacy_receipt(
             *replay_args,
             **replay_kwargs,
             ebfab_authority_resolver=lambda _bundle, _entry: authority,
@@ -530,8 +611,8 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         seller = pair["copies"]["seller"]
         job_id = buyer["jobId"]
         addresses = {
-            "buyer": R.logical_address(job_id, "buyer"),
-            "seller": R.logical_address(job_id, "seller"),
+            "buyer": R.legacy_logical_address(job_id, "buyer"),
+            "seller": R.legacy_logical_address(job_id, "seller"),
         }
 
         def authority_for(bundle, *, valid=True):
@@ -547,8 +628,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     "referenceValidationByCanonicalRef"],
                 "sessionExecutionAuthorityByPhaseKey": self.data[
                     "sessionExecutionAuthorityByPhaseKey"],
-                "verifiedReceiptByCanonicalRef": self.data[
-                    "verifiedReceiptByCanonicalRef"],
+                "verifiedReceiptByCanonicalRef": self.legacy_receipts,
                 "bundleLifecycle": lifecycle,
             }
 
@@ -573,7 +653,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 },
                 "ebfabAuthority": authority_for(bundle),
             })
-        receipt = R.derive_job_bound(
+        receipt = R.derive_legacy_job_bound(
             "did:demos:buyer",
             tagged,
             buyer["finalisedAt"] - 1,
@@ -591,7 +671,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             "pubkeys": self.pubkeys,
             "anchor_deref": lambda address: by_address.get(address),
         }
-        same, replayed = R.replay_receipt(
+        same, replayed = R.replay_legacy_receipt(
             *replay_args,
             **replay_kwargs,
             ebfab_authority_resolver=lambda bundle, _entry: authority_for(bundle),
@@ -599,7 +679,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         self.assertTrue(same)
         self.assertEqual(replayed["bundleCount"], 1)
         self.assertEqual(
-            R.replay_receipt(
+            R.replay_legacy_receipt(
                 *replay_args,
                 **replay_kwargs,
                 ebfab_authority_resolver=lambda bundle, _entry: authority_for(
@@ -620,12 +700,11 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                             "referenceValidationByCanonicalRef"],
                         "sessionExecutionAuthorityByPhaseKey": self.data[
                             "sessionExecutionAuthorityByPhaseKey"],
-                        "verifiedReceiptByCanonicalRef": self.data[
-                            "verifiedReceiptByCanonicalRef"],
+                        "verifiedReceiptByCanonicalRef": self.legacy_receipts,
                         "bundleLifecycle": self.data["bundleLifecycleByHash"][
                             R.bundle_hash(case["bundle"])],
                     }
-                result = R.resolve_absolute_fault_pointer(
+                result = R.resolve_legacy_absolute_fault_pointer(
                     case["pointer"],
                     case["bundle"],
                     binding=case.get("binding"),
@@ -635,6 +714,31 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 self.assertEqual(result["ok"], case["want"]["ok"], result["reason"])
                 if "reasonContains" in case["want"]:
                     self.assertIn(case["want"]["reasonContains"], result["reason"])
+
+    def test_ebfab_pointer_exposes_missing_authority_as_indeterminate(self):
+        case = next(
+            item for item in self.data["pointerCases"]
+            if item.get("useEbfabAuthority") and item["want"]["ok"]
+        )
+        result = R.resolve_legacy_absolute_fault_pointer(
+            case["pointer"],
+            case["bundle"],
+            binding=case.get("binding"),
+            pubkeys=self.pubkeys,
+            ebfab_authority=None,
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["disposition"], "indeterminate")
+
+    def test_current_pointer_refuses_historical_noncanonical_job_id(self):
+        historical = self.data["pointerCases"][0]
+        current = R.resolve_absolute_fault_pointer(
+            historical["pointer"],
+            historical["bundle"],
+            pubkeys=self.current_key_authority,
+        )
+        self.assertFalse(current["ok"])
+        self.assertIn("job-id-validation", current["reason"])
 
     def test_malformed_pointer_inputs_fail_closed_without_exceptions(self):
         valid = self.data["pointerCases"][0]
@@ -646,7 +750,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             (valid["pointer"], valid["bundle"], []),
         ):
             with self.subTest(pointer=type(pointer).__name__, bundle=type(bundle).__name__):
-                result = R.resolve_absolute_fault_pointer(
+                result = R.resolve_legacy_absolute_fault_pointer(
                     pointer,
                     bundle,
                     binding=binding,
@@ -663,22 +767,153 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "referenceValidationByCanonicalRef"],
             "sessionExecutionAuthorityByPhaseKey": self.data[
                 "sessionExecutionAuthorityByPhaseKey"],
-            "verifiedReceiptByCanonicalRef": self.data[
-                "verifiedReceiptByCanonicalRef"],
+            "verifiedReceiptByCanonicalRef": self.legacy_receipts,
             "bundleLifecycle": self.data["bundleLifecycleByHash"][
                 R.bundle_hash(valid["bundle"])],
         }
         for malformed_signer in ([], {}):
             pointer = copy.deepcopy(valid["pointer"])
             pointer["signature"]["signer"] = malformed_signer
-            result = R.resolve_absolute_fault_pointer(
+            result = R.resolve_legacy_absolute_fault_pointer(
                 pointer,
                 valid["bundle"],
                 pubkeys=self.pubkeys,
                 ebfab_authority=authority,
             )
             self.assertFalse(result["ok"])
-            self.assertIn("signer key unavailable", result["reason"])
+            self.assertIn(
+                "family cannot be authenticated before parsing", result["reason"]
+            )
+
+    def test_current_pointer_uses_role_map_with_or_without_binding(self):
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+        source = next(
+            case for case in self.data["pointerCases"]
+            if case["name"] == "ebfab-pointer-fab-reject"
+        )
+        bundle = copy.deepcopy(source["bundle"])
+        bundle["jobId"] = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        private_by_claim = {
+            f"did:demos:{role}": Ed25519PrivateKey.from_private_bytes(
+                bytes.fromhex(seed)
+            )
+            for role, seed in self.data["seeds"].items()
+        }
+
+        def sign(private, domain, digest):
+            return base64.urlsafe_b64encode(
+                private.sign((domain + digest).encode("utf-8"))
+            ).rstrip(b"=").decode("ascii")
+
+        digest = R.bundle_hash(bundle)
+        required_claims = [
+            next(
+                party["primaryClaim"] for party in bundle["parties"]
+                if party["role"] == role
+            )
+            for role in R._required_bundle_signers(bundle)
+        ]
+        bundle["signatures"] = [
+            {
+                "party": claim,
+                "algorithm": "ed25519",
+                "value": sign(private_by_claim[claim], R.FAULT_BUNDLE_DOMAIN, digest),
+            }
+            for claim in required_claims
+        ]
+        role = bundle["anchoredByRole"]
+        signer = next(
+            party["primaryClaim"] for party in bundle["parties"]
+            if party["role"] == role
+        )
+        pointer = {
+            "faultBundleVersion": "1",
+            "pointerKind": "extended",
+            "fullBundleUrl": "fixture:current-fab",
+            "fullBundleContentHash": digest,
+        }
+        pointer["signature"] = {
+            "signer": signer,
+            "algorithm": "ed25519",
+            "value": sign(
+                private_by_claim[signer],
+                R.FAULT_POINTER_DOMAIN,
+                R.pointer_hash(pointer),
+            ),
+        }
+        logical = R._current_logical_address(bundle["jobId"], role)
+        binding = {
+            "bindingVersion": "1",
+            "jobId": bundle["jobId"],
+            "role": role,
+            "logicalAddress": logical,
+            "nativeAddress": "stor-current-pointer-fixture",
+            "bundleContentHash": digest,
+            "signer": signer,
+        }
+        binding["signature"] = {
+            "signer": signer,
+            "algorithm": "ed25519",
+            "value": sign(
+                private_by_claim[signer],
+                R.BINDING_DOMAIN,
+                R.binding_hash(binding),
+            ),
+        }
+        authority = R.trusted_current_context([
+            R.trusted_role_authority(bundle["jobId"], role, signer)
+        ])
+        result = R.resolve_absolute_fault_pointer(
+            pointer,
+            bundle,
+            binding=binding,
+            pubkeys=self.current_key_authority,
+            trusted_contexts=authority,
+            expected_jobid=bundle["jobId"],
+            expected_role=role,
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual("indeterminate", result.get("disposition"))
+
+        unbound = R.resolve_absolute_fault_pointer(
+            pointer,
+            bundle,
+            pubkeys=self.current_key_authority,
+            trusted_contexts=authority,
+            expected_jobid=bundle["jobId"],
+            expected_role=role,
+        )
+        self.assertFalse(unbound["ok"])
+        self.assertEqual("indeterminate", unbound.get("disposition"))
+
+        missing_role = R.trusted_current_context([])
+        refused = R.resolve_absolute_fault_pointer(
+            pointer,
+            bundle,
+            pubkeys=self.current_key_authority,
+            trusted_contexts=missing_role,
+            expected_jobid=bundle["jobId"],
+            expected_role=role,
+        )
+        self.assertFalse(refused["ok"])
+        self.assertIn("current-profile-admission", refused["reason"])
+
+    def test_price_term_optional_unit_accepts_strings_only(self):
+        self.assertTrue(R._price_term_shape_valid({
+            "amount": "25", "currency": "USDC"
+        }))
+        self.assertTrue(R._price_term_shape_valid({
+            "amount": "25", "currency": "USDC", "unit": ""
+        }))
+        self.assertTrue(R._price_term_shape_valid({
+            "amount": "25", "currency": "USDC", "unit": "token"
+        }))
+        for unit in (None, 1, [], {}):
+            with self.subTest(unit=unit):
+                self.assertFalse(R._price_term_shape_valid({
+                    "amount": "25", "currency": "USDC", "unit": unit
+                }))
 
     def test_url_shape_strengthening_is_ebfab_only(self):
         """Released FAB v1 keeps its historical string URL shape; the new EBFAB
@@ -689,7 +924,17 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         valid = self.data["pointerCases"][0]
         pointer = copy.deepcopy(valid["pointer"])
         pointer["fullBundleUrl"] = "ipfs://candidate-cid"
-        result = R.resolve_absolute_fault_pointer(
+        private = Ed25519PrivateKey.from_private_bytes(
+            bytes.fromhex(self.data["seeds"]["buyer"])
+        )
+        payload = (
+            R.EVIDENCE_BOUND_FAULT_POINTER_DOMAIN
+            + R.pointer_hash(pointer)
+        ).encode("utf-8")
+        pointer["signature"]["value"] = base64.urlsafe_b64encode(
+            private.sign(payload)
+        ).rstrip(b"=").decode("ascii")
+        result = R.resolve_legacy_absolute_fault_pointer(
             pointer,
             valid["bundle"],
             pubkeys=self.pubkeys,

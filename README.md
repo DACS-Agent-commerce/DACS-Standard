@@ -128,7 +128,10 @@ interpretation. See [CONTRIBUTING.md](./CONTRIBUTING.md), open an
 
 ## Local validation
 
-All repository tooling is dependency-free Python stdlib plus GitHub Actions for CI:
+Local validation uses Python 3. The cryptographic reference suites require the
+pinned dependencies installed by CI. Follow [the setup and zero-skip test
+command in CONTRIBUTING.md](./CONTRIBUTING.md#validation) before running the
+checks below:
 
 ```sh
 python3 scripts/validate_conformance_vectors.py
@@ -136,11 +139,11 @@ python3 scripts/validate_domain_separators.py
 python3 scripts/validate_rule_ids.py
 python3 scripts/validate_spec_tables.py
 python3 scripts/validate-docs.py
-python3 -m unittest discover tests -v
 ```
 
-The pull-request workflow runs the same documentation, registry, rule-ID,
-spec-table, conformance-vector, and unit-test checks.
+These commands cover selected validators. The [pull-request workflow](./.github/workflows/validate.yml)
+also runs deterministic generators, the lifecycle walkthrough, and the complete
+unit suite, and rejects any skipped test.
 
 ## Community & ecosystem
 

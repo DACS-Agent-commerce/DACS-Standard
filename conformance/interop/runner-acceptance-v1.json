@@ -1,0 +1,580 @@
+{
+  "schema": "dacs-adapter-runner-acceptance/1",
+  "accepted": true,
+  "coordinates": {
+    "standard": {
+      "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+      "head": "c799a163e80bff867ba01bc9e08f15ab7916e139",
+      "tree": "2fadbac38d9013268b41dec47c1090d5ac9c5600",
+      "descriptorSha256": "723d344e1487361c699cd0750a8567d7e2021cbbcbc1ff90efa39e8a423fecca",
+      "adapterSourceSha256": "a29c0ffcbf3918df72dde80f37abb73358e9a635c05fb58aa1cac14c738b84a6",
+      "wrappedStandard": "ef69d46a81e3018b6eb9aa7cb25489657ed91def"
+    },
+    "runner": {
+      "repository": "https://github.com/cX3po/pathos-dacs-ref",
+      "baseHead": "1297dd5f79d2e1305bfd4e8e4b2fa6830bc72eda",
+      "patchSha256": "178d58f2682a145810e6ec7611d3b348c502c2cd94917231e97360973bb6639d",
+      "issueComment": "https://github.com/DACS-Agent-commerce/DACS-Standard/issues/270#issuecomment-5696719263",
+      "sourceSha256": {
+        "conformance/shared-suite/standard-405-pilot.mjs": "0374fda135a9b564caabaaa73d16988911e44dccb88e433c9c928c449c71b431",
+        "conformance/shared-suite/adapter-contract.mjs": "0fb13bc47e0cf4ad068a422caa9c8ed73085a3f135c17ccd851ad412130deba9",
+        "conformance/shared-suite/adapter-process-client.mjs": "17c268e72b82e639e7c053f564ce13fd10d00e84add35984aae24bf4238990c0",
+        "conformance/shared-suite/adapter-registry.mjs": "db42abb3177fe1ad3aeb113f19fdaef0fadaf212895a4e412e7569762259923b",
+        "conformance/shared-suite/unsupported-case.test.mjs": "a0416d52c4206564fa00bff2f7998c6de9e66f377ecb8a8d34ed6b8219cbb6ea",
+        "conformance/shared-suite/cross-run.mjs": "56dd845387ec90a8e400613517e57a16b3e2f585eee2c1bb24b1c44b458b0ee2"
+      }
+    }
+  },
+  "runtime": {
+    "node": "v24.19.0",
+    "openssl": "3.5.7",
+    "python": {
+      "version": "3.12.6",
+      "cryptography": "46.0.5",
+      "idna": "3.10"
+    }
+  },
+  "execution": {
+    "adapterCommand": [
+      "python3",
+      "scripts/dacs_adapter.py"
+    ],
+    "adapterRuns": 2,
+    "contributorFocusedSuite": {
+      "command": [
+        "node",
+        "--test",
+        "conformance/shared-suite/unsupported-case.test.mjs"
+      ],
+      "canonicalTmpdirResolved": true,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "adapter": {
+    "name": "dacs-standard-primitives",
+    "version": "issue-270-proposal.1",
+    "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+    "observedOrigin": "https://github.com/DACS-Agent-commerce/DACS-Standard.git",
+    "revision": "sha256:a29c0ffcbf3918df72dde80f37abb73358e9a635c05fb58aa1cac14c738b84a6",
+    "provenanceCodebase": "github.com/DACS-Agent-commerce/DACS-Standard",
+    "supportedFamilies": [
+      "canonical-accept",
+      "canonical-reject",
+      "drift-signed-scope",
+      "sig-value-encoding"
+    ],
+    "operations": [
+      "canonicalize",
+      "signedScopeHash",
+      "signatureValueVerdict",
+      "domainSepSign",
+      "domainSepVerify"
+    ],
+    "boundedOperationProfiles": {
+      "domainSepSign": "listing-single-hash-golden-v1",
+      "domainSepVerify": "listing-single-hash-golden-v1"
+    },
+    "wrappedStandard": {
+      "revision": "ef69d46a81e3018b6eb9aa7cb25489657ed91def",
+      "tree": "642d2dbfd6314dba2b5ffd83d2b29068515a3ba3",
+      "primitiveSha256": {
+        "scripts/jcs.py": "db34b07bc8c3b975f1b83ea78bf6ecd302c2d23ea743d1cfae6cf95fcdc3449a",
+        "scripts/validate_conformance_vectors.py": "881b61a65b89a05b084f6885772c92acf626281fdb5bb671592f8875683ac00b",
+        "scripts/run_lifecycle_walkthrough.py": "26382aeee0ad62b6c1a00170b9841950c2a8309f93afbbc22216ea3eada64191",
+        "scripts/specsource.py": "96a74cea62ddd311a0ba3aaec5279beca68cc0c152d50d6439d3016a7d0c86d9"
+      }
+    },
+    "limitations": [
+      "verifyBundle and legacySignatureValueImport are not exposed by this release",
+      "signedScopeHash supports only unambiguous version 1 SettlementEvidence and AttestationBundle shapes",
+      "the JSONL BigInt host-type case returns UNSUPPORTED_CASE before JCS and requires runner-level abstention",
+      "domainSepSign/domainSepVerify are a bounded Listing-golden primitive profile, not an advertised generic domain-sep-sign family or artifact verifier",
+      "both bounded F5 operations require a 64-byte ASCII lowercase-hex message before cryptography; raw digest bytes are unsupported even with a valid signature",
+      "the bounded F5 profile does not parse artifacts, derive hashes, establish signer authority, support intermediate hashes, or claim the complete CORE B.7 registry"
+    ]
+  },
+  "expected": {
+    "cases": 20,
+    "summary": {
+      "SELF-CHECK": 18,
+      "ABSTAIN": 2,
+      "INTEROP-AGREE": 0,
+      "ERROR": 0
+    }
+  },
+  "observed": {
+    "summary": {
+      "SELF-CHECK": 18,
+      "ABSTAIN": 2,
+      "INTEROP-AGREE": 0,
+      "ERROR": 0,
+      "VECTOR-MISMATCH": 0,
+      "IMPLEMENTATION-DIVERGENCE": 0
+    },
+    "matrix": [
+      {
+        "id": "fraction-one-half",
+        "operation": "canonicalize",
+        "expected": "{\"hex\":\"302e35\"}",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"302e35\"}"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"302e35\"}"
+          }
+        ]
+      },
+      {
+        "id": "fraction-one-e-minus-seven",
+        "operation": "canonicalize",
+        "expected": "{\"hex\":\"31652d37\"}",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"31652d37\"}"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"31652d37\"}"
+          }
+        ]
+      },
+      {
+        "id": "maximum-dacs-magnitude",
+        "operation": "canonicalize",
+        "expected": "{\"hex\":\"39303037313939323534373430393931\"}",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"39303037313939323534373430393931\"}"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"39303037313939323534373430393931\"}"
+          }
+        ]
+      },
+      {
+        "id": "nfd-string-value-normalizes-to-nfc",
+        "operation": "canonicalize",
+        "expected": "{\"hex\":\"7b226c6162656c223a22636166c3a9227d\"}",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"7b226c6162656c223a22636166c3a9227d\"}"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"7b226c6162656c223a22636166c3a9227d\"}"
+          }
+        ]
+      },
+      {
+        "id": "member-name-order-is-utf16",
+        "operation": "canonicalize",
+        "expected": "{\"hex\":\"7b22f0908080223a322c22ee8080223a317d\"}",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"7b22f0908080223a322c22ee8080223a317d\"}"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"7b22f0908080223a322c22ee8080223a317d\"}"
+          }
+        ]
+      },
+      {
+        "id": "number-over-dacs-magnitude",
+        "operation": "canonicalize",
+        "expected": "ERROR-CODE:OPERATION_FAILED",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "ERROR-CODE:OPERATION_FAILED"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "ERROR-CODE:OPERATION_FAILED"
+          }
+        ]
+      },
+      {
+        "id": "settlement-htlc-release",
+        "operation": "signedScopeHash",
+        "expected": "{\"hex\":\"9c5499b0a9815a26ec031cb1601dc758e750f461f87935a00acb4bd05efab2f1\"}",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"9c5499b0a9815a26ec031cb1601dc758e750f461f87935a00acb4bd05efab2f1\"}"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"9c5499b0a9815a26ec031cb1601dc758e750f461f87935a00acb4bd05efab2f1\"}"
+          }
+        ]
+      },
+      {
+        "id": "attestation-bundle-happy",
+        "operation": "signedScopeHash",
+        "expected": "{\"hex\":\"cb8756ff512c43488e9d51e1fb1efeb20f45af4b577460dad71c03d489a19f54\"}",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"cb8756ff512c43488e9d51e1fb1efeb20f45af4b577460dad71c03d489a19f54\"}"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"cb8756ff512c43488e9d51e1fb1efeb20f45af4b577460dad71c03d489a19f54\"}"
+          }
+        ]
+      },
+      {
+        "id": "canonical-base64url-unpadded",
+        "operation": "signatureValueVerdict",
+        "expected": "\"ACCEPT\"",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"ACCEPT\""
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"ACCEPT\""
+          }
+        ]
+      },
+      {
+        "id": "standard-base64-same-bytes-rejected",
+        "operation": "signatureValueVerdict",
+        "expected": "\"REJECT\"",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"REJECT\""
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"REJECT\""
+          }
+        ]
+      },
+      {
+        "id": "padded-base64url-same-bytes-rejected",
+        "operation": "signatureValueVerdict",
+        "expected": "\"REJECT\"",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"REJECT\""
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"REJECT\""
+          }
+        ]
+      },
+      {
+        "id": "embedded-whitespace-rejected",
+        "operation": "signatureValueVerdict",
+        "expected": "\"REJECT\"",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"REJECT\""
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"REJECT\""
+          }
+        ]
+      },
+      {
+        "id": "impossible-length-rejected",
+        "operation": "signatureValueVerdict",
+        "expected": "\"REJECT\"",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"REJECT\""
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"REJECT\""
+          }
+        ]
+      },
+      {
+        "id": "non-zero-residual-bits-rejected",
+        "operation": "signatureValueVerdict",
+        "expected": "\"REJECT\"",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"REJECT\""
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "\"REJECT\""
+          }
+        ]
+      },
+      {
+        "id": "signing::sign-ascii-hex-hash",
+        "operation": "domainSepSign",
+        "expected": "{\"hex\":\"7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304\"}",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304\"}"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "{\"hex\":\"7e9a62a38c88d353df9d2d53569851e20d4f62c10075cf09b758e198af7aca159f5fbbece35cf75ae39a70ab89865d0d7e0cdd2ce68e87d55cb00e01deb84304\"}"
+          }
+        ]
+      },
+      {
+        "id": "signing::verify-ascii-hex-hash",
+        "operation": "domainSepVerify",
+        "expected": "true",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "true"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "true"
+          }
+        ]
+      },
+      {
+        "id": "signing::reject-mismatched-ascii-hex-hash",
+        "operation": "domainSepVerify",
+        "expected": "false",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "false"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "false"
+          }
+        ]
+      },
+      {
+        "id": "signing::unknown-separator-false",
+        "operation": "domainSepVerify",
+        "expected": "false",
+        "status": "SELF-CHECK",
+        "participatingAdapters": 2,
+        "independentImplementations": 1,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "false"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "matches-expected",
+            "outcome": "false"
+          }
+        ]
+      },
+      {
+        "id": "bigint-native-type",
+        "operation": "canonicalize",
+        "status": "ABSTAIN",
+        "participatingAdapters": 0,
+        "independentImplementations": 0,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "ABSTAIN",
+            "outcome": null,
+            "errorCode": "UNSUPPORTED_CASE"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "ABSTAIN",
+            "outcome": null,
+            "errorCode": "UNSUPPORTED_CASE"
+          }
+        ]
+      },
+      {
+        "id": "signing::valid-raw-digest-profile-boundary",
+        "operation": "domainSepVerify",
+        "status": "ABSTAIN",
+        "participatingAdapters": 0,
+        "independentImplementations": 0,
+        "adapters": [
+          {
+            "runId": "run-0",
+            "name": "dacs-standard-primitives",
+            "status": "ABSTAIN",
+            "outcome": null,
+            "errorCode": "UNSUPPORTED_CASE"
+          },
+          {
+            "runId": "run-1",
+            "name": "dacs-standard-primitives",
+            "status": "ABSTAIN",
+            "outcome": null,
+            "errorCode": "UNSUPPORTED_CASE"
+          }
+        ]
+      }
+    ]
+  },
+  "controls": {
+    "rawDigestSignatureValidatedBeforeAdapter": true,
+    "inProfileCryptoMismatch": {
+      "id": "signing::reject-mismatched-ascii-hex-hash",
+      "expected": false,
+      "observed": [
+        false,
+        false
+      ]
+    },
+    "exportedLaunchFailureProbe": "ERROR",
+    "exportedMalformedProtocolProbe": "ERROR"
+  },
+  "limitations": [
+    "Two runs wrap one DACS-Standard implementation; every scored result is SELF-CHECK.",
+    "No independent cross-implementation, full legacy/default corpus, live system, or generic domain-separation claim.",
+    "This packet is separate from dacs-cross-run-evidence/1, which does not execute or assess adapters.",
+    "The offline validator checks recorded pins, coverage and internal consistency; the producer execution supplies the run evidence and does not certify a hostile host."
+  ]
+}

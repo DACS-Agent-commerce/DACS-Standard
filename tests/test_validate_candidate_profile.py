@@ -143,6 +143,19 @@ class CandidateProfileValidationTests(unittest.TestCase):
             "so the product is a lower bound on the anchor's finality",
             "This extends DACS-3 §8.5.2 check 3",
             "maps it to exactly one section 4.1 native status",
+            # Sweep 4: one logical-address anchor per artifact, so duplicate writes keep DRT-16.
+            "Its `anchor` MUST be `{kind: \"storage-program\", locator: L}`, where `L` is the artifact's exact logical address",
+            "and `dacs4:delivery:{jobId}:{deliveryPhaseIndex}` for `deliveryEvidenceRef` (DRP-7)",
+            "The reference MUST NOT carry a native address.",
+            "A second write of byte-identical content is not a distinct artifact",
+            "MUST NOT require proof that it was the first or sole write",
+            "- **P13** — the funding evidence and the post-submission decision each written twice",
+            "or a native `stor-` address as its locator",
+            # Sweep 4: configuration inputs are one-word value types; the node pin is linked.
+            "which MUST have an input named `jobId` of type `uint256`",
+            "an elementary value type that fills one ABI word",
+            "a `PaymentReleased` event whose payee input is named `recipient`",
+            "https://github.com/kynesyslabs/node/blob/ac8f45f02fc9c25082ce9b83595c2e3916b49c5a/src/libs/consensus/v2/types/secretaryManager.ts#L177",
         ):
             self.assertIn(anchor, self.text)
         for removed in (
@@ -152,6 +165,11 @@ class CandidateProfileValidationTests(unittest.TestCase):
             "a superseded revision",
             "so every field of these records is a function of authenticated chain facts",
             "submissionCutoffField",
+            "the SR-2 binding's spelling of that artifact's finalized anchor",
+            "a producer-chosen anchor spelling",
+            "Each MUST name an input of a static ABI type",
+            "a second write at a single-artifact address",
+            "`consensus/v2/routines` code",
         ):
             self.assertNotIn(removed, self.text)
 
@@ -254,9 +272,9 @@ class CandidateProfileValidationTests(unittest.TestCase):
             mutate(self.text, "**Status:** pre-normative review candidate", "**Status:** normative"),
             "status line must remain 'pre-normative review candidate'",
         )
+        pin = self.validator.checked_against(self.text)
         self.assert_structural(
-            mutate(self.text, "**Checked against:** DACS-Standard `next` at `df7bc202",
-                   "**Checked against:** DACS-Standard `next` at `df7bc2"),
+            mutate(self.text, f"`next` at `{pin}`", f"`next` at `{pin[:6]}`"),
             "missing '**Checked against:**",
         )
 
@@ -622,6 +640,48 @@ class CheckedAgainstPinTests(unittest.TestCase):
             "the candidate's latest revision; re-audit every cited rule and update the pin (DRG-2)"
         ])
         self.assertEqual(self.pin_errors(current), [])
+
+    def test_merge_onto_a_newer_spec_must_repin(self):
+        # PR CI checks the merge of the PR head into a base whose spec/ moved past the pin.
+        self.git("checkout", "-q", "-b", "pr")
+        self.doc.write_text("candidate 2\n", encoding="utf-8")
+        self.commit("candidate revision")
+        self.assertEqual(self.pin_errors(self.pin), [])
+        self.git("checkout", "-q", "-")
+        self.spec.write_text("core 2\n", encoding="utf-8")
+        newer = self.commit("spec change on the base")
+        stale = "re-audit every cited rule and update the pin (DRG-2)"
+        self.git("merge", "-q", "--no-ff", "--no-edit", "pr")
+        merge = self.git("rev-parse", "HEAD")
+        self.assertEqual(self.pin_errors(self.pin), [
+            f"spec/ differs from the **Checked against** commit {self.pin} at commit {merge}, "
+            f"the candidate's latest revision; {stale}"
+        ])
+        self.assertEqual(self.pin_errors(newer), [])
+        # The same tree landed as a squash gives the same verdict.
+        self.git("reset", "-q", "--hard", newer)
+        self.git("merge", "-q", "--squash", "pr")
+        squash = self.commit("squash of the candidate revision")
+        self.assertEqual(self.pin_errors(self.pin), [
+            f"spec/ differs from the **Checked against** commit {self.pin} at commit {squash}, "
+            f"the candidate's latest revision; {stale}"
+        ])
+
+    def test_failed_spec_comparison_is_reported(self):
+        # git diff exits 128 when objects are missing, as in a damaged or partial clone.
+        real_run = subprocess.run
+
+        def run(cmd, *args, **kwargs):
+            if cmd[:2] == ["git", "-C"] and cmd[3:5] == ["diff", "--quiet"] and cmd[-1] == "spec/":
+                return subprocess.CompletedProcess(cmd, 128, "", "fatal: bad object\n")
+            return real_run(cmd, *args, **kwargs)
+
+        error = f"could not compare spec/ with the **Checked against** commit {self.pin}: fatal: bad object"
+        outside = self.tmp / "candidate.md"
+        outside.write_text("candidate 2\n", encoding="utf-8")
+        with mock.patch.object(self.validator.subprocess, "run", run):
+            self.assertEqual(self.pin_errors(self.pin), [error])
+            self.assertEqual(self.pin_errors(self.pin, doc=outside), [error])
 
     def test_document_outside_the_repository_is_compared_with_the_working_tree(self):
         outside = self.tmp / "candidate.md"

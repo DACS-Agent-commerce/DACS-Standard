@@ -326,9 +326,11 @@ def pin_errors(root: Path, commit: str, doc: Path = DOC) -> list[str]:
     """The pin must be an ancestor of HEAD, and spec/ at the candidate's latest
     revision must equal it (DRG-2).
 
-    The latest revision is the commit that last changed `doc`, or the working
-    tree when `doc` has uncommitted edits or is not a tracked file of `root`.
-    A later spec/ change that does not revise the candidate does not fail.
+    The latest revision is the commit on HEAD's first-parent line that last
+    changed `doc`, or the working tree when `doc` has uncommitted edits or is
+    not a tracked file of `root`. A later spec/ change that does not revise the
+    candidate does not fail. A merge that brings the candidate onto a newer
+    spec/ is itself a revision, so a PR merge tree and its squash agree.
     """
     def git(*args: str) -> subprocess.CompletedProcess:
         return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
@@ -362,14 +364,14 @@ def pin_errors(root: Path, commit: str, doc: Path = DOC) -> list[str]:
 
 
 def candidate_revision(git, root: Path, doc: Path) -> str | None:
-    """Commit that last changed `doc`, or None when `doc` is not that committed file."""
+    """First-parent commit that last changed `doc`, or None when `doc` is not that committed file."""
     try:
         relative = doc.resolve().relative_to(root.resolve()).as_posix()
     except ValueError:
         return None
     if git("diff", "--quiet", "HEAD", "--", relative).returncode != 0:
         return None
-    return git("log", "-1", "--format=%H", "HEAD", "--", relative).stdout.strip() or None
+    return git("log", "-1", "--first-parent", "--format=%H", "HEAD", "--", relative).stdout.strip() or None
 
 
 def validate_text(text: str, spec_text: str) -> list[str]:

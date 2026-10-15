@@ -747,13 +747,15 @@
       "id": "DRW-7",
       "section": "3.1 Wire encodings",
       "keywords": [
-        "MUST"
+        "MUST",
+        "MUST NOT"
       ],
       "requirement": true,
-      "textSha256": "d192a21ebd9ddef33f19eb07139ccdd66e19378ade27a2ad3648bdf15d698b8b",
+      "textSha256": "57a2ce81c85592f6fb0af741497ab9ad9ac28f6adc4e19e7e33ca6a5889962cb",
       "cases": [
         "P1",
         "P8",
+        "P13",
         "R43"
       ]
     },
@@ -1633,6 +1635,7 @@
       "textSha256": "781584f0c821d7087236cf46a72c8b9752aa882852131fe681d8050f947c671a",
       "cases": [
         "P1",
+        "P13",
         "I5"
       ]
     },
@@ -1640,12 +1643,14 @@
       "id": "DRAA-4",
       "section": "6.5 Candidate logical addresses",
       "keywords": [
+        "MUST",
         "MUST NOT"
       ],
       "requirement": true,
-      "textSha256": "306a2ddb67c6519676d252db9385ba072ec660edf38a7e707d638e4a65902ee8",
+      "textSha256": "5226680837fa77b49b773527ae00ad33605155f85d4d312de9b1206f93c51ee7",
       "cases": [
         "P11",
+        "P13",
         "R32"
       ]
     },
@@ -1930,6 +1935,7 @@
       "textSha256": "98d625d031c1d76f3879acf4a2253df1ce49be732946ca6b3a293f7e4f002419",
       "cases": [
         "P8",
+        "P13",
         "R32",
         "R43"
       ]
@@ -2513,7 +2519,7 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "090f91e1957515462fa9786f9af59acaf911d766a8d27166796468a53e3a1c23",
+      "textSha256": "c7577a55ee04b792b26619ff6e7882fe2da33f6b399eca087ebdd421f05283c2",
       "cases": [
         "P1",
         "R1",
@@ -2940,6 +2946,21 @@
         "DRC-19",
         "DRD-10",
         "DRW-4"
+      ]
+    },
+    {
+      "id": "P13",
+      "section": "11.1 Positive cases",
+      "textSha256": "887751d502009d2cb30047a2b068fcb6593fd615e9f569bc83b35b13143dc4f7",
+      "expected": [
+        "pass"
+      ],
+      "expectedTextSha256": "a6862d7fef2fea79e863229c8282e05926499b9201e3b4d8011269d12850e705",
+      "rules": [
+        "DRW-7",
+        "DRAA-3",
+        "DRAA-4",
+        "DRT-16"
       ]
     },
     {
@@ -3449,7 +3470,7 @@
     {
       "id": "R31",
       "section": "11.2 Required rejection cases",
-      "textSha256": "e8f7ffcb6ab2bef642c71eec258ae8a341d665297b56405c65da7b936e0794de",
+      "textSha256": "825a393631f8ecfb2924ea809ec4a2c8892eaf5ce02a4aaa323ada09004ee2b2",
       "expected": [
         "error",
         "fail"
@@ -3468,7 +3489,7 @@
     {
       "id": "R32",
       "section": "11.2 Required rejection cases",
-      "textSha256": "a0b76b161ab2d9bd029318a4b80a9deab5af41bcdf73f9141928003fa5d504a1",
+      "textSha256": "9203045e7ccc6298f39e96b16027d5cd923e14643e0d9b7bf97c3589205a9cdc",
       "expected": [
         "fail"
       ],
@@ -3630,7 +3651,7 @@
     {
       "id": "R43",
       "section": "11.2 Required rejection cases",
-      "textSha256": "8f9758f77290f7ea4610b8f389b00d51d10f0e525363656903aef790f6f22bf6",
+      "textSha256": "6573be07f72ed1c5336facd794dc28731a1c7d6af25202db250e65920ef9ccaf",
       "expected": [
         "fail"
       ],
@@ -3897,7 +3918,7 @@
   "sections": [
     {
       "heading": "preamble",
-      "sha256": "f3f2c13fc83a83eac0c18d5f13d4a9ad19614edb2e432d76e29724d6706148b2"
+      "sha256": "6c3e2ebe1e0d106dbb15eb5a6872ada8e9c9f342a608a76cb15dcdc64afe93ca"
     },
     {
       "heading": "1. Outcome and boundary",
@@ -3925,7 +3946,7 @@
     },
     {
       "heading": "3.1 Wire encodings",
-      "sha256": "d1cc98a1aede155ca2ac96f0338c4f7abca760a231eaf1b32b24d05de6388ff9"
+      "sha256": "120153ec0a242f1918746326093c58a9c958875a5f8642d68453fcd7f186f172"
     },
     {
       "heading": "4. Portable job-escrow lifecycle",
@@ -3965,7 +3986,7 @@
     },
     {
       "heading": "6.5 Candidate logical addresses",
-      "sha256": "13601df889970eb33ac87c98b6e24651ca4f893eaed35f38c939e734c46cfa98"
+      "sha256": "997fdf764b10178b51acfdf7f35d58873890bc68d8d64b474729d415e18af600"
     },
     {
       "heading": "7. Terminal evidence and DACS-5 projection",
@@ -3989,7 +4010,7 @@
     },
     {
       "heading": "8.4 Deployment eligibility",
-      "sha256": "5f29318dc1430ef615d4cda508642e265132612c50e9e5e3b0bbdbbe4705fa33"
+      "sha256": "fe7bba488c299f174114a7f0d7ec570e6efbdb68be2edfed3162a8dc3a6009ad"
     },
     {
       "heading": "9. Verification result and ordering",
@@ -4005,11 +4026,11 @@
     },
     {
       "heading": "11.1 Positive cases",
-      "sha256": "a31837812759e29a8ef6be8fc89dc189f707894038d8df5600ad59f73a62500b"
+      "sha256": "8c6bcdd82b56f31f43724c8e5338271f1d7bd3112edcce76ddcf7e350f8cb0b4"
     },
     {
       "heading": "11.2 Required rejection cases",
-      "sha256": "69c4f9f10bbb4af6ccddd5b46a982ee7e269455a4be730b9a65e33808bbcba54"
+      "sha256": "963a28f4251d0b2c86879dc4735b25f61174bfe5d307dbfe2eeb60e5d584dc99"
     },
     {
       "heading": "11.3 Required indeterminate cases",

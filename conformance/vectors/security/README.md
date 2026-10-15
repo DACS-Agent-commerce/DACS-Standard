@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1 / §9.5.7 XN-2..XN-11, §9.5.7.1 / §9.5.8 SB-1 | 526 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2 | 582 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1113,6 +1113,15 @@ facilitator, so a switched or unrecorded one is `fail` (`routing-switch`).
 The runtime carries each request's header fields: the paid request adds only
 `PAYMENT-SIGNATURE` (`paid-request-headers` otherwise), and neither carries
 `Cookie`, `Authorization` or `Proxy-Authorization` (`ambient-credential`).
+That header's value is upstream's version 2 `PaymentPayload` under DACS-4
+§9.5.7.1: `accepted` is the matched requirement, and the EIP-3009
+authorization names the payer, `payTo`, the exact amount, the retained
+`validBefore` and the SB-3 nonce. A value that is not base64, an empty or
+version-only object, or any other payload is `fail` (`paid-request-payload`)
+after the one wallet call (`paid-request-payload-*`). The corpus checks the
+EIP-712 signature's form only; the token contract and facilitator verify it.
+The retained `validBefore` is a safe integer of seconds, so a decimal string,
+2⁵³ or a boolean is `error` (`retry-eip3009-retained-valid-before-*`).
 DNS answer validation, rebinding, redirect connections, timeouts, and
 response-size enforcement remain adapter-level obligations because a URL-only
 corpus cannot execute a network stack.
@@ -1313,11 +1322,38 @@ authorization. Any other member of the matched `extra` or of `extensions` is
 unclassified and `fail`, even when it is signed and received and the local
 capability lists it (`unclassified-extra-member`, `unclassified-extension`).
 A defined extension that `capability.understoodActionExtensions` omits is
-`fail` (`unsupported-action-extension`). The vectors carry no
-`http.actionBearingExtensions` list.
-`action-bearing-extension-omitted-from-claim` adds one that omits the received
-member and is still `fail`, and the unit suite checks that adding any such
-list leaves every result unchanged.
+`fail` (`unsupported-action-extension`) only in its required form. The
+optional form is descriptive and needs no local capability, so a capability
+that lists no extension still pays
+(`optional-payment-identifier-needs-no-capability`). Its `schema` is the pinned
+upstream one and its `info` satisfies it, or it is `fail` (`extension-value`).
+The vectors carry no `http.actionBearingExtensions` list.
+`descriptive-extension-omitted-from-claim` adds one that omits the received
+member and still passes, and the unit suite checks that adding any such list
+leaves every result unchanged.
+
+Every `pass` case pins `expectedReason`. A runner treats a present `null` as
+"no recorded defect", so booking a sound response as the seller's fault fails
+`response-without-payer`, `response-settlement-pending` and
+`verify-evidence-response-without-payer`. A `pass` with a recorded defect names
+that defect instead.
+
+A legacy continuation, and a legacy replay presented with the response, apply
+X402-1..X402-4. The response is the version's successful `SettlementResponse`
+with `transaction` and `network` (`legacy-response`), its recomputed receipt
+hash equals the stored one (`legacy-receipt-hash`), and it names the recorded
+`settlementTxHash` and `chainId` (`legacy-receipt-transaction`,
+`legacy-receipt-network`). `new-session` refuses a `disabled` or `failed`
+definition under RAV-R2 (`rail-availability`). The production-only `mocked`
+arm needs the operator's mode, which the corpus does not model.
+
+The `fee-rate-amount` operation pins DACS-4 FR-2 for `x402:protocol`. Its
+`feeDerivation` is `{rateBps, amount}`, and `amount` must equal
+`price.amount × rateBps ÷ 10000` rounded half-up at the signed selection's
+`assetDecimals`. The adapter's metadata must establish that precision
+(`asset-metadata` otherwise). The `fee-rate-*` cases cover 6 and 18 decimals,
+the exact-half boundary, a half-even result, and rounding at another precision
+(`fail`, `fee-amount`).
 
 Every evaluator check has a case that reaches it alone with its
 `expectedReason` pinned, and the challenge substitutions refresh the received

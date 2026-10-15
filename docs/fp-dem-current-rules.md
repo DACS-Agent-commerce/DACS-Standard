@@ -19,8 +19,8 @@ profile name; see [PROFILE](../spec/PROFILE.md) for both and for the status of
 `next`. Section numbers can move before the next release.
 
 Sections resolve in the module files under [`spec/`](../spec/): §5 and §B in
-CORE, §6 in DACS-1, §7 in DACS-2, §8 in DACS-3, §9 in DACS-4, and §10 in
-DACS-5.
+CORE, §6 in DACS-1, §7 in DACS-2, §8 in DACS-3, §9 in DACS-4, §10 in DACS-5,
+§11 in CORE, and §14 in CONFORMANCE-PLAN.
 
 ## Current rules
 
@@ -30,8 +30,9 @@ Rules sharing a section occupy one row; split families have separate rows.
 The "Covers" wording follows the [rule-ID index](rule-id-index.md).
 
 Conditional rules remain conditional: the Vet methods, registry anchoring,
-private delivery, credential handover, fee disclosure, reputation modes and
-implementation reporting below apply only where their source sections say so.
+private delivery, credential handover, refunds and corrections, fee disclosure,
+reputation modes and implementation reporting below apply only where their
+source sections say so.
 This map does not select those options. Other payment rails, alternative
 payment selection, other negotiation patterns, metered pricing, private
 negotiation channels and attested-payload delivery are outside this shape.
@@ -87,6 +88,7 @@ negotiation channels and attested-payload delivery are outside this shape.
 | Settle | §9.7.0 | FV-1, FV-2, FV-3, FV-4, FV-5, FV-6, FV-7, FV-8, FV-9, FV-10 | Consumer-verifiable canonical settlement finality |
 | Settle | §9.7.0 | PDE-1, PDE-2, PDE-3, PDE-4, PDE-5, PDE-6, PDE-7 | Phase-bound delivery evidence, phase-indexed artifact addresses, exact entitlement-credential delivery binding, legacy reads, and DACS-5 one-to-one mapping |
 | Settle | §9.7.0, §10.4.3 | PDE-8 | Phase-bound delivery evidence, phase-indexed artifact addresses, exact entitlement-credential delivery binding, legacy reads, and DACS-5 one-to-one mapping |
+| Settle | §9.7.1 | AMEND-1, AMEND-2, AMEND-3, AMEND-4 | Settlement amendment validation |
 | Settle | §9.7.2 | FR-1, FR-2, FR-3, FR-4 | Disclosed-fee reconciliation (informational) |
 | Settle | §9.9.1 | PIPE-1, PIPE-2, PIPE-3, PIPE-4, PIPE-5, PIPE-6 | Pipeline shape and phase ordering |
 | Verify | §10.3.1 | ST-1, ST-2, ST-3, ST-4, ST-5, ST-6, ST-7, ST-8, ST-9, ST-10, ST-11 | Session state transitions |
@@ -110,16 +112,17 @@ negotiation channels and attested-payload delivery are outside this shape.
 ## Known gaps
 
 Open issues, and open pull requests whose base is `next`, that affect the
-rows above, including related optional design work. All 33 open items were
-enumerated on 2026-10-15; the list has no issue-number cutoff. The disposition
-of #330 below was checked against the pinned specification and its open issue
-on 2026-10-16.
+rows above, including related optional design work. All 34 open items were
+enumerated on 2026-10-16; the list has no issue-number cutoff. Open pull
+requests were checked for a `next` base. The disposition of #330 below was
+checked against the pinned specification and its open issue on the same date.
 
 | Number | Kind | Section | What is open |
 |--------|------|---------|--------------|
 | #419 | issue | §6.3.1, §6.3.2 | `presentedBy` control for `did:demos:agent` claims |
 | #425 | issue | §6.3.4 | A pure logical-to-native mapping for Demos Listing versions, and absence and current-value policies |
 | #408 | issue | §6.3.4 | A full verifier-owned Listing admission evaluator in the conformance reference |
+| #430 | draft PR | §6.3.4 | Listing-admission script fixes for wrong-typed pipeline kinds and required capabilities, related to #408 |
 | #386 | issue | §B.7 | Algorithm-specific signature and key profiles, including Ed25519 |
 | #331 | issue | §7.8.1 | Authenticated provenance for the counterparty requirement in VPC-2 |
 | #383 | issue | §7.4, §7.7.1, §7.12 | Same-claim multi-method quorum and trust-domain independence; current alternatives remain OR choices |
@@ -139,7 +142,8 @@ Two issues on this path are still open although pull requests for them have
 merged into `next`: #381 (§10.4; merged #391 and #417) and #382 (§9.7.0;
 merged #392 and #416).
 
-Issue #330 also remains open. Its original credential-delivery wire-binding
+Issue #330 also remains open. Merged work includes #333 and #418.
+Its original credential-delivery wire-binding
 concern is addressed in this revision by the distinct `DeliveryEvidence`
 shape (§9.7), PDE-5 (§9.7.0), DV-5 (§9.6.2), and PDE-8 (§10.4.3). Those sections
 separate current credential delivery from historical delivery-shaped

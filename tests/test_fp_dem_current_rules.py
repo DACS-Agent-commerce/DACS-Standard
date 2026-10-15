@@ -14,7 +14,7 @@ MODULES = ("CORE.md", "DACS-1-IDENTIFY.md", "DACS-2-VET.md", "DACS-3-NEGOTIATE.m
            "DACS-4-SETTLE.md", "DACS-5-VERIFY.md", "CONFORMANCE-PLAN.md")
 # Other rails, alternative payment, other negotiation patterns, metered pricing,
 # private negotiation channels and attested-payload delivery are outside FP-DEM.
-EXCLUDED = {"AMEND", "AP2", "APR", "DPA", "HTLC", "MTR", "RFQ", "SAC", "SE", "X402", "CH"}
+EXCLUDED = {"AP2", "APR", "DPA", "HTLC", "MTR", "RFQ", "SAC", "SE", "X402", "CH"}
 RULE = r"[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)?-?\d+"
 
 
@@ -100,6 +100,10 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
         self.assertEqual(actual["DV-6"], {"9.6.2"})
         self.assertEqual(actual["PDE-8"], {"9.7.0", "10.4.3"})
         self.assertEqual(actual["CD-1"], {"B.2"})
+        # Refunds and corrections are conditional within FP-DEM, not excluded rails.
+        self.assertIn("refunds and corrections", self.text.split("## Current rules", 1)[1])
+        for rule in ("AMEND-1", "AMEND-2", "AMEND-3", "AMEND-4"):
+            self.assertEqual(actual[rule], {"9.7.1"})
 
     def test_definition_locator_covers_the_full_applicable_rule_inventory(self):
         # Independently enumerate labels with the repo's existing rule-ID validator,
@@ -111,6 +115,8 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
         spec.loader.exec_module(module)
         labels = module.defined_rule_ids("\n".join(self.sources.values()))
         expected = {rule for rule in labels if rule_family(rule) not in EXCLUDED}
+        self.assertNotIn("AMEND", EXCLUDED)
+        self.assertTrue({"AMEND-1", "AMEND-2", "AMEND-3", "AMEND-4"} <= expected)
         self.assertEqual(set(self.definitions), expected)
 
     def test_issue_330_is_dispositioned_against_current_delivery_contract(self):

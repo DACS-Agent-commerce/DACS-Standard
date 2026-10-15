@@ -1602,6 +1602,14 @@ class ChannelMessageVectorTests(unittest.TestCase):
         self.assertIn("read/import-only", core)
         self.assertIn("@kynesyslabs/demosdk@4.0.16", demos)
         self.assertIn("historical read/import arm", demos)
+        # CH-6: the shipped ChannelSession registers a channelId only when the
+        # caller supplies a registry, so the mapping must not claim it ships.
+        flat_demos = " ".join(demos.split())
+        self.assertIn("Its CH-6 channel-reuse check is **optional**", flat_demos)
+        self.assertIn(
+            "an adapter that claims CH-6 support MUST require one", flat_demos
+        )
+        self.assertNotIn("monotonic sequence and CH-6 channel reuse handling", flat_demos)
 
     def test_shipped_demos_sdk_wire_is_recorded_as_neither_arm(self):
         """DACS-3 §8.3.3: the frozen arm needs a bare lowercase-hex signature
@@ -1611,6 +1619,14 @@ class ChannelMessageVectorTests(unittest.TestCase):
         is neither, so both operations reject it and no document may record
         it as historical-arm evidence."""
         by_name = {item["name"]: item for item in self.document["vectors"]}
+        # SHA-256 of the JCS bytes of each committed SDK-wire message. The
+        # @kynesyslabs/demosdk@4.0.16 verifyChannelMessage accepts exactly
+        # these two corpus messages; the pin keeps a generator edit from
+        # silently replacing them.
+        sdk_wire_sha256 = {
+            "demosdk-4.0.16-wire-legacy-import": "b5af77982ee985799f564a348e3c4afea4e20e7899443c34cf862e2dfc4015b9",
+            "demosdk-4.0.16-wire-current-read": "34b491ffa632cf76d860b7cc9f9aa6590d83dc2d410924790170936ab90f4263",
+        }
         for name, operation in (
             ("demosdk-4.0.16-wire-legacy-import", "legacy-import"),
             ("demosdk-4.0.16-wire-current-read", "current-read"),
@@ -1618,6 +1634,9 @@ class ChannelMessageVectorTests(unittest.TestCase):
             vector = by_name[name]
             message = vector["message"]
             signature = message["signature"]
+            self.assertEqual(
+                sdk_wire_sha256[name], hashlib.sha256(canonical_bytes(message)).hexdigest()
+            )
             self.assertEqual(operation, vector["operation"])
             self.assertNotIn("canonicalChannelMessageVersion", message)
             self.assertEqual({"sigVersion", "signature"}, set(signature))
@@ -1741,6 +1760,98 @@ class ChannelMessageVectorTests(unittest.TestCase):
         self.assertEqual(caught, mismatches)
         for name in caught:
             self.assertEqual("pass", observed[name])
+
+    def test_release_pin_names_the_complete_module_tuple(self):
+        """The exact pin and the tuple are one admission fact (CORE §11.1.2).
+
+        Read at the pinned commit itself: the PROFILE.md coordinated tuple and
+        each module's front matter must equal CURRENT_MODULE_VERSIONS. CI
+        checks out full history, so the object is local; no network is used.
+        """
+        documents = {
+            "core": ("CORE", "CORE"), "dacs1": ("DACS-1-IDENTIFY", "DACS-1"),
+            "dacs2": ("DACS-2-VET", "DACS-2"), "dacs3": ("DACS-3-NEGOTIATE", "DACS-3"),
+            "dacs4": ("DACS-4-SETTLE", "DACS-4"), "dacs5": ("DACS-5-VERIFY", "DACS-5"),
+        }
+        self.assertEqual(set(documents), set(CURRENT_MODULE_VERSIONS))
+
+        def show(path):
+            completed = subprocess.run(
+                ["git", "show", f"{CURRENT_RELEASE_PIN}:{path}"],
+                cwd=ROOT, capture_output=True, text=True,
+            )
+            self.assertEqual(
+                0, completed.returncode,
+                f"release pin {CURRENT_RELEASE_PIN} is not in local history: {completed.stderr}",
+            )
+            return completed.stdout
+
+        profile = show("spec/PROFILE.md")
+        tuple_text = profile.split("The complete coordinated tuple is:", 1)
+        self.assertEqual(2, len(tuple_text), "pinned PROFILE.md names no coordinated tuple")
+        table = tuple_text[1].split("\n\n", 2)[1]
+        pinned = {
+            key: re.search(
+                r"^\| \[%s\]\(%s\.md\) \| ([0-9]+\.[0-9]+) \|" % (name, name), table, re.M,
+            )
+            for key, (name, _) in documents.items()
+        }
+        self.assertEqual(
+            CURRENT_MODULE_VERSIONS,
+            {key: match.group(1) if match else None for key, match in pinned.items()},
+        )
+        for key, (name, label) in documents.items():
+            with self.subTest(module=name):
+                self.assertIn(
+                    f"{label} v{CURRENT_MODULE_VERSIONS[key]}", show(f"spec/{name}.md")
+                )
+
+        # The same pin with one module version outside its tuple refuses.
+        vector = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "current-profile-wrong-module-version"
+        )
+        self.assertEqual(CURRENT_RELEASE_PIN, vector["profileAdmission"]["releasePin"])
+        differing = {
+            key for key, value in vector["profileAdmission"]["moduleVersions"].items()
+            if CURRENT_MODULE_VERSIONS[key] != value
+        }
+        self.assertEqual({"dacs5"}, differing)
+        self.assertEqual("fail", self.fixture_result(vector, vector["operation"], AUTHORITY))
+
+    def test_ecdsa_accepts_only_canonical_der_low_s(self):
+        """CORE §B.7: secp256k1 values are canonical DER with low S."""
+        module = sys.modules[__name__]
+        original = module.verify_algorithm
+        by_name = {item["name"]: item for item in self.document["vectors"]}
+
+        def high_s_tolerant(algorithm, public_key, signature, payload):
+            if algorithm == "ecdsa-secp256k1":
+                try:
+                    r, s = utils.decode_dss_signature(signature)
+                    signature = utils.encode_dss_signature(r, min(s, SECP256K1_ORDER - s))
+                except ValueError:
+                    pass
+            return original(algorithm, public_key, signature, payload)
+
+        def fixed_width_tolerant(algorithm, public_key, signature, payload):
+            if algorithm == "ecdsa-secp256k1" and len(signature) == 64:
+                signature = utils.encode_dss_signature(
+                    int.from_bytes(signature[:32], "big"), int.from_bytes(signature[32:], "big")
+                )
+            return original(algorithm, public_key, signature, payload)
+
+        for name, wrong in (
+            ("canonical-ecdsa-high-s", high_s_tolerant),
+            ("canonical-ecdsa-fixed-width-r-s", fixed_width_tolerant),
+        ):
+            vector = by_name[name]
+            with self.subTest(vector=name):
+                self.assertEqual("fail", self.fixture_result(vector, vector["operation"], AUTHORITY))
+                with mock.patch.object(module, "verify_algorithm", wrong):
+                    self.assertEqual(
+                        "pass", self.fixture_result(vector, vector["operation"], AUTHORITY)
+                    )
 
     def test_legacy_import_requires_authenticated_membership(self):
         """CH-1/CH-7 apply to legacy-import: key bytes in a claim are not authority."""

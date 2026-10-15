@@ -99,7 +99,7 @@ UNRESOLVED_REF = "did:example:unresolved"
 # the generated corpus only inside explicit legacy-import compatibility
 # cases and the current-read refusal regression; the current arm refuses it.
 HISTORICAL_ALICE_REF = f"cci:{public_hex(ALICE)}"
-CURRENT_RELEASE_PIN = "0d92f6642bdbd96655c8bb9a150b984d6be8bb67"
+CURRENT_RELEASE_PIN = "df7bc202ebdc179a59d61a8221072f33f482b933"
 CURRENT_MODULE_VERSIONS = {
     "core": "0.3", "dacs1": "0.8", "dacs2": "0.6",
     "dacs3": "0.6", "dacs4": "0.8", "dacs5": "0.7",
@@ -475,6 +475,19 @@ def build_vectors() -> list[dict]:
     ecdsa_tampered["body"]["price"] = "11"
     ecdsa_wrong_domain = sign_current_ecdsa(ecdsa_unsigned, domain=LEGACY_DOMAIN)
     ecdsa_raw_framing = sign_current_ecdsa(ecdsa_unsigned, framing="raw")
+    # CORE §B.7 ECDSA encoding: the same genuine (r, s) as the valid case,
+    # once as the high-S twin and once as JOSE-style fixed-width r || s.
+    ecdsa_r, ecdsa_s = utils.decode_dss_signature(
+        deterministic_ecdsa_signature(current_payload(ecdsa_unsigned, CURRENT_DOMAIN, "hex"))
+    )
+    ecdsa_high_s = copy.deepcopy(ecdsa_valid)
+    ecdsa_high_s["signature"]["value"] = b64url(
+        utils.encode_dss_signature(ecdsa_r, SECP256K1_ORDER - ecdsa_s)
+    )
+    ecdsa_fixed_width = copy.deepcopy(ecdsa_valid)
+    ecdsa_fixed_width["signature"]["value"] = b64url(
+        ecdsa_r.to_bytes(32, "big") + ecdsa_s.to_bytes(32, "big")
+    )
 
     sr1_unsigned = unsigned_message(sequence=3, sender=SR1_REF)
     sr1_valid = sign_current_sr1(sr1_unsigned)
@@ -515,6 +528,12 @@ def build_vectors() -> list[dict]:
         case("current-profile-wrong-release-pin", "fail", valid,
              profileAdmission=profile_admission("channel-349", releasePin="f" * 40),
              note="an authenticated different release pin refuses the session"),
+        case("current-profile-wrong-module-version", "fail", valid,
+             profileAdmission=profile_admission(
+                 "channel-349",
+                 moduleVersions={**CURRENT_MODULE_VERSIONS, "dacs5": "0.6"},
+             ),
+             note="the exact release pin with one module version outside its tuple refuses the session"),
         case("current-profile-duplicate-participant", "error", valid,
              profileAdmission=profile_admission(
                  "channel-349",
@@ -582,6 +601,12 @@ def build_vectors() -> list[dict]:
              ctx=context(lastSequence=1), note="ECDSA cannot authenticate the historical domain"),
         case("canonical-ecdsa-raw-digest-framing", "fail", ecdsa_raw_framing,
              ctx=context(lastSequence=1), note="ECDSA signs ASCII lowercase hex, not raw digest bytes"),
+        case("canonical-ecdsa-high-s", "fail", ecdsa_high_s,
+             ctx=context(lastSequence=1),
+             note="the high-S twin of the genuine signature is mathematically valid but not low-S"),
+        case("canonical-ecdsa-fixed-width-r-s", "fail", ecdsa_fixed_width,
+             ctx=context(lastSequence=1),
+             note="the genuine (r, s) as 64-byte r || s is not the canonical DER encoding"),
         case("canonical-sr1-aggregate-valid", "pass", sr1_valid,
              ctx=context(lastSequence=2),
              note="authenticated SR-1 root fixture verifies the canonical current payload"),

@@ -912,7 +912,14 @@ of the decoded bytes.
 The comparison MUST be exact.
 
 Decoded length and internal signature format remain algorithm-specific. A
-verifier MUST validate them separately.
+verifier MUST validate them separately. For `ed25519` the decoded value is
+exactly the 64-byte RFC 8032 signature. For `ecdsa-secp256k1` it is the
+strict DER encoding of the SEC 1 `ECDSA-Sig-Value` SEQUENCE of two minimal
+positive INTEGERs `r` and `s`, over SHA-256 of the signed bytes, with
+`1 <= r < n` and low-S `1 <= s <= n/2`, where `n` is the secp256k1 group
+order. A fixed-width `r || s` value (as in JOSE ES256K), a high-S value, or
+any non-canonical DER spelling MUST be rejected; a verifier MUST NOT
+normalize it.
 
 This rule applies to DACS signature envelopes such as `ListingSignature`,
 `RevocationSignature`, `AgreementSignature`, `ComponentSignature`, and

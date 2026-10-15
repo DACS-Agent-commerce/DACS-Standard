@@ -42,7 +42,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 54 | `fail` / `indeterminate` / `pass` |
-| [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 63 | `error` / `fail` / `indeterminate` / `pass` |
+| [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 66 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
@@ -1573,7 +1573,7 @@ conformance authority.
 
 ### `canonical-channel-message-v0.6.json` — §8.3.3 CH-6..CH-10
 
-63 deterministic cases for the discriminated current
+66 deterministic cases for the discriminated current
 `CanonicalChannelMessage` and its strict historical boundary. The current arm
 uses `canonicalChannelMessageVersion: "1"`, a versioned
 `ChannelMessageSignature`, SIG-6 unpadded Base64URL, and exactly:
@@ -1588,8 +1588,13 @@ claims: the Ed25519 members carry `key:<64 lowercase hex>` primary-key
 references and the non-Ed25519 algorithm fixtures carry `did:` references.
 Before issuing current live state, the harness requires verifier-owned exact
 release-pin, complete module-tuple, session, and authenticated-participant
-admission. The corpus covers missing, partial, wrong-pin, duplicate-participant,
-session-mismatch, identity-mismatch, and unauthenticated authority; the frozen
+admission. The pin is the immutable `next` merge `df7bc202`, whose
+`spec/PROFILE.md` tuple and module front matter the suite reads and compares
+with the fixture's module versions. The corpus covers missing, partial,
+wrong-pin, wrong-module-version, duplicate-participant, session-mismatch,
+identity-mismatch, and unauthenticated authority. `ecdsa-secp256k1` values
+are strict DER with low S (CORE §B.7), and the high-S twin and fixed-width
+`r || s` spelling of a genuine signature are `fail`; the frozen
 `legacy-import` arm is non-live and exempt. It also distinguishes absent
 optional `refs` from malformed explicit `refs: null`.
 The historical generic `cci:<64hex>` spelling is unregistered on the current

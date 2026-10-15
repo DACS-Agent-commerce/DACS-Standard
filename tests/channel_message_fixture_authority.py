@@ -7,7 +7,10 @@ issuer, persisted replay store, or authority derived from received metadata.
 
 import copy
 
-CURRENT_RELEASE_PIN = "0d92f6642bdbd96655c8bb9a150b984d6be8bb67"
+# An immutable merge commit on `next` whose spec/PROFILE.md coordinated tuple
+# and module front matter carry exactly CURRENT_MODULE_VERSIONS; the channel
+# suite reads both at this commit.
+CURRENT_RELEASE_PIN = "df7bc202ebdc179a59d61a8221072f33f482b933"
 CURRENT_MODULE_VERSIONS = {
     "core": "0.3", "dacs1": "0.8", "dacs2": "0.6",
     "dacs3": "0.6", "dacs4": "0.8", "dacs5": "0.7",
@@ -52,6 +55,12 @@ TRUSTED_CONTEXTS = {'canonical-algorithm-key-confusion': {'lastSequence': 0,
  'canonical-ecdsa-raw-digest-framing': {'lastSequence': 1,
                                         'priorChannelIds': ['channel-100', 'channel-200'],
                                         'sessionChannelId': 'channel-349'},
+ 'canonical-ecdsa-high-s': {'lastSequence': 1,
+                            'priorChannelIds': ['channel-100', 'channel-200'],
+                            'sessionChannelId': 'channel-349'},
+ 'canonical-ecdsa-fixed-width-r-s': {'lastSequence': 1,
+                                     'priorChannelIds': ['channel-100', 'channel-200'],
+                                     'sessionChannelId': 'channel-349'},
  'canonical-ecdsa-tampered-body': {'lastSequence': 1,
                                    'priorChannelIds': ['channel-100', 'channel-200'],
                                    'sessionChannelId': 'channel-349'},
@@ -227,6 +236,7 @@ for _name in (
     "current-profile-missing-authority",
     "current-profile-partial-module-tuple",
     "current-profile-wrong-release-pin",
+    "current-profile-wrong-module-version",
     "current-profile-duplicate-participant",
     "current-profile-session-mismatch",
     "current-profile-identity-mismatch",
@@ -280,6 +290,10 @@ TRUSTED_PROFILE_ADMISSIONS.update({
     "current-profile-wrong-release-pin": {
         **trusted_profile_admission("channel-349"),
         "releasePin": "f" * 40,
+    },
+    "current-profile-wrong-module-version": {
+        **trusted_profile_admission("channel-349"),
+        "moduleVersions": {**CURRENT_MODULE_VERSIONS, "dacs5": "0.6"},
     },
     "current-profile-duplicate-participant": {
         **trusted_profile_admission("channel-349"),

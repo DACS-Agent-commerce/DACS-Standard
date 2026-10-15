@@ -25,7 +25,7 @@
     "operation": "legacy-import"
   },
   "correctiveProfileFixture": {
-    "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+    "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
     "moduleVersions": {
       "core": "0.3",
       "dacs1": "0.8",
@@ -37,8 +37,8 @@
     "authority": "verifier-owned and bound to exact session plus participant identities",
     "legacyImportExempt": true
   },
-  "count": 63,
-  "hash": "48769d67d9f962f11c213440825f5c5d6720cd0460b601eccbfa3d99cb8c9eb8",
+  "count": 66,
+  "hash": "291b16947f9361ec1d641a4a631449c46b33bddee7db338944daa309fda6d1de",
   "vectors": [
     {
       "name": "canonical-valid-first",
@@ -82,7 +82,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -135,7 +135,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -188,7 +188,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -273,7 +273,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -337,6 +337,59 @@
       }
     },
     {
+      "name": "current-profile-wrong-module-version",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the exact release pin with one module version outside its tuple refuses the session",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
       "name": "current-profile-duplicate-participant",
       "expected": "error",
       "operation": "current-read",
@@ -379,7 +432,7 @@
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -432,7 +485,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -485,7 +538,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -538,7 +591,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -591,7 +644,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -644,7 +697,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -697,7 +750,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -749,7 +802,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -802,7 +855,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -855,7 +908,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -908,7 +961,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -961,7 +1014,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1014,7 +1067,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1067,7 +1120,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1120,7 +1173,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1173,7 +1226,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1226,7 +1279,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1279,7 +1332,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1332,7 +1385,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1385,7 +1438,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1438,7 +1491,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1491,7 +1544,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1544,7 +1597,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1597,7 +1650,113 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
+      }
+    },
+    {
+      "name": "canonical-ecdsa-high-s",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the high-S twin of the genuine signature is mathematically valid but not low-S",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEYCIQC9dj_q9CNETiGezQOQ0Cal2NBx4NA-abbTlBe-1BX9mQIhAPovovT4WHlJwP3WhtT_46lvOeZSkkL6WnMhSM60uCWo"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
+      }
+    },
+    {
+      "name": "canonical-ecdsa-fixed-width-r-s",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the genuine (r, s) as 64-byte r || s is not the canonical DER encoding",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "vXY_6vQjRE4hns0DkNAmpdjQceDQPmm205QXvtQV_ZkF0F0LB6eGtj8CKXkrABxVS3T2lB0FpeFMsRW-G34bmQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1650,7 +1809,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1703,7 +1862,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1756,7 +1915,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1809,7 +1968,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1862,7 +2021,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1916,7 +2075,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1970,7 +2129,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2026,7 +2185,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2079,7 +2238,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2132,7 +2291,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2186,7 +2345,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2238,7 +2397,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2286,7 +2445,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2339,7 +2498,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2386,7 +2545,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2439,7 +2598,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2492,7 +2651,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2651,7 +2810,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2704,7 +2863,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2757,7 +2916,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2817,7 +2976,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2896,7 +3055,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -3056,7 +3215,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -3108,7 +3267,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "df7bc202ebdc179a59d61a8221072f33f482b933",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",

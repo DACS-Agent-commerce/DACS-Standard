@@ -28,6 +28,7 @@ try:
     from scripts.generate_settlement_finality_verification_vectors import (
         FixtureFactory,
         OBSERVED_AT,
+        nonminimal_b64u,
     )
     from scripts.jcs import canonicalize
 except ImportError:
@@ -46,6 +47,7 @@ except ImportError:
     from generate_settlement_finality_verification_vectors import (
         FixtureFactory,
         OBSERVED_AT,
+        nonminimal_b64u,
     )
     from jcs import canonicalize
 
@@ -854,6 +856,94 @@ def document() -> dict:
     unknown_replay = replay_record(value, positive_payload)
     unknown_replay["finalityResolutionReplayVersion"] = "2"
 
+    # FRC-4 / CORE SIG-6: observer-a's response signature value changes and
+    # the verifier records the response as it acquired it.
+    def observer_a_signature(signature_value) -> dict:
+        case_value = copy.deepcopy(value)
+        payload = copy.deepcopy(positive_payload)
+        acquired_hash = None
+        for container in (case_value["context"]["responseArtifacts"], payload["retainedResponses"]):
+            for response in container:
+                if response["authorityId"] == "observer-a":
+                    response["signature"]["value"] = signature_value(response["signature"]["value"])
+                    acquired_hash = response_hash(response)
+        observer_a_record(payload["acquisitionRecords"])["responseHash"] = acquired_hash
+        case_value["context"]["replay"]["acquisitionRecords"] = copy.deepcopy(
+            payload["acquisitionRecords"]
+        )
+        return verify_input(case_value, payload)
+
+    nonminimal_signature_input = observer_a_signature(nonminimal_b64u)
+    invalid_signature_input = observer_a_signature(lambda _: b64u(bytes(range(64))))
+
+    # FRC-2: the transported query is not the one the verifier issued.
+    transported_query_value = copy.deepcopy(value)
+    transported_query_value["context"]["query"]["nonce"] = "fixture-query-nonce-transported"
+
+    # FRC-2: the verifier's own policy source record does not hash the policy.
+    policy_source_payload = copy.deepcopy(positive_payload)
+    policy_source_payload["policySource"]["contentHash"] = "00" * 32
+    policy_source_value = copy.deepcopy(value)
+    policy_source_value["context"]["replay"]["policySource"] = copy.deepcopy(
+        policy_source_payload["policySource"]
+    )
+
+    # FRC-5: local acquisition time against the query boundary and the
+    # verifier decision time.
+    outside_boundary_input = with_records(
+        lambda records: observer_a_record(records).__setitem__(
+            "acquiredAt", EXPIRES_AT + 1
+        )
+    )
+    after_decision_payload = copy.deepcopy(positive_payload)
+    after_decision_payload["verificationTimeMs"] = min(
+        record["acquiredAt"] for record in positive_payload["acquisitionRecords"]
+    ) - 1
+
+    # FRC-9: a replay authority without its recorded commerce inputs.
+    replay_without_value = copy.deepcopy(serialize_authority(replay_payload))
+    replay_without_value["replayValue"] = None
+
+    # FV entry: each structural rule of the verifier-owned policy is error.
+    def malformed_policy(mutate) -> dict:
+        payload = copy.deepcopy(positive_payload)
+        mutate(payload["policy"])
+        return verify_input(value, payload)
+
+    def seat(index):
+        return lambda policy: policy["authorities"][index]
+
+    policy_cases = [
+        ("resolution-authority-policy-authorities-empty",
+         "the authenticated verifier-owned policy configures no authority",
+         lambda policy: policy.__setitem__("authorities", [])),
+        ("resolution-authority-policy-duplicate-authority-id",
+         "two seats of the authenticated verifier-owned policy share one authorityId",
+         lambda policy: seat(1)(policy).__setitem__("authorityId", seat(0)(policy)["authorityId"])),
+        ("resolution-authority-policy-duplicate-key-id",
+         "one seat lists the same verification key twice",
+         lambda policy: seat(0)(policy)["verificationKeys"].append(copy.deepcopy(seat(0)(policy)["verificationKeys"][0]))),
+        ("resolution-authority-policy-seat-without-keys",
+         "one seat of the authenticated verifier-owned policy has no verification key",
+         lambda policy: seat(0)(policy).__setitem__("verificationKeys", [])),
+        ("resolution-authority-policy-key-algorithm-unknown",
+         "one seat key names an unregistered algorithm",
+         lambda policy: seat(0)(policy)["verificationKeys"][0].__setitem__("algorithm", "secp256k1")),
+        ("resolution-authority-policy-unavailable-reasons-duplicate",
+         "the policy lists one unavailable reason twice",
+         lambda policy: policy["unavailableReasons"].append(policy["unavailableReasons"][0])),
+    ]
+
+    # FV entry on the replay and composite entry points.
+    malformed_replay_authority = copy.deepcopy(serialize_authority(replay_payload))
+    malformed_replay_authority["policy"]["authorities"][0]["verificationKeys"][0][
+        "publicKey"
+    ] = "not-a-key"
+    malformed_leg_input = copy.deepcopy(composite_relationship_input)
+    malformed_leg_input["legs"][1]["authority"]["policy"]["authorities"][0][
+        "verificationKeys"
+    ][0]["publicKey"] = "not-a-key"
+
     vectors = [
         {"name": "complete-all-authorities", "expected": "pass",
          "operation": "verify",
@@ -1019,7 +1109,62 @@ def document() -> dict:
              "replayRecord": unknown_replay,
              "authority": serialize_authority(replay_payload),
          }},
+        {"name": "response-signature-nonminimal-base64url", "expected": "fail",
+         "operation": "verify",
+         "note": "observer-a's response signature decodes to the genuine bytes but "
+                 "is not the minimal Base64URL spelling; the verifier acquired it "
+                 "as transported",
+         "input": nonminimal_signature_input},
+        {"name": "response-signature-invalid", "expected": "fail",
+         "operation": "verify",
+         "note": "observer-a's response carries a well-formed signature over other "
+                 "bytes; the verifier acquired it as transported",
+         "input": invalid_signature_input},
+        {"name": "transported-query-differs", "expected": "fail",
+         "operation": "verify",
+         "note": "the transported query names another nonce than the query the "
+                 "verifier issued",
+         "input": verify_input(transported_query_value, positive_payload)},
+        {"name": "resolution-policy-source-differs", "expected": "fail",
+         "operation": "verify",
+         "note": "the verifier's policy source record does not hash the "
+                 "authenticated policy it holds",
+         "input": verify_input(policy_source_value, policy_source_payload)},
+        {"name": "response-acquired-outside-query-boundary", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "the verifier-local record acquires observer-a's response after "
+                 "the issued query expired",
+         "input": outside_boundary_input},
+        {"name": "response-acquired-after-decision-time", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "the verifier decision time precedes every local acquisition",
+         "input": verify_input(value, after_decision_payload)},
+        {"name": "replay-commerce-inputs-unavailable", "expected": "indeterminate",
+         "operation": "replay",
+         "note": "the recorded replay authority lacks its recorded commerce inputs",
+         "input": {
+             "replayRecord": replay_record(value, positive_payload),
+             "authority": replay_without_value,
+         }},
+        {"name": "replay-authority-policy-malformed", "expected": "error",
+         "operation": "replay",
+         "note": "the recorded replay authority's policy names a seat key that is "
+                 "not a 32-byte Base64URL value",
+         "input": {
+             "replayRecord": replay_record(value, positive_payload),
+             "authority": malformed_replay_authority,
+         }},
+        {"name": "composite-leg-authority-policy-malformed", "expected": "error",
+         "operation": "verify-composite",
+         "note": "the destination leg's verifier-owned policy names a seat key "
+                 "that is not a 32-byte Base64URL value",
+         "input": malformed_leg_input},
     ]
+    vectors.extend(
+        {"name": name, "expected": "error", "operation": "verify", "note": note,
+         "input": malformed_policy(mutate)}
+        for name, note, mutate in policy_cases
+    )
     return {
         "set": "finality-resolution-context-v1",
         "tier": "candidate",

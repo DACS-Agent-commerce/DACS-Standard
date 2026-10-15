@@ -388,7 +388,7 @@ class FinalityResolutionContextTests(unittest.TestCase):
         return case, copy.deepcopy(case["input"]["value"]), copy.deepcopy(case["input"]["authority"])
 
     def test_materialized_cases_execute_their_expectation(self):
-        self.assertEqual(28, self.data["count"])
+        self.assertEqual(43, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         self.assertEqual(
             hashlib.sha256(json.dumps(
@@ -443,18 +443,63 @@ class FinalityResolutionContextTests(unittest.TestCase):
              ["replay-record-version-unknown"]),
             ('return {"decision": "error", "reason": "malformed verifier-owned resolution authority"}',
              'return {"decision": "indeterminate", "reason": unavailable}', None,
-             ["resolution-authority-policy-malformed"]),
+             ["resolution-authority-policy-malformed", "replay-authority-policy-malformed",
+              "composite-leg-authority-policy-malformed"]),
+            # FRC-4 / CORE SIG-6 on the observation response envelope.
+            ('if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != value:', "if False:", "pass",
+             ["response-signature-nonminimal-base64url"]),
+            ("if not _verify_response_signature(response, seat):", "if False:", "pass",
+             ["response-signature-invalid"]),
+            # FRC-2 query and provenance binding.
+            ('if context["query"] != authority.issued_query:', "if False:", None,
+             ["transported-query-differs"]),
+            ('or authority.policy_source.get("contentHash") != hash_value(authority.policy)\n', "", "pass",
+             ["resolution-policy-source-differs"]),
+            # FRC-5 local acquisition time.
+            ('if not boundary["issuedAt"] <= acquisition["acquiredAt"] <= boundary["expiresAt"]:', "if False:", "pass",
+             ["response-acquired-outside-query-boundary"]),
+            ('if acquisition["acquiredAt"] > authority.verification_time_ms:', "if False:", None,
+             ["response-acquired-after-decision-time"]),
+            # FRC-9 replay inputs and classification.
+            ('return {"decision": "indeterminate", "reason": "recorded replay commerce inputs unavailable"}',
+             'return {"decision": "pass", "reason": "mutant"}', "pass",
+             ["replay-commerce-inputs-unavailable"]),
+            ('    if classification is not None:\n        return classification\n    if authority.mode != "replay":',
+             '    if authority.mode != "replay":', None, ["replay-authority-policy-malformed"]),
+            # FV entry: each structural rule of the verifier-owned policy.
+            ('        or not policy["authorities"]\n    ):', "    ):", None,
+             ["resolution-authority-policy-authorities-empty"]),
+            ("return len(authority_ids) == len(set(authority_ids))", "return True", None,
+             ["resolution-authority-policy-duplicate-authority-id"]),
+            ("        if len(key_ids) != len(set(key_ids)):\n            return False\n", "", None,
+             ["resolution-authority-policy-duplicate-key-id"]),
+            ("            or not keys\n", "", None,
+             ["resolution-authority-policy-seat-without-keys"]),
+            ('                or key.get("algorithm") != "ed25519"\n', "", None,
+             ["resolution-authority-policy-key-algorithm-unknown"]),
+            ('        or len(policy["unavailableReasons"]) != len(set(policy["unavailableReasons"]))\n', "", None,
+             ["resolution-authority-policy-unavailable-reasons-duplicate"]),
         ]
         for old, new, mutant_decision, names in guards:
             module = mutant(old, new)
             for name in names:
                 case = self.case(name)
                 payload = copy.deepcopy(case["input"])
-                with self.subTest(case=name):
+                with self.subTest(case=name, guard=old):
                     self.assertEqual(case["expected"], self.execute_vector(case)["decision"])
                     if case["operation"] == "replay":
                         result = module.replay_finality_resolution(
                             payload["replayRecord"], self.authority(payload["authority"]),
+                            legacy_verifier=_verify_single_view_finality,
+                        )
+                    elif case["operation"] == "verify-composite":
+                        result = module.verify_composite_resolution(
+                            [
+                                {"legId": leg["legId"], "value": leg["value"],
+                                 "authority": self.authority(leg["authority"])}
+                                for leg in payload["legs"]
+                            ],
+                            payload["relationship"],
                             legacy_verifier=_verify_single_view_finality,
                         )
                     else:

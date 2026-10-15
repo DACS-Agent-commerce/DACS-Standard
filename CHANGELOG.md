@@ -174,7 +174,7 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   when any of these checks was skipped.
 
 - **FV guards a neighbouring guard used to decide** (DACS-4 §9.7.0 FV-1..FV-9;
-  CORE §B.7 SIG-6) — `settlement-finality-verification` (208 → 241). Each new
+  CORE §B.7 SIG-6) — `settlement-finality-verification` (208 → 246). Each new
   case changes only unsigned bytes, verifier-owned trust input, or the one
   artifact it re-signs:
   - Merkle proofs that keep the genuine root while their leaf and sibling
@@ -188,14 +188,25 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   - Unknown producer-report values (`error`).
   - Missing (`indeterminate`) and malformed (`error`) trusted key maps, and
     empty or malformed pinned validator sets (`error`).
+  - A genuine signer that authenticated authority names but whose key the
+    trust input lacks: the phase orchestrator, a profile-pinned observation
+    authority, and the profile provider (`indeterminate`).
+  - A genuine head attestation by an authority the verifier trusts but the
+    signed profile does not pin (`fail`).
+  - A well-formed x402 reference on the provider rail that names the
+    supported AP2 version, so only the reference-kind check decides it
+    (`error`).
   - A storage-program `ap2-sr3` receipt anchor (`error`).
   - A profile whose settlement kind differs from its model, or whose
     observation method is unknown (`error`).
 
   A source-mutant test removes each guard and shows the verdict changes. The
   reference now returns `error` for unknown FV-2 echo values and classifies
-  trusted key maps under the FV entry rule; neither change alters an
-  existing verdict. The `fv-inclusion-block-identity-substitution` note now
+  trusted key maps under the FV entry rule: a missing or empty map, or an
+  absent key for a signer that the authenticated session or signed profile
+  names, is `indeterminate`. Keys that are present are still checked first,
+  so a bad signature is `fail` even when another signer's key is missing.
+  None of these changes alters an existing verdict. The `fv-inclusion-block-identity-substitution` note now
   describes it as the ancestry case that it is.
 - **HTLC hash identifiers** (DACS-4 §9.14, HTLC-6; normative clarification) —
   the HTLC row registers `sourceHashAlgorithm` and `destinationHashAlgorithm`
@@ -223,7 +234,7 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   FRC-9) — FRC-8 now states what the reference already enforced: the
   response type and both arms are closed apart from `transportMetadata`, and
   new members need a new response version (normative clarification; SIG-5
-  hashing is unchanged). `finality-resolution-context-v1` (19 → 28) adds:
+  hashing is unchanged). `finality-resolution-context-v1` (19 → 43) adds:
   - extra members on a signed response and on each response arm (`error`);
   - acquisition records with another nonce, a status other than obtained, or
     a duplicate response hash (`error`), and one naming another responder
@@ -231,19 +242,40 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   - an unknown replay-record version (`error`);
   - a malformed authenticated resolution policy (`error`). The reference
     now separates missing authority (`indeterminate`) from malformed
-    authority.
+    authority;
+  - one case per structural policy rule: no authorities, a duplicate
+    authority id, a duplicate key id, a seat without keys, an unregistered
+    key algorithm, and a duplicate unavailable reason (`error`); and a
+    malformed policy on the replay and composite entry points (`error`);
+  - a response signature over other bytes and a non-minimal Base64URL
+    spelling of a genuine one (`fail`, FRC-4 and CORE SIG-6);
+  - a transported query other than the issued one, and a policy source
+    record that does not hash the policy (`fail`, FRC-2);
+  - a response acquired outside the query boundary or after the decision
+    time, and a replay authority without its commerce inputs
+    (`indeterminate`).
 
   A source-mutant test removes each guard and shows the verdict changes.
 - **LAB-2 original selection authority** (DACS-5 §10.4 LAB-2) —
-  `current-use-reputation-v1` (32 → 34) adds
+  `current-use-reputation-v1` (32 → 35) adds
   `historical-original-party-map-not-authenticated` and
   `historical-original-budget-differs` (`fail`). Verifiers that trust the
   request's party map or budget pass them.
+  `historical-original-selection-not-reproducible` (`indeterminate`) adds a
+  second genuine, retrievable binding of the same bundle at a lower native
+  address, which BB-6 selects instead. A verifier that accepts the presented
+  original binding without reproducing the selection passes it.
 - **CRQ-2 ownership** (DACS-2 §7.7.1 CRQ-2) —
-  `claim-requirement-qualification-v0.3` (39 → 41) adds two `error` cases:
-  ambiguous alternative ownership, and an explicit pin whose version does not
-  list the selected method. A verifier that resolves the ambiguity, or one
-  that ignores the pin, passes them.
+  `claim-requirement-qualification-v0.3` (39 → 42) adds three `error` cases:
+  - ambiguous alternative ownership across two recipe versions, so the
+    duplicate-version check cannot decide it;
+  - an admitted inventory that lists a family whose definition body is
+    absent;
+  - an explicit pin whose version does not list the selected method.
+
+  Each has a wrong implementation in the test that passes it: one resolves
+  the ambiguity to a single owner, one takes the bodies present as the
+  whole inventory, and one ignores the pin.
 - **PDE-5 credential binding** (DACS-4 §9.7 PDE-5) —
   `phase-bound-delivery-evidence-v0.7` (151 → 156) adds:
   - a non-object and an extra-member `credentialDelivery` binding (`error`);
@@ -251,7 +283,7 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   - an unavailable credential resolution (`indeterminate`) and a malformed
     one (`error`).
 - **Channel release pin, ECDSA encoding and SDK wire bytes** (CORE §11.1.2,
-  §B.7; DACS-3 §8.3.3) — `canonical-channel-message-v0.6` (63 → 66):
+  §B.7; DACS-3 §8.3.3) — `canonical-channel-message-v0.6` (63 → 67):
   - The fixture release pin moves from `0d92f664`, whose `spec/PROFILE.md`
     tuple names DACS-5 0.6, to `df7bc202`, the #420 merge on `next`, whose
     tuple and module front matter equal the fixture's module versions. A test
@@ -259,8 +291,9 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   - `current-profile-wrong-module-version` (`fail`) pairs the exact pin with
     one wrong module version.
   - CORE §B.7 now defines the `ecdsa-secp256k1` value as strict DER with low
-    S (normative clarification). `canonical-ecdsa-high-s` and
-    `canonical-ecdsa-fixed-width-r-s` are `fail`.
+    S (normative clarification). `canonical-ecdsa-high-s`,
+    `canonical-ecdsa-fixed-width-r-s` and `canonical-ecdsa-der-long-form-length`
+    are `fail`; a verifier that tolerates each encoding passes its case.
   - The two shipped-SDK wire messages are pinned by their JCS SHA-256.
 - **Demos mapping corrections** (DEMOS-MAPPING A.2, A.4, A.5; DACS-4 §9.5.5,
   §9.6.1; DACS-5 §10.4.2; GLOSSARY; informative except where noted):
@@ -276,7 +309,12 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
     (`BridgeOperation` fields; compile, then `demos.run.bridge.submit`).
   - Production tank availability is unavailable/experimental: at the pinned
     node commit the compiled operation is unsigned, the parsers return
-    `null`, and the cited route registry is absent.
+    `null`, and the cited route registry is absent. DACS-4 §9.4 and §9.5.5
+    step 2, the README, the ROADMAP, the builders guide and the flow trace
+    now say the same, and no longer call the tank route live.
+    `rail-availability-selection-v0.1` (28 → 30) adds two `fail` cases: a
+    steward-signed `mocked` tank rail that a node-derived `live` hint cannot
+    select for production, and an unsigned tank copy claiming `live`.
 
 ### Changed — current-delivery admission corrective boundary
 

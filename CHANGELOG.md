@@ -42,7 +42,7 @@ The format used per release:
   selection ambiguity, every pre-authorization substitution surface the
   reference evaluator checks,
   bounded public-fetch literal classes (including legacy numeric IPv4 host
-  spellings), v1/v2 hashing/version boundaries, local
+  spellings), version 2 hashing/version boundaries, local
   capability, exact decimal conversion, party binding, independent-assurance
   downgrade, cross-rail event identity, legacy replay, and retained-state retry
   safety. The executable harness now places one instrumented wallet-call site
@@ -63,6 +63,38 @@ The format used per release:
   authenticated. This addition is part of the unreleased DACS-1 v0.8
   candidate. Widening the rail to all three payout-bearing agreement types is
   left to a later compatible extension.
+- **Negotiated x402 rail scope and upstream alignment** (DACS-4 §9.4.3 RD-7,
+  §9.5.1 PC-5, §9.5.7 XN-2..XN-11 and new §9.5.7.1, §9.5.8 SB-1/SB-3) —
+  `x402:protocol` is stated to be optional and non-gating: it is a conformance
+  requirement only for a profile that claims it, while XN-10's refusal of new
+  `x402:default` sessions still binds every v0.8 orchestrator. RD-7 notes that
+  no x402 payment from a new v0.8 session feeds a DACS-5 current-use
+  derivation. The rail now binds x402 version 2 only; a version 1 selection is
+  malformed. The challenge is read from the `PAYMENT-REQUIRED` header, never
+  the 402 body. The paid request adds only `PAYMENT-SIGNATURE`, and neither
+  request carries `Cookie`, `Authorization` or `Proxy-Authorization`. The ref,
+  parameters, request and selection are closed shapes. Permit2 is refused
+  before signing, because upstream's Permit2 witness cannot carry the SB-3 job
+  binding. The new §9.5.7.1 `dacs-x402-exact:v1` profile pins the upstream
+  sources and states the member value rules. It covers the EIP-3009 domain,
+  `paymentFlow`, the Solana `feePayer` and `memo`, Solana construction hints
+  that XN-4 does not compare, and the upstream `payment-identifier`
+  advertisement, of which only the optional form is supported. It also closes
+  the Solana CAIP-2 cluster table. XN-5 binds the selection currency to the
+  adapter's metadata currency for the asset. A verifier checks the stored
+  record's own `evidenceVersion`, `outcome`, `phase`, `jobId` and
+  `paymentAmount`. An absent response `payer` and a `settlement_pending`
+  response naming its transaction are sound. An EIP-3009 expiry is proven only
+  by a finalized block timestamp at or after the retained `validBefore`. A
+  retry runs the same definition and reference gates as the first attempt and
+  cannot switch the retained facilitator. An anchored stored record is never
+  overwritten: one that does not verify puts the phase in manual recovery. The
+  failure-mode list is split into negotiated and frozen legacy lists, and a
+  legacy session still needs its complete successful response. SB-1 event-key
+  integers are bounded and Solana signatures must decode to 64 bytes. The
+  paying claim must name the selected network. Execute cases that a
+  failure-mode row names pin their `errorClass`. The negotiated corpus grows to
+  526 vectors.
 - **Amount ceiling and decimals bound** (DACS-4 §9.3, §9.5.7 XN-2/XN-5) —
   `selection.assetDecimals` is bounded to 0..255 (`uint8`) and checked before
   any power of ten. XN-5's overflow rejection is measured against the
@@ -113,16 +145,17 @@ The format used per release:
   then built or rebuilt from the retained challenge and response and that
   event's validated transaction and key. A finalized event that the identity
   resolves to and that contradicts the authorization is `fail`, and so is a
-  terminal non-settlement the scheme profile proves (for EIP-3009 a cancelled
-  nonce, or one unused after `validBefore`). Otherwise the session stays
+  terminal non-settlement the scheme profile proves from finalized ledger data
+  (for EIP-3009 a cancelled nonce, or one still unused at a finalized block
+  whose timestamp is at least `validBefore`). Otherwise the session stays
   reconciliation-pending. A settlement response that is lost, not received
   under the version's header, reports `success: false`, or names another
   network, payer or transaction is a response defect, recorded as the seller's
   protocol fault; a transaction that only the response names is never a ledger
   contradiction. A stored record that does not verify (a stale receipt or
   challenge hash, an invalid signature, another reference count, or another or
-  a malformed transaction) is rejected and rebuilt and never ends the payment
-  phase. A retry takes its disposition from the same reconciliation: the stored
+  a malformed transaction) never ends the payment phase: an unanchored one is
+  rebuilt, and an anchored one is never overwritten. A retry takes its disposition from the same reconciliation: the stored
   record is no part of its retained identity, and is checked only after the
   ledger has decided, so its defect is at most the recorded reason. The
   receipt hash commits to the response as received,
@@ -130,8 +163,8 @@ The format used per release:
   `verify-evidence` operation that keeps the XN-7/XN-8 verifier's verdict on a
   stored record apart from the handler's payment disposition.
 - **SB-3 job binding on the negotiated rail** (DACS-4 §9.5.7 XN-9, §9.5.8
-  SB-3) — the v0.8 EIP-155 `exact` binding authorizes only through EIP-3009 or
-  Permit2, so the SB-3 job binding is always mandatory there. A verifier takes
+  SB-3) — the v0.8 EIP-155 `exact` binding authorizes only through EIP-3009,
+  so the SB-3 job binding is always mandatory there. A verifier takes
   that policy from the pinned definition and the signed selection, never from
   the observed ledger event, and resolves it under SB-3's four branches with
   the `sb3-binding-required` set's closed `{"state"}` model, state list and
@@ -166,8 +199,8 @@ The format used per release:
   `x402Version`; a non-success response; the PC-5 currency; payee identity;
   buyer and seller each exactly once; the buyer-bundle hash pin and session
   nonce; request body bytes against the signed `bodyHash`; the challenge
-  `x402Version`; omitted versus empty extensions in both directions; the v1
-  extensions and per-member resource boundaries; artifact signatures; and
+  `x402Version`; omitted versus empty extensions in both directions; artifact
+  signatures; and
   the legacy in-flight-only continuation. Removing any single check turns at
   least one vector or test red. Unit tests alone pin four kinds of check:
   the two paying-key algorithm checks, which the bundle presentation check
@@ -240,15 +273,13 @@ The format used per release:
 - **Upstream `extra` members** (DACS-4 §9.5.7 XN-4..XN-6, XN-9) — the exact
   adapters' member tables are those of the pinned upstream scheme definitions
   (`x402-foundation/x402@230e6a9a`, `scheme_exact_evm.md` and
-  `scheme_exact_svm.md`): EIP-155 `assetTransferMethod`, `name` and `version`;
-  Solana `feePayer`, `memo`, `recentBlockhash` and `lastValidBlockHeight`.
+  `scheme_exact_svm.md`), now stated normatively in DACS-4 §9.5.7.1.
   `extra.verifyingContract` and `extra.mint` are not members, since the token
   contract and the mint are the `asset`, so XN-4 and XN-5 no longer compare a
   `verifyingContract` as an address. The fixtures carry upstream's EIP-3009,
-  Permit2, ERC-7710 and Solana `PaymentRequirements` examples, with
-  `lastValidBlockHeight` as a decimal string. A transfer method other than
-  EIP-3009 (also when absent) or Permit2 rejects before signing, as XN-9
-  states.
+  Permit2, ERC-7710 and Solana `PaymentRequirements` examples. A transfer
+  method other than EIP-3009 (also when absent) rejects before signing, as
+  XN-9 states.
 - **Pinned definition revision** (DACS-4 §9.4.3 XN-1) — the definition a
   handler or verifier applies must be the revision whose `railVersion` equals
   the selected reference's; another revision, even validly signed and well
@@ -257,7 +288,7 @@ The format used per release:
   SIG-6) — one case for each MUST-backed check that no vector reached alone:
   the definition's `railId`, `railType`, `phaseHandler`, `resolution` and
   `railVersion` values, a zero `maxTimeoutSeconds`, an array
-  `paymentRequiredExtensions`, an empty one in a v1 selection, a non-canonical
+  `paymentRequiredExtensions`, a non-canonical
   agreement signature encoding, a broken signature on every operation, a
   verifier over unavailable ledger data, a legacy `railId` in the reference, a
   numeric selection `currency`, a non-CD-1 price, an array settlement response,

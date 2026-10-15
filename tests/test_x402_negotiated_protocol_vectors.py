@@ -6,6 +6,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 import unicodedata
 import unittest
 from pathlib import Path
@@ -31,6 +32,8 @@ HEX_32 = re.compile(r"^[0-9a-f]{64}$")
 HTTP_TOKEN = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Z-]+$")
 CAIP2 = re.compile(r"^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$")
 CD1 = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$")
+# SB-1: `chainId` > 0 and `logIndex` are also safe integers (checked after the
+# match); the hash is exactly 64 lower-case hex digits.
 EVM_EVENT = re.compile(r"^evm:([1-9][0-9]*):([0-9a-f]{64}):(0|[1-9][0-9]*)$")
 # A received EIP-155 response transaction: at most one 0x/0X prefix, then
 # exactly 32 bytes of hex in either case (the SB-1 legacy-spelling collapse).
@@ -40,47 +43,93 @@ EVM_ADDRESS = re.compile(r"^0x[0-9a-fA-F]{40}$")
 # XN-2: ERC-20 decimals() and an SPL mint's decimals are both uint8.
 ASSET_DECIMALS_MAX = 255
 # XN-5 overflow ceiling per exact binding, keyed by CAIP-2 namespace: EIP-3009
-# value and ERC-20 amounts are uint256; SPL Token amounts are u64.
+# value and ERC-20 amounts are uint256; SPL Token amounts are u64. These are the
+# only namespaces `dacs-x402-exact:v1` binds (§9.5.7.1).
 ATOMIC_AMOUNT_MAX = {"eip155": 2**256 - 1, "solana": 2**64 - 1}
-# XN-6: the `extra` members of the pinned upstream exact scheme definitions
-# (x402-foundation/x402@230e6a9a, specs/schemes/exact/scheme_exact_evm.md and
-# scheme_exact_svm.md), all action-bearing, keyed like the ceiling. On EIP-155,
-# `assetTransferMethod` selects the authorization form, and `name` and
-# `version` are the EIP-712 domain of the token, whose verifying contract is
-# the `asset` itself. On Solana, `feePayer` pays the transaction fee, `memo`
-# fixes the Memo instruction's data, and `recentBlockhash` and
-# `lastValidBlockHeight` bound the transaction; the mint is the `asset`. The
-# v2 `payment-identifier` extension asks the payer to identify the payment in
-# the paid request. A received member these tables do not name is unclassified.
-ACTION_BEARING_EXTRA_MEMBERS = {
-    "eip155": frozenset({"assetTransferMethod", "name", "version"}),
-    "solana": frozenset({"feePayer", "memo", "recentBlockhash", "lastValidBlockHeight"}),
+# XN-6 and §9.5.7.1: the `extra` members `dacs-x402-exact:v1` defines, from the
+# pinned upstream exact scheme definitions (x402-foundation/x402@230e6a9a,
+# specs/schemes/exact/scheme_exact_evm.md and scheme_exact_svm.md) and the two
+# protocol-reserved keys of specs/x402-specification-v2.md §6.1, keyed like the
+# ceiling. On EIP-155, `assetTransferMethod` selects the authorization form, and
+# `name` and `version` are the EIP-712 domain of the token, whose verifying
+# contract is the `asset` itself. On Solana, `feePayer` pays the transaction
+# fee and `memo` fixes the Memo instruction's data; the mint is the `asset`.
+# `recentBlockhash` and `lastValidBlockHeight` are per-challenge construction
+# hints that do not bind the transaction. A received member these tables do
+# not name is unclassified.
+ADAPTER_EXTRA_MEMBERS = {
+    "eip155": frozenset({"assetTransferMethod", "paymentFlow", "name", "version"}),
+    "solana": frozenset({
+        "assetTransferMethod", "paymentFlow", "feePayer", "memo",
+        "recentBlockhash", "lastValidBlockHeight",
+    }),
 }
+# §9.5.7.1: XN-4 and XN-6 ignore the Solana hints; the XN-7 challenge hash
+# still covers them.
+SOLANA_HINT_MEMBERS = frozenset({"recentBlockhash", "lastValidBlockHeight"})
+SOLANA_MEMO_MAX_BYTES = 256
+# The v2 `payment-identifier` extension asks the payer to identify the payment
+# in the paid request. v0.8 defines no identifier, so only its optional form is
+# supported (§9.5.7.1).
 ACTION_BEARING_EXTENSIONS = frozenset({"payment-identifier"})
-# XN-9: the v0.8 EIP-155 `exact` binding authorizes only through EIP-3009 or
-# Permit2. Upstream's `assetTransferMethod` names them `eip3009`, the form an
-# absent member selects, and `permit2`; its `erc7710` has no v0.8 binding.
-EIP155_TRANSFER_METHODS = frozenset({"eip3009", "permit2"})
+# XN-9: the v0.8 EIP-155 `exact` binding authorizes only through EIP-3009, the
+# form an absent `assetTransferMethod` selects. Upstream's Permit2 witness
+# cannot carry the SB-3 job binding, and `erc7710` has no v0.8 binding.
+EIP155_TRANSFER_METHODS = frozenset({"eip3009"})
+# x402 v2 §6.1: `authorization` is the only flow `exact` defines here; it may
+# be omitted or explicit.
+PAYMENT_FLOWS = frozenset({"authorization"})
 SOLANA_EVENT = re.compile(
     r"^solana:(mainnet|devnet|testnet):([1-9A-HJ-NP-Za-km-z]+):(0|[1-9][0-9]*)$"
 )
-# A CAIP-2 Solana reference is the cluster's genesis-hash prefix; the cluster
-# names are DACS-4 §9.3's `mainnet | devnet | testnet`.
+# §9.5.7.1: the closed mapping from a CAIP-2 Solana reference (the cluster's
+# genesis-hash prefix) to DACS-4 §9.3's `mainnet | devnet | testnet`. Any other
+# Solana reference has no v0.8 event-key form, so no adapter supports it.
 SOLANA_NETWORK_CLUSTERS = {
     "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "mainnet",
     "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "devnet",
     "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z": "testnet",
 }
 # XN-9/SB-3: the pinned x402:protocol definition's `dacs-x402-exact:v1` binding
-# authorizes an EIP-155 payment only through EIP-3009 or Permit2. Both declare
-# an SB-3 job binding, so it is mandatory on those networks whatever the
-# observed event's `authorization` says. Binding evidence uses the
-# sb3-binding-required set's closed model and classifier (scripts/sb3_binding).
+# authorizes an EIP-155 payment only through EIP-3009, which declares an SB-3
+# job binding, so it is mandatory on those networks whatever the observed
+# event's `authorization` says. Binding evidence uses the sb3-binding-required
+# set's closed model and classifier (scripts/sb3_binding).
 SB3_BINDING_NAMESPACES = frozenset({"eip155"})
-# XN-11: with no payment event for the authorization identity, the states the
-# scheme profile proves can never settle: for EIP-3009 a cancelled nonce, or a
-# `validBefore` that passed with the nonce unused.
-TERMINAL_AUTHORIZATION_STATES = frozenset({"cancelled", "expired"})
+# XN-11: with no payment event for the authorization identity, the finalized
+# ledger proves an EIP-3009 non-settlement only by a cancelled nonce, or by an
+# unused nonce at a finalized block whose timestamp is at least the retained
+# `validBefore` (EIP-3009 requires `block.timestamp < validBefore`).
+EIP3009_NONCE_STATES = frozenset({"unused", "used", "cancelled"})
+# XN-6: the one header the paid request adds, and the ambient credentials
+# neither request carries (XN-2). Header names compare case-insensitively.
+# DACS-4 §9.5.7 failure modes (`x402:protocol`): the handler's PC-4 errorClass
+# for each result reason the list names. An unsupported or undefined member is
+# `permanent` like unsupported capability, never the seller's fault.
+FAILURE_MODE_ERROR_CLASSES = {
+    "unpaid-request-transient": "transient",
+    "not-payment-required": "counterparty",
+    "payment-required-header": "counterparty",
+    "payment-required-json": "counterparty",
+    "payment-required-version": "counterparty",
+    "payment-required-shape": "counterparty",
+    "accepts-shape": "counterparty",
+    "extension-presence": "counterparty",
+    "extensions": "counterparty",
+    "challenge-match": "counterparty",
+    "extra-member-value": "counterparty",
+    "extension-value": "counterparty",
+    "x402-capability-unsupported": "permanent",
+    "unsupported-transfer-method": "permanent",
+    "unsupported-payment-flow": "permanent",
+    "unsupported-action-extension": "permanent",
+    "unclassified-extra-member": "permanent",
+    "unclassified-extension": "permanent",
+    "terminal-non-settlement": "permanent",
+    "ledger-event": "permanent",
+}
+PAYMENT_SIGNATURE_HEADER = "payment-signature"
+AMBIENT_CREDENTIAL_HEADERS = frozenset({"authorization", "cookie", "proxy-authorization"})
 PROTOCOL_REQUIRED = {
     "railVersion", "railId", "railType", "phaseHandler", "resolution",
     "availability", "governance", "signature",
@@ -133,7 +182,20 @@ def base58(raw):
         number, remainder = divmod(number, 58)
         encoded = alphabet[remainder] + encoded
     zeroes = len(raw) - len(raw.lstrip(b"\x00"))
-    return "1" * zeroes + (encoded or "1")
+    # Each leading zero byte is one "1"; an all-zero input is nothing else.
+    return "1" * zeroes + encoded
+
+
+def base58_decoded_length(value):
+    """The byte length a base58 string decodes to, or None if it is not base58."""
+    alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    if not isinstance(value, str) or not value or any(char not in alphabet for char in value):
+        return None
+    number = 0
+    for char in value:
+        number = number * 58 + alphabet.index(char)
+    zeroes = len(value) - len(value.lstrip("1"))
+    return zeroes + (number.bit_length() + 7) // 8
 
 
 def buyer_bundle_scope(bundle):
@@ -369,7 +431,9 @@ def validate_ref(ref):
     selection = parameters.get("selection")
     if not isinstance(selection, dict) or set(selection) != SELECTION_FIELDS:
         return "error"
-    if not is_safe_positive(selection.get("x402Version")):
+    # XN-2: v0.8 binds only x402 version 2; another positive version is a
+    # well-typed value outside this profile, so it is malformed here too.
+    if not is_safe_positive(selection.get("x402Version")) or selection["x402Version"] != 2:
         return "error"
     if not is_safe_positive(selection.get("maxTimeoutSeconds")):
         return "error"
@@ -387,8 +451,6 @@ def validate_ref(ref):
     if "paymentRequiredExtensions" in parameters and not isinstance(
         parameters["paymentRequiredExtensions"], dict
     ):
-        return "error"
-    if selection["x402Version"] == 1 and "paymentRequiredExtensions" in parameters:
         return "error"
     try:
         jcs_canonicalize(selection["extra"])
@@ -782,7 +844,33 @@ def request_trace_defect(runtime, request):
             return "fail", "request-body-hash"
     elif bodies[0]:
         return "fail", "unsigned-request-body"
+    # XN-2/XN-6: neither request carries an ambient credential, and the paid
+    # request adds exactly the v2 payment header to the unpaid request's set.
+    headers = [request_headers(runtime.get(name)) for name in ("unpaidHeaders", "paidHeaders")]
+    if None in headers:
+        return "error", "request-headers"
+    unpaid, paid = headers
+    if AMBIENT_CREDENTIAL_HEADERS.intersection(unpaid) or AMBIENT_CREDENTIAL_HEADERS.intersection(paid):
+        return "fail", "ambient-credential"
+    if PAYMENT_SIGNATURE_HEADER in unpaid or PAYMENT_SIGNATURE_HEADER not in paid or {
+        name: value for name, value in paid.items() if name != PAYMENT_SIGNATURE_HEADER
+    } != unpaid:
+        return "fail", "paid-request-headers"
     return None
+
+
+def request_headers(headers):
+    """A request's header fields keyed by lower-case name, or None if malformed."""
+    if not isinstance(headers, dict):
+        return None
+    folded = {}
+    for name, value in headers.items():
+        if not HTTP_TOKEN.fullmatch(name.upper()) or not isinstance(value, str):
+            return None
+        if name.lower() in folded:
+            return None
+        folded[name.lower()] = value
+    return folded
 
 
 def record_wallet_authorization(effects):
@@ -794,7 +882,8 @@ def reconciliation_identity(v):
     """XN-11: this session's identity, from the signed agreement and the runtime.
 
     A stored record is never part of it: the record is judged only after the
-    ledger reconciliation, and only for the recorded reason.
+    ledger reconciliation, and only for the recorded reason. The facilitator is
+    trusted local routing (XN-3), retained so that a retry cannot switch it.
     """
     agreement = v.get("agreement", {})
     runtime = v.get("runtime", {})
@@ -806,23 +895,25 @@ def reconciliation_identity(v):
         "phaseIndex": runtime.get("phaseIndex"),
         "requirementHash": digest(selected),
         "authorizationIdentity": runtime.get("payer", {}).get("paymentAddress"),
+        "facilitator": runtime.get("facilitator"),
     }
 
 
 def reconciliation_matches(retained, v):
-    """XN-11: the retained state names this session's identity.
+    """XN-11: the retained state names this session's identity and routing.
 
     The retained state may also hold the known settlementTransaction (absent or
-    null after response loss). It is the response's transaction, so it is
-    compared with the reconciled one only after the ledger decides, as a
-    recorded defect. The authorization identity is the authorization payer, so
-    it compares in the XN-5 adapter form, and a malformed one on either side is
-    AddressFormError even when both spellings are identical.
+    null after response loss) and the authorization's EIP-3009 `validBefore`.
+    The transaction is the response's, so it is compared with the reconciled
+    one only after the ledger decides, as a recorded defect. The authorization
+    identity is the authorization payer, so it compares in the XN-5 adapter
+    form, and a malformed one on either side is AddressFormError even when both
+    spellings are identical.
     """
     identity = reconciliation_identity(v)
     if identity is None or not isinstance(retained, dict):
         return False
-    if set(retained) - {"settlementTransaction"} != set(identity):
+    if set(retained) - {"settlementTransaction", "validBefore"} != set(identity):
         return False
     parameters = v["agreement"]["terms"]["rail"].get("parameters")
     selection = parameters.get("selection") if isinstance(parameters, dict) else None
@@ -861,8 +952,8 @@ def exact_atomic(amount, decimals, ceiling):
 
 
 def decode_response_header(header, version):
-    wanted = "X-PAYMENT-RESPONSE" if version == 1 else "PAYMENT-RESPONSE" if version == 2 else None
-    if wanted is None or not isinstance(header, dict) or header.get("name") != wanted:
+    # XN-7: v0.8 binds version 2, whose settlement response is PAYMENT-RESPONSE.
+    if version != 2 or not isinstance(header, dict) or header.get("name") != "PAYMENT-RESPONSE":
         raise ValueError("wrong response header")
     if not isinstance(header.get("value"), str):
         raise ValueError("response header has no value")
@@ -883,8 +974,11 @@ def read_settlement_response(header, version, network, payer):
     the seller's protocol fault and never the outcome. Returns the complete
     decoded object (None when no version-selected object decodes) and None or
     the defect: `response-json` (refused by CORE CF-5), `response-header`,
-    `response-not-success`, `response-network` or `response-payer`. Its transaction is compared later, with the one the
-    reconciliation establishes (`response-transaction`).
+    `response-not-success`, `response-network` or `response-payer`. Its
+    transaction is compared later, with the one the reconciliation establishes
+    (`response-transaction`). Upstream's `payer` is optional, so an absent one
+    is sound. Upstream's non-terminal `settlement_pending` names the broadcast
+    transaction; it is sound too, and the ledger decides as always.
     """
     try:
         response = decode_response_header(header, version)
@@ -892,15 +986,22 @@ def read_settlement_response(header, version, network, payer):
         return None, "response-json"
     except ValueError:
         return None, "response-header"
-    if response.get("success") is not True:
+    pending = (
+        response.get("success") is False
+        and response.get("errorReason") == "settlement_pending"
+        and isinstance(response.get("transaction"), str)
+        and response["transaction"] != ""
+    )
+    if response.get("success") is not True and not pending:
         return response, "response-not-success"
     if response.get("network") != network:
         return response, "response-network"
-    try:
-        if adapter_address(network, response.get("payer")) != payer:
+    if "payer" in response:
+        try:
+            if adapter_address(network, response["payer"]) != payer:
+                return response, "response-payer"
+        except ValueError:
             return response, "response-payer"
-    except ValueError:
-        return response, "response-payer"
     return response, None
 
 
@@ -949,21 +1050,66 @@ def challenge_member_defect(network, extra, extensions, capability):
     never from a list supplied beside the challenge. A member they do not name
     is unclassified and rejects like an unsupported action-bearing member. The
     local capability can withdraw support for a defined extension, but it
-    cannot classify another one. An EIP-155 transfer method other than the two
-    the v0.8 binding authorizes through is unsupported (XN-9).
+    cannot classify another one. A defined member is then validated by the
+    §9.5.7.1 value rules: an EIP-155 transfer method other than EIP-3009 is
+    unsupported (XN-9), as is any payment flow but `authorization`, and a
+    required member that is absent or malformed rejects (`extra-member-value`).
     """
-    if not set(extra) <= ACTION_BEARING_EXTRA_MEMBERS.get(network.split(":", 1)[0], frozenset()):
+    namespace = network.split(":", 1)[0]
+    if not set(extra) <= ADAPTER_EXTRA_MEMBERS.get(namespace, frozenset()):
         return "fail", "unclassified-extra-member"
-    method = extra.get("assetTransferMethod", "eip3009")
-    if network.startswith("eip155:") and not (
-        isinstance(method, str) and method in EIP155_TRANSFER_METHODS
+    if "paymentFlow" in extra and not (
+        isinstance(extra["paymentFlow"], str) and extra["paymentFlow"] in PAYMENT_FLOWS
     ):
-        return "fail", "unsupported-transfer-method"
+        return "fail", "unsupported-payment-flow"
+    if namespace == "eip155":
+        method = extra.get("assetTransferMethod", "eip3009")
+        if not (isinstance(method, str) and method in EIP155_TRANSFER_METHODS):
+            return "fail", "unsupported-transfer-method"
+        # EIP-3009: the token's EIP-712 domain name and version are required.
+        if not all(isinstance(extra.get(name), str) and extra[name] for name in ("name", "version")):
+            return "fail", "extra-member-value"
+    elif namespace == "solana":
+        # The pinned Solana exact definition defines no transfer method.
+        if "assetTransferMethod" in extra:
+            return "fail", "unsupported-transfer-method"
+        if base58_decoded_length(extra.get("feePayer")) != 32:
+            return "fail", "extra-member-value"
+        if "memo" in extra:
+            memo = extra["memo"]
+            try:
+                if not isinstance(memo, str) or len(memo.encode("utf-8")) > SOLANA_MEMO_MAX_BYTES:
+                    return "fail", "extra-member-value"
+            except UnicodeEncodeError:
+                return "fail", "extra-member-value"
+        # recentBlockhash and lastValidBlockHeight are hints: a malformed one is
+        # ignored (the client fetches its own blockhash), never a rejection.
     if not set(extensions) <= ACTION_BEARING_EXTENSIONS:
         return "fail", "unclassified-extension"
     if not set(extensions) <= set(capability.get("understoodActionExtensions", [])):
         return "fail", "unsupported-action-extension"
+    if "payment-identifier" in extensions:
+        # Upstream's advertisement is {info: {required}, schema}. v0.8 defines
+        # no identifier, so a required one is an unsupported action.
+        advertised = extensions["payment-identifier"]
+        if (
+            not isinstance(advertised, dict)
+            or set(advertised) != {"info", "schema"}
+            or not isinstance(advertised["info"], dict)
+            or not isinstance(advertised["schema"], dict)
+            or type(advertised["info"].get("required")) is not bool
+        ):
+            return "fail", "extension-value"
+        if advertised["info"]["required"]:
+            return "fail", "unsupported-action-extension"
     return None
+
+
+def comparable_extra(network, extra):
+    """XN-4: the `extra` object compared by JCS, without the Solana hints."""
+    if network.startswith("solana:"):
+        return {name: value for name, value in extra.items() if name not in SOLANA_HINT_MEMBERS}
+    return extra
 
 
 def payout_bindings(agreement, phase_index):
@@ -1023,17 +1169,25 @@ def native_event_matches(event, network, transaction):
         return False
     evm = EVM_EVENT.fullmatch(event)
     if evm:
-        return network == f"eip155:{evm.group(1)}" and transaction == evm.group(2)
+        # SB-1: chainId and logIndex are safe integers, so every reader renders
+        # the same key.
+        return (
+            int(evm.group(1)) <= SAFE_INT and int(evm.group(3)) <= SAFE_INT
+            and network == f"eip155:{evm.group(1)}" and transaction == evm.group(2)
+        )
     solana = SOLANA_EVENT.fullmatch(event)
     if solana:
+        # SB-1: the signature decodes to exactly 64 bytes.
         return (
-            SOLANA_NETWORK_CLUSTERS.get(network) == solana.group(1)
+            int(solana.group(3)) <= SAFE_INT
+            and base58_decoded_length(solana.group(2)) == 64
+            and SOLANA_NETWORK_CLUSTERS.get(network) == solana.group(1)
             and transaction == solana.group(2)
         )
     return False
 
 
-def reconcile_settlement(ledger, selection, amount, payer, pay_to):
+def reconcile_settlement(ledger, selection, amount, payer, pay_to, valid_before=None):
     """XN-11/XN-8: the payment disposition, from authenticated ledger data alone.
 
     `ledger` is what the adapter resolves for the retained authorization
@@ -1046,6 +1200,7 @@ def reconcile_settlement(ledger, selection, amount, payer, pay_to):
     is `error`. Returns (verdict, reason, event): on `pass`, event holds the
     validated adapter-form `transaction` and canonical `settlementEvent` that
     the success evidence is built or rebuilt from; otherwise it is None.
+    `valid_before` is the retained EIP-3009 authorization's `validBefore`.
     """
     network = selection["network"]
     if not isinstance(ledger, dict) or ledger.get("available") is not True:
@@ -1053,10 +1208,27 @@ def reconcile_settlement(ledger, selection, amount, payer, pay_to):
     if ledger.get("finalized") is not True:
         return "indeterminate", "settlement-not-final", None
     if "transaction" not in ledger and "settlementEvent" not in ledger:
-        # No event: only a terminal state ends the phase; otherwise the
-        # authorization can still settle and the session stays pending.
-        if ledger.get("authorizationState") in TERMINAL_AUTHORIZATION_STATES:
-            return "fail", "terminal-non-settlement", None
+        # No event: only a terminal state the finalized ledger proves ends the
+        # phase; otherwise the authorization can still settle and the session
+        # stays pending. No local clock decides an EIP-3009 expiry: a finalized
+        # block whose timestamp is at least `validBefore`, with the nonce still
+        # unused at that block, does.
+        if network.startswith("eip155:"):
+            state = ledger.get("nonceState")
+            if state is not None and state not in EIP3009_NONCE_STATES:
+                return "error", "ledger-nonce-state", None
+            if state == "cancelled":
+                return "fail", "terminal-non-settlement", None
+            timestamp = ledger.get("finalizedBlockTimestamp")
+            if timestamp is not None and not is_safe_nonnegative(timestamp):
+                return "error", "ledger-block-timestamp", None
+            if valid_before is not None and not is_safe_nonnegative(valid_before):
+                return "error", "authorization-valid-before", None
+            if (
+                state == "unused" and timestamp is not None and valid_before is not None
+                and timestamp >= valid_before
+            ):
+                return "fail", "terminal-non-settlement", None
         return "indeterminate", "authorization-unsettled", None
     # XN-7/XN-8: the event's transaction and settlementEvent identify it, so
     # they are judged before anything about the transfer. A missing one is
@@ -1135,6 +1307,32 @@ def check_record(v, required, response, response_fault, selection, request):
     if "evidence" in v and not verify_record_signature(v):
         return ("fail", "signature"), None
     evidence = v.get("evidence", {})
+    # §9.7/SB-1: the record's own version, outcome, phase, job and amount. A
+    # missing or mistyped one is malformed; another value is not this payment.
+    agreement = v.get("agreement", {})
+    if evidence.get("evidenceVersion") != "1":
+        return ("error", "evidence-record-version"), None
+    if not all(isinstance(evidence.get(name), str) for name in ("outcome", "phase", "jobId")):
+        return ("error", "evidence-record-shape"), None
+    if (
+        evidence["outcome"] != "success"
+        or evidence["phase"] != "pay-x402"
+        or evidence["jobId"] != agreement.get("jobId")
+    ):
+        return ("fail", "evidence-record-binding"), None
+    paid = evidence.get("paymentAmount")
+    if (
+        not isinstance(paid, dict)
+        or set(paid) != {"amount", "currency"}
+        or not isinstance(paid["amount"], str)
+        or not CD1.fullmatch(paid["amount"])
+        or not isinstance(paid["currency"], str)
+    ):
+        return ("error", "evidence-payment-amount"), None
+    # CD-1 forms are canonical, so equal amounts are equal strings.
+    price = agreement.get("terms", {}).get("price", {})
+    if paid != {"amount": price.get("amount"), "currency": price.get("currency")}:
+        return ("fail", "evidence-payment-amount"), None
     refs = evidence.get("paymentTxRefs")
     if not isinstance(refs, list) or len(refs) != 1:
         return ("error", "evidence-ref-count"), None
@@ -1223,12 +1421,37 @@ def build_evidence(effects, event, transaction):
         }
 
 
+def keep_anchored_record(v, effects, defect):
+    """XN-11/PC-7: a stored record already anchored at the write-once address.
+
+    An unanchored record is local material: one a verifier rejects is
+    discarded and the record built from the reconciled event replaces it. An
+    anchored record is never replaced. One that verifies stays the phase's
+    evidence, so re-anchoring it is idempotent; one that does not verify
+    leaves nothing to build, and the phase enters manual recovery. The
+    ledger's disposition stands either way.
+    """
+    if effects is None or v.get("runtime", {}).get("storedRecordAnchored") is not True:
+        return
+    if defect is not None:
+        effects.pop("builtEvidence", None)
+        effects["manualRecovery"] = defect[1]
+        return
+    ref = v["evidence"]["paymentTxRefs"][0]
+    effects["builtEvidence"] = {
+        "settlementTransaction": ref["settlementTransaction"],
+        "settlementEvent": ref["settlementEvent"],
+    }
+
+
 def received_challenge(http):
     """CORE CF-5: the received PaymentRequired, with raw bytes admitted before any use.
 
-    An object challenge is checked against the same profile by hashing it.
-    TypeError or ValueError means it is not admissible, as is a challenge
-    received both as raw bytes and as an object.
+    Both forms model the v2 `PAYMENT-REQUIRED` header (XN-4): the raw form is
+    its base64 value and the object form its decoded object. The 402 body is
+    never read. An object challenge is checked against the same profile by
+    hashing it. TypeError or ValueError means it is not admissible, as is a
+    challenge received both as raw bytes and as an object.
     """
     if "paymentRequiredRaw" in http:
         if "paymentRequired" in http:
@@ -1264,6 +1487,27 @@ def materialize_vector(data, vector):
     }
 
 
+def protocol_preflight(v):
+    """XN-1/XN-2: the definition and reference gates every protocol operation runs.
+
+    Execute, retry and verify-evidence all apply them, so a retry cannot
+    reconcile under a malformed or other-revision definition, a legacy arm, or
+    a malformed reference.
+    """
+    rail = v.get("railDefinition")
+    if validate_protocol_definition(rail) != "pass":
+        return "error", "definition"
+    ref = v.get("agreement", {}).get("terms", {}).get("rail")
+    ref_result = validate_ref(ref)
+    if ref_result != "pass":
+        return ref_result, "rail-ref-shape"
+    # XN-1: the definition applied is the revision the signed reference pins;
+    # another one, even validly signed and well formed, is not it.
+    if rail["railVersion"] != ref["railVersion"]:
+        return "fail", "rail-version"
+    return None
+
+
 def evaluate(v, effects=None):
     operation = v.get("operation")
     rail = v.get("railDefinition")
@@ -1276,7 +1520,14 @@ def evaluate(v, effects=None):
     if operation == "admit-listing":
         if not verify_artifact_signatures(v):
             return "fail", "signature"
-        return listing_agreement_type_violation(v.get("listing")) or ("pass", None)
+        # LRR-5: the commitment-phase rule needs no registry, so it rejects
+        # even when registry authority cannot be authenticated.
+        violation = listing_agreement_type_violation(v.get("listing"))
+        if violation is not None:
+            return violation
+        if v.get("registry", {}).get("authenticated") is False:
+            return "indeterminate", "registry-unauthenticated"
+        return "pass", None
 
     if operation == "new-session":
         if not verify_artifact_signatures(v):
@@ -1297,21 +1548,35 @@ def evaluate(v, effects=None):
         if len(refs) != 1:
             return "error", "shape"
         ref = refs[0]
-        if (
+        if not (
             rail.get("railId") == "x402:default"
             and ref.get("kind") == "x402-event"
             and isinstance(ref.get("protocolVersion"), str)
             and "x402Version" not in ref
         ):
-            return "pass", None
-        return "error", "legacy-boundary"
+            return "error", "legacy-boundary"
+        # X402-1/X402-4: finishing a legacy session needs the complete
+        # successful response. A finalized ledger settlement never stands in
+        # for a missing, malformed or non-success one; the negotiated XN-11
+        # policy does not apply here.
+        if operation == "legacy-continuation" and not legacy_response_succeeded(
+                v.get("http", {}).get("responseHeader"), ref["protocolVersion"]):
+            return "fail", "legacy-response"
+        return "pass", None
 
     if operation == "retry":
         # As in execute, a stored record is judged only after the ledger has
         # decided, so its own signature is not a gate here.
         if not verify_artifact_signatures({name: item for name, item in v.items() if name != "evidence"}):
             return "fail", "signature"
+        # XN-1/XN-2: the same definition and reference gates as execute.
+        defect = protocol_preflight(v)
+        if defect is not None:
+            return defect
         retained = v.get("runtime", {}).get("reconciliationState")
+        # XN-11: no provider or facilitator switch inside the session.
+        if isinstance(retained, dict) and retained.get("facilitator") != v.get("runtime", {}).get("facilitator"):
+            return "fail", "routing-switch"
         try:
             matches = reconciliation_matches(retained, v)
         except AddressFormError:
@@ -1325,7 +1590,9 @@ def evaluate(v, effects=None):
             selection, amount, payer, pay_to = reconciliation_terms(v)
         except (AttributeError, KeyError, TypeError, ValueError):
             return "error", "reconciliation-terms"
-        verdict, reason, event = reconcile_settlement(v.get("ledger"), selection, amount, payer, pay_to)
+        verdict, reason, event = reconcile_settlement(
+            v.get("ledger"), selection, amount, payer, pay_to, retained.get("validBefore")
+        )
         if verdict != "pass":
             return verdict, reason
         network = selection["network"]
@@ -1333,13 +1600,13 @@ def evaluate(v, effects=None):
         # with no adapter form, or naming another transaction than the
         # reconciled one, is a recorded response defect.
         known = retained.get("settlementTransaction")
-        if known is not None and adapter_canonical_transaction(network, known) != event["transaction"]:
-            build_evidence(effects, event, None)
-            return "pass", "response-transaction"
-        build_evidence(effects, event, known)
+        retained_fault = known is not None and adapter_canonical_transaction(
+            network, known) != event["transaction"]
+        build_evidence(effects, event, None if retained_fault else known)
         # A stored record is checked as in execute, against the retained
         # challenge and response and the reconciled event; its defect is the
         # recorded reason, never the outcome.
+        defect = None
         if "evidence" in v:
             http = v.get("http", {})
             try:
@@ -1351,9 +1618,10 @@ def evaluate(v, effects=None):
             )
             request = v["agreement"]["terms"]["rail"]["parameters"]["request"]
             defect = stored_record_defect(v, required, response, response_fault, selection, request, event)
-            if defect is not None:
-                return "pass", defect[1]
-        return "pass", None
+            keep_anchored_record(v, effects, defect)
+        if retained_fault:
+            return "pass", "response-transaction"
+        return "pass", defect and defect[1]
 
     # `execute` runs the handler; `verify-evidence` is a verifier judging a
     # stored success record (XN-7/XN-8) and never authorizes. Both apply the
@@ -1363,18 +1631,12 @@ def evaluate(v, effects=None):
     # The stored record's own signature is judged in check_record.
     if not verify_artifact_signatures({name: item for name, item in v.items() if name != "evidence"}):
         return "fail", "signature"
-    if validate_protocol_definition(rail) != "pass":
-        return "error", "definition"
+    defect = protocol_preflight(v)
+    if defect is not None:
+        return defect
 
     agreement = v.get("agreement", {})
-    ref = agreement.get("terms", {}).get("rail")
-    ref_result = validate_ref(ref)
-    if ref_result != "pass":
-        return ref_result, "rail-ref-shape"
-    # XN-1: the definition applied is the revision the signed reference pins;
-    # another one, even validly signed and well formed, is not it.
-    if rail["railVersion"] != ref["railVersion"]:
-        return "fail", "rail-version"
+    ref = agreement["terms"]["rail"]
     canonical_ref = jcs_canonicalize(ref)
     listed = v.get("listing", {}).get("acceptedRails")
     if not isinstance(listed, list):
@@ -1434,6 +1696,13 @@ def evaluate(v, effects=None):
         # XN-9: other schemes, batch-settlement included, are protocol-valid but
         # have no v0.8 DACS success binding, so they end here, unauthorized.
         return "fail", "x402-capability-unsupported"
+    if selection["network"].split(":", 1)[0] not in ATOMIC_AMOUNT_MAX or (
+        selection["network"].startswith("solana:")
+        and selection["network"] not in SOLANA_NETWORK_CLUSTERS
+    ):
+        # §9.5.7.1: `dacs-x402-exact:v1` binds only EIP-155 and the three
+        # mapped Solana clusters; no local claim adds a network it cannot key.
+        return "fail", "x402-capability-unsupported"
 
     request = ref["parameters"]["request"]
     if not public_http_target(request["url"]):
@@ -1450,6 +1719,10 @@ def evaluate(v, effects=None):
         return "indeterminate", "unpaid-request-transient"
     if status != 402:
         return "fail", "not-payment-required"
+    # XN-4: the v2 challenge is the `PAYMENT-REQUIRED` header; the 402 body is
+    # never read, so a challenge only in the body is no challenge.
+    if "paymentRequired" not in http and "paymentRequiredRaw" not in http:
+        return "error", "payment-required-header"
     # CORE CF-5: a challenge received as raw bytes is admitted before any use,
     # and an object one is checked against the same profile, so neither a
     # non-finite or out-of-profile number nor a lone surrogate can raise later.
@@ -1463,26 +1736,18 @@ def evaluate(v, effects=None):
     accepts = required.get("accepts")
     if not isinstance(accepts, list):
         return "error", "payment-required-shape"
-    if version == 2:
-        resource = required.get("resource")
-        if not isinstance(resource, dict):
-            return "error", "payment-required-shape"
-        resource_url = resource.get("url")
-        actual_extensions_present = "extensions" in required
-        signed_extensions_present = "paymentRequiredExtensions" in ref["parameters"]
-        if actual_extensions_present != signed_extensions_present:
-            return "fail", "extension-presence"
-        if actual_extensions_present and jcs_canonicalize(required["extensions"]) != jcs_canonicalize(
-            ref["parameters"]["paymentRequiredExtensions"]
-        ):
-            return "fail", "extensions"
-    elif version == 1:
-        resource_url = None
-        # validate_ref already refuses paymentRequiredExtensions in a v1 selection.
-        if "extensions" in required:
-            return "fail", "legacy-extension-boundary"
-    else:
-        return "error", "unsupported-version"
+    resource = required.get("resource")
+    if not isinstance(resource, dict):
+        return "error", "payment-required-shape"
+    resource_url = resource.get("url")
+    actual_extensions_present = "extensions" in required
+    signed_extensions_present = "paymentRequiredExtensions" in ref["parameters"]
+    if actual_extensions_present != signed_extensions_present:
+        return "fail", "extension-presence"
+    if actual_extensions_present and jcs_canonicalize(required["extensions"]) != jcs_canonicalize(
+        ref["parameters"]["paymentRequiredExtensions"]
+    ):
+        return "fail", "extensions"
 
     price = agreement.get("terms", {}).get("price", {})
     if selection["currency"] != price.get("currency"):
@@ -1495,13 +1760,17 @@ def evaluate(v, effects=None):
         metadata_asset = adapter_address(network, metadata.get("asset"))
     except ValueError:
         return "error", "address-form"
-    signed_extra = jcs_canonicalize(selection["extra"])
+    signed_extra = jcs_canonicalize(comparable_extra(network, selection["extra"]))
     if (
         metadata.get("network") != selection["network"]
         or metadata_asset != asset
         or metadata.get("decimals") != selection["assetDecimals"]
     ):
         return "fail", "asset-metadata"
+    # XN-5: the adapter's trusted metadata names the currency the asset
+    # denominates, so a relabelled price and selection cannot pass.
+    if metadata.get("currency") != selection["currency"]:
+        return "fail", "asset-currency"
     try:
         amount = selection_amount(price, selection)
     except (TypeError, ValueError):
@@ -1510,20 +1779,18 @@ def evaluate(v, effects=None):
     for candidate in accepts:
         if not isinstance(candidate, dict):
             return "error", "accepts-shape"
-        candidate_amount = candidate.get("amount") if version == 2 else candidate.get("maxAmountRequired")
-        candidate_url = resource_url if version == 2 else candidate.get("resource")
         if (
-            candidate_url == request["url"]
+            resource_url == request["url"]
             and candidate.get("scheme") == selection["scheme"]
             and candidate.get("network") == selection["network"]
             and candidate.get("maxTimeoutSeconds") == selection["maxTimeoutSeconds"]
             and isinstance(candidate.get("extra"), dict)
-            and candidate_amount == amount
+            and candidate.get("amount") == amount
         ):
             try:
                 if (
                     adapter_address(network, candidate.get("asset")) == asset
-                    and jcs_canonicalize(candidate["extra"]) == signed_extra
+                    and jcs_canonicalize(comparable_extra(network, candidate["extra"])) == signed_extra
                     and adapter_address(network, candidate.get("payTo")) == pay_to
                 ):
                     matches.append(candidate)
@@ -1569,7 +1836,9 @@ def evaluate(v, effects=None):
     # XN-11: the payment disposition comes only from reconciling the
     # authorization identity against authenticated ledger data. It needs no
     # success record, and no response material or stored record can replace it.
-    verdict, reason, event = reconcile_settlement(ledger, selection, amount, payer, pay_to)
+    verdict, reason, event = reconcile_settlement(
+        ledger, selection, amount, payer, pay_to, retained_valid_before(v)
+    )
     if verdict != "pass":
         return verdict, reason
     # The exact finalized settlement stands. A response naming another
@@ -1581,16 +1850,34 @@ def evaluate(v, effects=None):
     # The evidence is built from the reconciled event, keeping a sound
     # response's transaction spelling.
     build_evidence(effects, event, response["transaction"] if response_fault is None else None)
-    if response_fault is not None:
-        return "pass", response_fault
     # A stored record that a verifier would reject is rebuilt from the
-    # retained challenge, response and reconciled event; its defect is the
-    # recorded reason, never the outcome.
+    # retained challenge, response and reconciled event, unless it is already
+    # anchored; its defect is the recorded reason, never the outcome.
+    defect = None
     if "evidence" in v:
         defect = stored_record_defect(v, required, response, response_fault, selection, request, event)
-        if defect is not None:
-            return "pass", defect[1]
-    return "pass", None
+        keep_anchored_record(v, effects, defect)
+    if response_fault is not None:
+        return "pass", response_fault
+    return "pass", defect and defect[1]
+
+
+def legacy_response_succeeded(header, protocol_version):
+    """X402-1: the legacy version-selected response decodes and reports success."""
+    wanted = {"1": "X-PAYMENT-RESPONSE", "2": "PAYMENT-RESPONSE"}.get(protocol_version)
+    if wanted is None or not isinstance(header, dict) or header.get("name") != wanted:
+        return False
+    try:
+        response = admit_raw_json(base64.b64decode(header.get("value"), validate=True))
+    except (TypeError, ValueError):
+        return False
+    return isinstance(response, dict) and response.get("success") is True
+
+
+def retained_valid_before(v):
+    """XN-11: the retained EIP-3009 `validBefore`, or None if none is retained."""
+    retained = v.get("runtime", {}).get("reconciliationState")
+    return retained.get("validBefore") if isinstance(retained, dict) else None
 
 
 class X402NegotiatedProtocolVectorTests(unittest.TestCase):
@@ -1662,6 +1949,73 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 self.assertEqual(actual, vector["expected"])
                 if "expectedReason" in vector:
                     self.assertEqual(reason, vector["expectedReason"])
+                if "expectedErrorClass" in vector:
+                    self.assertEqual(FAILURE_MODE_ERROR_CLASSES.get(reason), vector["expectedErrorClass"])
+
+    def test_published_legacy_replacement_has_the_xn10_values(self):
+        """XN-10: the superseding x402:default revision the corpus refuses is the steward's
+        signed disabled, deprecated definition pointing new sessions at x402:protocol."""
+        vector = self.by_name["legacy-default-new-session-disabled"]
+        rail = vector["railDefinition"]
+        self.assertTrue(verify_signature(
+            vector["keys"]["steward"], "dacs-rail:v1:",
+            {name: value for name, value in rail.items() if name != "signature"},
+            rail["signature"]["value"]))
+        self.assertEqual((rail["railId"], rail["railVersion"], rail["availability"]),
+                         ("x402:default", 2, "disabled"))
+        governance = rail["governance"]
+        self.assertEqual((governance["supersedes"], governance["deprecated"]), (1, True))
+        self.assertIn("x402:protocol", governance["deprecationReason"])
+        self.assertEqual(evaluate(copy.deepcopy(vector)), ("fail", "legacy-default-new-session"))
+
+    def test_generator_check_fails_on_a_stale_file(self):
+        """CI's determinism gate: --check exits 1 when the committed file differs."""
+        sys.path.insert(0, str(ROOT / "scripts"))
+        try:
+            import generate_x402_negotiated_protocol_vectors as generator
+        finally:
+            sys.path.remove(str(ROOT / "scripts"))
+        stale = VECTORS.read_text(encoding="utf-8").replace('"count": ', '"count": 1', 1)
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / VECTORS.name
+            output.write_text(stale, encoding="utf-8")
+            with mock.patch.object(generator, "OUTPUT", output), \
+                    mock.patch.object(sys, "argv", ["generator", "--check"]), \
+                    mock.patch("builtins.print"):
+                self.assertEqual(generator.main(), 1)
+            # The committed file itself is current.
+            output.write_text(VECTORS.read_text(encoding="utf-8"), encoding="utf-8")
+            with mock.patch.object(generator, "OUTPUT", output), \
+                    mock.patch.object(sys, "argv", ["generator", "--check"]), \
+                    mock.patch("builtins.print"):
+                self.assertEqual(generator.main(), 0)
+
+    def test_failure_mode_error_classes_are_pinned(self):
+        """§9.5.7 failure modes: each execute result the list names carries its errorClass.
+
+        So booking an unsupported capability or member as the seller's
+        `counterparty` fault, or a malformed challenge as `permanent`, fails.
+        """
+        pinned = 0
+        for vector in self.vectors:
+            if vector["operation"] != "execute" or vector["expected"] == "pass":
+                continue
+            reason = vector.get("expectedReason")
+            with self.subTest(vector=vector["name"]):
+                if reason in FAILURE_MODE_ERROR_CLASSES:
+                    pinned += 1
+                    self.assertEqual(vector.get("expectedErrorClass"), FAILURE_MODE_ERROR_CLASSES[reason])
+                else:
+                    self.assertNotIn("expectedErrorClass", vector)
+        by_reason = {}
+        for vector in self.vectors:
+            if "expectedErrorClass" in vector:
+                by_reason.setdefault(vector["expectedReason"], set()).add(vector["expectedErrorClass"])
+        self.assertEqual(by_reason["x402-capability-unsupported"], {"permanent"})
+        self.assertEqual(by_reason["unclassified-extra-member"], {"permanent"})
+        self.assertEqual(by_reason["challenge-match"], {"counterparty"})
+        self.assertEqual(by_reason["unpaid-request-transient"], {"transient"})
+        self.assertEqual(pinned, 89)
 
     def test_resolution_inputs_are_inside_real_agreement_signatures(self):
         original = self.by_name["protocol-v2-exact-success"]
@@ -1818,7 +2172,6 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "paid-request-body-substitution",
             "action-bearing-extension-omitted-from-claim",
             "unclassified-payment-requirements-extra",
-            "v1-unclassified-payment-requirements-extra",
             "unclassified-top-level-extension",
             "unclassified-extension-listed-as-understood",
             "solana-extra-carries-verifying-contract",
@@ -1830,7 +2183,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "eip155-extra-carries-solana-fee-payer",
             "definition-railversion-2-ref-pins-1",
             "definition-railversion-1-ref-pins-2",
-            "v1-selection-carries-empty-payment-required-extensions",
+            "v1-selection-outside-v08-profile",
             "selection-max-timeout-seconds-zero",
             "payment-required-extensions-array",
             "execute-definition-rail-id-substituted",
@@ -1956,6 +2309,22 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-response-lost-ledger-event-key-missing",
             "retry-response-lost-ledger-event-key-garbled",
             "retry-agreement-signature-invalid",
+            "retry-eip3009-expiry-block-before",
+            "retry-eip3009-expiry-block-equal",
+            "retry-eip3009-expiry-block-after",
+            "retry-eip3009-expiry-block-unavailable",
+            "retry-eip3009-expiry-block-malformed",
+            "retry-eip3009-expiry-without-retained-valid-before",
+            "retry-eip3009-nonce-state-unknown",
+            "retry-eip3009-expiry-not-final",
+            "retry-record-payment-amount-inflated-rebuilt",
+            "retry-anchored-record-defect-manual-recovery",
+            "retry-definition-other-revision",
+            "retry-definition-legacy-arm",
+            "retry-definition-malformed",
+            "retry-facilitator-switched",
+            "retry-retained-facilitator-absent",
+            "retry-static-arm-ref",
         )
         self.assertEqual(set(names), {v["name"] for v in self.vectors if v["operation"] == "retry"})
         for name in names:
@@ -2159,7 +2528,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # Every stored-record verdict a verifier gives leaves the payment to the
         # ledger, after the wallet call and on retry alike.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
-        self.assertEqual(len(records), 26)
+        self.assertEqual(len(records), 40)
         for vector in records:
             for operation in ("execute", "retry"):
                 with self.subTest(record=vector["name"], operation=operation):
@@ -2194,15 +2563,23 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         vector = copy.deepcopy(self.by_name["retry-response-lost-no-transaction-known"])
         vector["ledger"]["available"] = True
         self.assertEqual(evaluate(vector), ("pass", None))
-        for state, want in (("expired", ("fail", "terminal-non-settlement")),
-                            ("cancelled", ("fail", "terminal-non-settlement")),
-                            ("unused", ("indeterminate", "authorization-unsettled")),
-                            (None, ("indeterminate", "authorization-unsettled"))):
-            for name in ("response-lost-no-evidence-authorization-expired",
-                         "retry-response-lost-authorization-cancelled"):
-                with self.subTest(vector=name, state=state):
+        # Only the finalized ledger's nonce state and block clock prove a
+        # terminal EIP-3009 non-settlement; validBefore is the retained one.
+        terminal, pending = ("fail", "terminal-non-settlement"), ("indeterminate", "authorization-unsettled")
+        for name in ("response-lost-no-evidence-authorization-expired",
+                     "retry-response-lost-authorization-cancelled"):
+            valid_before = self.by_name[name]["runtime"]["reconciliationState"]["validBefore"]
+            for state, offset, want in (("unused", 1, terminal), ("unused", 0, terminal),
+                                        ("unused", -1, pending), ("unused", None, pending),
+                                        ("cancelled", None, terminal), ("used", 1, pending),
+                                        (None, 1, pending)):
+                with self.subTest(vector=name, state=state, offset=offset):
                     vector = copy.deepcopy(self.by_name[name])
-                    vector["ledger"]["authorizationState"] = state
+                    vector["ledger"] = {"available": True, "finalized": True}
+                    if state is not None:
+                        vector["ledger"]["nonceState"] = state
+                    if offset is not None:
+                        vector["ledger"]["finalizedBlockTimestamp"] = valid_before + offset
                     self.assertEqual(evaluate(vector), want)
                     vector["ledger"]["finalized"] = False
                     self.assertEqual(evaluate(vector), ("indeterminate", "settlement-not-final"))
@@ -2308,12 +2685,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                     vector["ledger"]["finalized"] = False
                     self.assertEqual(evaluate(vector), ("indeterminate", "settlement-not-final"))
             # With neither coordinate no event is resolved: the identity's state decides.
-            for state, want in (("expired", ("fail", "terminal-non-settlement")),
-                                ("unused", ("indeterminate", "authorization-unsettled"))):
-                with self.subTest(vector=name, no_event=state):
+            valid_before = base["runtime"]["reconciliationState"]["validBefore"]
+            for timestamp, want in ((valid_before, ("fail", "terminal-non-settlement")),
+                                    (valid_before - 1, ("indeterminate", "authorization-unsettled"))):
+                with self.subTest(vector=name, no_event=timestamp):
                     vector = copy.deepcopy(base)
                     del vector["ledger"]["transaction"], vector["ledger"]["settlementEvent"]
-                    vector["ledger"]["authorizationState"] = state
+                    vector["ledger"].update({"nonceState": "unused", "finalizedBlockTimestamp": timestamp})
                     self.assertEqual(evaluate(vector), want)
         # Solana: the key names the selected network's cluster and the exact signature.
         base = self.by_name["protocol-v2-solana-exact-success"]
@@ -2357,6 +2735,12 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 if verdict != "pass":
                     self.assertNotIn("builtEvidence", effects)
                     continue
+                if vector["runtime"].get("storedRecordAnchored") is True and reason is not None:
+                    # PC-7: an anchored record that does not verify cannot be
+                    # replaced at its write-once address; nothing is rebuilt.
+                    self.assertNotIn("builtEvidence", effects)
+                    self.assertEqual(effects["manualRecovery"], reason)
+                    continue
                 built += 1
                 network = vector["agreement"]["terms"]["rail"]["parameters"]["selection"]["network"]
                 evidence = effects["builtEvidence"]
@@ -2393,9 +2777,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             with self.subTest(vector=vector["name"]):
                 effects = {}
                 verdict, _ = evaluate(copy.deepcopy(vector), effects)
-                # Every record case is a rejection except the JSON-null preimage.
-                self.assertEqual(verdict == "pass",
-                                 vector["name"] == "record-over-unreceived-response-verifies")
+                # Every record case is a rejection except the JSON-null
+                # preimage and the two sound-shape successes.
+                self.assertEqual(verdict == "pass", vector["name"] in {
+                    "record-over-unreceived-response-verifies",
+                    "verify-evidence-response-without-payer",
+                    "verify-evidence-without-extensions",
+                })
                 self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
         for name, want in (("protocol-v2-exact-success", ("pass", None)),
                            ("response-not-success", ("pass", "response-not-success")),
@@ -2403,7 +2791,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                            # response names another, so the response is defective.
                            ("response-transaction-substitution", ("pass", "response-transaction")),
                            # A verifier with no record has nothing well formed to judge.
-                           ("response-lost-no-evidence-settled", ("error", "evidence-ref-count"))):
+                           ("response-lost-no-evidence-settled", ("error", "evidence-record-version"))):
             with self.subTest(record_over=name):
                 vector = copy.deepcopy(self.by_name[name])
                 vector["operation"] = "verify-evidence"
@@ -2415,8 +2803,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         """XN-11: a retry reconciles the signed terms; one it cannot derive is `error`."""
         base = self.by_name["retry-response-lost-ledger-settled"]
         self.assertEqual(evaluate(copy.deepcopy(base)), ("pass", None))
+        # A malformed reference is refused by the preflight retry shares with
+        # execute, before any reconciliation (XN-2).
+        with mock.patch(f"{__name__}.verify_artifact_signatures", return_value=True):
+            vector = copy.deepcopy(base)
+            vector["agreement"]["terms"]["rail"]["provider"] = "x"
+            self.assertEqual(evaluate(vector), ("error", "rail-ref-shape"))
         for label, change in (
-            ("ref not a negotiated ref", lambda a: a["terms"]["rail"].update({"provider": "x"})),
             ("price not exact", lambda a: a["terms"]["price"].update({"amount": "1.0000001"})),
             ("price not an object", lambda a: a["terms"].update({"price": "1.25"})),
             ("binding duplicated", lambda a: a["terms"]["payoutBindings"].append(
@@ -2542,6 +2935,99 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         self.assertEqual(ref["settlementNetwork"], "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp")
         self.assertTrue(ref["settlementEvent"].startswith("solana:mainnet:"))
         self.assertEqual(evaluate(vector), ("pass", None))
+        # The mapping is the spec's closed §9.5.7.1 table, so the spec and the
+        # evaluator name the same three references.
+        spec = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")
+        for network, cluster in clusters.items():
+            self.assertIn(f"| `{network}` | `{cluster}` |", spec)
+
+    def test_event_key_integers_are_safe_and_signatures_are_64_bytes(self):
+        """SB-1: chainId > 0 and logIndex are safe integers; a Solana signature is 64 bytes."""
+        tx = "ab" * 32
+        unsafe = 2**53 + 1
+        self.assertTrue(native_event_matches(f"evm:8453:{tx}:{SAFE_INT}", "eip155:8453", tx))
+        self.assertFalse(native_event_matches(f"evm:8453:{tx}:{unsafe}", "eip155:8453", tx))
+        self.assertTrue(native_event_matches(f"evm:{SAFE_INT}:{tx}:0", f"eip155:{SAFE_INT}", tx))
+        self.assertFalse(native_event_matches(f"evm:{unsafe}:{tx}:0", f"eip155:{unsafe}", tx))
+        self.assertFalse(native_event_matches(f"evm:0:{tx}:0", "eip155:0", tx))
+        devnet = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        for raw, want in ((b"\x05" * 64, True), (b"\x05" * 63, False), (b"\x05" * 65, False),
+                          (b"\x00" * 64, True), (b"\x00" * 10, False)):
+            signature = base58(raw)
+            with self.subTest(length=len(raw), leading_zero=raw[0] == 0):
+                self.assertEqual(base58_decoded_length(signature), len(raw))
+                self.assertEqual(
+                    native_event_matches(f"solana:devnet:{signature}:4", devnet, signature), want)
+        self.assertFalse(native_event_matches(
+            f"solana:devnet:{base58(b'\x05' * 64)}:{unsafe}", devnet, base58(b"\x05" * 64)))
+
+    def test_unbound_namespace_or_unmapped_cluster_is_unsupported_before_authorization(self):
+        """§9.5.7.1: the binding names EIP-155 and three Solana clusters, whatever is claimed."""
+        base = self.by_name["protocol-v2-exact-success"]
+        for network in ("cosmos:cosmoshub-4", "solana:8E9rvCKLFQia2Y35HXjjpWzj8weVo44K"):
+            with self.subTest(network=network), mock.patch(
+                    f"{__name__}.verify_artifact_signatures", return_value=True), mock.patch(
+                    f"{__name__}.buyer_payment_control", return_value=True), mock.patch(
+                    f"{__name__}.adapter_address", side_effect=lambda _network, address: address):
+                vector = copy.deepcopy(base)
+                for ref in (vector["listing"]["acceptedRails"][0], vector["agreement"]["terms"]["rail"],
+                            vector["runtime"]["selectedRailRef"]):
+                    ref["parameters"]["selection"]["network"] = network
+                vector["capability"]["supportedTuples"] = [[2, "exact", network]]
+                effects = {}
+                self.assertEqual(evaluate(vector, effects), ("fail", "x402-capability-unsupported"))
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+
+    def test_an_anchored_record_is_never_overwritten(self):
+        """PC-7(b)/XN-11: replay every execute and retry against a write-once anchor store.
+
+        The address already holds the stored record when the runtime says it
+        is anchored. Writing different bytes to an occupied address is refused,
+        so a handler that rebuilt over an anchored record would raise here.
+        """
+        class WriteOnceStore:
+            def __init__(self):
+                self.slots = {}
+
+            def write(self, address, record):
+                if address in self.slots and self.slots[address] != record:
+                    raise AssertionError(f"write-once address {address} already anchored")
+                self.slots[address] = record
+
+        def address(v):
+            return f"dacs4:payment:{v['agreement']['jobId']}:x402:protocol:{v['runtime']['phaseIndex']}"
+
+        def as_anchored(evidence):
+            # The anchored bytes as the coordinates a rebuilt record carries;
+            # a record with no such coordinates is kept as it is, so any
+            # write over it is refused.
+            try:
+                ref = evidence["paymentTxRefs"][0]
+                return {"settlementTransaction": ref["settlementTransaction"],
+                        "settlementEvent": ref["settlementEvent"]}
+            except (IndexError, KeyError, TypeError):
+                return evidence
+
+        manual = 0
+        for vector in self.vectors:
+            if vector["operation"] not in ("execute", "retry") or "evidence" not in vector:
+                continue
+            for anchored_flag in (False, True):
+                with self.subTest(vector=vector["name"], anchored=anchored_flag):
+                    changed = copy.deepcopy(vector)
+                    changed["runtime"]["storedRecordAnchored"] = anchored_flag
+                    store = WriteOnceStore()
+                    if anchored_flag:
+                        store.write(address(changed), as_anchored(changed["evidence"]))
+                    effects = {}
+                    verdict, reason = evaluate(changed, effects)
+                    if "builtEvidence" in effects:
+                        store.write(address(changed), effects["builtEvidence"])
+                    if anchored_flag and "manualRecovery" in effects:
+                        manual += 1
+                        self.assertEqual(verdict, "pass")
+                        self.assertIsNotNone(reason)
+        self.assertGreaterEqual(manual, 16)
 
     def test_each_named_class_is_reported_by_its_own_branch(self):
         """Every §6.3.6 named class has at least one representative that reports that class.
@@ -2759,11 +3245,12 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         global challenge_member_defect
         reasons = {
             "unclassified-extra-member", "unclassified-extension", "unsupported-action-extension",
-            "unsupported-transfer-method",
+            "unsupported-transfer-method", "unsupported-payment-flow", "extra-member-value",
+            "extension-value",
         }
         names = [name for name, vector in self.by_name.items()
                  if vector.get("expectedReason") in reasons]
-        self.assertEqual(len(names), 12)
+        self.assertEqual(len(names), 35)
         check = challenge_member_defect
         challenge_member_defect = lambda *_args: None  # noqa: E731
         try:
@@ -2782,16 +3269,22 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         it cannot classify an undefined one.
         """
         supported = {"understoodActionExtensions": ["payment-identifier"]}
-        extension = {"payment-identifier": {"required": True}}
-        # Every member of the pinned upstream exact definitions, and nothing else.
+        schema = {"type": "object"}
+        extension = {"payment-identifier": {"info": {"required": False}, "schema": schema}}
+        # Every member the pinned upstream exact definitions and the v2
+        # protocol-reserved keys define, and nothing else.
         defined = {
-            "eip155:8453": {"assetTransferMethod": "eip3009", "name": "USDC", "version": "2"},
+            "eip155:8453": {"assetTransferMethod": "eip3009", "paymentFlow": "authorization",
+                            "name": "USDC", "version": "2"},
             "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": {
-                "feePayer": "4" * 44, "memo": "dacs-274", "recentBlockhash": "6" * 44,
-                "lastValidBlockHeight": "280000000"},
+                "paymentFlow": "authorization", "feePayer": "4" * 44, "memo": "dacs-274",
+                "recentBlockhash": "6" * 44, "lastValidBlockHeight": "280000000"},
         }
-        self.assertEqual({key: set(value) for key, value in ACTION_BEARING_EXTRA_MEMBERS.items()},
-                         {network.split(":")[0]: set(extra) for network, extra in defined.items()})
+        minimal = {"eip155:8453": {"name": "USDC", "version": "2"},
+                   "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": {"feePayer": "4" * 44}}
+        self.assertEqual({key: set(value) for key, value in ADAPTER_EXTRA_MEMBERS.items()},
+                         {network.split(":")[0]: set(extra) | {"assetTransferMethod"}
+                          for network, extra in defined.items()})
         self.assertEqual((self.data["upstream"]["commit"], self.data["upstream"]["exactEvmScheme"],
                           self.data["upstream"]["exactSvmScheme"]),
                          ("230e6a9a7eebce22c911a0687d6f4e6d1ac019f7",
@@ -2800,7 +3293,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         for network, extra in defined.items():
             with self.subTest(network=network):
                 self.assertIsNone(challenge_member_defect(network, extra, extension, supported))
-                self.assertIsNone(challenge_member_defect(network, {}, {}, {}))
+                self.assertIsNone(challenge_member_defect(network, minimal[network], {}, {}))
+                # A required member is required: an empty extra rejects.
+                self.assertEqual(challenge_member_defect(network, {}, {}, {}),
+                                 ("fail", "extra-member-value"))
                 # The two members the pinned definitions do not have: the asset
                 # is the EIP-712 verifying contract and the mint.
                 for member in ("verifyingContract", "mint"):
@@ -2808,32 +3304,79 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                         challenge_member_defect(network, {**extra, member: "x"}, extension, supported),
                         ("fail", "unclassified-extra-member"))
                 for other in defined.values():
-                    for member in set(other) - set(extra):
+                    # assetTransferMethod is protocol-reserved on both; it is
+                    # judged as a transfer method below.
+                    for member in set(other) - set(extra) - {"assetTransferMethod"}:
                         self.assertEqual(
                             challenge_member_defect(
                                 network, {**extra, member: other[member]}, extension, supported),
                             ("fail", "unclassified-extra-member"))
-        # XN-9: only EIP-3009 (also when the member is absent) and Permit2 are
-        # v0.8 EIP-155 forms; the value is an exact token.
-        for method, want in (("eip3009", None), ("permit2", None), ("erc7710", "unsupported"),
+                for flow in ("upfront", "escrow", "", None, ["authorization"]):
+                    self.assertEqual(
+                        challenge_member_defect(network, {**extra, "paymentFlow": flow}, {}, {}),
+                        ("fail", "unsupported-payment-flow"))
+        # XN-9: only EIP-3009 (also when the member is absent) is a v0.8
+        # EIP-155 form; the value is an exact token. Solana defines none.
+        domain = minimal["eip155:8453"]
+        for method, want in (("eip3009", None), ("permit2", "unsupported"), ("erc7710", "unsupported"),
                              ("EIP3009", "unsupported"), ("", "unsupported"), (None, "unsupported"),
                              (3009, "unsupported"), (["permit2"], "unsupported"),
                              ({"permit2": True}, "unsupported")):
             with self.subTest(assetTransferMethod=method):
                 self.assertEqual(
-                    challenge_member_defect("eip155:8453", {"assetTransferMethod": method}, {}, {}),
+                    challenge_member_defect(
+                        "eip155:8453", {**domain, "assetTransferMethod": method}, {}, {}),
                     want and ("fail", "unsupported-transfer-method"))
+        self.assertEqual(
+            challenge_member_defect("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+                                    {**minimal["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"],
+                                     "assetTransferMethod": "eip3009"}, {}, {}),
+            ("fail", "unsupported-transfer-method"))
+        # §9.5.7.1 value rules: the EIP-3009 domain, the Solana fee payer and
+        # memo; the Solana hints are never judged.
+        solana = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        for network, extra, want in (
+            ("eip155:8453", {"name": "USDC"}, "extra-member-value"),
+            ("eip155:8453", {"name": "", "version": "2"}, "extra-member-value"),
+            ("eip155:8453", {"name": "USDC", "version": 2}, "extra-member-value"),
+            (solana, {"feePayer": "4" * 43 + "0"}, "extra-member-value"),
+            (solana, {"feePayer": base58(b"\x07" * 33)}, "extra-member-value"),
+            (solana, {"feePayer": base58(b"\x07" * 32), "memo": "x" * 256}, None),
+            (solana, {"feePayer": base58(b"\x07" * 32), "memo": "x" * 257}, "extra-member-value"),
+            (solana, {"feePayer": base58(b"\x07" * 32), "memo": "é" * 129}, "extra-member-value"),
+            (solana, {"feePayer": base58(b"\x07" * 32), "recentBlockhash": [],
+                      "lastValidBlockHeight": {}}, None),
+        ):
+            with self.subTest(network=network, extra=extra):
+                self.assertEqual(challenge_member_defect(network, extra, {}, {}),
+                                 want and ("fail", want))
         self.assertEqual(
             challenge_member_defect("cosmos:cosmoshub-4", {"name": "USDC"}, {}, supported),
             ("fail", "unclassified-extra-member"))
         self.assertEqual(
-            challenge_member_defect("eip155:8453", {}, {"future-action": {}},
+            challenge_member_defect("eip155:8453", domain, {"future-action": {}},
                                     {"understoodActionExtensions": ["future-action"]}),
             ("fail", "unclassified-extension"))
         for capability in ({"understoodActionExtensions": []}, {}):
             with self.subTest(capability=capability):
-                self.assertEqual(challenge_member_defect("eip155:8453", {}, extension, capability),
+                self.assertEqual(challenge_member_defect("eip155:8453", domain, extension, capability),
                                  ("fail", "unsupported-action-extension"))
+        # payment-identifier: upstream's {info: {required}, schema}; only the
+        # optional form is supported.
+        for advertised, want in (
+            ({"info": {"required": False}, "schema": schema}, None),
+            ({"info": {"required": True}, "schema": schema}, "unsupported-action-extension"),
+            (None, "extension-value"), ({"required": True}, "extension-value"),
+            ({"info": {}, "schema": schema}, "extension-value"),
+            ({"info": {"required": 0}, "schema": schema}, "extension-value"),
+            ({"info": {"required": False}, "schema": schema, "id": "x"}, "extension-value"),
+            ({"info": {"required": False}, "schema": []}, "extension-value"),
+        ):
+            with self.subTest(advertised=advertised):
+                self.assertEqual(
+                    challenge_member_defect(
+                        "eip155:8453", domain, {"payment-identifier": advertised}, supported),
+                    want and ("fail", want))
 
     def test_a_supplied_classification_list_never_changes_a_result(self):
         """XN-6: a list of action-bearing members beside the challenge is not a classification.
@@ -3018,8 +3561,21 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "and the authenticated event.",
             "On an EIP-155 network the `asset` compares as an XN-5 address, so letter case alone "
             "is not a mismatch.",
-            "A challenge whose `extra.assetTransferMethod` names another form, such as `erc7710`, "
-            "therefore MUST reject before signing; an absent member selects EIP-3009.",
+            "A challenge whose `extra.assetTransferMethod` names another form, such as `permit2` "
+            "or `erc7710`, therefore MUST reject before signing; an absent member selects EIP-3009.",
+            "The challenge is read only from the `PAYMENT-REQUIRED` response header",
+            "For version 2 that is exactly one added `PAYMENT-SIGNATURE` header field",
+            "The selection's `x402Version` MUST be the integer `2`",
+            "That identifier MUST equal `selection.currency`",
+            "closed §9.5.7.1 table names for the selected CAIP-2 network.",
+            "or a nonce still unused at a finalized block whose authenticated timestamp is greater "
+            "than or equal to the retained authorization's `validBefore`",
+            "A record already anchored at the write-once PC-2 address MUST NOT be overwritten",
+            "A retry MUST first apply the same XN-1 definition and XN-2 reference gates as the "
+            "first attempt",
+            "**Failure modes (`x402:protocol` only).**",
+            "**Failure modes (legacy `x402:default`).**",
+            "`x402:protocol` is an optional rail and does not gate v0.8\nconformance.",
             "Each MUST be `0x` followed by 40 hexadecimal digits in either letter case.",
             "An adapter MUST accept such an address whatever its EIP-55 checksum.",
             "Any other value is a malformed coordinate and yields `error`.",
@@ -3033,15 +3589,16 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "A finalized event that the authorization identity resolves to and that contradicts "
             "the authorization is `fail`.",
             "With no event for the identity, a terminal non-settlement that the scheme profile "
-            "proves is `fail`;",
+            "proves from finalized ledger data is `fail`.",
             "Response material that is missing, changed, malformed, or does not recompute, and a "
             "stored record that does not verify, never replace this disposition.",
             "These are verdicts on a success record; the handler's payment disposition never "
             "comes from a record (XN-11).",
-            "Such a record is rejected and rebuilt from the retained challenge and response; it "
-            "never decides the payment disposition (XN-11).",
-            "- stored challenge or receipt hash that does not recompute → the record is rejected "
-            "and rebuilt from the retained challenge and response; it never ends the payment phase",
+            "Such a record never decides the payment disposition, and XN-11 states whether it is "
+            "rebuilt.",
+            "- unanchored stored record whose challenge or receipt hash does not recompute → the "
+            "record is discarded and rebuilt from the retained challenge and response; it never "
+            "ends the payment phase",
             "- such a response defect without any ledger event resolved for the authorization "
             "identity → reconciliation-pending / `indeterminate`, never `permanent`",
             "- finalized ledger event resolved for the authorization identity that contradicts the "
@@ -3051,8 +3608,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "any prefix.",
             "The handler MUST treat each NAT64 prefix its own network uses, whether discovered "
             "under RFC 7050 or configured locally, like `64:ff9b::/96`.",
-            "The v0.8 EIP-155 `exact` binding authorizes only through one of those two forms, so "
-            "its SB-3 job binding is always mandatory there.",
+            "The v0.8 EIP-155 `exact` binding authorizes only through EIP-3009, whose SB-3 nonce "
+            "binding is therefore always mandatory there.",
+            "so v0.8 defines no Permit2 binding for `x402:protocol`.",
             "A verifier MUST take this binding policy from the pinned definition and the signed "
             "selection, never from the observed ledger event,",
             "The handler MUST itself classify each member of the matched requirement's `extra` "

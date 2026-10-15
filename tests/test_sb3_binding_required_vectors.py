@@ -221,6 +221,13 @@ class Sb3BindingRequiredVectorTests(unittest.TestCase):
                 self.assertEqual(want["bindingDisposition"], "malformed")
                 self.assertEqual(want["reason"], "malformed-binding-evidence")
 
+    def test_unhashable_state_is_malformed_not_an_exception(self):
+        # A state that cannot be looked up in the known set is malformed
+        # (`error`), never a TypeError from the set membership test.
+        for state in ([], {}, ["match"], {"match": True}):
+            with self.subTest(state=state):
+                self.assertEqual(binding_branch({"state": state}), "malformed")
+
     def test_spec_and_dacs5_make_the_gate_load_bearing(self):
         spec = SPEC.read_text(encoding="utf-8")
         dacs5 = DACS5.read_text(encoding="utf-8")

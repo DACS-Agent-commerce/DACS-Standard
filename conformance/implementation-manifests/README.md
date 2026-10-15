@@ -29,7 +29,7 @@ They show the claim and evidence rules at work:
 - `pay-dem`, with a single candidate case, is `partial` and claimed only as
   `implemented`;
 - the out-of-scope `rfq` pattern is listed as `unsupported`; and
-- `availability` is omitted, as IM-2 allows for library capabilities.
+- `availability` is omitted, as IM-2 allows for a non-operational library capability.
 
 Run the dependency-free validator from the repository root:
 

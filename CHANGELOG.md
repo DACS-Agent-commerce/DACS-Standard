@@ -174,7 +174,7 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   when any of these checks was skipped.
 
 - **FV guards a neighbouring guard used to decide** (DACS-4 §9.7.0 FV-1..FV-9;
-  CORE §B.7 SIG-6) — `settlement-finality-verification` (208 → 246). Each new
+  CORE §B.7 SIG-6) — `settlement-finality-verification` (208 → 249). Each new
   case changes only unsigned bytes, verifier-owned trust input, or the one
   artifact it re-signs:
   - Merkle proofs that keep the genuine root while their leaf and sibling
@@ -191,11 +191,16 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   - A genuine signer that authenticated authority names but whose key the
     trust input lacks: the phase orchestrator, a profile-pinned observation
     authority, and the profile provider (`indeterminate`).
+  - The orchestrator's key absent while the buyer's agreement signature,
+    or the rail signature, fails against an available key (`fail`).
+  - A pinned authority whose key the verifier lacks presents a value that
+    is not canonical Base64URL, while the keyed authorities meet the
+    threshold (`fail`).
   - A genuine head attestation by an authority the verifier trusts but the
     signed profile does not pin (`fail`).
-  - A well-formed x402 reference on the provider rail that names the
-    supported AP2 version, so only the reference-kind check decides it
-    (`error`).
+  - A well-formed x402 reference (X402-1 version `"1"`) on the provider
+    rail (`error`). The AP2 reference-kind check rejects it, and the AP2
+    `protocolVersion` check would too.
   - A storage-program `ap2-sr3` receipt anchor (`error`).
   - A profile whose settlement kind differs from its model, or whose
     observation method is unknown (`error`).
@@ -204,8 +209,12 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   reference now returns `error` for unknown FV-2 echo values and classifies
   trusted key maps under the FV entry rule: a missing or empty map, or an
   absent key for a signer that the authenticated session or signed profile
-  names, is `indeterminate`. Keys that are present are still checked first,
-  so a bad signature is `fail` even when another signer's key is missing.
+  names, is `indeterminate`. That outcome is deferred: the later stages and
+  the rest of the observation still check every signature with an available
+  key and every deterministic fact, so a bad signature is `fail` even when
+  another signer's key is missing, in the same or an earlier stage. A value
+  skipped for lack of a key still gets the encoding check, so a malformed
+  value is `fail` whether or not the verifier holds the key.
   None of these changes alters an existing verdict. The `fv-inclusion-block-identity-substitution` note now
   describes it as the ancestry case that it is.
 - **HTLC hash identifiers** (DACS-4 §9.14, HTLC-6; normative clarification) —
@@ -312,9 +321,16 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
     `null`, and the cited route registry is absent. DACS-4 §9.4 and §9.5.5
     step 2, the README, the ROADMAP, the builders guide and the flow trace
     now say the same, and no longer call the tank route live.
-    `rail-availability-selection-v0.1` (28 → 30) adds two `fail` cases: a
+    `rail-availability-selection-v0.1` (28 → 33) adds two `fail` cases: a
     steward-signed `mocked` tank rail that a node-derived `live` hint cannot
     select for production, and an unsigned tank copy claiming `live`.
+  - DACS-4 §9.4 and DEMOS-MAPPING now state the tank rule as a steward
+    and selector rule: the steward does not sign the tank rail `live`
+    yet, and an orchestrator selects a steward-signed, pinned `live` tank
+    rail only when its trusted local operator policy records that its
+    pinned node completes the handler. Three cases pin the gate: no such
+    record (`fail`), a record (`pass`, fixture-only), and a malformed
+    record (`error`).
 
 ### Changed — current-delivery admission corrective boundary
 

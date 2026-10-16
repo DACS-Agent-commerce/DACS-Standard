@@ -72,7 +72,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 60 | `error` / `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
-| [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 30 | `error` / `fail` / `indeterminate` / `pass` |
+| [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 33 | `error` / `fail` / `indeterminate` / `pass` |
 | [`raw-json-profile-v0.1.json`](raw-json-profile-v0.1.json) | CORE §B.2 CF-5 raw JSON admission | 59 | `accept` / `reject` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
@@ -91,7 +91,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 246 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 249 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1748,7 +1748,7 @@ Run (reference): `npx tsx conformance/security-vectors/verifyresult-acceptance/r
 - **RAV-R2** — any new session MUST NOT select `disabled` or `failed`; a new production session additionally MUST NOT select `mocked`. Production mode is explicit trusted local operator policy; counterparty or discovery hints cannot establish non-production mode. A session that pinned a live definition continues under that pin when a later registry revision marks the rail `disabled`.
 - **RAV-R3** — `operator_gated` / `closed_data` / `bilateral` are selectable ONLY when the operator-side preflight is satisfied (a runtime check).
 - **RAV-R5 / LRR-6 (poisoning)** — `availability` MUST be read from the steward-signed **and pinned/anchored** `dacs-rail:v1:` definition. The signature and pin cover the complete definition, including unknown future members under SIG-5. A valid signature alone is insufficient: an unsigned/counterparty copy, or a validly-signed-but-**stale/cached** copy that is not the pinned definition, MUST NOT steer selection. Discovery hints may prefilter or inform a UI but cannot establish, refute, or override the authoritative result.
-- **Tank availability (DEMOS-MAPPING §A.5)** — the steward-signed `pay-cross-chain-liquidity-tank` fixture is `mocked`. An adapter that reports the node's unsigned, incomplete compiled bridge operation as a `live` hint cannot select it for production, and an unsigned tank copy claiming `live` is not authoritative (both `fail`).
+- **Tank availability (DEMOS-MAPPING §A.5)** — the steward-signed `pay-cross-chain-liquidity-tank` fixture is `mocked`. An adapter that reports the node's unsigned, incomplete compiled bridge operation as a `live` hint cannot select it for production, and an unsigned tank copy claiming `live` is not authoritative (both `fail`). A steward-signed, pinned `live` tank rail is selectable only when trusted local operator policy (`operatorContext.nodeCompletedHandlers`) records that the pinned node completes the handler: without that record it is `fail`, with it `pass` (fixture-only; no pinned node does today), and a malformed record is `error`.
 
 Decision is the §7.5.1 four-value verdict, never collapsed: a steward key that cannot be resolved, or no pinned reference to compare against, → `indeterminate` (not a silent pass); malformed def / unknown availability value → `error`.
 
@@ -1931,7 +1931,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
 
-246 candidate cases execute consumer-verifiable settlement finality for
+249 candidate cases execute consumer-verifiable settlement finality for
 block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
 liquidity-tank profiles. The consumer derives the model and strength from the
 exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
@@ -1986,10 +1986,18 @@ changes the verdict:
   profile-pinned observation authority, and the profile provider. Override
   merging cannot empty a map, so the empty-map and unrelated-key rows are
   unit tests.
+- An absent key does not hide a later failure (FV-10): with the orchestrator's
+  key absent, a buyer agreement signature or rail signature that fails against
+  an available key is `fail`, and so is a bad BFT signature when the
+  observation authority keys are absent (unit test).
+- A presented value skipped for lack of a key still gets the encoding check
+  (FV-3): a pinned, keyless authority's non-Base64URL attestation is `fail`
+  even when the keyed authorities meet the threshold.
 - Only authorities the signed profile pins count toward the head quorum, even
   when the verifier trusts another authority's key (FV-6).
-- A well-formed x402 reference on the provider rail is `error`, decided by
-  the AP2 reference-kind check alone.
+- A well-formed x402 reference (X402-1 version `"1"`) on the provider rail is
+  `error`. The AP2 reference-kind check rejects it, and the AP2
+  `protocolVersion` check would too.
 - The `ap2-sr3` receipt anchor must be `https` (AP2-2).
 - A profile's settlement kind must equal its model, and its observation method
   must be registered.
@@ -2138,7 +2146,7 @@ The passing control `same-height-earlier-index-legacy-anchor` places the
 original receipt at the checkpoint's height with an earlier authenticated
 transaction index. A comparator that ignores the intra-position order fails it.
 
-Thirteen more negatives cover the remaining authority inputs of the buyer copy:
+Sixteen more negatives cover the remaining authority inputs of the buyer copy:
 
 - `historical-receipt-other-job`, `-other-logical-address`,
   `-other-native-address`, `-other-content-hash`, `-other-anchor-transaction`,

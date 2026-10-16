@@ -437,6 +437,32 @@ def string_phase_kinds(pipeline: list) -> bool:
     )
 
 
+def session_pipeline_gate(
+    context: dict,
+    supported_phases: frozenset[str] = generator.CURRENT_SUPPORTED_PHASES,
+) -> tuple[str, str | None]:
+    """The pipeline checks of ``listing_phase``, for session admission.
+
+    The sealed gates skip steps they do not own, so session admission first
+    refuses a non-object step or a kind this reader does not support. Listing
+    signature and pattern checks stay with ``listing_phase``.
+    """
+    listing = context.get("listing")
+    pipeline = listing.get("pipeline") if isinstance(listing, dict) else None
+    if (
+        not isinstance(pipeline, list)
+        or not pipeline
+        or any(
+            not isinstance(step, dict) or not isinstance(step.get("kind"), str)
+            for step in pipeline
+        )
+    ):
+        return "error", "malformed-input"
+    if any(step["kind"] not in supported_phases for step in pipeline):
+        return "fail", "unsupported-phase"
+    return "pass", None
+
+
 def sealed_deadline_gate(context: dict) -> tuple[str, str | None]:
     """SE-1 new-session gate for sealed-envelope demand and procurement.
 
@@ -3120,7 +3146,9 @@ def evaluate(data: dict, vector: dict, *, trusted_contexts=None, listing_admissi
         if operation == "validate-selection-bound-session-admission":
             if vector.get("stage") != "session-admission":
                 return outcome("error", "malformed-input")
-            verdict, reason = sealed_session_profile_gate(context)
+            verdict, reason = session_pipeline_gate(context)
+            if verdict == "pass":
+                verdict, reason = sealed_session_profile_gate(context)
             if verdict == "pass":
                 verdict, reason = sealed_auction_mode_gate(context)
             if verdict == "pass":
@@ -4236,6 +4264,31 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     for gate in gates:
                         self.assertEqual(gate(changed), ("error", "malformed-input"))
                     self.assertEqual(sealed_envelope_phase_kind(changed), ("error", None))
+
+    def test_session_admission_refuses_unsupported_or_non_object_steps(self):
+        vector = self.cases["sealed-deadline-exact-boundary"]
+        self.assertEqual(evaluate(self.data, vector)[0], "pass")
+        pipeline = ["listing", "pipeline"]
+        for mutation, verdict, reason in (
+            ({"op": "set", "path": pipeline + [0, "kind"], "value": "not-a-phase"},
+             "fail", "unsupported-phase"),
+            ({"op": "set", "path": pipeline + [0, "kind"], "value": "Vet-Credentials"},
+             "fail", "unsupported-phase"),
+            ({"op": "set", "path": pipeline + [0], "value": None},
+             "error", "malformed-input"),
+            ({"op": "set", "path": pipeline + [0], "value": 5},
+             "error", "malformed-input"),
+            ({"op": "append-value", "path": pipeline, "value": 5},
+             "error", "malformed-input"),
+            ({"op": "append-value", "path": pipeline, "value": {"kind": "not-a-phase"}},
+             "fail", "unsupported-phase"),
+            ({"op": "set", "path": pipeline, "value": []},
+             "error", "malformed-input"),
+        ):
+            with self.subTest(mutation=mutation):
+                changed = copy.deepcopy(vector)
+                changed["mutations"] = [*changed.get("mutations", []), mutation]
+                self.assertEqual(evaluate(self.data, changed), outcome(verdict, reason))
 
     def test_deadline_gate_missing_or_malformed_trusted_start_refuses(self):
         context = copy.deepcopy(self.data["scenarios"]["selectionBoundDemand"])

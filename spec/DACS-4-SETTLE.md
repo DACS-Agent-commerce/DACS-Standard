@@ -5,7 +5,7 @@
 ## Chapter 9 — DACS-4: Settle
 
 **Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.8** (on the common DACS v0.1 baseline; v0.8 consumes the new DACS-3 `SealedSelectionAgreementDocument` as a distinct payee- and selection-bound type, requiring SAC receipt reproduction before any Settle effect; replaces SB-2 producer-timestamp winner selection with finalized settlement-side collision authority and, without one exact authoritative tuple, makes every competitor non-countable; makes a declared SB-3 settlement-side job binding mandatory for acceptance, forbidding downgrade to unbound transfer evidence when that binding is absent, unavailable, pruned, reorganised, or malformed; and adds the governed legacy-agreement activation checkpoint and LAA-1..LAA-7, including the distinct signed reservation and transition-evidence types, requiring payee-bound agreements for current pay-bearing sessions while retaining authenticated historical legacy audit; v0.7 is the declared CORE §11.1.2 pre-v1 corrective boundary for JID-1..JID-4 and replaces normalization-tolerant job-specific address, nonce, evidence, and retry derivations with exact validated ASCII `jobId` bytes, and adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
-The current composed v0.8 candidate also separates the AP2 provider-status attestation from the selected SR-3 binding's native transaction reference through the `ap2-sr3` `ChainTxRef` arm, freezes the existing `ap2` arm, defines the Demos DAHR `demos-web2-request` form, and requires numeric rail-registry selection with authenticated definition matching and no older-version fallback.
+The current composed v0.8 candidate also separates the AP2 provider-status attestation from the selected SR-3 binding's native transaction reference through the `ap2-sr3` `ChainTxRef` arm, freezes the existing `ap2` arm, defines the Demos DAHR `demos-web2-request` form, and requires numeric rail-registry selection with authenticated definition matching and no older-version fallback. It also bases `pay-dem` success on a bound `confirmed` transaction record rather than inclusion alone, and forbids a second broadcast (DEM-1..DEM-7).
 
 Its v0.7 delivery addition is the distinct signed, phase-indexed `DeliveryEvidence` type and PDE-1..PDE-8; historical delivery-shaped `SettlementEvidence` remains readable only under PDE-7 and is never silently rewritten.
 
@@ -488,7 +488,7 @@ Handlers MUST NOT settle a payment whose `amount.currency` does not resolve unde
 
 **(PC-7) Rail-final payment / evidence-anchor decoupling.** Payment finality and SR-2 evidence finality are separate gates on **every** rail. **Principle: once payment reaches the rail's declared finality, anchoring the applicable settlement-evidence record is bookkeeping that must catch up — never a reason to fail the payment, submit it again, or classify the finalized payment as unpaid.**
 
-*Rail finality* is the condition independently established by FV-1..FV-10 under the pinned `ConsumerFinalityProfile`: block depth, commitment level, authenticated provider capture with the rail-defined provisional semantics, completed HTLC or liquidity-tank settlement, or Demos BFT finality. `SettlementFinalityRecord` only reports what the producer claims it observed. For an HTLC the verifier requires BOTH legs fully settled — including the payee's `htlc-claim` at source-chain finality (§9.5.4), not the HTLC-9 asymmetric state.
+*Rail finality* is the condition independently established by FV-1..FV-10 under the pinned `ConsumerFinalityProfile`: block depth, commitment level, authenticated provider capture with the rail-defined provisional semantics, completed HTLC or liquidity-tank settlement, or Demos BFT finality. For `pay-dem`, rail finality also requires the DEM-3 executed record. `SettlementFinalityRecord` only reports what the producer claims it observed. For an HTLC the verifier requires BOTH legs fully settled — including the payee's `htlc-claim` at source-chain finality (§9.5.4), not the HTLC-9 asymmetric state.
 
 Once rail finality is confirmed, the handler:
 
@@ -1201,19 +1201,34 @@ Native-DEM transfer on the Demos substrate: settle the agreed price in DEM direc
 1. Resolve rail; verify `asset.kind == "native-dem"` and `network.kind == "demos"`.
 2. Verify `amount.currency == "DEM"`; convert to OS base units (`1 DEM = 10^9 OS`, integer arithmetic, no float).
 3. Construct a native transfer to `payee.payeeAddress` for the OS amount (the substrate's native `send`).
-4. Submit via the payer's wallet (or via SR-3 proxy attestation when the wallet runs server-side); wait for inclusion.
-5. On the transaction reaching the terminal **`included`** state, construct SettlementEvidence with `txRef` of kind `demos` (`txHash` + `blockNumber`); anchor via SR-2; return success.
+4. Sign the transfer and retain it under DEM-1. Submit it once via the payer's wallet (or via SR-3 proxy attestation when the wallet runs server-side); wait for inclusion.
+5. Read the transaction record for the retained hash and classify it under DEM-2..DEM-5. Only on DEM-3 success, construct SettlementEvidence with `txRef` of kind `demos` (`txHash` + `blockNumber`); anchor via SR-2; return success.
 
-**Finality.** Demos has **deterministic BFT finality** once inclusion is authenticated under the active validator set: there is no additional reorg or confirmation-depth wait. A node's bare `included` label is not proof. The FV `bft-final` verifier checks the exact network/genesis identity, transaction inclusion, block certificate, active validator-set checkpoint and pinned signed-weight quorum. The evidence cites `{ txHash, blockNumber }`; `block-depth` / `commitment-level` do not apply. The Demos bootstrap and proof-wire material required to execute these predicates is supplied by the Demos binding and tracked in #338 and the upstream SDK/node issues named by #382. A transaction reaching terminal `failed`, or inclusion without authentic BFT proof, did not establish settlement.
+**Execution outcome.** Demos records inclusion and execution separately. An *inclusion observation* identifies the block that stores a transaction, and the node's status index then labels it `included`. The *transaction record* for that hash reports the result of its native `send`: `confirmed` when it executed and `failed` when execution failed. The status index can report `included` for a transaction whose record is `failed`. Inclusion therefore proves neither execution nor its result.
+
+- **(DEM-1) Retained transfer.** Before the first broadcast, the handler MUST durably retain the signed transaction hash, signed nonce, sender, recipient and OS amount for its `(jobId, phaseIndex)`. The sender is the address of `payer.payingKey`; the recipient is `payee.payeeAddress`.
+- **(DEM-2) Bound record.** A transaction record is *bound* only when its hash, nonce, sender, recipient and OS amount exactly equal the DEM-1 values and its block number equals the inclusion observation's block. A record with a missing, differently typed or different member is unbound, as is any record without an inclusion observation.
+- **(DEM-3) Execution success.** The handler MUST return `ok: true` only for a bound record whose status is exactly `confirmed`. A status-index `included` label, any other record status or alias, and an unbound record never establish success.
+- **(DEM-4) Proven execution failure.** For a bound record whose status is exactly `failed`, the handler MUST return `ok: false` with `errorClass: "permanent"`. It MUST durably retain that record, its classification and the transaction identity as the phase's terminal failure proof. The failure evidence carries no `settlementFinality` (PC-6).
+- **(DEM-5) Unresolved execution.** Every other observation leaves execution `indeterminate`, including a missing or unavailable record, a pending or unknown status, and an unbound record. The handler MUST NOT return `ok: true` or `errorClass: "permanent"` for it. An unresolved transfer MUST NOT authorize delivery or settlement accounting; recovery re-reads the retained hash under PC-7.
+- **(DEM-6) No second broadcast.** Once the retained transfer may have been broadcast, the handler MUST NOT broadcast it again or broadcast a replacement transfer for the same `(jobId, phaseIndex)`. Recovery, ST-7 resume and any resume after DEM-4 only re-read the retained hash or reuse the retained failure proof.
+- **(DEM-7) Consumer admission.** A consumer, including the payee before delivery, MUST NOT admit `pay-dem` success evidence without a bound transaction record whose status is exactly `confirmed`. Here a record is bound when its hash and block number equal the signed `txHash` and `blockNumber` and its sender, recipient and OS amount equal the phase's payer, payee and amount. A bound `failed` record makes the evidence `fail`. Under FV-5, an authenticated record that contradicts these values is also `fail`; any other observation is `indeterminate`.
+
+**Finality.** Demos has **deterministic BFT finality** once inclusion is authenticated under the active validator set: there is no additional reorg or confirmation-depth wait. Finality fixes the transaction's block and its recorded execution result; it does not turn a `failed` execution into payment. A node's bare `included` label is not proof. The FV `bft-final` verifier checks the exact network/genesis identity, transaction inclusion, block certificate, active validator-set checkpoint and pinned signed-weight quorum. FV-5 applies DEM-7 to the included transaction record.
+
+The evidence cites `{ txHash, blockNumber }`; `block-depth` / `commitment-level` do not apply. The Demos bootstrap and proof-wire material required to execute these predicates is supplied by the Demos binding and tracked in #338 and the upstream SDK/node issues named by #382. Inclusion without a bound `confirmed` record, or without authentic BFT proof, did not establish settlement.
 
 **Failure modes.**
 
-- payer DEM balance insufficient → `permanent`
-- transaction reaches terminal `failed` on-chain → `permanent`
-- Demos node / RPC unreachable → `substrate` (ST-7 pause; `failed-substrate` if unrecovered)
+- payer DEM balance insufficient before broadcast → `permanent`; nothing is broadcast
+- bound transaction record is `failed` → `permanent` (DEM-4)
+- execution unresolved after a possible broadcast → no success or `permanent` result; re-read only (DEM-5, DEM-6)
+- Demos node / RPC unreachable → `substrate` (ST-7 pause; `failed-substrate` if unrecovered); a resume re-reads the retained hash (DEM-6)
 - payer-side wallet rejects / declines to sign → `counterparty`
 
 **Trust model.** Settlement is secured by **Demos consensus itself** — a rotating validator shard under 2/3 BFT — i.e. "the operator is the substrate," not an external bridge, facilitator, or provider. Unlike every other v0.2 rail, `pay-dem` introduces no foreign-chain or third-party trust.
+
+> **Note (non-normative).** DEM-6 also forbids re-sending identical signed bytes. While execution is unresolved, the handler cannot tell whether the first transaction executed, failed, or consumed its nonce. A later copy could debit the payer after the phase was classified, and a replacement transfer could debit the payer twice.
 
 ### 9.6 Delivery phases
 
@@ -1664,7 +1679,7 @@ type SettlementFinalityRecord = {
        | "provider-receipt"     // Fiat (AP2). Historical pre-v0.6 x402 evidence may retain this model for replay; current x402 success evidence uses block-depth over its signed x402-event.
        | "htlc-reveal"          // Cross-chain HTLC: the payee's source-side claim (htlc-claim) landed against the revealed preimage — the decisive success tx; the payer's destination claim revealed the preimage earlier. (Model token retained as "htlc-reveal" for back-compat.)
        | "liquidity-tank"       // Native bridge liquidity-tank: bridge status transitions to "completed"
-       | "bft-final"            // Native Demos (pay-dem, §9.5.9): the tx reached the terminal "included" state. Demos has deterministic BFT finality — inclusion is final, no block-depth or commitment tier applies.
+       | "bft-final"            // Native Demos (pay-dem, §9.5.9): the included tx has a bound "confirmed" execution record (DEM-3). Demos has deterministic BFT finality — inclusion is final, no block-depth or commitment tier applies.
 
   // For model == "block-depth": the number of blocks waited before declaring confirmation.
   // Sourced from rail.parameters.finalityBlocks; echoed here so the evidence record is self-describing.
@@ -2103,7 +2118,9 @@ is `error`.
   parties, asset, amount and outcome from the included receipt/transaction.
   Then re-run SB-1..SB-3. A real transaction with the wrong receipt, event,
   instruction, block or economic binding is `fail`; unavailable historical
-  proof is `indeterminate`.
+  proof is `indeterminate`. For a `demos` reference, verify the included
+  transaction record under §9.5.9 DEM-7; an authenticated `failed` execution
+  is `fail`.
 - **(FV-6) Authenticated canonical head and ancestry.** Verify
   `authorityEvidence` using exactly the profile method: a light client executes
   the network's header/finality transition rules from its configured trusted

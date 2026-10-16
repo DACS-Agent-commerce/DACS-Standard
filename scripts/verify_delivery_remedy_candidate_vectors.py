@@ -413,8 +413,10 @@ CANONICAL_FIELDS = {
     "Refunded": ("jobId", "client", "amount"),
     "JobExpired": ("jobId",),
 }
-# A canonical Solidity ABI type: an elementary type, optionally as a dynamic
-# or fixed-size array.  `uint` and `int` are aliases, not canonical.
+# The canonical Solidity ABI types this verifier admits in a DRC-17 pin: an
+# elementary type, optionally as a dynamic or fixed-size array.  `uint` and
+# `int` are aliases, not canonical.  Tuple, `fixed`/`ufixed` and `function`
+# types are canonical but not admitted, so a pin using one is error/DRC-17.
 _ABI_SIZE = "|".join(str(bits) for bits in range(8, 257, 8))
 _ABI_BYTES = "|".join(str(size) for size in range(1, 33))
 ABI_ELEMENTARY_RE = re.compile(rf"u?int(?:{_ABI_SIZE})|address|bool|bytes(?:{_ABI_BYTES})?|string")
@@ -498,9 +500,10 @@ CLAIM_PARAMETER_RE = re.compile(r"(?:[^:?&=%]|%[0-9A-F]{2})+=(?:[^:?&=%]|%[0-9A-
 DEMOS_AGENT_PREFIX = "demos:agent:"
 DEMOS_AGENT_KEY_RE = re.compile(r"[0-9a-f]{64}")
 EVM_IDENTIFIER_RE = re.compile(r"evm:([1-9][0-9]*):(.*)", re.DOTALL)
-# Any spelling of the `evm` family with a decimal chain ID; one that is not
-# EVM_IDENTIFIER_RE is outside the PB-2 profile.
-EVM_SPELLING_RE = re.compile(r"[eE][vV][mM]:[0-9]+:.*", re.DOTALL)
+# Any spelling of the `evm` family with a numeric chain ID: decimal, signed
+# or `0x` hexadecimal.  One that is not EVM_IDENTIFIER_RE is outside the PB-2
+# profile.
+EVM_SPELLING_RE = re.compile(r"[eE][vV][mM]:[+-]?(?:[0-9]+|0[xX][0-9a-fA-F]+):.*", re.DOTALL)
 EVM_ACCOUNT_CLAIM_RE = re.compile(r"cci-xm:evm:([1-9][0-9]*):([^?]*)(?:\?.*)?", re.DOTALL)
 # AccountabilityFinding members and its closed classification set (candidate §6.4).
 FINDING_FIELDS = {"classification", "faultedParty", "rationaleCode"}
@@ -741,8 +744,11 @@ def abi_value_valid(abi_type: str, item: Any) -> bool:
     """Whether a resolver-decoded ABI value has its pinned type's spelling.
 
     Integers are minimal decimal text in range, so a uint256 stays exact;
-    addresses and fixed bytes are lower-case hexadecimal.
+    addresses and fixed bytes are lower-case hexadecimal.  A type this does
+    not decode (an array, a signed integer, dynamic `bytes`) is never valid.
     """
+    if not isinstance(abi_type, str) or ABI_ELEMENTARY_RE.fullmatch(abi_type) is None:
+        return False
     if abi_type == "address":
         return isinstance(item, str) and EVM_ADDRESS_RE.fullmatch(item) is not None
     if abi_type == "bool":
@@ -873,10 +879,11 @@ def parse_claim(value: Any) -> Claim | None:
         return None
     evm = None
     match = EVM_IDENTIFIER_RE.fullmatch(identifier) if scheme == "cci-xm" else None
-    # DACS-1 PB-2: an `evm` family spelt in another case, or a decimal chain
-    # ID with a leading zero, does not conform to the profile, and comparing
-    # it as text would let one EVM account pose as two parties (DRW-5).  This
-    # profile refuses it.  A non-numeric chain stays a generic claim.
+    # DACS-1 PB-2: an `evm` family spelt in another case, or a chain ID with
+    # a leading zero, a sign or a `0x` prefix (not a bare positive decimal
+    # integer), does not conform to the profile, and comparing it as text
+    # would let one EVM account pose as two parties (DRW-5).  This profile
+    # refuses it.  A non-numeric chain stays a generic claim.
     if scheme == "cci-xm" and match is None and EVM_SPELLING_RE.fullmatch(identifier) is not None:
         return None
     if match is not None and int(match.group(1)) <= SAFE_INTEGER_MAX:
@@ -1521,7 +1528,7 @@ def _abi_pin_issue(params: dict[str, Any]) -> dict[str, str] | None:
         return result("error", "DRC-17", "two event pins share a name or topic0")
     for pin in (*entrypoints, *events):
         if any(ABI_TYPE_RE.fullmatch(item["type"]) is None for item in pin["inputs"]):
-            return result("error", "DRC-17", f"{pin['name']} pins an input type that is not a canonical ABI type")
+            return result("error", "DRC-17", f"{pin['name']} pins an input type that is not a canonical ABI type this verifier admits")
         if pin["signature"] != abi_signature(pin["name"], tuple((item["name"], item["type"]) for item in pin["inputs"])):
             return result("error", "DRC-17", f"{pin['name']} inputs do not reproduce its signature")
     if any(pin["selector"] != selector_of(pin["signature"]) for pin in entrypoints):
@@ -2925,6 +2932,8 @@ def _native_transaction_check(
         prior_status = None if prior is None else statuses[prior]
         role = roles.get(record["nativeCaller"])
         row = CROSSWALK.get((prior_status, entrypoint, role)) or CROSSWALK.get((prior_status, entrypoint, "any"))
+        # The fixture emits a row's events in its listed order (README
+        # "Fixture implementation ABI"); canonical ERC-8183 refunds first.
         emitted = tuple(item["eventName"] for item in sorted(logs.get(record["txHash"], []), key=lambda item: item["eventRef"]["logIndex"]))
         if (
             row is None

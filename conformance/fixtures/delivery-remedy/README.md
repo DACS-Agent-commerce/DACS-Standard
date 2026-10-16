@@ -10,7 +10,7 @@ The pack turns the pre-normative
 into executable review evidence. Every result is one of the candidate's four
 verification results: `pass`, `fail`, `indeterminate`, or `error` (§9).
 
-- `candidate-vectors-v0.1.json` holds 488 lifecycle and mapping vectors over
+- `candidate-vectors-v0.1.json` holds 491 lifecycle and mapping vectors over
   deterministic, signed synthetic lifecycles: full release, evaluator
   rejection and refund before or after submission, a dispute-outcome release
   and refund, pre-submission expiry, and post-submission expiry. The
@@ -216,7 +216,10 @@ by a parameter or by the letter case of its address is the buyer (DRA-6), and
 a `faultedParty` with a parameter is still the agreement party (DRX-5). A
 claim that is not canonical, such as one with an upper-case scheme, is
 `error`, and so is an EVM claim whose address is not an address, whatever the
-chain shows.
+chain shows. So is a `cci-xm` EVM claim outside the DACS-1 PB-2 spelling: an
+`evm` family in another letter case, or a chain ID with a leading zero, a
+sign, or a `0x` prefix. Such a claim cannot respell one account as a second
+party.
 
 Every reference is a DACS-2 `AttestationRef`, `{anchor: {kind, locator},
 contentHash, signer?}`, with an anchor kind of `storage-program`, `ipfs`, or
@@ -544,7 +547,12 @@ the fixture itself. The vectors depend on them and do not prove them:
   topics are computed from those signatures. The verifier decodes only this
   ABI, so a rail pinning another, including the reference contract's
   `createJob`, is `error`. A deployment's real ABI needs its own pins and
-  decoding.
+  decoding. The fixture also fixes its emission order: a transaction's logs,
+  by `logIndex`, are the events in the order its §4.1 row lists them, so the
+  state log comes before the transfer log (`JobRejected`, then `Refunded`;
+  `JobExpired`, then `Refunded`). Canonical ERC-8183 `reject` and
+  `claimRefund` emit `Refunded` first, and the candidate's §4.1 states no
+  order, so a deployment's emission order needs its own rule as well.
 - **Deliverable anchor locator** (DRE-2, DRP-7). The
   `dacs4:deliverable:{jobId}:{phaseIndex}` locator is compared, not resolved,
   so the Storage Program's existence and contents at that address are not

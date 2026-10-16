@@ -1191,6 +1191,9 @@ def _register_aliases() -> dict[str, str]:
         # DACS-1 PB-2: spellings outside the profile of that one account.
         f"cci-xm:evm:0{CHAIN_ID}:0x" + "ab" * 20: "buyer",
         f"cci-xm:EVM:{CHAIN_ID}:0x" + "ab" * 20: "buyer",
+        f"cci-xm:evm:+{CHAIN_ID}:0x" + "ab" * 20: "buyer",
+        f"cci-xm:evm:-{CHAIN_ID}:0x" + "ab" * 20: "buyer",
+        f"cci-xm:evm:{CHAIN_ID:#x}:0x" + "ab" * 20: "buyer",
         # DACS-1 §6.3.1: an NFD identifier is not the NFC claim it decomposes.
         "did:web:café.example": "buyer",
     }
@@ -1219,6 +1222,9 @@ def build_vector_pack() -> dict[str, Any]:
     evm_buyer_upper = f"cci-xm:evm:{CHAIN_ID}:0x" + "AB" * 20
     evm_buyer_leading_zero = f"cci-xm:evm:0{CHAIN_ID}:0x" + "ab" * 20
     evm_family_upper = f"cci-xm:EVM:{CHAIN_ID}:0x" + "ab" * 20
+    evm_chain_plus = f"cci-xm:evm:+{CHAIN_ID}:0x" + "ab" * 20
+    evm_chain_minus = f"cci-xm:evm:-{CHAIN_ID}:0x" + "ab" * 20
+    evm_chain_hex = f"cci-xm:evm:{CHAIN_ID:#x}:0x" + "ab" * 20
     nfd_claim = "did:web:café.example"
 
     def with_keys(*claims_and_roles: tuple[str, str]) -> Callable[[Any], None]:
@@ -2326,6 +2332,13 @@ def build_vector_pack() -> dict[str, Any]:
             "release", buyer_claim=evm_buyer, evaluator_claim=evm_family_upper,
             hooks={"fixture": with_keys((evm_buyer, "buyer"), (evm_family_upper, "buyer"))},
         ),
+        **{
+            f"evaluator-claim-evm-chain-{label}": make_base(
+                "release", buyer_claim=evm_buyer, evaluator_claim=claim,
+                hooks={"fixture": with_keys((evm_buyer, "buyer"), (claim, "buyer"))},
+            )
+            for label, claim in (("plus-sign", evm_chain_plus), ("minus-sign", evm_chain_minus), ("hex", evm_chain_hex))
+        },
         "evaluator-claim-not-nfc": make_base("release", evaluator_claim=nfd_claim, hooks={"fixture": with_keys((nfd_claim, "buyer"))}),
         "faulted-party-with-parameter": make_base("rejected-refund", FAULTED_ALIAS_JOB, hooks={
             "evaluation": put("finding", "faultedParty", SELLER + "?source=fixture"),
@@ -2489,6 +2502,9 @@ def build_vector_pack() -> dict[str, Any]:
         vector("evaluator-claim-scheme-case-alias", "evaluator-claim-scheme-case-alias", "error", "DRV-3", "CF-2(a): a signed overlay embeds the lower-case scheme, so `DID:` is not a canonical alias of the buyer"),
         vector("evaluator-claim-evm-chain-leading-zero", "evaluator-claim-evm-chain-leading-zero", "error", "DRV-3", "DACS-1 PB-2: a leading-zero chain ID is outside the EVM profile, so it cannot respell the buyer's account", rules=["DRA-6", "DRV-3", "DRW-5"]),
         vector("evaluator-claim-evm-family-upper-case", "evaluator-claim-evm-family-upper-case", "error", "DRV-3", "DACS-1 PB-2: the family is the lower-case literal evm", rules=["DRA-6", "DRV-3", "DRW-5"]),
+        vector("evaluator-claim-evm-chain-plus-sign", "evaluator-claim-evm-chain-plus-sign", "error", "DRV-3", "DACS-1 PB-2: a signed chain ID is outside the EVM profile, so it cannot respell the buyer's account", rules=["DRA-6", "DRV-3", "DRW-5"]),
+        vector("evaluator-claim-evm-chain-minus-sign", "evaluator-claim-evm-chain-minus-sign", "error", "DRV-3", "DACS-1 PB-2: the chain ID is a positive decimal integer, so a negative one is malformed", rules=["DRA-6", "DRV-3", "DRW-5"]),
+        vector("evaluator-claim-evm-chain-hex", "evaluator-claim-evm-chain-hex", "error", "DRV-3", "DACS-1 PB-2: the chain ID is decimal, so its 0x hexadecimal spelling cannot respell the buyer's account", rules=["DRA-6", "DRV-3", "DRW-5"]),
         vector("evaluator-claim-not-nfc", "evaluator-claim-not-nfc", "error", "DRV-3", "CF-2: a signed claim embeds an NFC identifier, so an NFD spelling is malformed"),
         vector("evaluator-claim-evm-case-alias", "evaluator-claim-evm-case-alias", "fail", "DRA-6", "DRW-5: two case spellings of one EVM account are one party (§11.2 R6)", rules=["DRA-6", "DRW-5"]),
         vector("faulted-party-with-parameter", "faulted-party-with-parameter", "pass", "DRV-7", "faultedParty matches its agreement party under CORE CF-3 identity", rules=rejection_pass_rules + ["DRX-5"]),
@@ -3280,6 +3296,14 @@ def main() -> int:
     parser.add_argument("--write", action="store_true")
     args = parser.parse_args()
     vector_pack = build_vector_pack()
+    # The spec/ pins need the Checked-against commit in this clone's history:
+    # without it there is no pack to write or compare, only null pins.
+    if vector_pack["sourcePins"]["dacs"]["documents"] is None:
+        print(
+            f"ERROR: cannot read spec/ at the Checked-against commit {verifier.DACS_CHECKED_AGAINST[:7]}; fetch full history",
+            file=sys.stderr,
+        )
+        return 1
     outputs = {
         VECTOR_OUTPUT: rendered(vector_pack),
         DEPLOYMENT_OUTPUT: rendered(build_deployment_pack()),

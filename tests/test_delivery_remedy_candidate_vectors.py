@@ -579,6 +579,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "DID:demos:agent:" + "11" * 32, "did:demos:agent:" + "AB" * 32, "did:demos:agent:" + "ab" * 31,
             "Bad Scheme:id", "did:demos:agent:" + "11" * 32 + "?b=2&a=1", "did:demos:agent:" + "11" * 32 + "?a=:",
             "cci-xm:evm:8453:alice", "cci-xm:evm:8453:0x1234", "cci-xm:evm:8453:" + generator.BAD_CHECKSUM_ACCOUNT,
+            # DACS-1 PB-2: a signed or hexadecimal chain ID is a malformed
+            # spelling of the decimal one, not a separate generic claim.
+            "cci-xm:evm:+8453:0x" + "ab" * 20, "cci-xm:evm:-8453:0x" + "ab" * 20,
+            "cci-xm:evm:0x2105:0x" + "ab" * 20, "cci-xm:evm:0X2105:0x" + "ab" * 20,
             "noscheme", ":x", "x:", 7, None,
         ):
             with self.subTest(invalid=claim):
@@ -639,6 +643,24 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             with self.subTest(role=role, lifecycle=lifecycle):
                 value = make_base(lifecycle, hooks={"agreement": put(role, "evmAccountClaim", f"cci-xm:evm:{generator.CHAIN_ID}:alice")})
                 self.assertEqual(finding(value)[0], "error")
+
+    def test_abi_values_decode_only_their_elementary_type(self):
+        """A decoded value has its pinned type's spelling; a type the verifier does not decode is never valid."""
+        for abi_type, item in (
+            ("uint256", "0"), ("uint8", "255"), ("address", "0x" + "ab" * 20), ("bool", False),
+            ("string", "x"), ("bytes32", "0x" + "00" * 32), ("bytes1", "0xff"),
+        ):
+            with self.subTest(valid=(abi_type, item)):
+                self.assertTrue(verifier.abi_value_valid(abi_type, item))
+        for abi_type, item in (
+            ("uint8", "256"), ("uint256", "01"), ("uint256", 1), ("address", "0x" + "AB" * 20),
+            ("bool", "true"), ("bytes32", "0x" + "00" * 31), ("bytes1", "0xFF"),
+            # Admitted by ABI_TYPE_RE but not decoded here: no ValueError.
+            ("uint256[]", "1"), ("uint256[2]", "1"), ("bytes32[]", "0x" + "00" * 32), ("int256", "1"),
+            ("bytes", "0x00"), ("uint", "1"), ("uint7", "1"), ("tuple", "1"), (None, "1"),
+        ):
+            with self.subTest(invalid=(abi_type, item)):
+                self.assertFalse(verifier.abi_value_valid(abi_type, item))
 
     def test_rail_pins_derive_from_the_fixture_abi(self):
         """DRC-17: each pin's inputs reproduce its signature, which derives its selector or topic0."""
@@ -2540,19 +2562,22 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         self.assertIn(verifier.EXTERNAL_SOURCE_PINS["demosSdk"]["integrity"], readme)
 
     def test_generator_exit_codes(self):
-        """`--check` fails on a stale or missing pack and on an isolation problem; `--write` writes."""
+        """`--check` fails on a stale or missing pack and on an isolation problem; `--write` writes.
+
+        Without the Checked-against commit every mode fails and writes nothing.
+        """
         scratch = Path(tempfile.mkdtemp(prefix="drr-gen-"))
         current = {
             "VECTOR_OUTPUT": generator.rendered(self.vector_pack),
             "DEPLOYMENT_OUTPUT": generator.rendered(self.deployment_pack),
         }
 
-        def run(args, problems=()):
+        def run(args, problems=(), pack=None):
             patches = {
                 "ROOT": scratch,
                 "VECTOR_OUTPUT": scratch / "vectors.json",
                 "DEPLOYMENT_OUTPUT": scratch / "deployment.json",
-                "build_vector_pack": lambda: copy.deepcopy(self.vector_pack),
+                "build_vector_pack": lambda: copy.deepcopy(pack or self.vector_pack),
                 "build_deployment_pack": lambda: copy.deepcopy(self.deployment_pack),
                 "negative_isolation_problems": lambda _pack: list(problems),
             }
@@ -2585,6 +2610,19 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             self.assertEqual(run(["--write"]), (0, ""))
             self.assertEqual((scratch / "vectors.json").read_text(encoding="utf-8"), current["VECTOR_OUTPUT"])
             self.assertEqual(run([]), (0, ""))
+            # A clone without the Checked-against commit has no spec/ pins
+            # (document_pins is None): every mode says so and writes nothing,
+            # rather than calling the pack stale or writing null pins.
+            with unittest.mock.patch.object(verifier, "_blob_at", return_value=None):
+                self.assertIsNone(verifier.document_pins(verifier.ROOT))
+            unpinned = copy.deepcopy(self.vector_pack)
+            unpinned["sourcePins"]["dacs"]["documents"] = None
+            history = f"ERROR: cannot read spec/ at the Checked-against commit {verifier.DACS_CHECKED_AGAINST[:7]}; fetch full history\n"
+            reset()
+            for args in (["--write"], ["--check"], []):
+                with self.subTest(no_history=args):
+                    self.assertEqual(run(args, pack=unpinned), (1, history))
+                    self.assertEqual((scratch / "vectors.json").read_text(encoding="utf-8"), current["VECTOR_OUTPUT"])
         finally:
             shutil.rmtree(scratch)
 

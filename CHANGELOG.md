@@ -73,6 +73,306 @@ The format used per release:
   signed top-level `sessionNonce`; SIWD uses its signed message `Nonce`; and the
   receiving phase orchestrator issues the verifier-identity challenge.
 
+### Fixed — conformance vectors for rules merged in #415–#420
+
+These additions change no normative text unless a bullet says so. Each new
+case is a committed vector that a verifier ignoring its rule gets wrong.
+
+- **Executable finality-resolution corpus** (DACS-4 §9.7.0; #416 follow-up) —
+  every `finality-resolution-context-v1` case now carries its complete
+  verifier input and names its entry point (`verify`, `verify-composite` or
+  `replay`), so each case executes from the committed JSON alone. No existing
+  verdict changes.
+- **FRC-1 single-view fallback** (DACS-4 §9.7.0 FRC-1, FV-3) — adds
+  `frc1-single-view-under-capability`, `frc1-fork-view-under-capability` and
+  `frc1-context-without-signed-capability`, each `error`. A verifier that
+  falls back to the historical single-view contract accepts the first two,
+  including the competing fork view from `fv-conflicting-authenticated-heads`
+  presented alone. The focused test now asserts the FV entry point's refusal.
+- **FRC-8 closed response type** (DACS-4 §9.7.0 FRC-8) — adds
+  `response-version-unknown` and `response-status-unknown`, each `error`:
+  genuinely signed and acquired responses whose version or arm status is
+  outside `FinalityObservationResponseVersion1`.
+- **FRC-2 query binding** (DACS-4 §9.7.0 FRC-2) — adds
+  `issued-query-other-evidence` (`fail`): the query issued for one signed
+  evidence record cannot authorize another record for the same transaction.
+- **Same-claim alternatives are OR** (DACS-2 §7.7.1 CRQ-2/CRQ-4, §7.12; #420
+  follow-up) — adds three `claim-requirement-qualification-v0.3` cases on a
+  registry whose `lei` recipe lists `tlsnotary` as an alternative. With no
+  selected method, a qualified pass from either method satisfies the member
+  beside a current fail from the other (`pass`, twice); selecting `tlsnotary`
+  excludes a default-method pass (`fail`). A corroborating verifier that
+  requires every method to pass fails the first two. The golden-input oracle
+  gains the same check on its aggregate path; no golden case is added.
+- **Shipped Demos SDK wire is neither channel arm** (DACS-3 §8.3.3 CH-9,
+  CH-10; #415 follow-up) — `canonical-channel-message-v0.6` (55 → 60) now
+  executes the `@kynesyslabs/demosdk@4.0.16` wire, signed with the SDK
+  recipe, on `legacy-import` and `current-read` (`error` on both). Three
+  `legacy-import` cases reject the lenient readings an SDK-compatible
+  importer would need: `legacy-0x-prefixed-hex-signature`,
+  `legacy-object-signature` and `legacy-demos-0x-sender` (`error`). The #415
+  test now executes these cases instead of only checking prose. A
+  wrong-implementation witness shows a shape-keyed SDK-compatible reader
+  returns `pass` on exactly these four legacy cases while matching every
+  other committed verdict.
+- **Legacy-import membership** (DACS-3 §8.3.3 CH-1, CH-7) — adds
+  `legacy-import-outsider-valid-signature` (`fail`; 60 → 61): a valid frozen-recipe
+  signature by a well-formed historical `cci:` claim outside the
+  authenticated member set. A verifier that takes the key from the claim's
+  own bytes accepts it.
+- **Channel signer label and required members** (DACS-3 §8.3.3 CH-7; 61 →
+  63) — adds `canonical-foreign-signer-sender-signature` (`fail`: the sender's own valid
+  signature labelled with another member's `signature.signer`) and
+  `canonical-missing-sent-at` (`error`: a required member absent under a
+  valid signature).
+- **Demos SDK channel status notes** (DEMOS-MAPPING A.4; flow trace §9.3;
+  informative) — record that the shipped wire's `demos:0x<64hex>` sender is
+  not a ClaimReference, that its signed bytes follow the released v0.4 text
+  (which the frozen raw-digest arm cannot import), and that the channel
+  signing and envelope code is unchanged from 4.0.16 through 4.0.18.
+- **Entitlement renewal address join** (DACS-4 §9.7 PDE-5; #418 follow-up) —
+  adds `entitlement-record-at-other-renewal-address` (`fail`) to
+  `phase-bound-delivery-evidence-v0.7` (150 → 151): a signed renewal-0 record
+  stored, receipted and referenced at the renewal-1 address. The former
+  `entitlement-renewal-address-mismatch` never reached that join, because no
+  record exists at its address; it is renamed
+  `entitlement-renewal-address-without-record`.
+- **LAB-4 order boundary** (DACS-5 §10.4 LAB-4; #417 follow-up) —
+  `current-use-reputation-v1` (13 → 19) adds the boundary around the
+  checkpoint at height 100, index 2: `equal-position-legacy-anchor` (`fail`),
+  `cross-domain-legacy-anchor` (`indeterminate`), pruned, reorganized and
+  unorderable original-receipt history (`indeterminate`), and the passing
+  control `same-height-earlier-index-legacy-anchor`. A non-strict, a
+  domain-blind and a height-only comparator each now fail a committed case.
+- **LAB-1..LAB-3 authority negatives** (DACS-5 §10.4 LAB-1, LAB-2, LAB-3;
+  BB-6, BB-7; #417 follow-up) — `current-use-reputation-v1` (19 → 32) adds one
+  `fail` per LAB-3 historical receipt join field (job, logical and native
+  address, content hash, anchor transaction, writer, nonce). It also adds
+  non-steward and hash-mismatched checkpoint artifacts (`fail`), a
+  non-steward checkpoint binding (`indeterminate`), an invalid authorized
+  (`fail`) or unretrievable (`indeterminate`) original BB-6 candidate, and an
+  unretrievable current candidate (`indeterminate`). The JSON-only witness
+  shows each passes a verifier missing only its guard. Unit tests now reach
+  the current party-map and budget checks and the pure-arm roster and
+  type-authority checks; CONFORMANCE-PLAN marks those as unit-only.
+- **FV rejection guards** (DACS-4 §9.4.3, §9.7.0 FV-1..FV-10) —
+  `settlement-finality-verification` (86 → 208) adds one otherwise-valid case
+  per rejection guard the corpus never reached. Examples: evidence signed by
+  a party other than the phase orchestrator, an included transaction whose
+  raw body did not succeed, a producer report naming another model, a BFT
+  certificate for the wrong block, a provider attestation or agreement
+  signature by the wrong key, and the ap2-sr3, HTLC and tank structure
+  checks. A pinned witness shows each of the six named cases passes a
+  verifier that skips only that guard. Reach is measured by line-tracing
+  every committed vector through `verify_finality`, as the corpus test calls
+  it. With the cases below, 31 of the reference's 315 `return` statements
+  stay unreached; the base was 161 of 304.
+- **Pre-review gate self-tests** (`scripts/pre_review_gate.py`) — the gate's
+  own tests now reject a manifest missing a code-pinned regression, a matrix
+  case whose verdict drifts while its control still matches, and a registry
+  expectation that diverges from its corpus. Previously no self-test failed
+  when any of these checks was skipped.
+
+- **FV guards a neighbouring guard used to decide** (DACS-4 §9.7.0 FV-1..FV-9;
+  CORE §B.7 SIG-6) — `settlement-finality-verification` (208 → 249). Each new
+  case changes only unsigned bytes, verifier-owned trust input, or the one
+  artifact it re-signs:
+  - Merkle proofs that keep the genuine root while their leaf and sibling
+    hash to another one, for chain and `ap2-sr3` native proofs (`fail`).
+  - Inclusion header bytes that commit to another transaction tree under
+    the genuine id and ancestry (`fail`).
+  - An `ap2-sr3` native head that is stale or future while the provider
+    attestation is current.
+  - A non-minimal Base64URL spelling of a genuine signature on each of six
+    envelopes (`fail`).
+  - Unknown producer-report values (`error`).
+  - Missing (`indeterminate`) and malformed (`error`) trusted key maps, and
+    empty or malformed pinned validator sets (`error`).
+  - A genuine signer that authenticated authority names but whose key the
+    trust input lacks: the phase orchestrator, a profile-pinned observation
+    authority, and the profile provider (`indeterminate`).
+  - The orchestrator's key absent while the buyer's agreement signature,
+    or the rail signature, fails against an available key (`fail`).
+  - A pinned authority whose key the verifier lacks presents a value that
+    is not canonical Base64URL, while the keyed authorities meet the
+    threshold (`fail`).
+  - A genuine head attestation by an authority the verifier trusts but the
+    signed profile does not pin (`fail`).
+  - A well-formed x402 reference (X402-1 version `"1"`) on the provider
+    rail (`error`). The AP2 reference-kind check rejects it, and the AP2
+    `protocolVersion` check would too.
+  - A storage-program `ap2-sr3` receipt anchor (`error`).
+  - A profile whose settlement kind differs from its model, or whose
+    observation method is unknown (`error`).
+
+  A source-mutant test removes each guard and shows the verdict changes. The
+  reference now returns `error` for unknown FV-2 echo values and classifies
+  trusted key maps under the FV entry rule: a missing or empty map, or an
+  absent key for a signer that the authenticated session or signed profile
+  names, is `indeterminate`. That outcome is deferred: the later stages and
+  the rest of the observation still check every signature with an available
+  key and every deterministic fact, so a bad signature is `fail` even when
+  another signer's key is missing, in the same or an earlier stage. A value
+  skipped for lack of a key still gets the encoding check, so a malformed
+  value is `fail` whether or not the verifier holds the key.
+  None of these changes alters an existing verdict. The `fv-inclusion-block-identity-substitution` note now
+  describes it as the ancestry case that it is.
+- **HTLC hash identifiers** (DACS-4 §9.14, HTLC-6; normative clarification) —
+  the HTLC row registers `sourceHashAlgorithm` and `destinationHashAlgorithm`
+  as `sha256` (FIPS 180-4) or `keccak256` (Keccak-256 with `0x01` padding,
+  as used by EVM). Any other identifier, including FIPS `sha3-256`, is
+  `error`. The reference implements keccak256 and checks it against known
+  digests and, with SHA3 padding, against `hashlib.sha3_256`. The HTLC
+  fixture's EVM leg now uses keccak256, so the HTLC cases in
+  `settlement-finality-verification`, `current-use-reputation-v1` and
+  `current-use-authenticated-window-v1` are regenerated with unchanged
+  verdicts. Two new cases cover a keccak256 rail whose events commit the
+  SHA3-256 digest (`fail`) and a `sha3-256` rail (`error`).
+- **AP2 protocol version** (DACS-4 §9.5.6 step 6; normative clarification) — a
+  verifier applies the rules of the carried `protocolVersion`, and a version
+  whose rules it does not implement is `error`. The FV and current-use
+  fixtures now carry the repository's pinned AP2 version `0.2` instead of
+  `"1"`. `fv-ap2-protocol-version-unsupported` and
+  `fv-ap2-sr3-protocol-version-unsupported` are `error`.
+- **AP2 provider endpoint location** (DACS-4 §9.14) — the `pay-ap2` row now
+  names `rail.network.providerEndpoint`, matching the `ap2-provider`
+  NetworkSpec and step 4. The FV vectors README records the fixture-only
+  joins: `eip155:`/`solana:` network identifiers, the HTTPS provider
+  endpoint, and the static tank `bridgeId`/`transferId`.
+- **FRC closed shapes and local acquisition** (DACS-4 §9.7.0 FRC-5, FRC-8,
+  FRC-9) — FRC-8 now states what the reference already enforced: the
+  response type and both arms are closed apart from `transportMetadata`, and
+  new members need a new response version (normative clarification; SIG-5
+  hashing is unchanged). `finality-resolution-context-v1` (19 → 46) adds:
+  - extra members on a signed response and on each response arm (`error`);
+  - acquisition records with another nonce, a status other than obtained, or
+    a duplicate response hash (`error`), and one naming another responder
+    (`fail`);
+  - an unknown replay-record version (`error`);
+  - a malformed authenticated resolution policy (`error`). The reference
+    now separates missing authority (`indeterminate`) from malformed
+    authority;
+  - one case per structural policy rule: no authorities, a duplicate
+    authority id, a duplicate key id, a seat without keys, an unregistered
+    key algorithm, and a duplicate unavailable reason (`error`); and a
+    malformed policy on the replay and composite entry points (`error`);
+  - a response signature over other bytes and a non-minimal Base64URL
+    spelling of a genuine one (`fail`, FRC-4 and CORE SIG-6);
+  - a transported query other than the issued one, and a policy source
+    record that does not hash the policy (`fail`, FRC-2);
+  - a response acquired outside the query boundary or after the decision
+    time, and a replay authority without its commerce inputs
+    (`indeterminate`).
+
+  A source-mutant test removes each guard and shows the verdict changes.
+- **LAB-2 original selection authority** (DACS-5 §10.4 LAB-2) —
+  `current-use-reputation-v1` (32 → 35) adds
+  `historical-original-party-map-not-authenticated` and
+  `historical-original-budget-differs` (`fail`). Verifiers that trust the
+  request's party map or budget pass them.
+  `historical-original-selection-not-reproducible` (`indeterminate`) adds a
+  second genuine, retrievable binding of the same bundle at a lower native
+  address, which BB-6 selects instead. A verifier that accepts the presented
+  original binding without reproducing the selection passes it.
+- **CRQ-2 ownership** (DACS-2 §7.7.1 CRQ-2) —
+  `claim-requirement-qualification-v0.3` (39 → 42) adds three `error` cases:
+  - ambiguous alternative ownership across two recipe versions, so the
+    duplicate-version check cannot decide it;
+  - an admitted inventory that lists a family whose definition body is
+    absent;
+  - an explicit pin whose version does not list the selected method.
+
+  Each has a wrong implementation in the test that passes it: one resolves
+  the ambiguity to a single owner, one takes the bodies present as the
+  whole inventory, and one ignores the pin.
+- **PDE-5 credential binding** (DACS-4 §9.7 PDE-5) —
+  `phase-bound-delivery-evidence-v0.7` (151 → 156) adds:
+  - a non-object and an extra-member `credentialDelivery` binding (`error`);
+  - a malformed `credentialRef` (`error`);
+  - an unavailable credential resolution (`indeterminate`) and a malformed
+    one (`error`).
+- **Channel release pin, ECDSA encoding and SDK wire bytes** (CORE §11.1.2,
+  §B.7; DACS-3 §8.3.3) — `canonical-channel-message-v0.6` (63 → 67):
+  - The fixture release pin moves from `0d92f664`, whose `spec/PROFILE.md`
+    tuple names DACS-5 0.6, to `df7bc202`, the #420 merge on `next`, whose
+    tuple and module front matter equal the fixture's module versions. A test
+    reads both at the pinned commit.
+  - `current-profile-wrong-module-version` (`fail`) pairs the exact pin with
+    one wrong module version.
+  - CORE §B.7 now defines the `ecdsa-secp256k1` value as strict DER with low
+    S (normative clarification). `canonical-ecdsa-high-s`,
+    `canonical-ecdsa-fixed-width-r-s` and `canonical-ecdsa-der-long-form-length`
+    are `fail`; a verifier that tolerates each encoding passes its case.
+  - The two shipped-SDK wire messages are pinned by their JCS SHA-256.
+- **Demos mapping corrections** (DEMOS-MAPPING A.2, A.4, A.5; DACS-4 §9.5.5,
+  §9.6.1; DACS-5 §10.4.2; GLOSSARY; informative except where noted):
+  - `ChannelSession`'s CH-6 reuse check is optional. It needs a
+    caller-supplied, persistent `ChannelIdRegistry`, which a CH-6-claiming
+    adapter must require.
+  - The SDK sender check is scheme-only; `demos:0x<64hex>` is its canonical
+    form.
+  - The Storage Program substrate cap is 1 MB and the ACL modes are
+    `owner`/`public`/`restricted`. DACS keeps its 128 KB soft limit as its
+    own stricter profile, with unchanged meaning.
+  - The liquidity-tank bridge API names follow `@kynesyslabs/demosdk@4.0.16`
+    (`BridgeOperation` fields; compile, then `demos.run.bridge.submit`).
+  - Production tank availability is unavailable/experimental: at the pinned
+    node commit the compiled operation is unsigned, the parsers return
+    `null`, and the cited route registry is absent. DACS-4 §9.4 and §9.5.5
+    step 2, the README, the ROADMAP, the builders guide and the flow trace
+    now say the same, and no longer call the tank route live.
+    `rail-availability-selection-v0.1` (28 → 33) adds two `fail` cases: a
+    steward-signed `mocked` tank rail that a node-derived `live` hint cannot
+    select for production, and an unsigned tank copy claiming `live`.
+  - DACS-4 §9.4 and DEMOS-MAPPING now state the tank rule as a steward
+    and selector rule: the steward does not sign the tank rail `live`
+    yet, and an orchestrator selects a steward-signed, pinned `live` tank
+    rail only when its trusted local operator policy records that its
+    pinned node completes the handler. Three cases pin the gate: no such
+    record (`fail`), a record (`pass`, fixture-only), and a malformed
+    record (`error`).
+
+### Conformance coverage and reference alignment
+
+- **HTLC hash and epoch checks** (DACS-4 HTLC-6, HTLC-8). A registered hash
+  identifier that is not the leg chain's native hash (for example `sha256` on
+  an EVM leg) is `fail`; the canonical EVM legs now use `keccak256`. A
+  destination lock mined before the source lock's mined instant plus the
+  pinned `sourceFinalitySec` is `fail`; the HTLC-8 text now states that
+  schedule check (normative clarification). Settlement finality 269 → 274:
+  an EVM leg on `sha256`, destination locks 1s and 1ms before and exactly at
+  the pinned source finality, and a rail without `sourceFinalitySec`.
+- **FRC-8 typed metadata and projection.** A signed `transportMetadata` that
+  is not a JSON object is malformed (`error`), and which sufficient set of
+  authority signatures accompanies a verified view is not finality meaning,
+  so two observers with different sufficient sets agree (`pass`).
+  `finality-resolution-context-v1` 43 → 46.
+- **Storage soft limit** (DACS-4 §9.6.1, DACS-5 §10.4.2). The 128 KB limit is
+  131,072 bytes of the exact payload, or of a JSON value's RFC 8785 UTF-8
+  form; exactly 131,072 bytes fits (clarification). A producer packaging
+  reference and boundary tests pin it.
+- **CH-6 across restarts.** A test reopens a durable channel-id registry
+  after a restart and requires refusal; an adapter claiming CH-6 with no
+  registry or an in-memory one is refused.
+- **Demos mapping corrections.** Storage Program addresses are derived from
+  deployer, name, nonce and salt (truncated to 40 hex), not content; the
+  pinned node does not yet reject stale or skipped nonces; the builders'
+  guide lists the SDK's native CCI contexts; CORE pins SEC 1 version 2.0;
+  the tank `bridge_id` no longer claims a 16-character hash format.
+- Finality fixtures now cover combined staleness, missing authority and
+  deterministic signature or relation failures (249 → 269 cases). The reference
+  retains uncertainty while checking available certificate, event and provider
+  data, preserving the FV-10 four-value precedence.
+- Tank completion policy applies to every operational availability, including
+  `operator_gated`, `closed_data` and `bilateral` (33 → 36 availability cases).
+  The specification, mapping and flow trace distinguish the pinned node's
+  experimental status from hypothetical completed-node fixtures.
+- Historical current-use replay pins the original mapping's exact bundle bytes
+  with a second valid signed binding at the same address (35 → 36 cases).
+- Keccak-256 tests include known digests and SHA3-padding checks against
+  `hashlib.sha3_256` at block boundaries. The release-pin tuple test reports an
+  explicit skip when a source archive or shallow clone lacks the pinned commit.
+
 ### Changed — current-delivery admission corrective boundary
 
 - **Breaking pre-v1 correction** (CORE v0.3 §11.1.2, DACS-4 v0.8 PDE-7/PDE-8,

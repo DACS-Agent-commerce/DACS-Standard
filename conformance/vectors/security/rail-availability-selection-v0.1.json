@@ -13,10 +13,11 @@
     "digest": "sha256(canonical complete unsigned RailDefinition)",
     "signature": "RailSignature.algorithm=ed25519; value is unpadded Base64URL Ed25519(dacs-rail:v1: || lowercase-hex digest)",
     "productionContext": "trusted local-operator-policy input; counterparty and discovery hints are non-authoritative",
+    "nodeCompletedHandlers": "trusted local-operator-policy list of handlers the pinned node completes; required before any operational pay-cross-chain-liquidity-tank availability is selectable (DEMOS-MAPPING A.5)",
     "generator": "scripts/generate_rail_availability_selection_vectors.py"
   },
-  "hash": "eb80a8b4eb950ffc46fc92f51fc7d15390dbdc662b4b40122f76f46c32d4d45d",
-  "count": 28,
+  "hash": "9a4999d0d675252033e2c89b9b77e109a5be2dd1fda196f40aa41303e0b941b0",
+  "count": 36,
   "vectors": [
     {
       "name": "live-signed-pinned",
@@ -1271,6 +1272,236 @@
       }
     },
     {
+      "name": "tank-mocked-node-operation-live-hint",
+      "expected": "fail",
+      "note": "DEMOS-MAPPING A.5/RAV-R5: the signed tank rail is mocked; an adapter that reports the node's unsigned, incomplete compiled bridge operation as a live hint cannot make it available for production",
+      "rail": {
+        "railVersion": 1,
+        "railId": "cross-chain-liquidity-tank:USDC",
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {
+          "kind": "stablecoin-cross-chain",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "cross-chain",
+          "mechanism": "liquidity-tank"
+        },
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {
+          "sourceChainId": 11155111,
+          "destChainId": 80002
+        },
+        "availability": "mocked",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "iT_7gWyDXqrJaX9dF_h-XOyGyIJSgGaPWW2UC-vbn6ZVTX_Ka4QrdUu7n9e-KlP4Bou9D8aqLv8YLRrD3-_sBg"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "eccd3f98f920dc05128bc84667043d811bfb04437b6071831d01d7df0c86ee02",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        },
+        "discoveryAvailabilityHint": "live"
+      }
+    },
+    {
+      "name": "tank-live-unsigned",
+      "expected": "fail",
+      "note": "DEMOS-MAPPING A.5/RAV-R5: an unsigned tank rail claiming live is not authoritative",
+      "rail": {
+        "railVersion": 1,
+        "railId": "cross-chain-liquidity-tank:USDC",
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {
+          "kind": "stablecoin-cross-chain",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "cross-chain",
+          "mechanism": "liquidity-tank"
+        },
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {
+          "sourceChainId": 11155111,
+          "destChainId": 80002
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "67e7580a28a8f36babbff001b08694efb5c66ae8091b5c28806516011264f8b2",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
+      }
+    },
+    {
+      "name": "tank-live-signed-node-incomplete",
+      "expected": "fail",
+      "note": "DEMOS-MAPPING A.5/DACS-4 §9.4: a steward-signed, pinned live tank rail is not selectable while trusted operator policy does not record that the pinned node completes the tank handler",
+      "rail": {
+        "railVersion": 1,
+        "railId": "cross-chain-liquidity-tank:USDC",
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {
+          "kind": "stablecoin-cross-chain",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "cross-chain",
+          "mechanism": "liquidity-tank"
+        },
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {
+          "sourceChainId": 11155111,
+          "destChainId": 80002
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "hGljohRupEuPGEJaSCMHFZkonEoy12gDUOaJjSqzQoPf0GAyb3dB1Xpipexg2-dSePiNKr4KZiNmkAjxq-C0CA"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "67e7580a28a8f36babbff001b08694efb5c66ae8091b5c28806516011264f8b2",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
+      }
+    },
+    {
+      "name": "tank-live-signed-node-completes",
+      "expected": "pass",
+      "note": "DACS-4 §9.4: fixture-only post-condition after a pinned node commit completes signed operations and publishes routes; trusted operator policy records handler completion (no pinned node does today)",
+      "rail": {
+        "railVersion": 1,
+        "railId": "cross-chain-liquidity-tank:USDC",
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {
+          "kind": "stablecoin-cross-chain",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "cross-chain",
+          "mechanism": "liquidity-tank"
+        },
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {
+          "sourceChainId": 11155111,
+          "destChainId": 80002
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "hGljohRupEuPGEJaSCMHFZkonEoy12gDUOaJjSqzQoPf0GAyb3dB1Xpipexg2-dSePiNKr4KZiNmkAjxq-C0CA"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "67e7580a28a8f36babbff001b08694efb5c66ae8091b5c28806516011264f8b2",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true,
+          "nodeCompletedHandlers": [
+            "pay-cross-chain-liquidity-tank"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tank-live-node-capability-malformed",
+      "expected": "error",
+      "note": "the trusted node-completed handler list must be an array of handler names",
+      "rail": {
+        "railVersion": 1,
+        "railId": "cross-chain-liquidity-tank:USDC",
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {
+          "kind": "stablecoin-cross-chain",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "cross-chain",
+          "mechanism": "liquidity-tank"
+        },
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {
+          "sourceChainId": 11155111,
+          "destChainId": 80002
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "hGljohRupEuPGEJaSCMHFZkonEoy12gDUOaJjSqzQoPf0GAyb3dB1Xpipexg2-dSePiNKr4KZiNmkAjxq-C0CA"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "67e7580a28a8f36babbff001b08694efb5c66ae8091b5c28806516011264f8b2",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true,
+          "nodeCompletedHandlers": "pay-cross-chain-liquidity-tank"
+        }
+      }
+    },
+    {
       "name": "malformed-rail",
       "expected": "error",
       "note": "missing availability and railVersion is malformed",
@@ -1329,6 +1560,144 @@
         "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
         "pinnedRailDigest": "d6945dbd292b99b8578e0c470ad25f7c720977786aaaff58180af906c4271a54",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
+      }
+    },
+    {
+      "name": "tank-operator-gated-signed-node-incomplete",
+      "expected": "fail",
+      "note": "RAV-R1: operator preflight cannot replace trusted node completion",
+      "rail": {
+        "railVersion": 1,
+        "railId": "cross-chain-liquidity-tank:USDC",
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {
+          "kind": "stablecoin-cross-chain",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "cross-chain",
+          "mechanism": "liquidity-tank"
+        },
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {
+          "sourceChainId": 11155111,
+          "destChainId": 80002
+        },
+        "availability": "operator_gated",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "_a8Chnujv7PyBfTkLpQHRP0wZ3vJIdMAnkCnl4nubO9fvoXClKInFLXMaFBQOhx8ilr7WXSXTOyejF1Hl_mfAg"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": true,
+        "pinnedRailDigest": "64015b3b60cff8c9381a1d547ef2aa9ab1c0314fc2fcac7ada75347435843580",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
+      }
+    },
+    {
+      "name": "tank-closed-data-signed-node-incomplete",
+      "expected": "fail",
+      "note": "RAV-R1: operator preflight cannot replace trusted node completion",
+      "rail": {
+        "railVersion": 1,
+        "railId": "cross-chain-liquidity-tank:USDC",
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {
+          "kind": "stablecoin-cross-chain",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "cross-chain",
+          "mechanism": "liquidity-tank"
+        },
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {
+          "sourceChainId": 11155111,
+          "destChainId": 80002
+        },
+        "availability": "closed_data",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "GZHTfMVP5YyqqYC-YIyzDb8wiYK3TE7aoTrCZAidUpmszyEZTW1pFfUDk8rRpVts19O0qP1zuHCQAaS-RZzoBA"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": true,
+        "pinnedRailDigest": "d881c9d6c539b160729c6a7c90072a8d3b2f35cedab999d290aca5af4f079ab3",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
+      }
+    },
+    {
+      "name": "tank-bilateral-signed-node-incomplete",
+      "expected": "fail",
+      "note": "RAV-R1: operator preflight cannot replace trusted node completion",
+      "rail": {
+        "railVersion": 1,
+        "railId": "cross-chain-liquidity-tank:USDC",
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {
+          "kind": "stablecoin-cross-chain",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "cross-chain",
+          "mechanism": "liquidity-tank"
+        },
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {
+          "sourceChainId": 11155111,
+          "destChainId": 80002
+        },
+        "availability": "bilateral",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "GIem2XO8uR3YUA-YTBgdLHYTN9rVMypQf9lYUnN3ZYNiwjlEy4_7lB7sG9xZWzbdZwHS3S8gMRJRGkMXW-o1Cw"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": true,
+        "pinnedRailDigest": "386eb8a5952b1859eb781f6e0e27715d056e9600bd0198ea8e551766f7ba74f5",
         "sessionState": "new",
         "operatorContext": {
           "source": "local-operator-policy",

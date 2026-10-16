@@ -5,13 +5,16 @@ import base64
 import copy
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 import threading
 
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -339,26 +342,67 @@ class HistoricalAuditState(_VerifierOwnedChannelState):
     """Independent validation cursor with no live-publication authority."""
 
 
-class RetainedChannelRegistry:
-    """Trusted in-memory registry retained across issuer facade reconstruction.
+class DurableChannelIdStore:
+    """Fixture CH-6 persistence: used channel identifiers survive a restart.
 
-    Production implementations must supply transactional persistence covering
-    their replay horizon and restarts. This reference models one process only.
+    An identifier is synced and atomically renamed into the store before the
+    registry admits it, so a crash cannot lose an identifier already in use.
+    """
+
+    def __init__(self, path):
+        self._path = Path(path)
+
+    def load(self):
+        if not self._path.exists():
+            return []
+        channel_ids = json.loads(self._path.read_text(encoding="utf-8"))
+        if (
+            not isinstance(channel_ids, list)
+            or any(not isinstance(item, str) or not item for item in channel_ids)
+            or len(channel_ids) != len(set(channel_ids))
+        ):
+            raise ValueError("malformed persisted channel identifiers")
+        return channel_ids
+
+    def record(self, channel_id):
+        channel_ids = self.load()
+        if channel_id in channel_ids:
+            raise ReusedChannelIdError("channel identifier was already used")
+        pending = self._path.with_name(self._path.name + ".pending")
+        with open(pending, "w", encoding="utf-8") as handle:
+            json.dump(channel_ids + [channel_id], handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(pending, self._path)
+
+
+class RetainedChannelRegistry:
+    """Trusted registry retained across issuer facade reconstruction.
+
+    Without a ``store`` it models one process only. CH-6 across restarts
+    needs a store covering the replay horizon (``ch6_live_issuer``).
     Live and audit registries must be distinct.
     """
 
-    def __init__(self, used_channel_ids=()):
+    def __init__(self, used_channel_ids=(), *, store=None):
         if not isinstance(used_channel_ids, (list, tuple)) or any(
             not isinstance(item, str) or not item for item in used_channel_ids
         ):
             raise ValueError("invalid trusted used-channel identifiers")
         if len(used_channel_ids) != len(set(used_channel_ids)):
             raise ValueError("duplicate trusted used-channel identifier")
+        if store is not None and not isinstance(store, DurableChannelIdStore):
+            raise TypeError("a durable channel identifier store is required")
         self._lock = threading.RLock()
-        self._used_channel_ids = set(used_channel_ids)
+        self._store = store
+        self._used_channel_ids = set(used_channel_ids) | set(store.load() if store else ())
         self._issued_states = {}
 
         self._state_type = None
+
+    @property
+    def persistent(self):
+        return self._store is not None
 
 
 class _VerifierStateIssuer:
@@ -401,6 +445,8 @@ class _VerifierStateIssuer:
                 channel_id,
                 initial_sequence,
             )
+            if self._registry._store is not None:
+                self._registry._store.record(channel_id)
             self._used_channel_ids.add(channel_id)
             self._issued_states[channel_id] = state
             return state
@@ -898,6 +944,14 @@ def trusted_live_issuer(registry, session_id):
     )
 
 
+def ch6_live_issuer(registry, session_id):
+    """An adapter claiming CH-6 support requires a persistent registry."""
+
+    if not isinstance(registry, RetainedChannelRegistry) or not registry.persistent:
+        raise TypeError("CH-6 support requires a persistent channel identifier registry")
+    return trusted_live_issuer(registry, session_id)
+
+
 class ChannelMessageVectorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1280,6 +1334,43 @@ class ChannelMessageVectorTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be distinct"):
             HistoricalAuditStateIssuer(registry)
 
+    def test_ch6_refuses_a_persisted_channel_id_after_restart(self):
+        reused = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "canonical-reused-session-channel"
+        )
+        message = reused["message"]
+        channel_id = message["channelId"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "used-channel-ids.json"
+            first = ch6_live_issuer(
+                RetainedChannelRegistry(store=DurableChannelIdStore(path)), channel_id
+            )
+            state = first.issue(channel_id)
+            self.assertEqual("pass", evaluate(message, "current-read", AUTHORITY, state))
+
+            # Restart: every in-memory registry, issuer and state is gone;
+            # only the durable store remains.
+            del first, state
+            restarted = ch6_live_issuer(
+                RetainedChannelRegistry(store=DurableChannelIdStore(path)), channel_id
+            )
+            self.assertIn(channel_id, restarted.used_channel_ids)
+            with self.assertRaises(ReusedChannelIdError):
+                restarted.issue(channel_id)
+
+            # An in-memory registry after the same restart reopens the
+            # channel and accepts the earlier signed message again ...
+            ephemeral = trusted_live_issuer(RetainedChannelRegistry(), channel_id)
+            self.assertEqual(
+                "pass",
+                evaluate(message, "current-read", AUTHORITY, ephemeral.issue(channel_id)),
+            )
+        # ... so neither it nor a missing registry can back a CH-6 claim.
+        for registry in (None, RetainedChannelRegistry([channel_id])):
+            with self.subTest(registry=registry), self.assertRaises(TypeError):
+                ch6_live_issuer(registry, channel_id)
+
     def test_historical_import_uses_an_independent_audit_cursor(self):
         by_name = {item["name"]: item for item in self.legacy["vectors"]}
         issuer = HistoricalAuditStateIssuer(RetainedChannelRegistry(["chan-session-1", "chan-session-2"]))
@@ -1601,13 +1692,60 @@ class ChannelMessageVectorTests(unittest.TestCase):
         self.assertIn("read/import-only", core)
         self.assertIn("@kynesyslabs/demosdk@4.0.16", demos)
         self.assertIn("historical read/import arm", demos)
+        # CH-6: the shipped ChannelSession registers a channelId only when the
+        # caller supplies a registry, so the mapping must not claim it ships.
+        flat_demos = " ".join(demos.split())
+        self.assertIn("Its CH-6 channel-reuse check is **optional**", flat_demos)
+        self.assertIn(
+            "an adapter that claims CH-6 support MUST require one", flat_demos
+        )
+        self.assertNotIn("monotonic sequence and CH-6 channel reuse handling", flat_demos)
 
     def test_shipped_demos_sdk_wire_is_recorded_as_neither_arm(self):
         """DACS-3 §8.3.3: the frozen arm needs a bare lowercase-hex signature
         over the raw 32-byte digest (CH-9 item 2, CH-10); CH-8 signs the ASCII
         lowercase-hex digest under the canonical domain. The shipped 4.0.16
         wire (historical domain, hex-digest framing, `0x` signature object)
-        is neither, so no document may record it as historical-arm evidence."""
+        is neither, so both operations reject it and no document may record
+        it as historical-arm evidence."""
+        by_name = {item["name"]: item for item in self.document["vectors"]}
+        # SHA-256 of the JCS bytes of each committed SDK-wire message. The
+        # @kynesyslabs/demosdk@4.0.16 verifyChannelMessage accepts exactly
+        # these two corpus messages; the pin keeps a generator edit from
+        # silently replacing them.
+        sdk_wire_sha256 = {
+            "demosdk-4.0.16-wire-legacy-import": "b5af77982ee985799f564a348e3c4afea4e20e7899443c34cf862e2dfc4015b9",
+            "demosdk-4.0.16-wire-current-read": "34b491ffa632cf76d860b7cc9f9aa6590d83dc2d410924790170936ab90f4263",
+        }
+        for name, operation in (
+            ("demosdk-4.0.16-wire-legacy-import", "legacy-import"),
+            ("demosdk-4.0.16-wire-current-read", "current-read"),
+        ):
+            vector = by_name[name]
+            message = vector["message"]
+            signature = message["signature"]
+            self.assertEqual(
+                sdk_wire_sha256[name], hashlib.sha256(canonical_bytes(message)).hexdigest()
+            )
+            self.assertEqual(operation, vector["operation"])
+            self.assertNotIn("canonicalChannelMessageVersion", message)
+            self.assertEqual({"sigVersion", "signature"}, set(signature))
+            self.assertTrue(signature["signature"].startswith("0x"))
+            self.assertEqual("demos:0x" + ALICE_PUBLIC.hex(), message["sender"])
+            # Genuinely signed with the SDK recipe: the historical domain
+            # followed by the ASCII lowercase-hex digest.
+            unsigned = {key: item for key, item in message.items() if key != "signature"}
+            self.assertTrue(verify_ed25519(
+                Ed25519PublicKey.from_public_bytes(ALICE_PUBLIC),
+                bytes.fromhex(signature["signature"][2:]),
+                LEGACY_DOMAIN + message_digest(unsigned).hex().encode("ascii"),
+            ))
+            with self.subTest(vector=name):
+                self.assertEqual("error", vector["expected"])
+                self.assertEqual(
+                    "error", self.fixture_result(vector, operation, AUTHORITY)
+                )
+
         def flat(path):
             return " ".join(path.read_text(encoding="utf-8").split())
 
@@ -1633,6 +1771,274 @@ class ChannelMessageVectorTests(unittest.TestCase):
         ):
             self.assertNotIn(stale, trace)
         self.assertNotIn("recorded only as historical-arm evidence", changelog)
+
+    def test_sdk_compat_legacy_reader_fails_the_committed_corpus(self):
+        """Wrong implementation: a shape-keyed "SDK-compat" legacy importer.
+
+        It unwraps an SDK signature object, strips ``0x``, maps a
+        ``demos:0x`` sender to ``cci:``, and uses hex-digest framing for the
+        exact SDK shape. CH-9(2)/(3) forbid each step; only the committed
+        shipped-wire and lenient-reading cases catch it.
+        """
+        module = sys.modules[__name__]
+        original = module.evaluate
+
+        def sdk_compat(message, operation, authority, state):
+            if (
+                operation != "legacy-import"
+                or not isinstance(message, dict)
+                or "canonicalChannelMessageVersion" in message
+            ):
+                return original(message, operation, authority, state)
+            signature = message.get("signature")
+            sender = message.get("sender")
+            wrapped = isinstance(signature, dict) and signature.get("sigVersion") == "1"
+            if wrapped:
+                signature = signature.get("signature")
+            prefixed = isinstance(signature, str) and signature.startswith("0x")
+            demos_sender = isinstance(sender, str) and sender.startswith("demos:0x")
+            if not (wrapped or prefixed or demos_sender):
+                return original(message, operation, authority, state)
+            sdk_shape = wrapped and prefixed
+            if prefixed:
+                signature = signature[2:]
+            if demos_sender:
+                sender = "cci:" + sender[len("demos:0x"):]
+            if not isinstance(signature, str) or not LOWER_HEX_128.fullmatch(signature):
+                return original(message, operation, authority, state)
+            status = trusted_inputs_status(message, authority, state, HistoricalAuditState)
+            if status is not None:
+                return status
+            resolution, _, public_key = resolve_signing_key(
+                sender, state.channel_id, authority
+            )
+            if resolution == "outsider":
+                return "fail"
+            if resolution != "resolved":
+                return "indeterminate"
+            unsigned = {key: item for key, item in message.items() if key != "signature"}
+            hashed = message_digest(unsigned)
+            payload = LEGACY_DOMAIN + (hashed.hex().encode("ascii") if sdk_shape else hashed)
+            if not verify_ed25519(public_key, bytes.fromhex(signature), payload):
+                return "fail"
+            return state._consume_validated(
+                message["channelId"], message["sequence"], message["type"]
+            )
+
+        caught = {
+            "demosdk-4.0.16-wire-legacy-import",
+            "legacy-0x-prefixed-hex-signature",
+            "legacy-object-signature",
+            "legacy-demos-0x-sender",
+        }
+        with mock.patch.object(module, "evaluate", sdk_compat):
+            observed = {
+                vector["name"]: self.fixture_result(vector, vector["operation"], AUTHORITY)
+                for vector in self.document["vectors"]
+            }
+            historical = [
+                self.fixture_result(vector, "legacy-import", AUTHORITY)
+                for vector in self.legacy["vectors"]
+            ]
+        self.assertEqual(
+            [vector["expected"] for vector in self.legacy["vectors"]], historical
+        )
+        mismatches = {
+            vector["name"] for vector in self.document["vectors"]
+            if observed[vector["name"]] != vector["expected"]
+        }
+        self.assertEqual(caught, mismatches)
+        for name in caught:
+            self.assertEqual("pass", observed[name])
+
+    def test_release_pin_names_the_complete_module_tuple(self):
+        """The exact pin and the tuple are one admission fact (CORE §11.1.2).
+
+        Read at the pinned commit itself: the PROFILE.md coordinated tuple and
+        each module's front matter must equal CURRENT_MODULE_VERSIONS. CI
+        checks out full history. Source archives and shallow clones skip this
+        history-only check with an explicit reason; no network is used.
+        """
+        try:
+            available = subprocess.run(
+                ["git", "cat-file", "-e", f"{CURRENT_RELEASE_PIN}^{{commit}}"],
+                cwd=ROOT, capture_output=True, text=True,
+                env={**os.environ, "GIT_NO_LAZY_FETCH": "1"},
+            )
+        except FileNotFoundError:
+            self.skipTest("release-pin history check requires git and the pinned commit locally")
+        if available.returncode:
+            self.skipTest(
+                f"release pin {CURRENT_RELEASE_PIN} unavailable locally; full git history is required "
+                "for this check (source archives and shallow clones may omit it)"
+            )
+        documents = {
+            "core": ("CORE", "CORE"), "dacs1": ("DACS-1-IDENTIFY", "DACS-1"),
+            "dacs2": ("DACS-2-VET", "DACS-2"), "dacs3": ("DACS-3-NEGOTIATE", "DACS-3"),
+            "dacs4": ("DACS-4-SETTLE", "DACS-4"), "dacs5": ("DACS-5-VERIFY", "DACS-5"),
+        }
+        self.assertEqual(set(documents), set(CURRENT_MODULE_VERSIONS))
+
+        def show(path):
+            completed = subprocess.run(
+                ["git", "show", f"{CURRENT_RELEASE_PIN}:{path}"],
+                cwd=ROOT, capture_output=True, text=True,
+            )
+            self.assertEqual(
+                0, completed.returncode,
+                f"release pin {CURRENT_RELEASE_PIN} is not in local history: {completed.stderr}",
+            )
+            return completed.stdout
+
+        profile = show("spec/PROFILE.md")
+        tuple_text = profile.split("The complete coordinated tuple is:", 1)
+        self.assertEqual(2, len(tuple_text), "pinned PROFILE.md names no coordinated tuple")
+        table = tuple_text[1].split("\n\n", 2)[1]
+        pinned = {
+            key: re.search(
+                r"^\| \[%s\]\(%s\.md\) \| ([0-9]+\.[0-9]+) \|" % (name, name), table, re.M,
+            )
+            for key, (name, _) in documents.items()
+        }
+        self.assertEqual(
+            CURRENT_MODULE_VERSIONS,
+            {key: match.group(1) if match else None for key, match in pinned.items()},
+        )
+        for key, (name, label) in documents.items():
+            # The front-matter status line, not a mention anywhere in the text.
+            heading = "DACS Core" if label == "CORE" else label
+            status = re.search(
+                r"^(?:> |\*\*Stage:\*\*[^\n]*?\*\*Status:\*\* )Draft — \*\*%s v([0-9]+\.[0-9]+)\*\*"
+                % re.escape(heading),
+                "\n".join(show(f"spec/{name}.md").splitlines()[:12]), re.M,
+            )
+            with self.subTest(module=name):
+                self.assertIsNotNone(status, f"pinned {name}.md has no front-matter status line")
+                self.assertEqual(CURRENT_MODULE_VERSIONS[key], status.group(1))
+
+        # The same pin with one module version outside its tuple refuses.
+        vector = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "current-profile-wrong-module-version"
+        )
+        self.assertEqual(CURRENT_RELEASE_PIN, vector["profileAdmission"]["releasePin"])
+        differing = {
+            key for key, value in vector["profileAdmission"]["moduleVersions"].items()
+            if CURRENT_MODULE_VERSIONS[key] != value
+        }
+        self.assertEqual({"dacs5"}, differing)
+        self.assertEqual("fail", self.fixture_result(vector, vector["operation"], AUTHORITY))
+
+    def test_release_pin_history_check_skips_when_commit_or_git_is_unavailable(self):
+        unavailable = subprocess.CompletedProcess(["git"], 128, "", "missing commit")
+        with mock.patch.object(subprocess, "run", return_value=unavailable):
+            with self.assertRaisesRegex(unittest.SkipTest, "full git history is required"):
+                self.test_release_pin_names_the_complete_module_tuple()
+        with mock.patch.object(subprocess, "run", side_effect=FileNotFoundError):
+            with self.assertRaisesRegex(unittest.SkipTest, "requires git"):
+                self.test_release_pin_names_the_complete_module_tuple()
+
+    def test_ecdsa_accepts_only_canonical_der_low_s(self):
+        """CORE §B.7: secp256k1 values are canonical DER with low S."""
+        module = sys.modules[__name__]
+        original = module.verify_algorithm
+        by_name = {item["name"]: item for item in self.document["vectors"]}
+
+        def high_s_tolerant(algorithm, public_key, signature, payload):
+            if algorithm == "ecdsa-secp256k1":
+                try:
+                    r, s = utils.decode_dss_signature(signature)
+                    signature = utils.encode_dss_signature(r, min(s, SECP256K1_ORDER - s))
+                except ValueError:
+                    pass
+            return original(algorithm, public_key, signature, payload)
+
+        def fixed_width_tolerant(algorithm, public_key, signature, payload):
+            if algorithm == "ecdsa-secp256k1" and len(signature) == 64:
+                signature = utils.encode_dss_signature(
+                    int.from_bytes(signature[:32], "big"), int.from_bytes(signature[32:], "big")
+                )
+            return original(algorithm, public_key, signature, payload)
+
+        def long_form_tolerant(algorithm, public_key, signature, payload):
+            # BER read: a one-byte long-form SEQUENCE length is accepted.
+            if algorithm == "ecdsa-secp256k1" and signature[:2] == b"\x30\x81":
+                signature = b"\x30" + signature[2:]
+            return original(algorithm, public_key, signature, payload)
+
+        for name, wrong in (
+            ("canonical-ecdsa-high-s", high_s_tolerant),
+            ("canonical-ecdsa-fixed-width-r-s", fixed_width_tolerant),
+            ("canonical-ecdsa-der-long-form-length", long_form_tolerant),
+        ):
+            vector = by_name[name]
+            with self.subTest(vector=name):
+                self.assertEqual("fail", self.fixture_result(vector, vector["operation"], AUTHORITY))
+                with mock.patch.object(module, "verify_algorithm", wrong):
+                    self.assertEqual(
+                        "pass", self.fixture_result(vector, vector["operation"], AUTHORITY)
+                    )
+
+    def test_legacy_import_requires_authenticated_membership(self):
+        """CH-1/CH-7 apply to legacy-import: key bytes in a claim are not authority."""
+        vector = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "legacy-import-outsider-valid-signature"
+        )
+        sender = vector["message"]["sender"]
+        self.assertEqual("cci", parse_historical_claim_ref(sender)[0])
+        self.assertEqual("resolved", AUTHORITY.resolve("chan-session-7", sender)[0])
+        self.assertIsNone(AUTHORITY.resolve("chan-session-7", sender)[1])
+        self.assertEqual("fail", self.fixture_result(vector, "legacy-import", AUTHORITY))
+
+        module = sys.modules[__name__]
+        original = module.resolve_signing_key
+
+        def key_from_claim(claim, channel_id, authority):
+            # Wrong implementation: a historical cci claim names its own key.
+            resolution, algorithm, public_key = original(claim, channel_id, authority)
+            if resolution == "outsider":
+                scheme, identifier = parse_historical_claim_ref(claim)
+                if scheme == "cci":
+                    return (
+                        "resolved", "ed25519",
+                        Ed25519PublicKey.from_public_bytes(bytes.fromhex(identifier)),
+                    )
+            return resolution, algorithm, public_key
+
+        with mock.patch.object(module, "resolve_signing_key", key_from_claim):
+            self.assertEqual(
+                "pass", self.fixture_result(vector, "legacy-import", AUTHORITY)
+            )
+
+    def test_signer_label_and_required_members_are_load_bearing(self):
+        by_name = {item["name"]: item for item in self.document["vectors"]}
+        foreign = by_name["canonical-foreign-signer-sender-signature"]
+        self.assertEqual(ALICE_REF, foreign["message"]["sender"])
+        self.assertEqual(BOB_REF, foreign["message"]["signature"]["signer"])
+        self.assertEqual("fail", self.fixture_result(foreign, "current-read", AUTHORITY))
+        # The value is Alice's genuine signature: relabelling the signer as
+        # the sender, which a signer-blind reader effectively does, passes.
+        relabelled = copy.deepcopy(foreign)
+        relabelled["message"]["signature"]["signer"] = ALICE_REF
+        self.assertEqual("pass", self.fixture_result(relabelled, "current-read", AUTHORITY))
+
+        missing = by_name["canonical-missing-sent-at"]
+        self.assertNotIn("sentAt", missing["message"])
+        self.assertEqual("error", self.fixture_result(missing, "current-read", AUTHORITY))
+        module = sys.modules[__name__]
+        original = module.common_shape
+
+        def sent_at_optional(message, parse_ref=parse_current_claim_ref):
+            # Wrong implementation: sentAt is treated as optional.
+            if isinstance(message, dict) and "sentAt" not in message:
+                message = {**message, "sentAt": 0}
+            return original(message, parse_ref)
+
+        with mock.patch.object(module, "common_shape", sent_at_optional):
+            self.assertEqual(
+                "pass", self.fixture_result(missing, "current-read", AUTHORITY)
+            )
 
 
 if __name__ == "__main__":

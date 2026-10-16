@@ -312,6 +312,7 @@ class CurrentUseFixtureFactory:
         height: int,
         index: int,
         disposition: str = "established",
+        order_domain: str = "fixture-ledger-v1",
     ) -> dict:
         proof = {
             "syntheticAnchorProofVersion": "1",
@@ -325,7 +326,7 @@ class CurrentUseFixtureFactory:
             "transactionRef": transaction,
             "writer": writer,
             "nonce": nonce,
-            "position": {"orderDomain": "fixture-ledger-v1", "height": height, "index": index},
+            "position": {"orderDomain": order_domain, "height": height, "index": index},
             "state": "finalized",
             "observationDisposition": disposition,
             "signature": {},
@@ -968,7 +969,10 @@ class CurrentUseFixtureFactory:
             if "legacyEraEvidence" in role_request:
                 eras.append(role_request["legacyEraEvidence"])
         for native in native_addresses:
-            bundle = deps["bundlesByNativeAddress"][native]
+            bundle = deps["bundlesByNativeAddress"].get(native)
+            if bundle is None:
+                # An authorized candidate whose copy cannot be dereferenced.
+                continue
             closure["bundlesByNativeAddress"][native] = copy.deepcopy(bundle)
             digest = bundle_hash(bundle)
             authority = deps["bundleAuthorityByContentHash"].get(digest)
@@ -1223,6 +1227,267 @@ def _legacy_negative_replays() -> list[tuple]:
     return cases
 
 
+def _replay_case(
+    factory: CurrentUseFixtureFactory, request: dict, name: str, expected: str, guard: str,
+) -> tuple:
+    return (
+        name, _serializable(request),
+        _serializable(factory.replay_dependencies(request)),
+        _serializable(factory.replay_config(request)),
+        {"name": name, "mappingKind": "binding", "expected": expected, "guard": guard},
+        factory.replay_context(request), _serializable(factory.replay_keys()),
+    )
+
+
+def _binding_job() -> tuple[CurrentUseFixtureFactory, dict]:
+    factory = CurrentUseFixtureFactory()
+    return factory, factory.build()["historicalRequests"][0]
+
+
+def _era(request: dict, role: str = "buyer") -> dict:
+    role_request = request["roles"][role]
+    native = role_request["selectionContext"]["candidateBindings"][0]["nativeAddress"]
+    return role_request["legacyEraEvidenceByNativeAddress"][native]
+
+
+def _reanchor(factory: CurrentUseFixtureFactory, era: dict, **changes: Any) -> None:
+    """Replace an era's historical receipt with a re-signed, re-pinned one."""
+    old = era["historicalAnchorReceipt"]
+    fields = {
+        "subject_id": old["subjectId"], "subject_role": old["subjectRole"],
+        "logical": old["logicalAddress"], "native": old["nativeAddress"],
+        "content_hash": old["contentHash"], "transaction": old["transactionRef"],
+        "writer": old["writer"], "nonce": old["nonce"],
+        "height": old["position"]["height"], "index": old["position"]["index"],
+    }
+    fields.update(changes)
+    era["historicalAnchorReceipt"] = factory.anchor_proof(
+        purpose="historical-bundle", substrate=WRITE_SUBSTRATE, **fields
+    )
+
+
+def _lab4_boundary_replays() -> list[tuple]:
+    """LAB-4 order boundary around the write-substrate checkpoint at (100, 2).
+
+    Only the buyer copy's original receipt moves; it stays genuinely signed
+    and pinned and joins its original binding, so only the order rule decides.
+    """
+    definitions = (
+        ("same-height-earlier-index-legacy-anchor", "pass",
+         "LAB-4 authenticated intra-position order", {"height": 100, "index": 1}),
+        ("equal-position-legacy-anchor", "fail",
+         "LAB-4 strict order", {"height": 100, "index": 2}),
+        ("cross-domain-legacy-anchor", "indeterminate",
+         "LAB-4 comparable order", {"order_domain": "fixture-ledger-other"}),
+        ("pruned-legacy-anchor-history", "indeterminate",
+         "LAB-4 established history", {"disposition": "pruned"}),
+        ("reorganized-legacy-anchor-history", "indeterminate",
+         "LAB-4 established history", {"disposition": "reorganized"}),
+        ("unorderable-legacy-anchor-history", "indeterminate",
+         "LAB-4 established history", {"disposition": "unorderable"}),
+    )
+    cases = []
+    for name, expected, guard, changes in definitions:
+        factory, request = _binding_job()
+        _reanchor(factory, _era(request), **changes)
+        cases.append(_replay_case(factory, request, name, expected, guard))
+    return cases
+
+
+def _lab_authority_replays() -> list[tuple]:
+    """LAB-1..LAB-3 and BB-7 negatives on the binding arm, otherwise admitted.
+
+    Each case changes one authority input of the buyer copy; everything it
+    does not name is genuinely signed, pinned and joined.
+    """
+    cases = []
+
+    # LAB-3: one exact join per field.  The substitute is the matching value
+    # from the seller copy's own original receipt, or another job, so the
+    # re-signed receipt records something real but not this copy.
+    joins = (
+        ("historical-receipt-other-job", "subject_id"),
+        ("historical-receipt-other-logical-address", "logical"),
+        ("historical-receipt-other-native-address", "native"),
+        ("historical-receipt-other-content-hash", "content_hash"),
+        ("historical-receipt-other-anchor-transaction", "transaction"),
+        ("historical-receipt-other-writer", "writer"),
+        ("historical-receipt-other-nonce", "nonce"),
+    )
+    for name, field in joins:
+        factory, request = _binding_job()
+        seller = _era(request, "seller")["historicalAnchorReceipt"]
+        substitute = {
+            "subject_id": HISTORICAL_PURE_JOB_ID,
+            "logical": seller["logicalAddress"],
+            "native": seller["nativeAddress"],
+            "content_hash": seller["contentHash"],
+            "transaction": seller["transactionRef"],
+            "writer": seller["writer"],
+            "nonce": seller["nonce"],
+        }[field]
+        _reanchor(factory, _era(request), **{field: substitute})
+        cases.append(_replay_case(
+            factory, request, name, "fail", "LAB-3 exact historical join"
+        ))
+
+    # LAB-1: the dereferenced checkpoint must be the steward-signed artifact
+    # whose content hash the authenticated binding and receipt commit.
+    factory, request = _binding_job()
+    checkpoint = factory.checkpoints[WRITE_SUBSTRATE]["checkpoint"]
+    checkpoint["signature"] = {
+        "signer": CLAIMS["seller"],
+        "algorithm": "ed25519",
+        "value": factory._sign(
+            factory.finality.keys["seller"], LEGACY_BUNDLE_CHECKPOINT_DOMAIN,
+            legacy_checkpoint_hash(checkpoint),
+        ),
+    }
+    cases.append(_replay_case(
+        factory, request, "checkpoint-signed-by-non-steward", "fail",
+        "LAB-1 steward-signed checkpoint",
+    ))
+
+    factory, request = _binding_job()
+    checkpoint = factory.checkpoints[WRITE_SUBSTRATE]["checkpoint"]
+    checkpoint["createdAt"] += 1
+    checkpoint["signature"]["value"] = factory._sign(
+        factory.finality.keys["steward"], LEGACY_BUNDLE_CHECKPOINT_DOMAIN,
+        legacy_checkpoint_hash(checkpoint),
+    )
+    cases.append(_replay_case(
+        factory, request, "checkpoint-content-hash-mismatch", "fail",
+        "LAB-1 committed checkpoint content hash",
+    ))
+
+    # LAB-1 discovery: the only binding candidate is validly signed by a
+    # non-steward, so it is discarded and no checkpoint resolves.
+    factory, request = _binding_job()
+    binding = _era(request)["checkpointCandidates"][0]
+    binding["signature"] = {
+        "signer": CLAIMS["seller"],
+        "algorithm": "ed25519",
+        "value": factory._sign(
+            factory.finality.keys["seller"], LEGACY_BUNDLE_CHECKPOINT_BINDING_DOMAIN,
+            legacy_checkpoint_binding_hash(binding),
+        ),
+    }
+    cases.append(_replay_case(
+        factory, request, "checkpoint-binding-not-steward-signed", "indeterminate",
+        "LAB-1 steward checkpoint discovery",
+    ))
+
+    # LAB-2: the original BB-6 selection is reconstructed over the complete
+    # authorized candidate set.
+    factory, request = _binding_job()
+    original = _era(request)["originalMapping"]
+    forged = copy.deepcopy(original["binding"])
+    forged["signature"]["value"] = factory._sign(
+        factory.finality.keys["seller"], BINDING_DOMAIN, old_hash(forged, "signature")
+    )
+    original["selectionContext"]["candidateBindings"].append(forged)
+    cases.append(_replay_case(
+        factory, request, "historical-bb6-authorized-candidate-invalid", "fail",
+        "LAB-2 original BB-6 candidate set",
+    ))
+
+    factory, request = _binding_job()
+    original = _era(request)["originalMapping"]
+    bundle = factory.dependencies["bundlesByNativeAddress"][
+        original["binding"]["nativeAddress"]
+    ]
+    original["selectionContext"]["candidateBindings"].append(
+        factory.legacy_bundle_binding(
+            bundle, "buyer", HISTORICAL_BINDING_JOB_ID + ":historical-unretrievable:buyer"
+        )
+    )
+    cases.append(_replay_case(
+        factory, request, "historical-bb6-candidate-not-dereferenceable", "indeterminate",
+        "LAB-2 original BB-6 candidate set",
+    ))
+
+    # LAB-2: the original selection uses the verifier-authenticated party map
+    # and per-signer budget, never values carried in the request.
+    factory, request = _binding_job()
+    context = _era(request)["originalMapping"]["selectionContext"]
+    context["partyMap"]["did:example:unauthenticated-extra"] = "buyer"
+    cases.append(_replay_case(
+        factory, request, "historical-original-party-map-not-authenticated", "fail",
+        "LAB-2 original authenticated party map",
+    ))
+
+    factory, request = _binding_job()
+    context = _era(request)["originalMapping"]["selectionContext"]
+    context["budget"] += 1
+    cases.append(_replay_case(
+        factory, request, "historical-original-budget-differs", "fail",
+        "LAB-2 original per-signer budget",
+    ))
+
+    # LAB-2: the presented original binding must be the one BB-6 selects. A
+    # second genuine, retrievable buyer binding of the same bundle at a lower
+    # native address is the reproducible selection instead.
+    factory, request = _binding_job()
+    original = _era(request)["originalMapping"]
+    bundle = factory.dependencies["bundlesByNativeAddress"][
+        original["binding"]["nativeAddress"]
+    ]
+    for index in range(200):
+        other = factory.legacy_bundle_binding(
+            bundle, "buyer", HISTORICAL_BINDING_JOB_ID + f":historical-selected-copy-{index}:buyer"
+        )
+        if other["nativeAddress"] < original["binding"]["nativeAddress"]:
+            break
+    else:
+        raise AssertionError("no lower-address original copy")
+    factory.dependencies["bundlesByNativeAddress"][other["nativeAddress"]] = bundle
+    original["selectionContext"]["candidateBindings"].append(other)
+    cases.append(_replay_case(
+        factory, request, "historical-original-selection-not-reproducible", "indeterminate",
+        "LAB-2 original BB-6 selection",
+    ))
+
+    # LAB-2: the selected address must resolve the exact historical bundle,
+    # even if another authorized binding at that address verifies too.
+    factory, request = _binding_job()
+    original = _era(request)["originalMapping"]
+    address = original["binding"]["nativeAddress"]
+    bundle = factory.dependencies["bundlesByNativeAddress"][address]
+    other_bundle = factory._legacy_bundle(
+        bundle["jobId"], "buyer", factory._historical_listing(),
+        finalised_at=bundle["finalisedAt"] - 1,
+    )
+    original_hash, other_hash = bundle_hash(bundle), bundle_hash(other_bundle)
+    assert original_hash != other_hash
+    factory.dependencies["bundleAuthorityByContentHash"][other_hash] = copy.deepcopy(
+        factory.dependencies["bundleAuthorityByContentHash"][original_hash]
+    )
+    other_binding = copy.deepcopy(original["binding"])
+    other_binding["bundleContentHash"] = other_hash
+    factory.sign_bundle_binding(other_binding, "buyer")
+    factory.dependencies["bundlesByNativeAddress"][address] = other_bundle
+    original["selectionContext"]["candidateBindings"].append(other_binding)
+    cases.append(_replay_case(
+        factory, request, "historical-original-mapping-other-bytes", "fail",
+        "LAB-2 original selected bundle bytes",
+    ))
+
+    # BB-7: an authorized current candidate that cannot be fetched.
+    factory, request = _binding_job()
+    role_request = request["roles"]["buyer"]
+    current = role_request["selectionContext"]["candidateBindings"][0]
+    bundle = factory.dependencies["bundlesByNativeAddress"][current["nativeAddress"]]
+    role_request["selectionContext"]["candidateBindings"].append(factory.bundle_binding(
+        bundle, "buyer", HISTORICAL_BINDING_JOB_ID + ":current-unretrievable:buyer",
+        trusted_contexts=factory.current_authority(CLAIMS["buyer"], FIXTURE_QUERY_WINDOW),
+    ))
+    cases.append(_replay_case(
+        factory, request, "current-bb6-candidate-not-dereferenceable", "indeterminate",
+        "BB-7 unretrievable authorized candidate",
+    ))
+    return cases
+
+
 def document() -> dict:
     factory = CurrentUseFixtureFactory()
     fixture = factory.build()
@@ -1283,6 +1548,8 @@ def document() -> dict:
         ),
     ]
     replay_inputs.extend(_legacy_negative_replays())
+    replay_inputs.extend(_lab4_boundary_replays())
+    replay_inputs.extend(_lab_authority_replays())
     vectors = []
     for _name, request, dependencies, verifier_config, expected, context, keys in replay_inputs:
         vector = dict(expected)

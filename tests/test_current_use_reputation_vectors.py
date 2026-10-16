@@ -302,7 +302,7 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
             text=True,
         )
         data = json.loads(VECTORS.read_text(encoding="utf-8"))
-        self.assertEqual(13, data["count"])
+        self.assertEqual(36, data["count"])
         self.assertEqual(data["count"], len(data["vectors"]))
         self.assertEqual(generator.document()["hash"], data["hash"])
         self.assertIn("Synthetic", data["fixturePolicy"])
@@ -511,6 +511,47 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         result = self.derive([request])
         self.assertEqual("fail", result["decision"])
         self.assertIn("roster differs", result["reason"])
+
+    def test_pure_arm_authority_and_current_selection_context_are_exact(self):
+        # Pure arm: a re-signed buyer copy with a duplicate seller entry
+        # passes the role-holder check and reaches the whole-roster join.
+        request = self.fixture["historicalRequests"][1]
+        native = request["roles"]["buyer"]["resolvedAddress"]
+        bundle = copy.deepcopy(self.fixture["dependencies"]["bundlesByNativeAddress"][native])
+        bundle["parties"].append(copy.deepcopy(bundle["parties"][1]))
+        self.factory.finality.sign_bundle(bundle, BUNDLE_DOMAIN)
+        self.fixture["dependencies"]["bundlesByNativeAddress"][native] = bundle
+        result = self.derive([request])
+        self.assertEqual("fail", result["decision"])
+        self.assertIn("roster differs", result["reason"])
+
+        # Pure arm: a non-passing type-specific authority propagates; here the
+        # authenticated pipeline selects a sealed auction this reference
+        # cannot reproduce (SAC-8), so the copy cannot be admitted.
+        self.setUp()
+        request = self.fixture["historicalRequests"][1]
+        native = request["roles"]["buyer"]["resolvedAddress"]
+        digest = bundle_hash(self.fixture["dependencies"]["bundlesByNativeAddress"][native])
+        authority = self.fixture["dependencies"]["bundleAuthorityByContentHash"][digest]
+        authority["listing"]["pipeline"][0] = {"kind": "negotiate-sealed-envelope"}
+        result = self.derive([request])
+        self.assertEqual("indeterminate", result["decision"])
+        self.assertIn("SAC-8", result["reason"])
+        self.assertIsNone(result["derivation"])
+
+        # Binding arm: the request's current BB-6 party map and budget must be
+        # the verifier's own; a caller-supplied variant is refused.
+        for field, value, reason in (
+            ("partyMap", {generator.CLAIMS["buyer"]: "buyer"}, "party map"),
+            ("budget", 7, "budget"),
+        ):
+            with self.subTest(field=field):
+                self.setUp()
+                request = self.fixture["historicalRequests"][0]
+                request["roles"]["buyer"]["selectionContext"][field] = value
+                result = self.derive([request])
+                self.assertEqual("fail", result["decision"])
+                self.assertIn(reason, result["reason"])
 
     def test_every_historical_exact_join_rejects_mutation(self):
         evidence_fields = ("bundleContentHash", "resolvedJobId", "resolvedRole", "substrate")

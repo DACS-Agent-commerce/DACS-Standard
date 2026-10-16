@@ -21,6 +21,9 @@ AVAILABILITY = {
     "mocked", "disabled", "failed",
 }
 GATED = {"operator_gated", "closed_data", "bilateral"}
+# DEMOS-MAPPING A.5: handlers whose substrate the pinned node does not
+# complete; every operational availability needs trusted completion policy.
+NODE_GATED_HANDLERS = {"pay-cross-chain-liquidity-tank"}
 REQUIRED_RAIL_FIELDS = {
     "railVersion", "railId", "railType", "asset", "network", "phaseHandler",
     "parameters", "availability", "governance", "signature",
@@ -106,6 +109,15 @@ def evaluate(vector):
     production = operator_context.get("production")
     if type(production) is not bool:
         return "error"
+    completed = operator_context.get("nodeCompletedHandlers", [])
+    if not isinstance(completed, list) or any(type(item) is not str for item in completed):
+        return "error"
+    if (
+        availability in {"live", *GATED}
+        and rail.get("phaseHandler") in NODE_GATED_HANDLERS
+        and rail["phaseHandler"] not in completed
+    ):
+        return "fail"
     if availability == "mocked" and production:
         return "fail"
     if availability in {"disabled", "failed"}:
@@ -219,6 +231,69 @@ class RailAvailabilitySelectionVectorTests(unittest.TestCase):
             (DOMAIN + digest(later)).encode("ascii"),
         )
         self.assertEqual(evaluate(vector), "pass")
+
+    def test_tank_rail_is_not_made_available_by_the_node(self):
+        # DEMOS-MAPPING A.5: the pinned node returns an unsigned, incomplete
+        # compiled bridge operation, so the signed tank fixture is mocked and
+        # neither a node-derived hint nor an unsigned live copy selects it.
+        hinted = self.by_name["tank-mocked-node-operation-live-hint"]
+        unsigned = self.by_name["tank-live-unsigned"]
+        self.assertEqual("pay-cross-chain-liquidity-tank", hinted["rail"]["phaseHandler"])
+        self.assertEqual("mocked", hinted["rail"]["availability"])
+        self.assertEqual("live", hinted["ctx"]["discoveryAvailabilityHint"])
+        self.assertTrue(hinted["ctx"]["operatorContext"]["production"])
+        self.assertEqual("fail", evaluate(hinted))
+        # The rail is otherwise selectable: only its signed mocked
+        # availability under production policy decides the case.
+        testing = copy.deepcopy(hinted)
+        testing["ctx"]["operatorContext"]["production"] = False
+        self.assertEqual("pass", evaluate(testing))
+        self.assertEqual("live", unsigned["rail"]["availability"])
+        self.assertNotIn("signature", unsigned["rail"])
+        self.assertEqual("fail", evaluate(unsigned))
+
+    def test_signed_live_tank_rail_needs_a_node_that_completes_it(self):
+        # DACS-4 §9.4: a steward-signed, pinned live tank rail is selectable
+        # only when trusted local policy records that the pinned node
+        # completes the handler; the node-gate alone decides each case.
+        incomplete = self.by_name["tank-live-signed-node-incomplete"]
+        completes = self.by_name["tank-live-signed-node-completes"]
+        malformed = self.by_name["tank-live-node-capability-malformed"]
+        for vector in (incomplete, completes, malformed):
+            self.assertEqual("live", vector["rail"]["availability"])
+            self.assertEqual(vector["ctx"]["pinnedRailDigest"], digest(vector["rail"]))
+        self.assertNotIn("nodeCompletedHandlers", incomplete["ctx"]["operatorContext"])
+        self.assertEqual("fail", evaluate(incomplete))
+        self.assertEqual("pass", evaluate(completes))
+        self.assertEqual("error", evaluate(malformed))
+        # The two vectors differ only in the capability list, and listing
+        # another handler does not unlock the tank.
+        self.assertEqual(incomplete["rail"], completes["rail"])
+        wrong = copy.deepcopy(incomplete)
+        wrong["ctx"]["operatorContext"]["nodeCompletedHandlers"] = ["pay-cross-chain-htlc"]
+        self.assertEqual("fail", evaluate(wrong))
+        # Non-production mode does not lift the gate.
+        testing = copy.deepcopy(incomplete)
+        testing["ctx"]["operatorContext"]["production"] = False
+        self.assertEqual("fail", evaluate(testing))
+
+    def test_gated_tank_rails_require_completion_in_every_execution_mode(self):
+        for availability in sorted(GATED):
+            case = self.by_name[
+                "tank-" + availability.replace("_", "-") + "-signed-node-incomplete"
+            ]
+            for production in (True, False):
+                value = copy.deepcopy(case)
+                value["ctx"]["operatorContext"]["production"] = production
+                with self.subTest(availability=availability, production=production):
+                    self.assertTrue(value["ctx"]["operatorPreflightOk"])
+                    self.assertEqual("fail", evaluate(value))
+                    value["ctx"]["operatorContext"]["nodeCompletedHandlers"] = [
+                        "pay-cross-chain-liquidity-tank"
+                    ]
+                    self.assertEqual("pass", evaluate(value))
+                    value["ctx"]["operatorPreflightOk"] = False
+                    self.assertEqual("fail", evaluate(value))
 
     def test_discovery_hint_never_changes_authoritative_result(self):
         for vector in self.data["vectors"]:

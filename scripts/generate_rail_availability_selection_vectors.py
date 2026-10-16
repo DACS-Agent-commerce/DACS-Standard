@@ -61,7 +61,7 @@ def rail_digest(rail: dict) -> str:
     ).hexdigest()
 
 
-def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=False):
+def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=False, fields=None):
     key = Ed25519PrivateKey.from_private_bytes(
         ATTACKER_SEED if attacker else STEWARD_SEED
     )
@@ -90,6 +90,7 @@ def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=Fal
             **({"supersedes": version - 1} if version > 1 else {}),
         },
     }
+    rail.update(fields or {})
     digest = rail_digest(rail)
     rail["signature"] = {
         "algorithm": "ed25519",
@@ -112,6 +113,7 @@ def context(
     later_registry_rail=None,
     production_source="local-operator-policy",
     counterparty_production_hint=None,
+    node_completed_handlers=None,
 ):
     value = {
         "stewardClaim": STEWARD_CLAIM if steward else None,
@@ -130,6 +132,8 @@ def context(
             "source": production_source,
             "production": production,
         }
+        if node_completed_handlers is not None:
+            value["operatorContext"]["nodeCompletedHandlers"] = node_completed_handlers
     if counterparty_production_hint is not None:
         value["counterpartyProductionHint"] = counterparty_production_hint
     if hint is not None:
@@ -159,6 +163,19 @@ def build() -> dict:
     closed = sign_rail("x402:closed-test", "closed_data")
     bilateral = sign_rail("x402:bilateral-test", "bilateral")
     live_evm = sign_rail("x402:failure-test", "live")
+    # DEMOS-MAPPING A.5: the tank rail is unavailable/experimental, so the
+    # fixture signs it mocked; nothing the node returns can make it live.
+    # A steward-signed operational copy is selectable only when trusted local
+    # operator policy records that the pinned node completes the handler.
+    tank_fields = {
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {"kind": "stablecoin-cross-chain", "symbol": "USDC", "decimals": 6},
+        "network": {"kind": "cross-chain", "mechanism": "liquidity-tank"},
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {"sourceChainId": 11155111, "destChainId": 80002},
+    }
+    tank_mocked = sign_rail("cross-chain-liquidity-tank:USDC", "mocked", fields=tank_fields)
+    tank_live = sign_rail("cross-chain-liquidity-tank:USDC", "live", fields=tank_fields)
     vectors = [
         vector("live-signed-pinned", "pass", "live, steward-signed and pinned is selectable", live_x402),
         vector("disabled-signed", "fail", "RAV-R2: disabled cannot start a new session", disabled),
@@ -226,6 +243,39 @@ def build() -> dict:
             hint="failed",
         ),
         vector(
+            "tank-mocked-node-operation-live-hint",
+            "fail",
+            "DEMOS-MAPPING A.5/RAV-R5: the signed tank rail is mocked; an adapter that reports the node's unsigned, incomplete compiled bridge operation as a live hint cannot make it available for production",
+            tank_mocked,
+            hint="live",
+        ),
+        vector(
+            "tank-live-unsigned",
+            "fail",
+            "DEMOS-MAPPING A.5/RAV-R5: an unsigned tank rail claiming live is not authoritative",
+            unsigned_rail(tank_live),
+        ),
+        vector(
+            "tank-live-signed-node-incomplete",
+            "fail",
+            "DEMOS-MAPPING A.5/DACS-4 §9.4: a steward-signed, pinned live tank rail is not selectable while trusted operator policy does not record that the pinned node completes the tank handler",
+            tank_live,
+        ),
+        vector(
+            "tank-live-signed-node-completes",
+            "pass",
+            "DACS-4 §9.4: fixture-only post-condition after a pinned node commit completes signed operations and publishes routes; trusted operator policy records handler completion (no pinned node does today)",
+            tank_live,
+            node_completed_handlers=["pay-cross-chain-liquidity-tank"],
+        ),
+        vector(
+            "tank-live-node-capability-malformed",
+            "error",
+            "the trusted node-completed handler list must be an array of handler names",
+            tank_live,
+            node_completed_handlers="pay-cross-chain-liquidity-tank",
+        ),
+        vector(
             "malformed-rail",
             "error",
             "missing availability and railVersion is malformed",
@@ -239,6 +289,13 @@ def build() -> dict:
             sign_rail("x402:default", "experimental"),
         ),
     ]
+    for availability in ("operator_gated", "closed_data", "bilateral"):
+        rail = sign_rail("cross-chain-liquidity-tank:USDC", availability, fields=tank_fields)
+        vectors.append(vector(
+            "tank-" + availability.replace("_", "-") + "-signed-node-incomplete",
+            "fail", "RAV-R1: operator preflight cannot replace trusted node completion",
+            rail, preflight=True,
+        ))
     return {
         "set": "rail-availability-selection-v0.1",
         "spec": "DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6)",
@@ -251,6 +308,7 @@ def build() -> dict:
             "digest": "sha256(canonical complete unsigned RailDefinition)",
             "signature": "RailSignature.algorithm=ed25519; value is unpadded Base64URL Ed25519(dacs-rail:v1: || lowercase-hex digest)",
             "productionContext": "trusted local-operator-policy input; counterparty and discovery hints are non-authoritative",
+            "nodeCompletedHandlers": "trusted local-operator-policy list of handlers the pinned node completes; required before any operational pay-cross-chain-liquidity-tank availability is selectable (DEMOS-MAPPING A.5)",
             "generator": "scripts/generate_rail_availability_selection_vectors.py",
         },
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),

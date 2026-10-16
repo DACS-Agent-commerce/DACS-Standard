@@ -698,6 +698,26 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_phase_bound_delivery_vectors.py",
         "test": "PhaseBoundDeliveryVectorTests.test_credential_field_vectors_reject_delivery_signature_bypass",
     },
+    "frc1-single-view-fallback-witness": {
+        "file": "tests/test_finality_resolution_context_vectors.py",
+        "test": "FinalityResolutionContextTests.test_frc1_vectors_reject_a_single_view_fallback",
+    },
+    "frc8-closed-response-type-witness": {
+        "file": "tests/test_finality_resolution_context_vectors.py",
+        "test": "FinalityResolutionContextTests.test_unknown_response_version_is_malformed_not_ignored",
+    },
+    "crq4-same-claim-alternatives-or-witness": {
+        "file": "tests/test_claim_requirement_qualification_vectors.py",
+        "test": "ClaimRequirementQualificationVectorTests.test_same_claim_alternatives_are_or_not_corroboration",
+    },
+    "ch9-sdk-compat-legacy-reader-witness": {
+        "file": "tests/test_channel_message_vectors.py",
+        "test": "ChannelMessageVectorTests.test_sdk_compat_legacy_reader_fails_the_committed_corpus",
+    },
+    "fv-named-rejection-guards-witness": {
+        "file": "tests/test_settlement_finality_verification_vectors.py",
+        "test": "SettlementFinalityVerificationVectorTests.test_named_rejections_pass_a_verifier_missing_only_their_guard",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

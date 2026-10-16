@@ -100,7 +100,7 @@ Here's the substrate-to-primitive mapping:
 | **SR-4** Private channel | **L2PS (Layer-2 Privacy Subnets).** Identity-keyed subnets with member-only encrypted messaging, transcript export, optional anchoring. | **Substrate live;** CCI-keyed membership API + structured channel envelopes on the build backlog (DACS-3 Tier 1). |
 | **SR-5** Atomic cross-chain settlement | **Native Bridges / Liquidity Tanks.** Pre-funded pools on source + destination, lock-source/release-destination atomically within a substrate epoch. Accessed via `WorkStep` of context `xm` in `DemosWork`. | **Unavailable/experimental** (DEMOS-MAPPING §A.5): the pinned node's compiled bridge operation is unsigned and its chain parsers return no result, so rail selection must not treat it as live. Intended Phase 1 scope: ETH Sepolia + Polygon Amoy, USDC unidirectional. Phase 2-4 (Solana destination, bidirectional, validator-set co-signing, 15-day emergency recovery) on roadmap. |
 
-Three of the five primitives are live. Two are substrate-live with SDK ergonomics on the backlog. **No primitive is theoretical.**
+Three of the five primitives are live. SR-4 is substrate-live with SDK ergonomics on the backlog. SR-5 is unavailable/experimental at the pinned node (DEMOS-MAPPING §A.5), so cross-chain settlement runs on `pay-cross-chain-htlc` today.
 
 The reference implementation (`agent-commerce-demo`, ~929 LOC) runs an end-to-end DACS-1..DACS-5 session today against the Demos substrate. Real Solana Anchor program + real Base Sepolia EVM HTLC contract for cross-chain settlement. Real DAHR proxy fetches against real authority APIs (GLEIF, FINRA, OFAC). Real Storage Programs holding real signed bundles.
 
@@ -118,7 +118,7 @@ What a builder gets when they build agent commerce on Demos:
 
 **Negotiation that's actually private.** DACS-3's RFQ and sealed-envelope coordination runs over L2PS subnets. Bids stay private before reveal and the general negotiation transcript stays in the subnet (with optional encrypted anchoring). Complete sealed auctions intentionally publish signed commit/reveal records after the respective deadlines so an authenticated candidate-set proof and selection receipt can make omission detectable. The resulting selection-bound agreement commits the exact reproducible winner before settlement.
 
-**Settlement that's atomic, cross-chain.** Buyer pays USDC on Base, seller receives USDC on Solana. One `WorkStep` of context `xm` in a `DemosWork`. The Demos node routes through a Liquidity Tank if available, falls through to HTLC if not. Both produce uniform `SettlementEvidence` records. The agent code is the same call either way.
+**Settlement that's atomic, cross-chain.** Buyer pays USDC on Base, seller receives USDC on Solana. Today this runs on `pay-cross-chain-htlc`. The Liquidity Tank rail is unavailable/experimental (DEMOS-MAPPING §A.5): the SDK's two-step bridge path (the node compiles a `BridgeOperationCompiled`, then `demos.run.bridge.submit(compiled)`) gets an unsigned compiled operation from the pinned node, so no tank route is live. Each rail is pinned separately and never falls through to the other (§9.5.5); both produce uniform `SettlementEvidence` records.
 
 **Audit that survives.** Every session ends with an `AttestationBundle` — co-signed by both parties, anchored at role-specific addresses on Demos. A consumer reading the bundle weeks or months later can dereference every artifact, verify every signature, replay the session. Reputation is keyed per primary identity claim (LEI, ERC-8004 token, DID), not per wallet address — meaning reputation is portable across substrates and key rotations.
 
@@ -174,7 +174,7 @@ A builder reading this document should be skeptical. Three questions worth askin
 
 **Is the standard real, or is it marketing for the chain?** Read the spec. ~95 pages of conformance rules, error classes, threat catalogue, conformance test plan. That's standards-work shape, not marketing-deck shape. The substrate-capability separation (SR-1..5 specified independently of Demos) is the load-bearing test for openness — it's the work we did so other substrates can host conformant DACS implementations when they're ready.
 
-**Is the substrate real, or is it a roadmap?** Run the reference implementation against testnet. Three of five primitives are live in production. The other two are substrate-live with SDK ergonomics in active build (Tier 1 backlog, not "someday"). If any primitive is missing for your use case, we can tell you exactly when it ships.
+**Is the substrate real, or is it a roadmap?** Run the reference implementation against testnet. Three of five primitives are live in production. SR-4 is substrate-live with SDK ergonomics in active build (Tier 1 backlog, not "someday"). SR-5 (Liquidity Tanks) is unavailable/experimental at the pinned node (DEMOS-MAPPING §A.5); HTLC is the cross-chain rail that runs today. If any primitive is missing for your use case, we can tell you exactly when it ships.
 
 **Is the composition with existing standards real, or is it a slide?** Pick one — ERC-8004, x402, AP2, W3C VC, TLSNotary, A2A — and read the corresponding chapter of the spec. Each one has a defined integration: which DACS-2 method, which DACS-4 phase, which DACS-1 claim scheme. The integrations are normative parts of the standard, not afterthoughts.
 

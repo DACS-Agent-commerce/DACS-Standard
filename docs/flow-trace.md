@@ -485,6 +485,8 @@ Notes:
 
 ## 6. Stage 4 — Settle (Liquidity Tank via DemosWork)
 
+> **Status (DEMOS-MAPPING §A.5).** This stage illustrates the intended tank flow; it does not run today. At the pinned Demos node the compiled bridge operation is unsigned, the chain parsers return no result, and the route registry does not exist, so no tank route is live and a conformant orchestrator does not select `pay-cross-chain-liquidity-tank` (DACS-4 §9.4). The SDK path is two steps: the node's native-bridge RPC compiles a `BridgeOperationCompiled`, and the caller submits it with `demos.run.bridge.submit(compiled)`. Cross-chain settlement runs on `pay-cross-chain-htlc` today. Where the text below says the node "auto-routes" through a tank, read it as the intended design.
+
 Settlement runs as a `DemosWork` script with two sequential `WorkStep`s:
 1. an `xm` step that the Demos node auto-routes through the Liquidity Tank infrastructure (buyer pays USDC on Base; tank releases USDC on Solana to the seller),
 2. a follow-up step where the seller signs + anchors the EntitlementRecord and the phase orchestrator signs + anchors the current `DeliveryEvidence` for the delivery phase.
@@ -654,7 +656,7 @@ async function settle(
 ```
 
 Notes:
-- **Liquidity Tank access is implicit, not explicit.** The SDK has no `demos.tank.*` namespace. A cross-chain `xm` WorkStep with a supported source/dest pair routes through a tank. At the SDK level the same call *could* be served by HTLC if tank capacity were exhausted — but the **DACS-4 rail model forbids silent mechanism substitution** (§9.5.5): a pinned `pay-cross-chain-liquidity-tank` rail MUST NOT fall through to HTLC. The produced `txRef.kind` MUST match the pinned rail; a phase whose executed mechanism differs MUST fail (errorClass: permanent). An implementation wanting HTLC fallback expresses it as a distinct pinned rail / phase, not an implicit fallthrough.
+- **Liquidity Tank access is implicit, not explicit.** The SDK has no `demos.tank.*` namespace. In the intended design, a cross-chain `xm` WorkStep with a supported source/dest pair routes through a tank; no tank route is live at the pinned node (DEMOS-MAPPING §A.5). At the SDK level the same call *could* be served by HTLC if tank capacity were exhausted — but the **DACS-4 rail model forbids silent mechanism substitution** (§9.5.5): a pinned `pay-cross-chain-liquidity-tank` rail MUST NOT fall through to HTLC. The produced `txRef.kind` MUST match the pinned rail; a phase whose executed mechanism differs MUST fail (errorClass: permanent). An implementation wanting HTLC fallback expresses it as a distinct pinned rail / phase, not an implicit fallthrough.
 - **Credential-bearing entitlements use the normative binding.** This compact
   example uses the entitlement record itself as the grant. If it instead
   carried `credentialRef`, the current `DeliveryEvidence` would also carry the
@@ -827,7 +829,7 @@ The trace is an honest forward projection of what production DACS-on-Demos code 
 
 **Trace assumption.** `EVM.preparePay(destinationAddress, amount, { destChain, destAsset, sessionRef })` produces a cross-chain payload with destination metadata that the tank reads.
 
-**Reality today.** `preparePay(recipient, amount)` produces a single-chain payment payload. Cross-chain via tank is currently constructed by hand (the buyer constructs a tank-deposit transaction on the source chain, the tank operator handles the dest-side release).
+**Reality today.** `preparePay(recipient, amount)` produces a single-chain payment payload. The SDK's bridge path is two steps: the node's native-bridge RPC compiles a `BridgeOperationCompiled`, and the caller submits it with `demos.run.bridge.submit(compiled)`. At the pinned node that compiled operation is unsigned and the chain parsers return no result (DEMOS-MAPPING §A.5), so there is no working tank path today, by hand or otherwise.
 
 **Gap.** Either:
 - (a) Extend `preparePay` (or add `prepareCrossChainPay`) to take destination metadata and emit a tank-aware payload, OR
@@ -841,7 +843,7 @@ This is on the DACS-4 build backlog ("WorkStep wrapper for `pay-cross-chain-liqu
 
 **Trace assumption.** Tank routes Base USDC → Solana USDC.
 
-**Reality today.** Phase 1 tanks are EVM-only (ETH Sepolia + Polygon Amoy, both EVM, USDC unidirectional). Solana destination is Phase 2-4 work.
+**Reality today.** No tank route is live at the pinned node (DEMOS-MAPPING §A.5). The intended Phase 1 scope is EVM-only (ETH Sepolia + Polygon Amoy, USDC unidirectional). Solana destination is Phase 2-4 work.
 
 **Gap.** Phase 2-4 Liquidity Tank work: Solana destination support, bidirectional flow, consensus `executeBridgeOperations` (validator-set co-signing of tank ops), emergency recovery path.
 
@@ -873,7 +875,7 @@ This is on the DACS-4 build backlog ("WorkStep wrapper for `pay-cross-chain-liqu
 
 **Protocol composes with the SDK where the SDK is complete** (SR-1, SR-2, SR-3). The Identify and Vet stages map onto existing SDK capabilities — identity resolution (`Identities` / `getIdentities`), SIWD auth (`DemosWebAuth`), storage programs (`demos.storagePrograms.read` / `demos.store`), and DAHR (`demos.web2.createDahr` + `startProxy`, which matches the pseudocode verbatim). The exact method names differ from the illustrative calls in the stages above; see the SDK-compatibility note at the top of this document for the verified mapping against SDK 4.0.5.
 
-**The two stages with real SDK gaps are Negotiate (SR-4) and Settle (SR-5).** Both have substrate primitives that exist today (L2PS subnet, Liquidity Tank Phase 1) but lack the SDK-surface ergonomics the protocol assumes. None of the gaps require new protocol design — they're all build-backlog items already tracked (Tier 1 for SR-4 L2PS-CCI work; Phase 2-4 for SR-5 tank expansion).
+**The two stages with real SDK gaps are Negotiate (SR-4) and Settle (SR-5).** SR-4's substrate primitive exists today (L2PS subnet) but lacks the SDK-surface ergonomics the protocol assumes. SR-5's Liquidity Tank is unavailable/experimental at the pinned node: its compiled bridge operation is unsigned (DEMOS-MAPPING §A.5). None of the gaps require new protocol design — they're all build-backlog items already tracked (Tier 1 for SR-4 L2PS-CCI work; Phase 2-4 for SR-5 tank expansion).
 
 **The protocol does not ask the substrate for anything it isn't already on track to provide.** Every gap above is either a documented backlog item or a convenience helper. There is no "the protocol assumes a primitive that doesn't exist and isn't planned" gap.
 

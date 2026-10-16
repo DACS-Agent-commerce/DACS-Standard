@@ -123,7 +123,7 @@ def _zero_terminal_reason(value):
     value["resolverEvidence"]["transactions"][-1]["calldata"]["reason"] = verifier.ZERO_BYTES32
     for item in value["reproductionInputs"]["nativeEventInputs"]:
         if item["eventName"] == "JobCompleted":
-            item["arguments"]["reason"] = verifier.ZERO_BYTES32
+            item["dataArguments"][0] = verifier.ZERO_BYTES32
 
 
 # Runs the verifier's command line with the pure-Python JSON scanner, whose
@@ -254,11 +254,11 @@ GUARD_CASES = {
     "observation-shape": (_signed_by_resolver(drop("reproductionInputs", "nativeEventInputs", 0, "topic0")), ("error", "DRV-3", "native event input is malformed")),
     "observation-field-type": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 0, "blockNumber", "19999500")), ("error", "DRV-3", "native event observation is malformed")),
     "observation-identity-type": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 2, "eventRef", "logIndex", True)), ("error", "DRV-3", "native event input identity is malformed")),
-    "observation-data-type": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 0, "arguments", "expiredAt", 1800007200)), ("error", "DRV-3", "decoded event data does not match the pinned event signature")),
+    "observation-data-type": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 0, "dataArguments", 1, 1800007200)), ("error", "DRV-3", "decoded event data does not match the pinned event signature")),
     "finality-block-hash": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 2, "finalityBlock", "blockHash", "0x" + "cd" * 32)), ("fail", "DRF-8", "finality block identity does not reproduce")),
     "configuration-finality-pending": (_signed_by_resolver(put("reproductionInputs", "nativeEventInputs", 1, "finalityBlock", None)), ("indeterminate", "DRJ-2", "the configuration event has not reached the rail finality depth")),
     "creation-after-funding": (_signed_by_resolver(_creation_after_funding), ("fail", "DRT-4", "native event observations are not one ordered transaction each")),
-    "funding-reference-anchor-kind": (_hooked(terminal=put("fundingEvidenceRef", "anchor", "kind", "https")), ("fail", "DRT-11", "terminal funding evidence reference is not an SR-2 storage-program anchor")),
+    "evaluation-reference-anchor-kind": (_hooked(evaluationRef=put("anchor", "kind", "https")), ("fail", "DRD-2", "evaluation reference is not an SR-2 storage-program anchor")),
     "event-reference-malformed": (_release(put("deliveryBinding", "nativeSubmissionEvent", "submit")), ("error", "DRV-3", "submission event reference is malformed")),
     "event-log-index-negative": (_hooked(job=put("creationEvent", "logIndex", -1)), ("error", "DRV-3", "creation event log index is not a non-negative integer")),
     "event-reference-not-canonical": (_release(put("deliveryBinding", "nativeSubmissionEvent", "chainId", 10)), ("fail", "DRP-9", "submission event reference is not an evm-event on the rail's chain")),
@@ -389,6 +389,9 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             {
                 "DRA-4", "DRA-8", "DRA-9", "DRE-2", "DRF-8", "DRP-6", "DRP-7", "DRP-8", "DRP-9",
                 "DRP-10", "DRP-11", "DRP-12", "DRR-2", "DRR-3",
+                # The fixture source revision, the token and implementation
+                # code, the confirmation-block time, and the rule's anchoring.
+                "DRC-14", "DRJ-11", "DRW-2", "DRW-6", "DRE-8",
             },
         )
         self.assertLessEqual(set(proofs), tagged)
@@ -422,7 +425,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "**`priorTerminals` completeness** (DRD-8, DRL-4, DRT-4)",
             "**Block-scoped log index** (DRD-8, DRL-4, DRT-4)",
             "**Fixture chain and resolver** (DRF-8)",
-            "**Fixture implementation ABI** (DRC-17, DRC-18, DRJ-3, DRJ-4)",
+            "**Fixture implementation ABI** (DRC-17, DRC-18, DRC-20, DRC-21, DRJ-3,",
             "**Replay ledger durability**",
             "**`PriceTerm.unit`** (DRA-10)",
             "**Role and Vet records** (DRA-4, DRA-8, DRA-9)",
@@ -638,26 +641,38 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 self.assertEqual(finding(value)[0], "error")
 
     def test_rail_pins_derive_from_the_fixture_abi(self):
-        """DRC-17: the rail's selectors and topics derive from its signatures; DRC-18 decodes only these."""
+        """DRC-17: each pin's inputs reproduce its signature, which derives its selector or topic0."""
         rail = self._fixture("release")["artifacts"]["railDefinition"]
         params = rail["parameters"]
         for pin in params["entrypoints"]:
             with self.subTest(entrypoint=pin["name"]):
                 self.assertEqual(pin["selector"], verifier.selector_of(pin["signature"]))
-                self.assertEqual(pin["signature"], verifier.FIXTURE_ENTRYPOINTS[pin["name"]][0])
+                types = ",".join(item["type"] for item in pin["inputs"])
+                self.assertEqual(pin["signature"], f"{pin['name']}({types})")
         for pin in params["events"]:
             with self.subTest(event=pin["name"]):
                 self.assertEqual(pin["topic0"], verifier.topic_of(pin["signature"]))
-                self.assertEqual(pin["signature"], verifier.FIXTURE_EVENTS[pin["name"]][0])
-        self.assertLessEqual(set(verifier.CROSSWALK_EVENTS), {pin["name"] for pin in params["events"]})
+                types = ",".join(item["type"] for item in pin["inputs"])
+                self.assertEqual(pin["signature"], f"{pin['name']}({types})")
+                # The canonical ERC-8183 layout: the job ID is the first topic.
+                self.assertEqual(pin["inputs"][0], {"name": "jobId", "type": "uint256", "indexed": True})
+                self.assertLessEqual(sum(item["indexed"] for item in pin["inputs"]), 3)
+        # Exactly the crosswalk events and the one configuration event.
+        self.assertEqual(
+            sorted(pin["name"] for pin in params["events"]),
+            sorted([*verifier.CROSSWALK_EVENTS, verifier.CONFIGURATION_EVENT]),
+        )
         self.assertEqual(params["configurationEvidence"], verifier.CONFIGURATION_EVIDENCE)
-        # Each signature names the decoded values it carries, the job topic first.
-        for name, (signature, names) in {**verifier.FIXTURE_EVENTS}.items():
-            with self.subTest(arity=name):
-                self.assertEqual(signature.count(",") + 1 - (signature.endswith("()")), len(names) + 1)
-        for name, (signature, names) in verifier.FIXTURE_ENTRYPOINTS.items():
-            with self.subTest(arity=name):
-                self.assertEqual(signature.count(",") + 1, len(names))
+        configured = verifier._configuration_pin(params)
+        self.assertEqual(configured["name"], verifier.CONFIGURATION_EVENT)
+        self.assertEqual(configured["inputs"][params["configurationEvidence"]["submissionCutoffInput"]]["type"], "uint256")
+        self.assertEqual(
+            bytes.fromhex(params["configurationEvidence"]["preSubmissionPolicyValue"][2:]).rstrip(b"\0"),
+            b"evaluator-rejection",
+        )
+        # DRC-20: PaymentReleased pays the canonical `provider` input.
+        released = verifier._event_pin(params, "PaymentReleased")
+        self.assertEqual([item["name"] for item in released["inputs"]], ["jobId", "provider", "amount"])
         # The DRC-14 literals, and the rail is signed by the pinned steward.
         for field, literal in verifier.PROFILE_LITERALS.items():
             with self.subTest(literal=field):
@@ -857,12 +872,16 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         artifacts = release["artifacts"]
         create = release["resolverEvidence"]["transactions"][0]
         # DRJ-4: the description is decoded from the createJob calldata.
-        self.assertEqual(create["entrypoint"], verifier.selector_of(verifier.FIXTURE_ENTRYPOINTS["createJob"][0]))
+        self.assertEqual(create["entrypoint"], verifier.selector_of(
+            verifier.abi_signature("createJob", verifier.FIXTURE_ENTRYPOINTS["createJob"])
+        ))
         self.assertEqual(
             create["calldata"]["description"],
             "dacs-x-delivery-remedy:v1:" + artifact_hash(artifacts["agreement"]),
         )
-        self.assertNotIn("description", self._observation(release, "JobCreated")["arguments"])
+        params = artifacts["railDefinition"]["parameters"]
+        created = verifier.decoded_log(self._observation(release, "JobCreated"), verifier._event_pin(params, "JobCreated"))
+        self.assertNotIn("description", created)
         self.assertEqual(
             release["native"]["deliverable"],
             "0x" + artifact_hash(artifacts["delivery"]),
@@ -871,7 +890,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             release["native"]["reason"],
             "0x" + artifact_hash(artifacts["decision"]),
         )
-        self.assertEqual(self._observation(release, "JobCompleted")["arguments"]["reason"], release["native"]["reason"])
+        completed = verifier.decoded_log(self._observation(release, "JobCompleted"), verifier._event_pin(params, "JobCompleted"))
+        self.assertEqual(completed["reason"], release["native"]["reason"])
         self.assertEqual(
             bytes.fromhex(release["canonicalRecords"]["delivery"]["canonicalUtf8Hex"]),
             jcs_canonicalize(
@@ -1018,7 +1038,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
     def test_records_not_supplied_are_indeterminate_unless_contradicted(self):
         """Candidate §9 step 5 and §11.3 cases I1 and I5, with every resolver status as for a full lifecycle."""
         spec = " ".join(SPEC.read_text(encoding="utf-8").split())
-        self.assertIn("**I5** — missing delivery, evaluation, or decision artifact when no contradictory fact is established", spec)
+        self.assertIn("**I5** — missing job reference, funding evidence, delivery, evaluation, or decision artifact when no contradictory fact is established", spec)
         for name, outcome in (
             ("decision-record-not-supplied", ("indeterminate", "DRD-4")),
             ("evaluation-and-decision-records-not-supplied", ("indeterminate", "DRD-4")),
@@ -1252,6 +1272,39 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         )
         identities = {json.dumps(verifier.terminal_identity(item), sort_keys=True) for item in variants}
         self.assertEqual(len(identities), len(variants))
+
+    def test_a_second_distinct_terminal_evidence_record_fails(self):
+        """DRT-16: one terminal transaction reproduces one evidence hash; the decision is part of its identity."""
+        release = self._fixture("release")
+        record = verifier._terminal_record(copy.deepcopy(release))
+        self.assertEqual(record.evidence, artifact_hash(release["artifacts"]["terminal"]))
+        other = record._replace(evidence="00" * 32)
+        self.assertEqual(verifier.terminal_conflict(record, other)[0], "DRT-16")
+        self.assertIsNone(verifier.terminal_conflict(record, record))
+        # A resolver-attested earlier terminal has no evidence hash to compare.
+        self.assertIsNone(verifier.terminal_conflict(record._replace(evidence=None), other))
+        # The same job and event with another decision is another terminal.
+        self.assertEqual(verifier.terminal_conflict(record, record._replace(decision="11" * 32))[0], "DRL-4")
+        # Through the ledger, in either order, the record is `fail`.
+        for seeded_first in (True, False):
+            with self.subTest(seeded_first=seeded_first):
+                ledger = DecisionLedger()
+                if seeded_first:
+                    ledger.record(other)
+                    self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(release), ledger)), ("fail", "DRT-16"))
+                else:
+                    self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(release), ledger)), ("pass", "DRV-7"))
+                    ledger.record(other)
+                    self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(release), ledger)), ("fail", "DRT-16"))
+
+    def test_claim_parameters_sort_by_decoded_key(self):
+        """CORE CF-2(c): keys sort before percent-encoding, and only reserved characters are escaped."""
+        key = "did:demos:agent:" + "ab" * 32
+        self.assertIsNotNone(verifier.parse_claim(key + "?0=2&%3F=1"))
+        self.assertIsNone(verifier.parse_claim(key + "?%3F=1&0=2"))
+        self.assertIsNone(verifier.parse_claim(key + "?%41=1"))
+        self.assertIsNone(verifier.parse_claim(key + "?a=%FF"))
+        self.assertIsNotNone(verifier.parse_claim(key + "?a=%3A"))
 
     def test_a_batch_revises_every_earlier_verdict_it_changes(self):
         release = self._fixture("release")
@@ -1680,11 +1733,11 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "creation-finality-pending": ("indeterminate", "DRJ-2"),
             "funding-finality-pending": ("indeterminate", "DRF-6"),
             "submission-finality-pending": ("indeterminate", "DRP-9"),
-            "funding-events-empty": ("fail", "DRF-3"),
+            "funding-events-empty": ("fail", "DRW-7"),
             "terminal-finality-pending": ("indeterminate", "DRT-8"),
-            "terminal-events-empty": ("fail", "DRT-4"),
-            "terminal-events-state-log-only": ("fail", "DRT-4"),
-            "terminal-events-extra-log": ("fail", "DRT-4"),
+            "terminal-events-empty": ("fail", "DRW-7"),
+            "terminal-events-state-log-only": ("fail", "DRW-7"),
+            "terminal-events-extra-log": ("fail", "DRW-7"),
             "funding-finality-unregistered-member": ("error", "DRV-3"),
             "funding-finality-depth-below-rail-profile": ("fail", "DRW-6"),
             "funding-finality-predates-event-block": ("fail", "DRW-6"),
@@ -1839,7 +1892,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "rejected-refund-erases-seller-fault": "DRT-14",
             "terminal-event-payload-mismatch": "DRT-4",
             "funding-finality-block-preimage-mismatch": "DRF-8",
-            "creation-event-cutoff-mismatch": "DRJ-3",
+            "creation-event-cutoff-mismatch": "DRC-21",
             "create-calldata-differs-from-events": "DRV-6",
         }
         for name, rule in required.items():
@@ -2095,8 +2148,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             ("attestation-ref-signer-bad-scheme", ("error", "DRV-3")),
             ("attestation-ref-signer-unsorted-parameters", ("error", "DRV-3")),
             ("attestation-ref-signer-other-party", ("fail", "DRV-6")),
-            ("decision-ref-signer-buyer", ("fail", "DRV-6")),
-            ("funding-ref-signer-buyer", ("fail", "DRV-6")),
+            ("decision-ref-signer-buyer", ("fail", "DRW-7")),
+            ("funding-ref-signer-buyer", ("fail", "DRW-7")),
             ("flat-agreement-reference", ("error", "DRV-3")),
             ("decision-reference-anchor-kind-unregistered", ("error", "DRV-3")),
         ):
@@ -2375,7 +2428,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         # their verdicts.
         deep, deeper = self._fixture("rejected-refund"), self._fixture("release")
         deep["artifacts"]["bilateralAgreement"]["extra"] = _nested(900)
-        deeper["reproductionInputs"]["nativeEventInputs"][0]["arguments"]["extra"] = _nested(100_000)
+        deeper["reproductionInputs"]["nativeEventInputs"][0]["dataArguments"].append(_nested(100_000))
         batch = evaluate_lifecycles(
             [self._fixture("release"), deep, deeper, self._fixture("expired-pre")], DecisionLedger()
         )
@@ -2417,6 +2470,39 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             with self.subTest(pack=label):
                 self.assertEqual(check({"deep": _nested(limit)}), [f"{label}: {too_deep}"])
                 self.assertEqual(check({"deep": _nested(limit - 1)}), [f"{label} is missing required top-level fields"])
+
+    def test_spec_pins_follow_the_checked_against_commit(self):
+        """DRG-2: a spec/ edit that does not re-pin the candidate keeps the pack valid; a candidate edit does not."""
+        pins = self.vector_pack["sourcePins"]["dacs"]["documents"]
+        original = Path.read_bytes
+
+        def edited(path, target):
+            def read(self_path):
+                content = original(self_path)
+                return content + b"\n" if self_path == verifier.ROOT / target else content
+            return read
+
+        with unittest.mock.patch.object(Path, "read_bytes", edited(Path, "spec/CORE.md")):
+            self.assertEqual(verifier.document_pins(), pins)
+        with unittest.mock.patch.object(Path, "read_bytes", edited(Path, verifier.PINNED_DOCUMENTS[0])):
+            changed = verifier.document_pins()
+        self.assertEqual(
+            [path for path in verifier.PINNED_DOCUMENTS if changed[path] != pins[path]], [verifier.PINNED_DOCUMENTS[0]],
+        )
+        # Each spec/ pin is that document at the Checked-against commit.
+        for path in verifier.PINNED_DOCUMENTS[1:]:
+            with self.subTest(path=path):
+                shown = subprocess.run(
+                    ["git", "-C", str(verifier.ROOT), "show", f"{verifier.DACS_CHECKED_AGAINST}:{path}"],
+                    capture_output=True, check=True,
+                ).stdout
+                self.assertEqual(pins[path], hashlib.sha256(shown).hexdigest())
+        # A clone without that commit cannot check the pins.
+        with unittest.mock.patch.object(verifier, "_blob_at", return_value=None):
+            self.assertEqual(
+                verify_vector_pack(self.vector_pack),
+                [f"cannot read spec/ at the Checked-against commit {verifier.DACS_CHECKED_AGAINST[:7]}; fetch full history"],
+            )
 
     def test_vector_pack_source_pins_are_the_verifiers(self):
         """A lifecycle pack written against other sources or other DACS text is refused before any vector runs."""

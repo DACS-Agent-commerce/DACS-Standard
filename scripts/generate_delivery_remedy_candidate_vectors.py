@@ -58,6 +58,9 @@ SUBSTRATE_FAILURE_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX7X"
 NO_FAULT_REJECTION_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX7Y"
 DISPUTE_RELEASE_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX7Z"
 POST_SUBMISSION_DISPUTE_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX80"
+# A later expiry recovery is another terminal observation, so it is another
+# job's: one terminal transaction reproduces one evidence hash (DRT-16).
+LATE_RECOVERY_JOB = "01J8ME0SXKQ4T9V2RC5HJ6WX81"
 NATIVE_JOB_IDS = {
     JOB_A: "1",
     JOB_B: "2",
@@ -77,6 +80,7 @@ NATIVE_JOB_IDS = {
     NO_FAULT_REJECTION_JOB: "17",
     DISPUTE_RELEASE_JOB: "18",
     POST_SUBMISSION_DISPUTE_JOB: "19",
+    LATE_RECOVERY_JOB: "20",
 }
 BUYER = "did:demos:agent:" + "11" * 32
 SELLER = "did:demos:agent:" + "22" * 32
@@ -106,6 +110,8 @@ STEWARD = "did:demos:agent:" + "98" * 32
 STEWARD_SEED = hashlib.sha256(b"DACS #356 candidate rail steward key v1").digest()
 CHAIN_ID = 8453
 CONTRACT = "0x" + "81" * 20
+# An implementation a delegating escrow could name (DRJ-11).
+IMPLEMENTATION = "0x" + "c8" * 20
 TOKEN = "0x" + "55" * 20
 # A synthetic token symbol: DRC-8 excludes the pausable USDC assets.
 TOKEN_SYMBOL = "FXT"
@@ -375,18 +381,37 @@ def event_input(
     event_name: str,
     arguments: dict[str, Any],
 ) -> dict[str, Any]:
-    """One resolver observation, decoded under the fixture ABI, at the rail's finality depth."""
+    """One resolver observation, decoded under the fixture ABI's layout, at the rail's finality depth.
+
+    ``arguments`` names every input but the job ID, which is the log's
+    first topic.
+    """
+    inputs = verifier.FIXTURE_EVENTS[event_name]
+    values = {"jobId": job["nativeJobId"], **arguments}
     return {
         "eventRef": copy.deepcopy(ref_value),
         "txHashPreimageUtf8": tx_preimage,
         **block(block_number),
         "contractAddress": job["contractAddress"],
-        "nativeJobId": job["nativeJobId"],
         "eventName": event_name,
-        "topic0": verifier.topic_of(verifier.FIXTURE_EVENTS[event_name][0]),
-        "arguments": arguments,
+        "topic0": verifier.topic_of(verifier.abi_signature(event_name, inputs)),
+        "indexedArguments": [values[name] for name, _type, indexed in inputs if indexed],
+        "dataArguments": [values[name] for name, _type, indexed in inputs if not indexed],
         "finalityBlock": block(block_number + FINALITY_BLOCKS - 1),
     }
+
+
+def argument_path(event_name: str, name: str) -> list[Any]:
+    """Where an observation carries one decoded input: its topic or data position."""
+    inputs = verifier.FIXTURE_EVENTS[event_name]
+    indexed = inputs[[item[0] for item in inputs].index(name)][2]
+    same_layout = [item[0] for item in inputs if item[2] == indexed]
+    return ["indexedArguments" if indexed else "dataArguments", same_layout.index(name)]
+
+
+def policy_word(policy: str) -> str:
+    """The configuration event's 32-byte policy word for ``policy`` (DRC-21)."""
+    return "0x" + policy.encode("ascii").ljust(32, b"\0").hex()
 
 
 def finality_time_ms(block_number: int) -> int:
@@ -418,7 +443,7 @@ def transaction(
     """The resolver's record of one lifecycle transaction (DRL-10)."""
     return {
         "txHash": event(tx_preimage, 0)["txHash"],
-        "entrypoint": verifier.selector_of(verifier.FIXTURE_ENTRYPOINTS[entrypoint][0]),
+        "entrypoint": verifier.selector_of(verifier.abi_signature(entrypoint, verifier.FIXTURE_ENTRYPOINTS[entrypoint])),
         "calldata": calldata,
         "nativeCaller": caller,
         "outerSubmitter": caller,
@@ -457,14 +482,8 @@ def rail_body() -> dict[str, Any]:
         "parameters": {
             "canonicalErcRevision": "ethereum/ERCs@a078cab5cc8e9581c15f76c091ed96eed28f02f7",
             "implementationRevision": IMPLEMENTATION_REVISION,
-            "entrypoints": [
-                {"name": name, "signature": signature, "selector": verifier.selector_of(signature)}
-                for name, (signature, _names) in verifier.FIXTURE_ENTRYPOINTS.items()
-            ],
-            "events": [
-                {"name": name, "signature": signature, "topic0": verifier.topic_of(signature)}
-                for name, (signature, _names) in verifier.FIXTURE_EVENTS.items()
-            ],
+            "entrypoints": verifier.entrypoint_pins(),
+            "events": verifier.event_pins(),
             "configurationEvidence": dict(verifier.CONFIGURATION_EVIDENCE),
             "nativeStatusMap": [
                 {"nativeValue": value, "nativeStatus": status}
@@ -940,7 +959,7 @@ def make_base(
             event(creation_preimage, 1), creation_preimage, job, CREATION_BLOCK, "JobConfigured",
             {
                 "submissionCutoff": str(agreement["submissionCutoffSec"]),
-                "preSubmissionRefundPolicy": agreement["preSubmissionRefundPolicy"],
+                "preSubmissionRefundPolicy": policy_word(agreement["preSubmissionRefundPolicy"]),
             },
         ),
         event_input(
@@ -975,7 +994,7 @@ def make_base(
         }, accounts["seller"], "Funded", "Submitted"))
     prior = "Submitted" if delivered else "Funded"
     transfer_arguments = (
-        {"recipient": terminal["recipient"], "amount": terminal["amountBaseUnits"]}
+        {"provider": terminal["recipient"], "amount": terminal["amountBaseUnits"]}
         if transfer_name == "PaymentReleased"
         else {"client": terminal["recipient"], "amount": terminal["amountBaseUnits"]}
     )
@@ -1169,6 +1188,11 @@ def _register_aliases() -> dict[str, str]:
         # DRW-5: one EVM account, two letter cases.
         f"cci-xm:evm:{CHAIN_ID}:0x" + "ab" * 20: "buyer",
         f"cci-xm:evm:{CHAIN_ID}:0x" + "AB" * 20: "buyer",
+        # DACS-1 PB-2: spellings outside the profile of that one account.
+        f"cci-xm:evm:0{CHAIN_ID}:0x" + "ab" * 20: "buyer",
+        f"cci-xm:EVM:{CHAIN_ID}:0x" + "ab" * 20: "buyer",
+        # DACS-1 §6.3.1: an NFD identifier is not the NFC claim it decomposes.
+        "did:web:café.example": "buyer",
     }
     ALIAS_KEY_ROLES.update(aliases)
     return aliases
@@ -1193,6 +1217,9 @@ def build_vector_pack() -> dict[str, Any]:
     scheme_case_buyer = "DID:demos:agent:" + "11" * 32
     evm_buyer = f"cci-xm:evm:{CHAIN_ID}:0x" + "ab" * 20
     evm_buyer_upper = f"cci-xm:evm:{CHAIN_ID}:0x" + "AB" * 20
+    evm_buyer_leading_zero = f"cci-xm:evm:0{CHAIN_ID}:0x" + "ab" * 20
+    evm_family_upper = f"cci-xm:EVM:{CHAIN_ID}:0x" + "ab" * 20
+    nfd_claim = "did:web:café.example"
 
     def with_keys(*claims_and_roles: tuple[str, str]) -> Callable[[Any], None]:
         """A fixture hook that publishes extra claims' keys and seeds."""
@@ -1235,7 +1262,7 @@ def build_vector_pack() -> dict[str, Any]:
         "rejected-refund-no-fault": make_base("rejected-refund", NO_FAULT_REJECTION_JOB, classification="no-fault"),
         "dispute-release": make_base("release", DISPUTE_RELEASE_JOB, basis="dispute"),
         "post-submission-dispute-refund": make_base("rejected-refund", POST_SUBMISSION_DISPUTE_JOB, basis="dispute"),
-        "dreb-15-recovery-after-deadline": make_base("expired-pre", terminal_offset=1),
+        "dreb-15-recovery-after-deadline": make_base("expired-pre", LATE_RECOVERY_JOB, terminal_offset=1),
         "dreb-15-pre-submission-recovery-early": make_base("expired-pre", terminal_offset=-1),
         "dreb-15-post-submission-recovery-early": make_base("expired-post", terminal_offset=-1),
         "native-submission-at-cutoff": make_base(
@@ -1650,11 +1677,16 @@ def build_vector_pack() -> dict[str, Any]:
         return next(i for i, item in enumerate(observations) if item["eventName"] == event_name)
 
     def observation(fixture_name: str, event_name: str, *path: Any, value: Any) -> list[dict[str, Any]]:
+        """Replace one observation member; `"arguments", name` names a decoded input."""
+        if path[:1] == ("arguments",):
+            path = (*argument_path(event_name, path[1]), *path[2:])
         return [{
             "op": "replace",
             "path": ["reproductionInputs", "nativeEventInputs", index_of(fixture_name, event_name), *path],
             "value": value,
         }]
+
+    funded_log = fixtures["release"]["reproductionInputs"]["nativeEventInputs"][index_of("release", "JobFunded")]
 
     def tx_record(fixture_name: str, position: int, *path: Any, value: Any) -> list[dict[str, Any]]:
         transactions = fixtures[fixture_name]["resolverEvidence"]["transactions"]
@@ -1732,12 +1764,12 @@ def build_vector_pack() -> dict[str, Any]:
         "DRA-1", "DRA-2", "DRA-3", "DRA-5", "DRA-6", "DRA-7", "DRA-10", "DRA-11", "DRA-13",
         "DRA-15", "DRA-17", "DRA-18", "DRA-19", "DRA-20", "DRA-21", "DRA-22",
         "DRR-1", "DRR-4", "DRR-5", "DRR-6", "DRR-7", "DRR-8",
-        "DRC-14", "DRC-16", "DRC-17", "DRC-18",
-        "DRW-1", "DRW-2", "DRW-3", "DRW-4", "DRW-6",
+        "DRC-16", "DRC-17", "DRC-18", "DRC-20", "DRC-21",
+        "DRW-1", "DRW-3", "DRW-4", "DRW-7",
         "DRL-1", "DRL-2", "DRL-3", "DRL-4", "DRL-7", "DRL-10", "DRL-11", "DRL-12",
-        "DRJ-1", "DRJ-2", "DRJ-3", "DRJ-4", "DRJ-5", "DRJ-7", "DRJ-8", "DRJ-10", "DRJ-11",
+        "DRJ-1", "DRJ-2", "DRJ-3", "DRJ-4", "DRJ-5", "DRJ-7", "DRJ-8", "DRJ-10",
         "DRF-1", "DRF-2", "DRF-3", "DRF-4", "DRF-5", "DRF-6",
-        "DRE-8", "DRE-9", "DRAA-1", "DRAA-2",
+        "DRE-9", "DRAA-1", "DRAA-2",
         "DREB-1", "DREB-2", "DREB-3", "DREB-4", "DREB-5", "DREB-6", "DREB-7", "DREB-8",
         "DREB-9", "DREB-10", "DREB-11", "DREB-12", "DREB-13", "DREB-14", "DREB-15", "DREB-23",
         "DRT-4", "DRT-7", "DRT-8", "DRT-10", "DRT-11", "DRT-12", "DRT-14", "DRT-15",
@@ -1769,7 +1801,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("expiry-before-submission", "expired-pre", "pass", "DRV-7", "pre-submission expiry refunds without a decision or delivery reference (§11.1 P3)", rules=expiry_pass_rules),
         vector("expiry-after-submission-grace", "expired-post", "pass", "DRV-7", "post-submission expiry refunds at the evaluation deadline without inventing a decision (§11.1 P4)", rules=expiry_pass_rules + ["DRL-6"]),
         vector("dreb-15-recovery-after-deadline", "dreb-15-recovery-after-deadline", "pass", "DRV-7", "DREB-15: expiry recovery after the evaluation deadline remains valid", rules=expiry_pass_rules),
-        vector("drd-8-same-terminal-again", "release", "pass", "DRV-7", "DRD-8, DRL-4, DRT-16: verifying the same terminal again reproduces the same evidence and verdict (§11.1 P8)", rules=["DRD-8", "DRL-4", "DRT-16", "DRV-7", "DRW-6"], evaluated_with=["release-complete-budget"]),
+        vector("drd-8-same-terminal-again", "release", "pass", "DRV-7", "DRD-8, DRL-4, DRT-16: verifying the same terminal again reproduces the same evidence and verdict (§11.1 P8)", rules=["DRD-8", "DRL-4", "DRT-16", "DRV-7", "DRW-7"], evaluated_with=["release-complete-budget"]),
         vector("native-job-id-zero", "native-job-id-zero", "pass", "DRV-7", "DRJ-1: native job 0 is minimal unsigned decimal text and names a job", rules=["DRJ-1", "DRV-7"]),
         vector("rejected-refund-buyer-fault", "rejected-refund-buyer-fault", "pass", "DRV-7", "DRT-14: a rejected refund with a buyer-fault finding projects buyer failed-perm, seller failed-counterparty (§11.1 P10)", rules=rejection_pass_rules + ["DRX-5"]),
         vector("rejected-refund-substrate-failure", "rejected-refund-substrate-failure", "pass", "DRV-7", "DRT-14: a rejected refund with a substrate-failure finding projects failed-substrate for both copies (§11.1 P10)", rules=rejection_pass_rules + ["DRX-6"]),
@@ -1979,11 +2011,11 @@ def build_vector_pack() -> dict[str, Any]:
         vector("creation-finality-pending", "release", "indeterminate", "DRJ-2", "an under-confirmed creation event cannot establish the native job", authenticated("release", observation("release", "JobCreated", "finalityBlock", value=None))),
         vector("funding-finality-pending", "funding-finality-pending", "indeterminate", "DRF-6", "under-confirmed funding-event evidence cannot unlock delivery"),
         vector("submission-finality-pending", "release", "indeterminate", "DRP-9", "an under-confirmed submission event cannot bind the delivery to the native job", authenticated("release", observation("release", "JobSubmitted", "finalityBlock", value=None))),
-        vector("funding-events-empty", "funding-events-empty", "fail", "DRF-3", "funding requires exactly one authenticated funding event"),
+        vector("funding-events-empty", "funding-events-empty", "fail", "DRW-7", "funding evidence references exactly its transition's one funding event", rules=["DRF-3", "DRW-7"]),
         vector("terminal-finality-pending", "terminal-finality-pending", "indeterminate", "DRT-8", "under-confirmed terminal-event evidence cannot establish disposition"),
-        vector("terminal-events-empty", "terminal-events-empty", "fail", "DRT-4", "terminal disposition requires the crosswalk's terminal event set"),
-        vector("terminal-events-state-log-only", "terminal-events-state-log-only", "fail", "DRT-4", "a release is the JobCompleted and PaymentReleased logs, not the state log alone (candidate section 4.1)"),
-        vector("terminal-events-extra-log", "terminal-events-extra-log", "fail", "DRT-4", "the terminal event set is exactly the crosswalk's logs, with no further one"),
+        vector("terminal-events-empty", "terminal-events-empty", "fail", "DRW-7", "terminal evidence references exactly the crosswalk's terminal event set", rules=["DRT-4", "DRW-7"]),
+        vector("terminal-events-state-log-only", "terminal-events-state-log-only", "fail", "DRW-7", "a release is the JobCompleted and PaymentReleased logs, not the state log alone (candidate section 4.1)", rules=["DRT-4", "DRW-7"]),
+        vector("terminal-events-extra-log", "terminal-events-extra-log", "fail", "DRW-7", "the terminal event set is exactly the crosswalk's logs, with no further one", rules=["DRT-4", "DRW-7"]),
         vector("funding-finality-unregistered-member", "funding-finality-unregistered-member", "error", "DRV-3", "a signed funding finality record keeps the exact DACS-4 shape"),
         vector("funding-finality-depth-below-rail-profile", "funding-finality-depth-below-profile", "fail", "DRW-6", "a signed funding finality record must use the rail finality depth", rules=["DRF-6", "DRW-6"]),
         vector("funding-finality-predates-event-block", "funding-finality-predates-event", "fail", "DRW-6", "funding finality is the confirmation-depth block's time, not before it", rules=["DRF-6", "DRW-6"]),
@@ -2063,8 +2095,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("native-event-kind-substitution", "release", "fail", "DRT-4", "event observations retain the exact EvmEventRef discriminator", authenticated("release", observation("release", "JobCompleted", "eventRef", "kind", value="transaction"))),
         vector("native-event-chain-substitution", "release", "fail", "DRT-4", "event observations retain the selected rail chain", authenticated("release", observation("release", "JobCompleted", "eventRef", "chainId", value=10))),
         vector("native-event-name-substitution", "release", "fail", "DRT-4", "each observation carries its lifecycle event name", authenticated("release", observation("release", "JobCreated", "eventName", value="JobOpened"))),
-        vector("native-event-targets-another-job", "release", "fail", "DRT-4", "every observation targets the escrow job's contract and native job", authenticated("release", observation("release", "JobFunded", "nativeJobId", value="99"))),
-        vector("creation-event-job-topic-mismatch", "release", "fail", "DRJ-1", "the creation event's job topic is numerically the job's nativeJobId", authenticated("release", observation("release", "JobCreated", "nativeJobId", value="99"))),
+        vector("native-event-targets-another-job", "release", "fail", "DRT-4", "every observation targets the escrow job's contract and native job", authenticated("release", observation("release", "JobFunded", "arguments", "jobId", value="99"))),
+        vector("creation-event-job-topic-mismatch", "release", "fail", "DRJ-1", "the creation event's job topic is numerically the job's nativeJobId", authenticated("release", observation("release", "JobCreated", "arguments", "jobId", value="99"))),
         vector("native-events-out-of-order", "release", "fail", "DRF-8", "authenticated block times follow the block order", authenticated("release", [
             {"op": "replace", "path": ["reproductionInputs", "nativeEventInputs", index_of("release", "JobCompleted"), *path], "value": block_value}
             for path, block_value in (
@@ -2078,15 +2110,16 @@ def build_vector_pack() -> dict[str, Any]:
         vector("funding-time-caller-substitution", "release", "fail", "DRA-9", "a caller fundedAt value cannot replace the authenticated funding-event block timestamp", [{"op": "replace", "path": ["native", "fundedAtSec"], "value": FUNDING_TIME + 1}]),
         vector("submitted-before-cutoff-claim-substitution", "release", "fail", "DRT-12", "submission classification derives from the authenticated prior native status", [{"op": "replace", "path": ["submittedBeforeCutoff"], "value": False}]),
         vector("creation-event-client-mismatch", "release", "fail", "DRJ-3", "the authenticated creation event's client is the buyer's account", authenticated("release", observation("release", "JobCreated", "arguments", "client", value="0x" + "66" * 20))),
-        vector("creation-event-cutoff-mismatch", "release", "fail", "DRJ-3", "the authenticated configuration event carries the signed cutoff", authenticated("release", observation("release", "JobConfigured", "arguments", "submissionCutoff", value=str(SUBMISSION_CUTOFF_SEC + 1))), rules=["DRJ-3", "DREB-13"]),
-        vector("creation-event-policy-mismatch", "release", "fail", "DRJ-3", "the authenticated configuration event carries the signed pre-submission policy", authenticated("release", observation("release", "JobConfigured", "arguments", "preSubmissionRefundPolicy", value="expiry-only"))),
+        vector("creation-event-cutoff-mismatch", "release", "fail", "DRC-21", "the authenticated configuration event carries the signed cutoff at its pinned input", authenticated("release", observation("release", "JobConfigured", "arguments", "submissionCutoff", value=str(SUBMISSION_CUTOFF_SEC + 1))), rules=["DRC-21", "DRJ-3", "DREB-13"]),
+        vector("creation-event-policy-mismatch", "release", "fail", "DRC-21", "the authenticated configuration event carries the pinned evaluator-rejection policy word", authenticated("release", observation("release", "JobConfigured", "arguments", "preSubmissionRefundPolicy", value=policy_word("expiry-only"))), rules=["DRC-21", "DRJ-3"]),
+        vector("event-log-layout-mismatch", "release", "fail", "DRC-18", "a log whose topics and data do not fit the pinned indexed layout is not decoded under another (section 11.2 R31)", authenticated("release", observation("release", "JobFunded", "indexedArguments", value=funded_log["indexedArguments"][:1]) + observation("release", "JobFunded", "dataArguments", value=funded_log["indexedArguments"][1:] + funded_log["dataArguments"]))),
         vector("creation-event-hook-not-zero", "release", "fail", "DRJ-3", "the job's hook is the zero address the rail pins (DRC-7)", authenticated("release", observation("release", "JobCreated", "arguments", "hook", value="0x" + "c4" * 20)), rules=["DRC-7", "DRJ-3"]),
         vector("create-calldata-differs-from-events", "release", "fail", "DRV-6", "the authenticated createJob calldata contradicts the creation events it emitted", authenticated("release", tx_record("release", 0, "calldata", "expiredAt", value=str(EVALUATION_DEADLINE_SEC + 1)))),
         vector("funding-event-amount-mismatch", "release", "fail", "DRF-3", "the authenticated funding event must lock the complete budget", authenticated("release", observation("release", "JobFunded", "arguments", "amount", value="999999"))),
         vector("terminal-event-payload-mismatch", "release", "fail", "DRT-4", "the transfer log must pay the complete budget", authenticated("release", observation("release", "PaymentReleased", "arguments", "amount", value="999999"))),
         # The orchestrator-signed terminal evidence still names the seller; only
         # the authenticated transfer log shows the budget went elsewhere.
-        vector("drt-10-orchestrator-signature-not-chain-evidence", "release", "fail", "DRT-4", "a valid orchestrator signature on terminal evidence does not stand in for the chain log it contradicts", authenticated("release", observation("release", "PaymentReleased", "arguments", "recipient", value=BUYER_ACCOUNT)), rules=["DRJ-8", "DRT-4", "DRT-10", "DRV-4"]),
+        vector("drt-10-orchestrator-signature-not-chain-evidence", "release", "fail", "DRT-4", "a valid orchestrator signature on terminal evidence does not stand in for the chain log it contradicts", authenticated("release", observation("release", "PaymentReleased", "arguments", "provider", value=BUYER_ACCOUNT)), rules=["DRJ-8", "DRT-4", "DRT-10", "DRV-4"]),
         vector("funding-finality-block-preimage-mismatch", "release", "fail", "DRF-8", "the funding block identity must reproduce from committed input", authenticated("release", observation("release", "JobFunded", "blockHashPreimageUtf8", value="substituted block"))),
         vector("funding-block-hash-mismatch", "release", "fail", "DRF-8", "the funding block hash must reproduce from its preimage", authenticated("release", observation("release", "JobFunded", "blockHash", value="0x" + "cd" * 32))),
         # DRJ, DRAA: identifiers, job, and code.
@@ -2107,6 +2140,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("drj-5-escrow-code-changed", "drj-5-escrow-code-changed", "fail", "DRJ-5", "the authenticated escrow code at every action block is the pinned code", rules=["DRJ-5", "DRJ-7"]),
         vector("drj-11-token-code-changed", "drj-11-token-code-changed", "fail", "DRJ-11", "the payment token's authenticated code hashes to its pin (§11.2 R10)", rules=["DRC-8", "DRJ-11"]),
         vector("drj-11-unpinned-implementation", "drj-11-unpinned-implementation", "fail", "DRJ-11", "a delegating escrow needs both implementation pins (§11.2 R10)"),
+        vector("drj-11-delegating-without-implementation-hash", "drj-11-delegating-without-implementation-hash", "fail", "DRJ-11", "a pinned implementation address without its code hash is not both pins (section 11.2 R10)"),
+        vector("drj-11-delegating-implementation-unverified", "drj-11-delegating-implementation-unverified", "indeterminate", "DRJ-11", "the resolver attests no implementation code, so a delegating escrow stays unverified (section 11.3 I4)", rules=["DRJ-11"]),
         vector("drv-4-job-overlay-hash", "drv-4-job-overlay-hash", "fail", "DRV-4", "a signed escrow job cannot bind another agreement overlay"),
         vector("drf-1-funding-overlay-hash", "drf-1-funding-overlay-hash", "fail", "DRF-1", "funding evidence must bind the exact agreement overlay"),
         vector("dra-1-bilateral-job", "dra-1-bilateral-job", "fail", "DRA-1", "the bilateral agreement must be the one for the overlay's job"),
@@ -2143,6 +2178,45 @@ def build_vector_pack() -> dict[str, Any]:
         for pin in rail_body()["parameters"]["events"]
     ]
     reference_signature = "createJob(address,address,uint256,string,address)"
+    reference_inputs = [
+        {"name": name, "type": abi_type}
+        for name, abi_type in (
+            ("provider", "address"), ("evaluator", "address"), ("expiredAt", "uint256"),
+            ("description", "string"), ("hook", "address"),
+        )
+    ]
+    provider_set = (("jobId", "uint256", True), ("provider", "address", True))
+    provider_set_pin = {
+        "name": "ProviderSet",
+        "signature": verifier.abi_signature("ProviderSet", provider_set),
+        "topic0": verifier.topic_of(verifier.abi_signature("ProviderSet", provider_set)),
+        "inputs": [{"name": name, "type": abi_type, "indexed": indexed} for name, abi_type, indexed in provider_set],
+    }
+
+    def event_pin_input(event_name: str, index: int, field: str, value: Any) -> Callable[[Any], None]:
+        """A rail hook that edits one input of one event pin, leaving its signature as pinned."""
+        def apply(body: Any) -> None:
+            pin = next(item for item in body["parameters"]["events"] if item["name"] == event_name)
+            pin["inputs"][index][field] = value
+        return apply
+
+    def entrypoint_type_alias(body: Any) -> None:
+        """Spell createJob's `expiredAt` as the alias `uint`, with a signature and selector that agree."""
+        pin = body["parameters"]["entrypoints"][0]
+        pin["inputs"][2]["type"] = "uint"
+        pin["signature"] = verifier.abi_signature(pin["name"], tuple((item["name"], item["type"]) for item in pin["inputs"]))
+        pin["selector"] = verifier.selector_of(pin["signature"])
+
+    def configuration_input(index: int, abi_type: str) -> Callable[[Any], None]:
+        """A rail hook that re-types one configuration-event input and re-derives its pins."""
+        def apply(body: Any) -> None:
+            params = body["parameters"]
+            pin = next(item for item in params["events"] if item["name"] == verifier.CONFIGURATION_EVENT)
+            pin["inputs"][index]["type"] = abi_type
+            pin["signature"] = verifier.abi_signature(pin["name"], tuple((item["name"], item["type"]) for item in pin["inputs"]))
+            pin["topic0"] = verifier.topic_of(pin["signature"])
+            params["configurationEvidence"]["eventTopic0"] = pin["topic0"]
+        return apply
     fixtures.update({
         "overlay-version-2": make_base("release", hooks={"agreement": put("deliveryOrRemedyAgreementVersion", "2")}),
         "bilateral-version-2": make_base("release", hooks={"bilateral": put("payeeBoundAgreementVersion", "2")}),
@@ -2165,10 +2239,13 @@ def build_vector_pack() -> dict[str, Any]:
         "rail-entrypoint-selector-wrong": make_base("release", hooks={"rail": rail_param("entrypoints", 0, "selector", "0x00000000")}),
         "rail-event-missing": make_base("release", hooks={"rail": lambda body: body["parameters"]["events"].pop()}),
         "rail-event-topic-wrong": make_base("release", hooks={"rail": rail_param("events", other_events)}),
-        "rail-configuration-event-unpinned": make_base("release", hooks={"rail": rail_param("configurationEvidence", "event", "JobDeadlinesSet")}),
+        "rail-configuration-event-unpinned": make_base("release", hooks={"rail": rail_param(
+            "configurationEvidence", "eventTopic0", verifier.topic_of("JobDeadlinesSet(uint256,uint256)"),
+        )}),
         "rail-status-map-incomplete": make_base("release", hooks={"rail": lambda body: body["parameters"]["nativeStatusMap"].pop()}),
         "rail-abi-reference-create-job": make_base("release", hooks={"rail": rail_param("entrypoints", 0, {
             "name": "createJob", "signature": reference_signature, "selector": verifier.selector_of(reference_signature),
+            "inputs": reference_inputs,
         })}),
         "rail-id-lower-case-asset": make_base("release", hooks={"rail": put("railId", f"x-evm-erc8183:{CHAIN_ID}:fxt")}),
         "rail-id-other-chain": make_base("release", hooks={"rail": put("railId", f"x-evm-erc8183:1:{TOKEN_SYMBOL}")}),
@@ -2184,11 +2261,47 @@ def build_vector_pack() -> dict[str, Any]:
         "rail-availability-live": make_base("release", hooks={"rail": put("availability", "live")}),
         "rail-skew-negative": make_base("release", hooks={"rail": rail_param("maxCrossSubstrateSkewMs", -1)}),
         "rail-token-code-empty": make_base("release", hooks={"rail": rail_param("paymentTokenRuntimeBytecodeHash", verifier.EMPTY_CODE_HASH)}),
+        # DRC-17, DRC-20, DRC-21: inputs, field names, and configuration words.
+        "rail-entrypoint-pin-without-inputs": make_base("release", hooks={"rail": lambda body: body["parameters"]["entrypoints"][0].pop("inputs")}),
+        "rail-event-inputs-do-not-reproduce-signature": make_base("release", hooks={"rail": event_pin_input("JobCreated", 1, "type", "uint256")}),
+        "rail-event-four-indexed-inputs": make_base("release", hooks={"rail": event_pin_input("JobCreated", 3, "indexed", True)}),
+        "rail-event-extra-pin": make_base("release", hooks={"rail": lambda body: body["parameters"]["events"].append(provider_set_pin)}),
+        "rail-event-pin-repeated": make_base("release", hooks={"rail": lambda body: body["parameters"]["events"].append(copy.deepcopy(body["parameters"]["events"][0]))}),
+        "rail-entrypoint-input-type-alias": make_base("release", hooks={"rail": entrypoint_type_alias}),
+        "rail-configuration-policy-word-text": make_base("release", hooks={"rail": rail_param("configurationEvidence", "preSubmissionPolicyValue", "evaluator-rejection")}),
+        "rail-payment-released-recipient": make_base("release", hooks={"rail": event_pin_input("PaymentReleased", 1, "name", "recipient")}),
+        "rail-configuration-cutoff-bytes32": make_base("release", hooks={"rail": configuration_input(1, "bytes32")}),
+        "rail-configuration-policy-string": make_base("release", hooks={"rail": configuration_input(2, "string")}),
+        "rail-configuration-job-id-uint64": make_base("release", hooks={"rail": configuration_input(0, "uint64")}),
+        "rail-configuration-same-input": make_base("release", hooks={"rail": rail_param("configurationEvidence", "preSubmissionPolicyInput", 1)}),
+        "rail-configuration-shape-superseded": make_base("release", hooks={"rail": rail_param("configurationEvidence", {
+            "event": verifier.CONFIGURATION_EVENT,
+            "submissionCutoffField": "submissionCutoff",
+            "preSubmissionPolicyField": "preSubmissionRefundPolicy",
+        })}),
+        # DRW-7: funding and terminal references are derived.
+        "funding-job-ref-signer-orchestrator": make_base("release", hooks={"funding": put("escrowJobRef", "signer", ORCHESTRATOR)}),
+        "terminal-funding-ref-signer-orchestrator": make_base("release", hooks={"terminal": put("fundingEvidenceRef", "signer", ORCHESTRATOR)}),
+        "terminal-job-ref-native-locator": make_base("release", hooks={"terminal": put("escrowJobRef", "anchor", "locator", "stor-" + "ab" * 20)}),
+        "terminal-job-ref-ipfs-anchor": make_base("release", hooks={"terminal": put("escrowJobRef", "anchor", "kind", "ipfs")}),
+        "terminal-event-refs-reordered": make_base("release", hooks={"terminal": lambda body: body["terminalEventRefs"].reverse()}),
+        # DRJ-11: a delegating escrow.
+        "drj-11-delegating-without-implementation-hash": make_base("release", hooks={
+            "rail": rail_param("implementationAddress", IMPLEMENTATION),
+            "fixture": put("resolverEvidence", "nativeState", "implementationAddress", IMPLEMENTATION),
+        }),
+        "drj-11-delegating-implementation-unverified": make_base("release", hooks={
+            "rail": each(rail_param("implementationAddress", IMPLEMENTATION), rail_param("implementationRuntimeBytecodeHash", "0x" + "c9" * 32)),
+            "fixture": put("resolverEvidence", "nativeState", "implementationAddress", IMPLEMENTATION),
+        }),
         # DACS-2 AttestationRef: the optional signer, and malformed shapes.
         "attestation-ref-with-signer": make_base("release", SIGNED_REF_JOB, hooks={"evaluationRef": put("signer", EVALUATOR)}),
         "attestation-ref-signer-bad-scheme": make_base("release", hooks={"evaluationRef": put("signer", "Bad Scheme:id")}),
         "attestation-ref-signer-unsorted-parameters": make_base("release", hooks={"evaluationRef": put("signer", EVALUATOR + "?b=2&a=1")}),
         "attestation-ref-signer-other-party": make_base("release", hooks={"evaluationRef": put("signer", SELLER)}),
+        "evaluation-subject-ref-signer-other-party": make_base("release", hooks={"evaluation": put("subjectEvidenceRefs", 0, "signer", SELLER)}),
+        "dispute-case-subject-ref-signer-other-party": make_base("pre-submission-rejected-refund", hooks={"disputeCase": put("subjectEvidenceRefs", 0, "signer", SELLER)}),
+        "dispute-subject-ref-signer-other-party": make_base("pre-submission-rejected-refund", hooks={"dispute": put("subjectEvidenceRefs", 0, "signer", SELLER)}),
         "decision-ref-signer-buyer": make_base("release", hooks={"decisionRef": put("signer", BUYER)}),
         "funding-ref-signer-buyer": make_base("release", hooks={"terminal": put("fundingEvidenceRef", "signer", BUYER)}),
         "flat-agreement-reference": make_base("release", hooks={"agreement": put("agreementRef", {
@@ -2205,6 +2318,15 @@ def build_vector_pack() -> dict[str, Any]:
             "release", buyer_claim=evm_buyer, evaluator_claim=evm_buyer_upper,
             hooks={"fixture": with_keys((evm_buyer, "buyer"), (evm_buyer_upper, "buyer"))},
         ),
+        "evaluator-claim-evm-chain-leading-zero": make_base(
+            "release", buyer_claim=evm_buyer, evaluator_claim=evm_buyer_leading_zero,
+            hooks={"fixture": with_keys((evm_buyer, "buyer"), (evm_buyer_leading_zero, "buyer"))},
+        ),
+        "evaluator-claim-evm-family-upper-case": make_base(
+            "release", buyer_claim=evm_buyer, evaluator_claim=evm_family_upper,
+            hooks={"fixture": with_keys((evm_buyer, "buyer"), (evm_family_upper, "buyer"))},
+        ),
+        "evaluator-claim-not-nfc": make_base("release", evaluator_claim=nfd_claim, hooks={"fixture": with_keys((nfd_claim, "buyer"))}),
         "faulted-party-with-parameter": make_base("rejected-refund", FAULTED_ALIAS_JOB, hooks={
             "evaluation": put("finding", "faultedParty", SELLER + "?source=fixture"),
         }),
@@ -2313,7 +2435,20 @@ def build_vector_pack() -> dict[str, Any]:
         vector("rail-entrypoint-selector-wrong", "rail-entrypoint-selector-wrong", "error", "DRC-17", "a selector derives from its signature under keccak-256"),
         vector("rail-event-missing", "rail-event-missing", "error", "DRC-17", "the rail pins every crosswalk event"),
         vector("rail-event-topic-wrong", "rail-event-topic-wrong", "error", "DRC-17", "a topic0 derives from its event signature under keccak-256"),
-        vector("rail-configuration-event-unpinned", "rail-configuration-event-unpinned", "error", "DRC-17", "configurationEvidence names a pinned event"),
+        vector("rail-configuration-event-unpinned", "rail-configuration-event-unpinned", "error", "DRC-21", "configurationEvidence names a pinned event by its topic0"),
+        vector("rail-entrypoint-pin-without-inputs", "rail-entrypoint-pin-without-inputs", "error", "DRC-17", "an AbiFunctionPin carries its ordered inputs"),
+        vector("rail-event-inputs-do-not-reproduce-signature", "rail-event-inputs-do-not-reproduce-signature", "error", "DRC-17", "an event pin's inputs reproduce its signature"),
+        vector("rail-event-four-indexed-inputs", "rail-event-four-indexed-inputs", "error", "DRC-17", "a pinned event has at most three indexed inputs"),
+        vector("rail-event-extra-pin", "rail-event-extra-pin", "error", "DRC-17", "the event pins are exactly the crosswalk events and the configuration event"),
+        vector("rail-event-pin-repeated", "rail-event-pin-repeated", "error", "DRC-17", "two event pins never share a name or topic0"),
+        vector("rail-entrypoint-input-type-alias", "rail-entrypoint-input-type-alias", "error", "DRC-17", "a pinned input type is the canonical ABI type, so `uint` is not `uint256`"),
+        vector("rail-configuration-policy-word-text", "rail-configuration-policy-word-text", "error", "DRC-21", "the policy value is a 32-byte ABI word, not the policy name"),
+        vector("rail-payment-released-recipient", "rail-payment-released-recipient", "error", "DRC-20", "the reference implementation's PaymentReleased `recipient` leaves no `provider` input for DRT-5 (section 8.4)", rules=["DRC-17", "DRC-20"]),
+        vector("rail-configuration-cutoff-bytes32", "rail-configuration-cutoff-bytes32", "error", "DRC-21", "the configuration cutoff input is a uint"),
+        vector("rail-configuration-policy-string", "rail-configuration-policy-string", "error", "DRC-21", "the configuration policy input fills one ABI word"),
+        vector("rail-configuration-job-id-uint64", "rail-configuration-job-id-uint64", "error", "DRC-21", "the configuration event's jobId is a uint256"),
+        vector("rail-configuration-same-input", "rail-configuration-same-input", "error", "DRC-21", "the cutoff and policy are two distinct inputs"),
+        vector("rail-configuration-shape-superseded", "rail-configuration-shape-superseded", "error", "DRC-21", "configurationEvidence names a topic0, two input indexes, and a policy word, not field names"),
         vector("rail-status-map-incomplete", "rail-status-map-incomplete", "error", "DRC-17", "nativeStatusMap maps every native status"),
         vector("rail-abi-reference-create-job", "rail-abi-reference-create-job", "error", "DRV-2", "the reference createJob, with no separate cutoff, is not the fixture implementation this verifier decodes", rules=["DRC-18", "DRV-2"]),
         vector("rail-id-lower-case-asset", "rail-id-lower-case-asset", "error", "DRR-1", "the railId asset segment is the upper-case asset symbol"),
@@ -2337,13 +2472,24 @@ def build_vector_pack() -> dict[str, Any]:
         vector("attestation-ref-signer-bad-scheme", "attestation-ref-signer-bad-scheme", "error", "DRV-3", "an AttestationRef signer is a canonical ClaimReference: `Bad Scheme` is not a scheme"),
         vector("attestation-ref-signer-unsorted-parameters", "attestation-ref-signer-unsorted-parameters", "error", "DRV-3", "an AttestationRef signer's parameters are in CF-2 order"),
         vector("attestation-ref-signer-other-party", "attestation-ref-signer-other-party", "fail", "DRV-6", "an evaluation reference's signer is the evaluator who signed it"),
-        vector("decision-ref-signer-buyer", "decision-ref-signer-buyer", "fail", "DRV-6", "a decision reference's signer is the evaluator who signed it"),
-        vector("funding-ref-signer-buyer", "funding-ref-signer-buyer", "fail", "DRV-6", "a funding reference's signer is the orchestrator who signed it"),
+        vector("evaluation-subject-ref-signer-other-party", "evaluation-subject-ref-signer-other-party", "fail", "DRV-6", "a subject reference's signer names the delivery evidence's signer", rules=["DRE-3", "DRV-6"]),
+        vector("dispute-case-subject-ref-signer-other-party", "dispute-case-subject-ref-signer-other-party", "fail", "DRV-6", "a dispute case's subject reference signer names the funding evidence's signer", rules=["DRX-7", "DRV-6"]),
+        vector("dispute-subject-ref-signer-other-party", "dispute-subject-ref-signer-other-party", "fail", "DRV-6", "a dispute outcome's subject reference signer names the funding evidence's signer", rules=["DRX-1", "DRV-6"]),
+        vector("decision-ref-signer-buyer", "decision-ref-signer-buyer", "fail", "DRW-7", "the terminal's decision reference carries no signer (section 11.2 R43)", rules=["DRV-6", "DRW-7"]),
+        vector("funding-ref-signer-buyer", "funding-ref-signer-buyer", "fail", "DRW-7", "a terminal funding reference carries no signer (section 11.2 R43)"),
+        vector("funding-job-ref-signer-orchestrator", "funding-job-ref-signer-orchestrator", "fail", "DRW-7", "a funding evidence reference carries no signer, even the correct one (section 11.2 R43)", rules=["DRT-16", "DRW-7"]),
+        vector("terminal-funding-ref-signer-orchestrator", "terminal-funding-ref-signer-orchestrator", "fail", "DRW-7", "a signer would let producers write distinct terminal evidence for one terminal (section 11.2 R43)", rules=["DRT-16", "DRW-7"]),
+        vector("terminal-job-ref-native-locator", "terminal-job-ref-native-locator", "fail", "DRW-7", "a terminal reference names its logical address, never a native stor- address (section 11.2 R43)", rules=["DRW-7"]),
+        vector("terminal-job-ref-ipfs-anchor", "terminal-job-ref-ipfs-anchor", "fail", "DRW-7", "a terminal reference is a storage-program anchor (section 11.2 R43)"),
+        vector("terminal-event-refs-reordered", "terminal-event-refs-reordered", "fail", "DRW-7", "terminal event references are in ascending log order (section 11.2 R43)", rules=["DRT-16", "DRW-7"]),
         vector("flat-agreement-reference", "flat-agreement-reference", "error", "DRV-3", "an agreement reference outside the DACS-2 AttestationRef shape is malformed"),
         vector("decision-reference-anchor-kind-unregistered", "decision-reference-anchor-kind-unregistered", "error", "DRV-3", "a DACS-2 anchor kind is storage-program, ipfs, or https"),
         vector("evaluator-primary-claim-parameter-alias", "evaluator-claim-is-buyer-alias", "fail", "DRA-6", "a parameter does not make the buyer another party under CORE CF-3"),
         vector("evaluator-claim-upper-case-key", "evaluator-claim-upper-case-key", "error", "DRV-3", "DACS-1 §6.3.1: an upper-case Demos agent key is rejected, not lower-cased into an alias"),
         vector("evaluator-claim-scheme-case-alias", "evaluator-claim-scheme-case-alias", "error", "DRV-3", "CF-2(a): a signed overlay embeds the lower-case scheme, so `DID:` is not a canonical alias of the buyer"),
+        vector("evaluator-claim-evm-chain-leading-zero", "evaluator-claim-evm-chain-leading-zero", "error", "DRV-3", "DACS-1 PB-2: a leading-zero chain ID is outside the EVM profile, so it cannot respell the buyer's account", rules=["DRA-6", "DRV-3", "DRW-5"]),
+        vector("evaluator-claim-evm-family-upper-case", "evaluator-claim-evm-family-upper-case", "error", "DRV-3", "DACS-1 PB-2: the family is the lower-case literal evm", rules=["DRA-6", "DRV-3", "DRW-5"]),
+        vector("evaluator-claim-not-nfc", "evaluator-claim-not-nfc", "error", "DRV-3", "CF-2: a signed claim embeds an NFC identifier, so an NFD spelling is malformed"),
         vector("evaluator-claim-evm-case-alias", "evaluator-claim-evm-case-alias", "fail", "DRA-6", "DRW-5: two case spellings of one EVM account are one party (§11.2 R6)", rules=["DRA-6", "DRW-5"]),
         vector("faulted-party-with-parameter", "faulted-party-with-parameter", "pass", "DRV-7", "faultedParty matches its agreement party under CORE CF-3 identity", rules=rejection_pass_rules + ["DRX-5"]),
         vector("account-claim-with-parameter", "account-claim-with-parameter", "pass", "DRV-7", "unknown account-claim parameters are ignored, not rejected (DACS-1)", rules=release_pass_rules),
@@ -2480,6 +2626,31 @@ def build_vector_pack() -> dict[str, Any]:
             "requires FV-1 through FV-10 over an AuthenticatedChainObservation for every chain "
             "fact; the pack reads block, transaction, and log facts from the pinned fixture "
             "resolver and checks their internal consistency"
+        ),
+        "DRW-6": (
+            "requires the confirmation-depth block's timestamp authenticated under FV-1 through "
+            "FV-10; the pack's block identity is a fixture preimage the same resolver supplies, "
+            "so a consistent shift of every block time is not detected"
+        ),
+        "DRC-14": (
+            "requires implementationRevision to identify the published DRC-10 source; the "
+            "fixture implementation has no published source, and the pack checks the "
+            "revision's spelling and every literal only"
+        ),
+        "DRJ-11": (
+            "requires authenticated implementation and payment-token code at each action "
+            "block; the pack compares the resolver-stated code hashes with the pins and has "
+            "no token or implementation bytecode to hash"
+        ),
+        "DRW-2": (
+            "requires every code hash to be keccak-256 of deployed runtime bytecode; the pack "
+            "reproduces the escrow code hash from its bytecode but has no payment-token or "
+            "implementation bytecode"
+        ),
+        "DRE-8": (
+            "requires the evaluation rule anchored at its section 6.5 address and finalized "
+            "before the overlay; the pack resolves the rule by content hash and job and has "
+            "no anchor receipts to order"
         ),
         "DRR-2": (
             "requires a registry snapshot for RD-2 through RD-7; the pack verifies the pinned "
@@ -2648,11 +2819,35 @@ FOLLOW_ON_FINDINGS: dict[str, tuple[str, str]] = {
     # Incomplete or unpinned ABI pins are not the fixture ABI, and a
     # transaction or log outside wrong pins is not decoded.
     "rail-entrypoint-missing": ("error", "DRV-2"),
-    "rail-event-missing": ("error", "DRV-2"),
-    "rail-configuration-event-unpinned": ("error", "DRV-2"),
-    "rail-entrypoint-selector-wrong": ("fail", "DRC-18"),
-    "rail-event-topic-wrong": ("fail", "DRC-18"),
+    "rail-event-missing": ("error", "DRC-20"),
+    "rail-entrypoint-selector-wrong": ("error", "DRV-2"),
+    "rail-event-topic-wrong": ("error", "DRV-2"),
     "rail-abi-reference-create-job": ("fail", "DRC-18"),
+    "rail-event-inputs-do-not-reproduce-signature": ("error", "DRV-2"),
+    "rail-event-four-indexed-inputs": ("error", "DRV-2"),
+    "rail-event-extra-pin": ("error", "DRV-2"),
+    "rail-payment-released-recipient": ("error", "DRV-2"),
+    "rail-configuration-cutoff-bytes32": ("error", "DRV-2"),
+    "rail-configuration-policy-string": ("error", "DRV-2"),
+    "rail-configuration-job-id-uint64": ("error", "DRV-2"),
+    "rail-configuration-same-input": ("error", "DRV-2"),
+    "rail-event-pin-repeated": ("error", "DRV-2"),
+    "rail-entrypoint-input-type-alias": ("error", "DRV-2"),
+    "rail-configuration-policy-word-text": ("error", "DRV-2"),
+    # Without the policy profile gate, the configuration word differs.
+    "unsupported-expiry-only-policy": ("fail", "DRC-21"),
+    # A reference signer is also checked against the artifact's signer, a
+    # native locator names no logical address, and reordered terminal
+    # references meet logs whose topic0 is another event's.
+    "decision-ref-signer-buyer": ("fail", "DRV-6"),
+    "funding-ref-signer-buyer": ("fail", "DRV-6"),
+    "terminal-job-ref-native-locator": ("fail", "DRT-4"),
+    "terminal-job-ref-ipfs-anchor": ("fail", "DRT-4"),
+    "terminal-event-refs-reordered": ("fail", "DRC-18"),
+    # A rail pinning an implementation the escrow does not use, or a
+    # delegating escrow without both pins, is a DRJ-11 mismatch either way.
+    "drj-11-unpinned-implementation": ("indeterminate", "DRJ-11"),
+    "drj-11-delegating-without-implementation-hash": ("indeterminate", "DRJ-11"),
     # A respelt railId is not the one acceptedRails selects.
     "rail-id-lower-case-asset": ("fail", "DRP-10"),
     "rail-id-other-chain": ("fail", "DRP-10"),
@@ -2719,6 +2914,10 @@ STRUCTURAL_NEGATIVES: dict[str, str] = {
     "native-transition-outside-crosswalk": "no crosswalk row gives the transition's next status",
     "native-status-not-mapped": "an unmapped native status has no crosswalk name",
     "native-entrypoint-not-pinned": "an unpinned selector names no entrypoint",
+    "event-log-layout-mismatch": "a log that does not fit its layout has no decoded inputs to read",
+    "rail-configuration-event-unpinned": "configurationEvidence names no event whose inputs can be read",
+    "rail-configuration-shape-superseded": "configurationEvidence has no eventTopic0 to read",
+    "rail-entrypoint-pin-without-inputs": "an entrypoint pin has no inputs to read",
     "cross-substrate-order-unavailable": "the resolver has no decision anchor to read",
     "self-reported-time-cannot-order": "the resolver has no decision anchor to read",
 }

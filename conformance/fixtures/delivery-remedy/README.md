@@ -10,7 +10,7 @@ The pack turns the pre-normative
 into executable review evidence. Every result is one of the candidate's four
 verification results: `pass`, `fail`, `indeterminate`, or `error` (§9).
 
-- `candidate-vectors-v0.1.json` holds 461 lifecycle and mapping vectors over
+- `candidate-vectors-v0.1.json` holds 488 lifecycle and mapping vectors over
   deterministic, signed synthetic lifecycles: full release, evaluator
   rejection and refund before or after submission, a dispute-outcome release
   and refund, pre-submission expiry, and post-submission expiry. The
@@ -71,14 +71,29 @@ configured non-production mode, and this offline verifier is that mode and
 accepts nothing else. A `disabled` or `failed` rail is `fail` under DRR-5, and
 any other availability is `error`.
 
-The rail pins every entrypoint selector and event topic it relies on, each
-derived from its signature by keccak-256 (DRC-17). The verifier carries a
-pure-Python keccak-256, tested against known answers, and uses it for those
-pins, EIP-55 checksums, and runtime code hashes (DRW-2). It decodes calldata
-and logs only for the pinned fixture implementation ABI (DRC-18); see the
-synthetic proof limits below. Each native transaction is matched to its §4.1
-crosswalk row by its prior native status, entrypoint, and caller (DRL-10,
-DRL-11), and must emit exactly that row's logs.
+The rail pins every entrypoint and event it relies on as an `AbiFunctionPin`
+or `AbiEventPin`: its complete ordered `inputs`, the signature they
+reproduce, and the selector or `topic0` derived from that signature by
+keccak-256 (DRC-17). The event pins are exactly the crosswalk events and the
+configuration event. Each canonical ERC-8183 field is read from the one input
+of its name (DRC-20), so a `PaymentReleased` pin without a `provider` input is
+`error`. `configurationEvidence` names the configuration event by `topic0`,
+its cutoff and policy inputs by index, and the 32-byte policy word for
+`evaluator-rejection` (DRC-21). An observed log carries the decoded values of
+its topics after `topic0` and of its data, each in order, and is read through
+the pin's `indexed` layout; a log that does not fit it is `fail` (DRC-18). The
+verifier carries a pure-Python keccak-256, tested against known answers, and
+uses it for those pins, EIP-55 checksums, and runtime code hashes (DRW-2). It
+decodes calldata and logs only for the pinned fixture implementation ABI
+(DRC-18); see the synthetic proof limits below. Each native transaction is
+matched to its §4.1 crosswalk row by its prior native status, entrypoint, and
+caller (DRL-10, DRL-11), and must emit exactly that row's logs.
+
+The references in funding and terminal evidence are derived, so two
+producers write the same bytes (DRW-7). Each event reference list is exactly
+its transition's required events, in ascending log order, from one
+transaction. Each `AttestationRef` omits `signer` and is a `storage-program`
+anchor at the artifact's logical address, never a native `stor-` address.
 
 The protocol verifier requires the finality records embedded in signed funding
 and terminal artifacts to use the exact DACS-4 `SettlementFinalityRecord`
@@ -142,7 +157,7 @@ code hash is `0x` and 64 lower-case digits (DRW-2), a transaction hash is
 lower-case (DRW-3), and a time is a non-negative safe integer (DRW-4); each
 violation is `error` under its rule, and a zero address or empty-code hash
 where a deployment is named is `fail`. So is a lifecycle that nests arrays
-and objects more than 64 deep: the pack's deepest lifecycle nests 7, and the
+and objects more than 64 deep: the pack's deepest lifecycle nests 8, and the
 bound is checked iteratively before anything is hashed, because
 canonicalisation recurses once per level. A batch gives one malformed
 lifecycle its own `error` and still judges the others. The command line
@@ -296,7 +311,9 @@ Replay state belongs to the verifier. Callers pass a `DecisionLedger` to
 `evaluate_protocol`, which evaluates one. Each lifecycle that passes every
 check before the replay comparison records its terminal: native job, terminal
 event and its authenticated position, decision, and attested history.
-Verifying the same terminal again is idempotent. Two different terminals
+Verifying the same terminal again is idempotent, and it reproduces one
+terminal evidence hash: a second, distinct evidence record for that terminal
+is `fail` for both (DRT-16). Two different terminals
 conflict when they share a decision (DRD-8) or a native job (DRL-4), or when
 one terminal event settles two native jobs (DRT-4). The pinned resolver
 attests `priorTerminals` as the complete earlier history, so a conflict with
@@ -418,8 +435,12 @@ range (DRAA-1), and `@kynesyslabs/demosdk` 4.0.16 (npm `dist.integrity`
 `sha512-nVhp1uC+tFGzhew9c8XIajTMmELopx7gd0joqqzDd2XyUuFDcqrda51NYqvX5C8+L3Xgnie/mRf7JRqZ7r3tHA==`).
 It also records the DACS commit the candidate was checked against and the
 SHA-256 of the candidate and of each DACS document it cites. The verifier
-refuses a pack with other pins, or one whose pinned documents differ from the
-checkout, before it runs any vector. The generator and verifier are not
+refuses a pack with other pins before it runs any vector. It compares the
+candidate's hash with the checkout, so the pack is stale once the candidate
+changes. It compares each `spec/` document's hash with that document at the
+Checked-against commit, read with `git show`, so a later `spec/` edit that
+does not re-pin the candidate leaves the pack valid. That read needs the
+commit in the clone's history, as CI's full fetch provides. The generator and verifier are not
 hashed into the pack: `generate_delivery_remedy_candidate_vectors.py --check`
 in CI ties the pack to the tools that produced it, and pinning their bytes
 would also refuse every review mutant of the tools before any vector ran.
@@ -430,10 +451,10 @@ Each negative is a consistent signed lifecycle plus one edit. The generator
 checks, before it writes or checks the pack, that each negative passes once
 the guard that decides it is removed. Any other outcome, including an
 exception, fails the check, with two listed exceptions.
-`FOLLOW_ON_FINDINGS` lists 93 negatives whose single defect reaches one exact
+`FOLLOW_ON_FINDINGS` lists 111 negatives whose single defect reaches one exact
 second finding once its guard is removed. Some of those defects break a
 second rule. For a record that was not supplied, a later check finds the
-lifecycle inconsistent instead. `STRUCTURAL_NEGATIVES` lists 26 negatives
+lifecycle inconsistent instead. `STRUCTURAL_NEGATIVES` lists 30 negatives
 that remove or malform a structure the verifier reads. Without their guard
 the verifier raises, or another shape guard decides first, so isolation is
 not claimed for them.
@@ -467,7 +488,15 @@ verifier refuses a pack where one does. It holds DRP-9, whose digest anchor is
 a fixture boundary, and DRE-2 and DRP-7, whose `DeliveryEvidence` is checked
 without the SR-2 receipts that would finalize and resolve it. It holds DRF-8,
 whose chain facts come from the fixture chain and resolver rather than FV-1
-through FV-10. It holds DRR-2, whose steward signature is checked without a
+through FV-10, and DRW-6, whose confirmation-depth block time comes from the
+same resolver: a consistent shift of every block time is not detected. It
+holds DRC-14, whose `implementationRevision` names a fixture implementation
+with no published DRC-10 source, so only its spelling is checked. It holds
+DRJ-11 and DRW-2, whose payment-token and implementation code hashes are
+compared with the resolver's statement but not reproduced from bytecode (only
+the escrow code is); a delegating escrow is therefore never verified. It holds
+DRE-8, whose evaluation rule is resolved by hash and job but whose anchoring
+before the overlay is not ordered. It holds DRR-2, whose steward signature is checked without a
 registry snapshot, and DRR-3 and DRP-10, whose accepted rails are the
 orchestrator's statement rather than a resolved Listing. It also holds DRP-6,
 DRP-8, DRP-11, and DRP-12, whose `executionContext` inputs are orchestrator
@@ -504,12 +533,14 @@ the fixture itself. The vectors depend on them and do not prove them:
   EVM header or transaction hash. The verifier checks that the resolver's
   facts reproduce and agree with each other and with the signed records, not
   that a chain produced them; FV-1 through FV-10 are not executed.
-- **Fixture implementation ABI** (DRC-17, DRC-18, DRJ-3, DRJ-4). The rail pins
-  the ABI of a fixture implementation, not a deployed one: the canonical
-  ERC-8183 interface extended with a `submissionCutoff` argument to
-  `createJob` and a `JobConfigured(uint256,uint256,string)` log carrying the
-  submission cutoff and pre-submission refund policy, which DREB-13 and
-  DRA-15 need and the canonical interface does not emit. Its selectors and
+- **Fixture implementation ABI** (DRC-17, DRC-18, DRC-20, DRC-21, DRJ-3,
+  DRJ-4). The rail pins the ABI of a fixture implementation, not a deployed
+  one: the canonical ERC-8183 interface, with its parameter names and
+  `indexed` layout, extended with a `submissionCutoff` argument to
+  `createJob` and a `JobConfigured(uint256,uint256,bytes32)` log carrying the
+  submission cutoff and a one-word pre-submission policy (`evaluator-rejection`
+  as a right-padded `bytes32`), which DREB-13 and DRA-15 need and the canonical
+  interface does not emit. Its selectors and
   topics are computed from those signatures. The verifier decodes only this
   ABI, so a rail pinning another, including the reference contract's
   `createJob`, is `error`. A deployment's real ABI needs its own pins and

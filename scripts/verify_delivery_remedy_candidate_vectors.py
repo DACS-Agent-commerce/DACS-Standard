@@ -14,8 +14,10 @@ import hashlib
 import json
 import math
 import re
+import subprocess
 import sys
 import unicodedata
+import urllib.parse
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
 
@@ -347,56 +349,78 @@ IMPLEMENTATION_REVISION_RE = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[0-9a-
 CAPABILITY_PROFILE = PROFILE_LITERALS["capabilityProfile"]
 NATIVE_STATUSES = ("Open", "Funded", "Submitted", "Completed", "Rejected", "Expired")
 # The fixture implementation's ABI, which the rail pins through DRC-17 and
-# this verifier decodes (DRC-18): each entrypoint and event signature with the
-# names its decoded calldata and logs carry.  The events have the canonical
-# ERC-8183 argument sets, with the reference contract's `hook` on
-# `JobCreated`; the job ID, the first argument of every event, is the log's
-# job topic.  What the canonical surface lacks, a DREB-13-capable
-# implementation adds: a separate submission cutoff in `createJob` and a
-# configuration event that carries it with the pre-submission policy (DRJ-3),
-# and the expected prior status in `reject` (DRD-13).
+# this verifier decodes (DRC-18): each entrypoint's ordered (name, type)
+# inputs and each event's ordered (name, type, indexed) inputs.  The events
+# have the canonical ERC-8183 parameter names and `indexed` layout, with the
+# reference contract's `hook` on `JobCreated`.  What the canonical surface
+# lacks, a DREB-13-capable implementation adds: a separate submission cutoff
+# in `createJob` and a configuration event that carries it with the
+# pre-submission policy word (DRC-21), and the expected prior status in
+# `reject` (DRD-13).
 FIXTURE_ENTRYPOINTS = {
     "createJob": (
-        "createJob(address,address,uint256,uint256,string,address)",
-        ("provider", "evaluator", "expiredAt", "submissionCutoff", "description", "hook"),
+        ("provider", "address"), ("evaluator", "address"), ("expiredAt", "uint256"),
+        ("submissionCutoff", "uint256"), ("description", "string"), ("hook", "address"),
     ),
-    "fund": ("fund(uint256,uint256)", ("jobId", "expectedBudget")),
-    "submit": ("submit(uint256,bytes32)", ("jobId", "deliverable")),
-    "complete": ("complete(uint256,bytes32)", ("jobId", "reason")),
-    "reject": ("reject(uint256,bytes32,uint8)", ("jobId", "reason", "expectedStatus")),
-    "claimRefund": ("claimRefund(uint256)", ("jobId",)),
+    "fund": (("jobId", "uint256"), ("expectedBudget", "uint256")),
+    "submit": (("jobId", "uint256"), ("deliverable", "bytes32")),
+    "complete": (("jobId", "uint256"), ("reason", "bytes32")),
+    "reject": (("jobId", "uint256"), ("reason", "bytes32"), ("expectedStatus", "uint8")),
+    "claimRefund": (("jobId", "uint256"),),
 }
 FIXTURE_EVENTS = {
     "JobCreated": (
-        "JobCreated(uint256,address,address,address,uint256,address)",
-        ("client", "provider", "evaluator", "expiredAt", "hook"),
+        ("jobId", "uint256", True), ("client", "address", True), ("provider", "address", True),
+        ("evaluator", "address", False), ("expiredAt", "uint256", False), ("hook", "address", False),
     ),
     "JobConfigured": (
-        "JobConfigured(uint256,uint256,string)", ("submissionCutoff", "preSubmissionRefundPolicy"),
+        ("jobId", "uint256", True), ("submissionCutoff", "uint256", False),
+        ("preSubmissionRefundPolicy", "bytes32", False),
     ),
-    "JobFunded": ("JobFunded(uint256,address,uint256)", ("client", "amount")),
-    "JobSubmitted": ("JobSubmitted(uint256,address,bytes32)", ("provider", "deliverable")),
-    "JobCompleted": ("JobCompleted(uint256,address,bytes32)", ("evaluator", "reason")),
-    "PaymentReleased": ("PaymentReleased(uint256,address,uint256)", ("recipient", "amount")),
-    "JobRejected": ("JobRejected(uint256,address,bytes32)", ("rejector", "reason")),
-    "Refunded": ("Refunded(uint256,address,uint256)", ("client", "amount")),
-    "JobExpired": ("JobExpired(uint256)", ()),
+    "JobFunded": (("jobId", "uint256", True), ("client", "address", True), ("amount", "uint256", False)),
+    "JobSubmitted": (("jobId", "uint256", True), ("provider", "address", True), ("deliverable", "bytes32", False)),
+    "JobCompleted": (("jobId", "uint256", True), ("evaluator", "address", True), ("reason", "bytes32", False)),
+    "PaymentReleased": (("jobId", "uint256", True), ("provider", "address", True), ("amount", "uint256", False)),
+    "JobRejected": (("jobId", "uint256", True), ("rejector", "address", True), ("reason", "bytes32", False)),
+    "Refunded": (("jobId", "uint256", True), ("client", "address", True), ("amount", "uint256", False)),
+    "JobExpired": (("jobId", "uint256", True),),
 }
-CONFIGURATION_EVIDENCE = {
-    "event": "JobConfigured",
-    "submissionCutoffField": "submissionCutoff",
-    "preSubmissionPolicyField": "preSubmissionRefundPolicy",
+CONFIGURATION_EVENT = "JobConfigured"
+# DRC-21: the 32-byte word the fixture's policy input carries for
+# `evaluator-rejection`, the ASCII text right-padded as a Solidity bytes32
+# literal.
+PRE_SUBMISSION_POLICY_WORD = "0x" + b"evaluator-rejection".ljust(32, b"\0").hex()
+
+
+def abi_signature(name: str, inputs: tuple[tuple[Any, ...], ...]) -> str:
+    """DRC-17: the entry's name followed by its input types, in order."""
+    return f"{name}({','.join(item[1] for item in inputs)})"
+
+
+# DRC-20: each field this profile reads from a pinned entry and that canonical
+# ERC-8183 names.  Each is read from the one input of that name.
+CANONICAL_FIELDS = {
+    "createJob": ("provider", "evaluator", "expiredAt", "description", "hook"),
+    "submit": ("jobId", "deliverable"),
+    "complete": ("jobId", "reason"),
+    "reject": ("jobId", "reason"),
+    "JobCreated": ("jobId", "client", "provider", "evaluator", "expiredAt", "hook"),
+    "JobFunded": ("jobId", "client", "amount"),
+    "JobSubmitted": ("jobId", "deliverable"),
+    "JobCompleted": ("jobId", "reason"),
+    "PaymentReleased": ("jobId", "provider", "amount"),
+    "JobRejected": ("jobId", "reason"),
+    "Refunded": ("jobId", "client", "amount"),
+    "JobExpired": ("jobId",),
 }
-# The Solidity type of each named ABI value: an address, a uint, bytes32, or a
-# string.  Decoded uints are minimal decimal text, so a uint256 stays exact.
-ABI_VALUE_TYPES = {
-    "address": {"provider", "evaluator", "hook", "client", "recipient", "rejector"},
-    "uint": {
-        "expiredAt", "submissionCutoff", "jobId", "expectedBudget", "expectedStatus", "amount",
-    },
-    "bytes32": {"deliverable", "reason"},
-    "string": {"description", "preSubmissionRefundPolicy"},
-}
+# A canonical Solidity ABI type: an elementary type, optionally as a dynamic
+# or fixed-size array.  `uint` and `int` are aliases, not canonical.
+_ABI_SIZE = "|".join(str(bits) for bits in range(8, 257, 8))
+_ABI_BYTES = "|".join(str(size) for size in range(1, 33))
+ABI_ELEMENTARY_RE = re.compile(rf"u?int(?:{_ABI_SIZE})|address|bool|bytes(?:{_ABI_BYTES})?|string")
+ABI_TYPE_RE = re.compile(rf"(?:{ABI_ELEMENTARY_RE.pattern})(?:\[(?:[1-9][0-9]*)?\])*")
+# DRC-21: a type that fills exactly one ABI word.
+ABI_WORD_TYPE_RE = re.compile(rf"u?int(?:{_ABI_SIZE})|address|bool|bytes(?:{_ABI_BYTES})")
 # Candidate §4.1: the ERC-8183 state crosswalk, keyed on the prior native
 # status, the entrypoint, and the caller's role (`any` for `claimRefund`).
 # Each row gives the events it requires, the native status after it, and the
@@ -421,7 +445,7 @@ CROSSWALK = {
         ("JobExpired", "Refunded"), "Expired", "refunded", "expired-refund",
     ),
 }
-CROSSWALK_EVENTS = sorted({name for row in CROSSWALK.values() for name in row[0]} - {"JobConfigured"})
+CROSSWALK_EVENTS = sorted({name for row in CROSSWALK.values() for name in row[0]} - {CONFIGURATION_EVENT})
 TERMINAL_ENTRYPOINTS = {
     "released": "complete", "rejected-refund": "reject", "expired-refund": "claimRefund",
 }
@@ -445,8 +469,9 @@ ATTESTATION_REF_FIELDS = {"anchor", "contentHash", "signer"}
 ATTESTATION_ANCHOR_KINDS = {"storage-program", "ipfs", "https"}
 EVENT_REF_FIELDS = {"kind", "chainId", "txHash", "logIndex"}
 # One resolver-authenticated EVM log (DRF-8): its block, the block at the
-# rail's confirmation depth (null until it exists), and its decoded topics
-# and data.  Block identities are fixture-chain preimages.
+# rail's confirmation depth (null until it exists), its `topic0`, and the
+# decoded values of the topics after it and of the log data, each in order
+# (DRC-18).  Block identities are fixture-chain preimages.
 EVENT_INPUT_FIELDS = {
     "eventRef",
     "txHashPreimageUtf8",
@@ -455,10 +480,10 @@ EVENT_INPUT_FIELDS = {
     "blockHashPreimageUtf8",
     "blockTimestampSec",
     "contractAddress",
-    "nativeJobId",
     "eventName",
     "topic0",
-    "arguments",
+    "indexedArguments",
+    "dataArguments",
     "finalityBlock",
 }
 BLOCK_FIELDS = {"blockNumber", "blockHash", "blockHashPreimageUtf8", "blockTimestampSec"}
@@ -473,6 +498,9 @@ CLAIM_PARAMETER_RE = re.compile(r"(?:[^:?&=%]|%[0-9A-F]{2})+=(?:[^:?&=%]|%[0-9A-
 DEMOS_AGENT_PREFIX = "demos:agent:"
 DEMOS_AGENT_KEY_RE = re.compile(r"[0-9a-f]{64}")
 EVM_IDENTIFIER_RE = re.compile(r"evm:([1-9][0-9]*):(.*)", re.DOTALL)
+# Any spelling of the `evm` family with a decimal chain ID; one that is not
+# EVM_IDENTIFIER_RE is outside the PB-2 profile.
+EVM_SPELLING_RE = re.compile(r"[eE][vV][mM]:[0-9]+:.*", re.DOTALL)
 EVM_ACCOUNT_CLAIM_RE = re.compile(r"cci-xm:evm:([1-9][0-9]*):([^?]*)(?:\?.*)?", re.DOTALL)
 # AccountabilityFinding members and its closed classification set (candidate §6.4).
 FINDING_FIELDS = {"classification", "faultedParty", "rationaleCode"}
@@ -578,9 +606,33 @@ def artifact_hash(value: dict[str, Any]) -> str:
     return content_hash(unsigned_artifact(value))
 
 
-def document_pins(root: Path = ROOT) -> dict[str, str]:
-    """The SHA-256 of each pinned document in the checkout at ``root``."""
-    return {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in PINNED_DOCUMENTS}
+def _blob_at(root: Path, commit: str, path: str) -> bytes | None:
+    """The bytes of ``path`` at ``commit`` in the repository at ``root``, or None."""
+    try:
+        shown = subprocess.run(
+            ["git", "-C", str(root), "show", f"{commit}:{path}"], capture_output=True, check=False,
+        )
+    except OSError:
+        return None
+    return shown.stdout if shown.returncode == 0 else None
+
+
+def document_pins(root: Path = ROOT) -> dict[str, str] | None:
+    """The SHA-256 of each pinned document, or None when one cannot be read.
+
+    The candidate is read from the checkout at ``root``, so the pack is stale
+    once the candidate changes.  The `spec/` documents are read at the
+    **Checked against** commit, whose text the candidate cites (DRG-2), so
+    a later `spec/` edit that does not re-pin the candidate leaves the pack
+    valid.  That read needs the commit in the clone's history.
+    """
+    pins = {PINNED_DOCUMENTS[0]: hashlib.sha256((root / PINNED_DOCUMENTS[0]).read_bytes()).hexdigest()}
+    for path in PINNED_DOCUMENTS[1:]:
+        blob = _blob_at(root, DACS_CHECKED_AGAINST, path)
+        if blob is None:
+            return None
+        pins[path] = hashlib.sha256(blob).hexdigest()
+    return pins
 
 
 # Keccak-256 (the pre-SHA-3 padding Ethereum uses), for EIP-55 checksums and
@@ -649,6 +701,64 @@ def topic_of(signature: str) -> str:
     return "0x" + keccak256(signature.encode("ascii")).hex()
 
 
+# DRC-21: the fixture's configuration event, its cutoff and policy inputs by
+# zero-based index, and the policy word for `evaluator-rejection`.
+CONFIGURATION_EVIDENCE = {
+    "eventTopic0": topic_of(abi_signature(CONFIGURATION_EVENT, FIXTURE_EVENTS[CONFIGURATION_EVENT])),
+    "submissionCutoffInput": 1,
+    "preSubmissionPolicyInput": 2,
+    "preSubmissionPolicyValue": PRE_SUBMISSION_POLICY_WORD,
+}
+
+
+def entrypoint_pins() -> list[dict[str, Any]]:
+    """The fixture ABI's DRC-17 `AbiFunctionPin` entries."""
+    return [
+        {
+            "name": name,
+            "signature": abi_signature(name, inputs),
+            "selector": selector_of(abi_signature(name, inputs)),
+            "inputs": [{"name": item[0], "type": item[1]} for item in inputs],
+        }
+        for name, inputs in FIXTURE_ENTRYPOINTS.items()
+    ]
+
+
+def event_pins() -> list[dict[str, Any]]:
+    """The fixture ABI's DRC-17 `AbiEventPin` entries."""
+    return [
+        {
+            "name": name,
+            "signature": abi_signature(name, inputs),
+            "topic0": topic_of(abi_signature(name, inputs)),
+            "inputs": [{"name": item[0], "type": item[1], "indexed": item[2]} for item in inputs],
+        }
+        for name, inputs in FIXTURE_EVENTS.items()
+    ]
+
+
+def abi_value_valid(abi_type: str, item: Any) -> bool:
+    """Whether a resolver-decoded ABI value has its pinned type's spelling.
+
+    Integers are minimal decimal text in range, so a uint256 stays exact;
+    addresses and fixed bytes are lower-case hexadecimal.
+    """
+    if abi_type == "address":
+        return isinstance(item, str) and EVM_ADDRESS_RE.fullmatch(item) is not None
+    if abi_type == "bool":
+        return type(item) is bool
+    if abi_type == "string":
+        return isinstance(item, str)
+    if abi_type.startswith("uint"):
+        return (
+            isinstance(item, str) and UNSIGNED_DECIMAL_RE.fullmatch(item) is not None
+            and int(item) < 2 ** int(abi_type[4:])
+        )
+    if abi_type.startswith("bytes") and abi_type != "bytes":
+        return isinstance(item, str) and re.fullmatch(f"0x[0-9a-f]{{{2 * int(abi_type[5:])}}}", item) is not None
+    return False
+
+
 def evm_claim_address_valid(address: Any) -> bool:
     """DRW-1: `0x` and 40 hex digits, all lower-case, all upper-case, or valid EIP-55."""
     if not isinstance(address, str) or CLAIM_ADDRESS_RE.fullmatch(address) is None:
@@ -697,12 +807,29 @@ def signature_valid(
     return True
 
 
+def _claim_component(text: str) -> str | None:
+    """A CF-2(c) parameter component decoded, or None unless only reserved characters are escaped."""
+    try:
+        decoded = urllib.parse.unquote(text, errors="strict")
+    except UnicodeDecodeError:
+        return None
+    reencoded = "".join(f"%{ord(char):02X}" if char in ":?&=%" else char for char in decoded)
+    return decoded if reencoded == text else None
+
+
 def claim_parameters_canonical(text: str) -> bool:
-    """Whether a ClaimReference parameter string is in CORE CF-2(c) form."""
+    """Whether a ClaimReference parameter string is in CORE CF-2(c) form.
+
+    Keys are sorted by their decoded code points, before the reserved
+    characters are percent-encoded, and only those characters are escaped.
+    """
     pairs = text.split("&")
     if not all(CLAIM_PARAMETER_RE.fullmatch(pair) for pair in pairs):
         return False
-    keys = [pair.split("=", 1)[0] for pair in pairs]
+    components = [_claim_component(part) for pair in pairs for part in pair.split("=", 1)]
+    if None in components:
+        return False
+    keys = components[::2]
     return keys == sorted(keys)
 
 
@@ -746,6 +873,12 @@ def parse_claim(value: Any) -> Claim | None:
         return None
     evm = None
     match = EVM_IDENTIFIER_RE.fullmatch(identifier) if scheme == "cci-xm" else None
+    # DACS-1 PB-2: an `evm` family spelt in another case, or a decimal chain
+    # ID with a leading zero, does not conform to the profile, and comparing
+    # it as text would let one EVM account pose as two parties (DRW-5).  This
+    # profile refuses it.  A non-numeric chain stays a generic claim.
+    if scheme == "cci-xm" and match is None and EVM_SPELLING_RE.fullmatch(identifier) is not None:
+        return None
     if match is not None and int(match.group(1)) <= SAFE_INTEGER_MAX:
         if not evm_claim_address_valid(match.group(2)):
             return None
@@ -900,6 +1033,8 @@ class TerminalRecord(NamedTuple):
     the resolver attests that it precedes this lifecycle's terminal.
     ``attested`` holds the identities (native job, event, decision) of the
     earlier terminals in this terminal's resolver-attested history.
+    ``evidence`` is the content hash of the `EscrowTerminalEvidence`; a
+    resolver-attested earlier terminal has none.
     """
 
     job: tuple[Any, Any, Any]
@@ -907,16 +1042,20 @@ class TerminalRecord(NamedTuple):
     decision: str | None
     position: tuple[int, int] | None = None
     attested: tuple[tuple[Any, Any, Any], ...] = ()
+    evidence: str | None = None
 
 
 def terminal_conflict(prior: TerminalRecord, current: TerminalRecord) -> tuple[str, str] | None:
     """Return the rule and detail when two terminal records cannot both hold.
 
-    The same terminal presented again is not a conflict.  A decision
+    The same terminal presented again is not a conflict, but every
+    observation of it reproduces one evidence hash (DRT-16).  A decision
     authorizes one terminal transaction (DRD-8); a native job reaches one
     terminal state (DRL-4); one terminal event settles one native job (DRT-4).
     """
     if prior[:3] == current[:3]:
+        if None not in (prior.evidence, current.evidence) and prior.evidence != current.evidence:
+            return "DRT-16", "a second, distinct terminal evidence record exists for the same terminal"
         return None
     if current.decision is not None and prior.decision == current.decision:
         return "DRD-8", "the decision already authorized another terminal transaction"
@@ -961,6 +1100,7 @@ class DecisionLedger:
     def terminals(self) -> tuple[TerminalRecord, ...]:
         return tuple(sorted(self._terminals, key=lambda item: (
             item.position is None, item.position or (), repr(item[:3]), repr(item.attested),
+            item.evidence or "",
         )))
 
     def record(self, terminal: TerminalRecord) -> None:
@@ -1342,36 +1482,86 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
 
 
 def _abi_pin_issue(params: dict[str, Any]) -> dict[str, str] | None:
-    """DRC-17: complete pins that derive from their signatures; DRC-18 decodes only through them."""
+    """DRC-17 pins, DRC-20 field bindings, and DRC-21 configuration evidence.
+
+    Each pin's `inputs` reproduce its signature, which derives its selector
+    or `topic0`; the event set is exactly the crosswalk events and the one
+    configuration event.  DRC-18: this verifier decodes the fixture ABI only.
+    """
     entrypoints, events = params["entrypoints"], params["events"]
     if not isinstance(entrypoints, list) or not all(
-        isinstance(pin, dict) and set(pin) == {"name", "signature", "selector"}
-        and all(isinstance(pin[field], str) for field in pin)
+        isinstance(pin, dict) and set(pin) == {"name", "signature", "selector", "inputs"}
+        and all(isinstance(pin[field], str) for field in ("name", "signature", "selector"))
+        and isinstance(pin["inputs"], list)
+        and all(
+            isinstance(item, dict) and set(item) == {"name", "type"}
+            and all(isinstance(item[field], str) for field in item)
+            for item in pin["inputs"]
+        )
         for pin in entrypoints
     ):
         return result("error", "DRC-17", "entrypoint pins are malformed")
     if sorted(pin["name"] for pin in entrypoints) != sorted(FIXTURE_ENTRYPOINTS):
         return result("error", "DRC-17", "the entrypoint pins are not one per profile entrypoint")
-    if any(pin["selector"] != selector_of(pin["signature"]) for pin in entrypoints):
-        return result("error", "DRC-17", "an entrypoint selector does not derive from its signature")
     if not isinstance(events, list) or not all(
-        isinstance(pin, dict) and set(pin) == {"name", "signature", "topic0"}
-        and all(isinstance(pin[field], str) for field in pin)
+        isinstance(pin, dict) and set(pin) == {"name", "signature", "topic0", "inputs"}
+        and all(isinstance(pin[field], str) for field in ("name", "signature", "topic0"))
+        and isinstance(pin["inputs"], list)
+        and all(
+            isinstance(item, dict) and set(item) == {"name", "type", "indexed"}
+            and isinstance(item["name"], str) and isinstance(item["type"], str)
+            and type(item["indexed"]) is bool
+            for item in pin["inputs"]
+        )
         for pin in events
     ):
         return result("error", "DRC-17", "event pins are malformed")
     names = [pin["name"] for pin in events]
-    if len(names) != len(set(names)) or not set(CROSSWALK_EVENTS) <= set(names):
-        return result("error", "DRC-17", "the event pins do not name every crosswalk event once")
+    if len(names) != len(set(names)) or len({pin["topic0"] for pin in events}) != len(events):
+        return result("error", "DRC-17", "two event pins share a name or topic0")
+    for pin in (*entrypoints, *events):
+        if any(ABI_TYPE_RE.fullmatch(item["type"]) is None for item in pin["inputs"]):
+            return result("error", "DRC-17", f"{pin['name']} pins an input type that is not a canonical ABI type")
+        if pin["signature"] != abi_signature(pin["name"], tuple((item["name"], item["type"]) for item in pin["inputs"])):
+            return result("error", "DRC-17", f"{pin['name']} inputs do not reproduce its signature")
+    if any(pin["selector"] != selector_of(pin["signature"]) for pin in entrypoints):
+        return result("error", "DRC-17", "an entrypoint selector does not derive from its signature")
     if any(pin["topic0"] != topic_of(pin["signature"]) for pin in events):
         return result("error", "DRC-17", "an event topic0 does not derive from its signature")
+    if any(sum(item["indexed"] for item in pin["inputs"]) > 3 for pin in events):
+        return result("error", "DRC-17", "an event pin has more than three indexed inputs")
+    # DRC-21: the configuration event, and its cutoff and policy inputs.
     configuration = params["configurationEvidence"]
+    if not isinstance(configuration, dict) or set(configuration) != set(CONFIGURATION_EVIDENCE):
+        return result("error", "DRC-21", "configurationEvidence is not the DRC-21 shape")
+    configured = [pin for pin in events if pin["topic0"] == configuration["eventTopic0"]]
+    if len(configured) != 1:
+        return result("error", "DRC-21", "configurationEvidence names no pinned event")
+    inputs = configured[0]["inputs"]
+    cutoff, policy = configuration["submissionCutoffInput"], configuration["preSubmissionPolicyInput"]
     if (
-        not isinstance(configuration, dict)
-        or set(configuration) != set(CONFIGURATION_EVIDENCE)
-        or configuration.get("event") not in names
+        [item["type"] for item in inputs if item["name"] == "jobId"] != ["uint256"]
+        or any(type(index) is not int or not 0 <= index < len(inputs) for index in (cutoff, policy))
+        or cutoff == policy
     ):
-        return result("error", "DRC-17", "configurationEvidence does not name a pinned event and its fields")
+        return result("error", "DRC-21", "the configuration event has no uint256 jobId, or its input indexes are not two of its inputs")
+    if (
+        ABI_WORD_TYPE_RE.fullmatch(inputs[cutoff]["type"]) is None
+        or ABI_WORD_TYPE_RE.fullmatch(inputs[policy]["type"]) is None
+        or not inputs[cutoff]["type"].startswith("uint")
+    ):
+        return result("error", "DRC-21", "a configuration input is not a one-word value type, or the cutoff is not a uint")
+    word = configuration["preSubmissionPolicyValue"]
+    if not isinstance(word, str) or BYTES32_RE.fullmatch(word) is None:
+        return result("error", "DRC-21", "preSubmissionPolicyValue is not a 32-byte ABI word")
+    if set(names) != set(CROSSWALK_EVENTS) | {configured[0]["name"]}:
+        return result("error", "DRC-17", "the event pins are not exactly the crosswalk events and the configuration event")
+    # DRC-20: each canonical field is the one input of its name.
+    pins = {pin["name"]: pin for pin in (*entrypoints, *events)}
+    for entry, fields in CANONICAL_FIELDS.items():
+        names_in_entry = [item["name"] for item in pins.get(entry, {"inputs": []})["inputs"]]
+        if any(names_in_entry.count(field) != 1 for field in fields):
+            return result("error", "DRC-20", f"{entry} has no single input for a canonical field it carries")
     status_map = params["nativeStatusMap"]
     if (
         not isinstance(status_map, list)
@@ -1386,10 +1576,8 @@ def _abi_pin_issue(params: dict[str, Any]) -> dict[str, str] | None:
         return result("error", "DRC-17", "nativeStatusMap does not map each native value to one crosswalk status")
     # DRC-18: this verifier decodes the fixture implementation's ABI only.
     if (
-        {pin["name"]: pin["signature"] for pin in entrypoints}
-        != {name: signature for name, (signature, _names) in FIXTURE_ENTRYPOINTS.items()}
-        or {pin["name"]: pin["signature"] for pin in events}
-        != {name: signature for name, (signature, _names) in FIXTURE_EVENTS.items()}
+        sorted(entrypoints, key=lambda pin: pin["name"]) != sorted(entrypoint_pins(), key=lambda pin: pin["name"])
+        or sorted(events, key=lambda pin: pin["name"]) != sorted(event_pins(), key=lambda pin: pin["name"])
         or configuration != CONFIGURATION_EVIDENCE
     ):
         return result("error", "DRV-2", "unsupported implementation ABI")
@@ -2087,6 +2275,28 @@ def _reference_check(value: dict[str, Any]) -> dict[str, str] | None:
                 f"{name} binds another agreement overlay",
             )
     job_locator = logical_address(job_id, "job")
+    # DRW-7: the funding and terminal evidence references are derived, so
+    # every producer writes the same bytes: no `signer`, and a
+    # storage-program anchor at a logical address, never a native one.  The
+    # exact address and content hash are each reference's own check below.
+    terminal = a["terminal"]
+    derived = [
+        ("funding escrow job", a["funding"].get("escrowJobRef")),
+        ("terminal escrow job", terminal.get("escrowJobRef")),
+        ("terminal funding evidence", terminal.get("fundingEvidenceRef")),
+        ("terminal decision", terminal.get("decisionRef")),
+        ("terminal delivery evidence", terminal.get("deliveryEvidenceRef")),
+    ]
+    for label, ref_value in derived:
+        if not attestation_ref_shape_valid(ref_value):
+            continue
+        if "signer" in ref_value:
+            return result("fail", "DRW-7", f"{label} reference carries a signer")
+        if ref_value["anchor"]["kind"] != "storage-program":
+            return result("fail", "DRW-7", f"{label} reference is not a storage-program anchor")
+        # A Demos native address is `stor-` and 40 hex digits (DEMOS-MAPPING).
+        if ref_value["anchor"]["locator"].startswith("stor-"):
+            return result("fail", "DRW-7", f"{label} reference names a native address, not a logical one")
     for name, rule in (("funding", "DRF-1"), ("terminal", "DRT-4"), ("evaluation", "DRD-8"), ("decision", "DRD-8")):
         artifact = a.get(name)
         if artifact is not None:
@@ -2243,8 +2453,6 @@ def _subject_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     """
     a = value["artifacts"]
     evaluation = a.get("evaluation")
-    if evaluation is None:
-        return None
     # Each source reference was resolved exactly by an earlier stage.
     published = {
         ref_value["anchor"]["locator"]: (ref_value["anchor"]["kind"], artifact)
@@ -2255,6 +2463,18 @@ def _subject_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
         )
         if artifact is not None
     }
+    # An optional `signer` on any subject reference to one of those records
+    # names that record's authenticated signer (DRV-6).
+    for name in ("evaluation", "disputeCase", "dispute"):
+        for ref_value in (a.get(name) or {}).get("subjectEvidenceRefs", []):
+            record = published.get(ref_value["anchor"]["locator"])
+            signature = record[1].get("signature") if record is not None else None
+            if "signer" in ref_value and isinstance(signature, dict) and (
+                claim_identity(ref_value["signer"]) != claim_identity(signature.get("signer"))
+            ):
+                return result("fail", "DRV-6", f"a {name} subject reference names a signer other than the record's")
+    if evaluation is None:
+        return None
     unresolved = False
     for ref_value in evaluation["subjectEvidenceRefs"]:
         record = published.get(ref_value["anchor"]["locator"])
@@ -2413,23 +2633,39 @@ def _block_reproduces(block: dict[str, Any], chain_id: int) -> bool:
     )
 
 
-def _abi_values_valid(values: Any, names: tuple[str, ...]) -> bool:
-    """Whether decoded calldata or log data has exactly the pinned signature's values (DRC-18)."""
-    if not isinstance(values, dict) or set(values) != set(names):
-        return False
-    for name in names:
-        item = values[name]
-        if name in ABI_VALUE_TYPES["address"]:
-            valid = isinstance(item, str) and EVM_ADDRESS_RE.fullmatch(item) is not None
-        elif name in ABI_VALUE_TYPES["uint"]:
-            valid = _amount_valid(item)
-        elif name in ABI_VALUE_TYPES["bytes32"]:
-            valid = isinstance(item, str) and BYTES32_RE.fullmatch(item) is not None
-        else:
-            valid = isinstance(item, str)
-        if not valid:
-            return False
-    return True
+def _abi_values_valid(values: Any, inputs: list[dict[str, Any]]) -> bool:
+    """Whether decoded calldata has exactly the pinned entrypoint's inputs, each of its type (DRC-18)."""
+    return (
+        isinstance(values, dict)
+        and len(values) == len(inputs)
+        and set(values) == {item["name"] for item in inputs}
+        and all(abi_value_valid(item["type"], values[item["name"]]) for item in inputs)
+    )
+
+
+def decoded_log(observation: dict[str, Any], pin: dict[str, Any]) -> dict[str, Any] | None:
+    """DRC-18: a log's inputs by name, read through its pinned `indexed` layout.
+
+    Indexed inputs come from the topics after `topic0`, in order, and the
+    others from the log data, in order.  None when the log does not fit the
+    layout; it is then not decoded under any other.
+    """
+    topics, data = observation["indexedArguments"], observation["dataArguments"]
+    indexed = [item for item in pin["inputs"] if item["indexed"]]
+    unindexed = [item for item in pin["inputs"] if not item["indexed"]]
+    if not isinstance(topics, list) or not isinstance(data, list) or (len(topics), len(data)) != (len(indexed), len(unindexed)):
+        return None
+    return {item["name"]: item_value for item, item_value in (*zip(indexed, topics), *zip(unindexed, data))}
+
+
+def _event_pin(params: dict[str, Any], name: str) -> dict[str, Any]:
+    return next(pin for pin in params["events"] if pin["name"] == name)
+
+
+def _configuration_pin(params: dict[str, Any]) -> dict[str, Any]:
+    """The DRC-21 configuration event's pin."""
+    topic = params["configurationEvidence"]["eventTopic0"]
+    return next(pin for pin in params["events"] if pin["topic0"] == topic)
 
 
 def _native_event_input_check(
@@ -2452,11 +2688,13 @@ def _native_event_input_check(
     chain_id = params["chainId"]
     funding_refs = artifacts["funding"].get("fundingEventRefs")
     terminal_refs = artifacts["terminal"].get("terminalEventRefs")
+    # DRW-7: each list is exactly its transition's required events, in
+    # ascending log order, from the one transaction that made it.
     if not isinstance(funding_refs, list) or len(funding_refs) != 1:
-        return {}, result("fail", "DRF-3", "the funding event set is not the one JobFunded log")
+        return {}, result("fail", "DRW-7", "the funding event set is not the one JobFunded log")
     terminal_names = TERMINAL_EVENTS[artifacts["terminal"]["terminalState"]]
     if not isinstance(terminal_refs, list) or len(terminal_refs) != len(terminal_names):
-        return {}, result("fail", "DRT-4", "the terminal event set is not the crosswalk's two logs")
+        return {}, result("fail", "DRW-7", "the terminal event set is not the crosswalk's two logs")
     delivered = artifacts.get("delivery") is not None
     # (label, reference, event name, reference rule, block rule, depth rule)
     expected: list[tuple[str, Any, Any, str, str, str]] = [
@@ -2498,10 +2736,10 @@ def _native_event_input_check(
     ):
         return {}, result("fail", "DRT-4", "native event inputs do not match the referenced event set")
     roles[extra[0]] = (
-        "configuration", None, params["configurationEvidence"]["event"], "DRJ-3", "DRJ-2", "DRJ-2",
+        "configuration", None, _configuration_pin(params)["name"], "DRJ-3", "DRJ-2", "DRJ-2",
     )
 
-    topics = {pin["name"]: pin["topic0"] for pin in params["events"]}
+    pins = {pin["name"]: pin for pin in params["events"]}
     finality_blocks = params["finalityBlocks"]
     records: dict[str, dict[str, Any]] = {}
     blocks: dict[int, set[tuple[str, int]]] = {}
@@ -2514,7 +2752,6 @@ def _native_event_input_check(
             or not _block_valid(event_input_value)
             or not (finality is None or (_block_valid(finality) and set(finality) == BLOCK_FIELDS))
             or not isinstance(event_input_value["contractAddress"], str)
-            or not _amount_valid(event_input_value["nativeJobId"])
             or not isinstance(event_input_value["eventName"], str)
             or not isinstance(event_input_value["topic0"], str)
         ):
@@ -2524,12 +2761,17 @@ def _native_event_input_check(
         if not _block_reproduces(event_input_value, chain_id):
             return {}, result("fail", block_rule, "native event block identity does not reproduce")
         if event_input_value["eventName"] != name:
-            return {}, result("fail", "DRT-4", "native event names do not match the lifecycle")
-        # DRC-18: a required log that does not match its pinned topic0 is not
-        # decoded under any signature.
-        if event_input_value["topic0"] != topics.get(name):
+            # DRW-7: a funding or terminal reference list is in log order.
+            rule = "DRW-7" if label == "funding" or label.startswith("terminal-") else "DRT-4"
+            return {}, result("fail", rule, "native event names do not match the lifecycle")
+        # DRC-18: a required log that does not match its pinned topic0 or
+        # indexed layout is not decoded under any other.
+        if event_input_value["topic0"] != pins[name]["topic0"]:
             return {}, result("fail", "DRC-18", "a required event does not match its pinned topic0")
-        if not _abi_values_valid(event_input_value["arguments"], FIXTURE_EVENTS[name][1]):
+        arguments = decoded_log(event_input_value, pins[name])
+        if arguments is None:
+            return {}, result("fail", "DRC-18", "a required event's topics or data do not fit its pinned layout")
+        if not all(abi_value_valid(item["type"], arguments[item["name"]]) for item in pins[name]["inputs"]):
             return {}, result("error", "DRV-3", "decoded event data does not match the pinned event signature")
         if finality is not None:
             if not _block_reproduces(finality, chain_id):
@@ -2651,6 +2893,7 @@ def _native_transaction_check(
     if [item["txHash"] for item in transactions] != [by_label[label]["txHash"] for label in lifecycle if label in by_label] or list(by_label) != lifecycle:
         return result("fail", "DRL-10", "the resolver's transaction records are not the lifecycle's transactions")
     entrypoints = {pin["selector"]: pin["name"] for pin in params["entrypoints"]}
+    entrypoint_inputs = {pin["name"]: pin["inputs"] for pin in params["entrypoints"]}
     statuses = {entry["nativeValue"]: entry["nativeStatus"] for entry in params["nativeStatusMap"]}
     accounts = role_accounts(a["agreement"])
     roles = {accounts["buyer"]: "client", accounts["seller"]: "provider", accounts["evaluator"]: "evaluator"}
@@ -2663,7 +2906,7 @@ def _native_transaction_check(
         entrypoint = entrypoints.get(record["entrypoint"])
         if entrypoint is None:
             return result("fail", "DRC-18", "a lifecycle transaction does not call a pinned entrypoint selector")
-        if not _abi_values_valid(record["calldata"], FIXTURE_ENTRYPOINTS[entrypoint][1]):
+        if not _abi_values_valid(record["calldata"], entrypoint_inputs[entrypoint]):
             return result("error", "DRV-3", "decoded calldata does not match the pinned entrypoint signature")
         prior = record["priorNativeStatus"]
         if (prior is not None and prior not in statuses) or record["nativeStatusAfter"] not in statuses:
@@ -2804,37 +3047,45 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
 def _native_event_semantics_check(value: dict[str, Any]) -> dict[str, str] | None:
     """Compare the authenticated, pin-decoded logs and calldata with the signed artifacts they settle."""
     inputs = value["reproductionInputs"]["nativeEventInputs"]
-    records = {item["eventName"]: item for item in inputs}
     artifacts = value["artifacts"]
     agreement = artifacts["agreement"]
     job = artifacts["job"]
     terminal = artifacts["terminal"]
     params = artifacts["railDefinition"]["parameters"]
     transactions = _transactions_by_label(value)
+    # DRC-20: every field is read from the pinned input of its name.
+    logs = {item["eventName"]: decoded_log(item, _event_pin(params, item["eventName"])) for item in inputs}
     # DRJ-1: the job's numeric value is the creation event's job topic.
-    if int(records["JobCreated"]["nativeJobId"]) != int(job["nativeJobId"]):
+    if int(logs["JobCreated"]["jobId"]) != int(job["nativeJobId"]):
         return result("fail", "DRJ-1", "the creation event's job topic is not the job's native job ID")
     if any(
         item["contractAddress"] != job["contractAddress"]
-        or int(item["nativeJobId"]) != int(job["nativeJobId"])
+        or int(logs[item["eventName"]]["jobId"]) != int(job["nativeJobId"])
         for item in inputs
     ):
         return result("fail", "DRT-4", "native event targets another contract or job")
     accounts = role_accounts(agreement)
-    configuration = params["configurationEvidence"]
-    created = records["JobCreated"]["arguments"]
-    configured = records[configuration["event"]]["arguments"]
-    # DRJ-3: the creation and configuration events carry the job's parties,
-    # deadlines, policy, and hook, each matching the overlay and rail.
+    created = logs["JobCreated"]
+    # DRJ-3: the creation event carries the job's parties, deadline, and
+    # hook, each matching the overlay and rail.
     if (
         (created["client"], created["provider"], created["evaluator"])
         != (accounts["buyer"], accounts["seller"], accounts["evaluator"])
         or int(created["expiredAt"]) != agreement["evaluationDeadlineSec"]
-        or int(configured[configuration["submissionCutoffField"]]) != agreement["submissionCutoffSec"]
-        or configured[configuration["preSubmissionPolicyField"]] != agreement["preSubmissionRefundPolicy"]
         or created["hook"] != params["hook"]
     ):
-        return result("fail", "DRJ-3", "creation and configuration events do not match the overlay and rail")
+        return result("fail", "DRJ-3", "the creation event does not match the overlay and rail")
+    # DRC-21: the cutoff and policy word are read from the configuration
+    # event at the pinned input indexes.
+    configuration = params["configurationEvidence"]
+    configuration_pin = _configuration_pin(params)
+    configured = logs[configuration_pin["name"]]
+    cutoff = configured[configuration_pin["inputs"][configuration["submissionCutoffInput"]]["name"]]
+    policy = configured[configuration_pin["inputs"][configuration["preSubmissionPolicyInput"]]["name"]]
+    if int(cutoff) != agreement["submissionCutoffSec"]:
+        return result("fail", "DRC-21", "the configuration event's cutoff is not the signed submissionCutoffSec")
+    if policy != configuration["preSubmissionPolicyValue"]:
+        return result("fail", "DRC-21", "the configuration event's policy word is not the evaluator-rejection word")
     # DRJ-4: the description is decoded from the creating transaction's
     # createJob calldata, which also carries what the events report.
     calldata = transactions["creation"]["calldata"]
@@ -2843,30 +3094,31 @@ def _native_event_semantics_check(value: dict[str, Any]) -> dict[str, str] | Non
     if (
         (calldata["provider"], calldata["evaluator"], calldata["hook"], calldata["expiredAt"])
         != (created["provider"], created["evaluator"], created["hook"], created["expiredAt"])
-        or calldata["submissionCutoff"] != configured[configuration["submissionCutoffField"]]
+        or calldata["submissionCutoff"] != cutoff
     ):
         return result("fail", "DRV-6", "authenticated createJob calldata contradicts the creation events it emitted")
-    if records["JobFunded"]["arguments"] != {"client": accounts["buyer"], "amount": agreement["budgetBaseUnits"]}:
+    if (logs["JobFunded"]["client"], logs["JobFunded"]["amount"]) != (accounts["buyer"], agreement["budgetBaseUnits"]):
         return result("fail", "DRF-3", "funding event does not lock the complete budget from the client")
     if artifacts.get("delivery") is not None:
         digest = "0x" + artifact_hash(artifacts["delivery"])
         # As an EVM transaction hash commits to its calldata, the synthetic
         # submission transaction identity commits to the submitted digest.
+        submitted = next(item for item in inputs if item["eventName"] == "JobSubmitted")
         if (
-            records["JobSubmitted"]["arguments"]["deliverable"] != digest
+            logs["JobSubmitted"]["deliverable"] != digest
             or transactions["submission"]["calldata"]["deliverable"] != digest
-            or not records["JobSubmitted"]["txHashPreimageUtf8"].endswith(":" + digest)
+            or not submitted["txHashPreimageUtf8"].endswith(":" + digest)
         ):
             return result("fail", "DRP-9", "the submission event and its transaction do not commit to the delivery digest")
     state_event, transfer_event = TERMINAL_EVENTS[terminal["terminalState"]]
-    transfer = records[transfer_event]["arguments"]
-    recipient = transfer["recipient"] if transfer_event == "PaymentReleased" else transfer["client"]
+    transfer = logs[transfer_event]
+    recipient = transfer["provider"] if transfer_event == "PaymentReleased" else transfer["client"]
     # DRT-4: the transfer log fixes one recipient and amount.
     if (recipient, transfer["amount"]) != (terminal["recipient"], terminal["amountBaseUnits"]):
         return result("fail", "DRT-4", "terminal transfer log does not match the claimed recipient and amount")
     decision = artifacts.get("decision")
     expected_reason = None if decision is None else "0x" + artifact_hash(decision)
-    reasons = {records[state_event]["arguments"].get("reason"), transactions["terminal"]["calldata"].get("reason")}
+    reasons = {logs[state_event].get("reason"), transactions["terminal"]["calldata"].get("reason")}
     if reasons != {expected_reason}:
         if ZERO_BYTES32 in reasons:
             return result("fail", "DREB-5", "zero decision reason is forbidden")
@@ -2983,14 +3235,19 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
     if native.get("runtimeBytecodeHash") != a["job"].get("runtimeBytecodeHash"):
         return result("fail", "DRJ-5", "runtime bytecode hash mismatch")
     # DRJ-5, DRJ-11: the code the resolver found at every action block is the
-    # pinned escrow code and payment-token code; this rail pins no
-    # implementation, so the escrow must not delegate.
+    # pinned escrow code and payment-token code.  A delegating escrow needs
+    # both implementation pins, and the resolver attests no implementation
+    # code to compare with them, so it is never verified here.
     if state["escrowRuntimeBytecodeHash"] != a["job"]["runtimeBytecodeHash"]:
         return result("fail", "DRJ-5", "authenticated escrow code differs from the pinned runtime code")
     if state["paymentTokenRuntimeBytecodeHash"] != params["paymentTokenRuntimeBytecodeHash"]:
         return result("fail", "DRJ-11", "authenticated payment-token code differs from its pin")
     if state["implementationAddress"] != params.get("implementationAddress"):
         return result("fail", "DRJ-11", "the escrow delegates to an implementation the rail does not pin")
+    if "implementationAddress" in params and "implementationRuntimeBytecodeHash" not in params:
+        return result("fail", "DRJ-11", "a delegating escrow needs both implementation pins")
+    if state["implementationAddress"] is not None:
+        return result("indeterminate", "DRJ-11", "no authenticated implementation code is available to compare with its pin")
     if native.get("payoutReceiver") != accounts["seller"]:
         return result("fail", "DREB-10", "native payout receiver is not the bound seller account")
 
@@ -3200,6 +3457,7 @@ def _terminal_record(value: dict[str, Any]) -> TerminalRecord:
         decision=None if decision is None else artifact_hash(decision),
         position=(observed["blockNumber"], ref_value["logIndex"]),
         attested=tuple(sorted({prior[:3] for prior in _attested_terminals(value)}, key=repr)),
+        evidence=artifact_hash(artifacts["terminal"]),
     )
 
 
@@ -3227,7 +3485,9 @@ def _terminal_replay_check(
         conflict = terminal_conflict(other, current)
         if conflict is None:
             continue
-        precedes = True if conflict[0] == "DRT-4" else terminal_precedes(other, current)
+        # One event claimed by two jobs, or one terminal with two evidence
+        # records, is a conflict whichever came first.
+        precedes = True if conflict[0] in ("DRT-4", "DRT-16") else terminal_precedes(other, current)
         if precedes is None:
             undecided.append((conflict[0], "authenticated event positions cannot order this terminal against a conflicting terminal"))
         elif not precedes and current[:3] not in other.attested:
@@ -3647,9 +3907,15 @@ def verify_vector_pack(pack: Any) -> list[str]:
     ):
         return ["candidate vector pack source pins are not the verifier's"]
     current = document_pins()
+    if current is None:
+        return [f"cannot read spec/ at the Checked-against commit {DACS_CHECKED_AGAINST[:7]}; fetch full history"]
     changed = [path for path in PINNED_DOCUMENTS if dacs["documents"][path] != current[path]]
     if changed:
-        return [f"pinned document {path} differs from the checkout" for path in changed]
+        return [
+            f"pinned document {path} differs from "
+            + ("the checkout" if path == PINNED_DOCUMENTS[0] else f"its text at {DACS_CHECKED_AGAINST[:7]}")
+            for path in changed
+        ]
     errors: list[str] = []
     vectors = pack.get("vectors")
     if not isinstance(vectors, list) or not vectors:

@@ -12,6 +12,7 @@ import base64
 import copy
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import unittest
@@ -229,7 +230,7 @@ class AdmitListingLegacyTests(unittest.TestCase):
         self.assertEqual(verdict, "indeterminate")
 
     def test_wrong_typed_boundary_is_unsupported(self):
-        for boundary in ({}, [], ["new-session"], None, 1, True):
+        for boundary in ({}, [], ["new-session"], None, 1, True, False):
             with self.subTest(boundary=boundary):
                 self.assertEqual(
                     listing_admission.admit_listing(
@@ -522,11 +523,12 @@ def _wrong_typed(known: str) -> tuple:
         ("negative integer", -1),
         ("float", 1.5),
         ("boolean", True),
+        ("boolean false", False),
     )
 
 
 class ListingShapeWrongTypeTests(unittest.TestCase):
-    """Wrong-typed closed-union members are shape failures, never exceptions."""
+    """Wrong-typed or unsupported closed-union members are shape failures, never exceptions."""
 
     def assert_shape_failure(self, listing, reason):
         self.assertEqual(
@@ -573,6 +575,199 @@ class ListingShapeWrongTypeTests(unittest.TestCase):
                     listing = _legacy_listing()
                     listing["requiredCapabilities"] = items
                     self.assert_shape_failure(listing, "invalid requiredCapabilities")
+
+    def test_unsupported_pipeline_kind_string_is_a_shape_failure(self):
+        for index in (0, -1):
+            for kind in ("negotiate-future-mode", "Vet-Credentials", "vet-credentials ", ""):
+                with self.subTest(step=index, kind=kind):
+                    listing = _legacy_listing()
+                    listing["pipeline"][index]["kind"] = kind
+                    self.assert_shape_failure(listing, "invalid or unsupported pipeline")
+
+    def test_unsupported_capability_string_is_a_shape_failure(self):
+        for value in ("SR-6", "sr-1", "SR-1 ", ""):
+            for items in ([value], ["SR-1", value]):
+                with self.subTest(capability=value, preceded_by_valid=len(items) > 1):
+                    listing = _legacy_listing()
+                    listing["requiredCapabilities"] = items
+                    self.assert_shape_failure(listing, "invalid requiredCapabilities")
+
+    def test_supported_argument_must_be_a_collection_holding_the_type(self):
+        listing = _legacy_listing()
+        for supported in (None, {"Listing"}, frozenset({"Listing"}), ["Listing"], ("Listing",)):
+            with self.subTest(supported=supported):
+                self.assertTrue(
+                    listing_artifact.validate_listing_shape(listing, supported=supported)[0]
+                )
+        for supported in (5, True, "xxListingxx", "Listing", {"Listing": True}, [], set()):
+            with self.subTest(supported=supported):
+                self.assertEqual(
+                    listing_artifact.validate_listing_shape(listing, supported=supported),
+                    (False, "listing type is unsupported by this consumer", None, None),
+                )
+
+
+class ListingShapeBoundsTests(unittest.TestCase):
+    """DACS-1 §6.3.4 length bounds and closed ListingTerms/signature unions."""
+
+    assert_shape_failure = ListingShapeWrongTypeTests.assert_shape_failure
+
+    def assert_publishable(self, listing):
+        self.assertEqual(listing_artifact.validate_listing_shape(listing)[:2], (True, None))
+        self.assertEqual(
+            listing_artifact.prepare_listing_publication(
+                listing,
+                _native_binding(),
+                substrate=CONFORMANCE_SUBSTRATE,
+                finality_profile=CONFORMANCE_FINALITY,
+            )[0],
+            "pass",
+        )
+
+    def test_string_and_tag_bounds(self):
+        cases = (
+            ("seller", "displayName", 200, "invalid seller"),
+            ("offering", "title", 200, "invalid offering"),
+            ("offering", "description", 2000, "invalid offering"),
+        )
+        for section, field, limit, reason in cases:
+            with self.subTest(field=field):
+                listing = _legacy_listing()
+                # Bounds count characters, not UTF-8 octets.
+                listing[section][field] = "é" * limit
+                self.assert_publishable(listing)
+                listing[section][field] += "a"
+                self.assert_shape_failure(listing, reason)
+        listing = _legacy_listing()
+        listing["offering"]["tags"] = ["t" * 32] * 16
+        self.assert_publishable(listing)
+        for tags in (["t" * 32] * 17, ["t" * 33], ["ok", "t" * 33]):
+            with self.subTest(tags=len(tags), longest=max(map(len, tags))):
+                listing = _legacy_listing()
+                listing["offering"]["tags"] = tags
+                self.assert_shape_failure(listing, "invalid offering")
+
+    def test_closed_terms_unions(self):
+        cases = {
+            "conflictOfLawsRule": (
+                ("buyer-jurisdiction", "seller-jurisdiction", "rule-ref:https://example.test/law"),
+                ("court-of-mars", "Buyer-Jurisdiction", "rule-ref", ""),
+            ),
+            "acceptanceModel": (("auto-accept",), ("manual", "Auto-Accept", "")),
+            "cancellationPolicy": (
+                ("none", "pre-commit", "with-fee"), ("free", "Pre-Commit", ""),
+            ),
+            "transcriptDisclosurePolicy": (
+                ("none", "encrypted-anchored-recommended", "encrypted-anchored-required"),
+                ("public", "encrypted-anchored", ""),
+            ),
+        }
+        for field, (valid, invalid) in cases.items():
+            for value in valid:
+                with self.subTest(field=field, value=value):
+                    listing = _legacy_listing()
+                    listing["terms"][field] = value
+                    self.assert_publishable(listing)
+            for value in invalid + tuple(value for _, value in _wrong_typed(valid[0])):
+                with self.subTest(field=field, value=value):
+                    listing = _legacy_listing()
+                    listing["terms"][field] = value
+                    self.assert_shape_failure(listing, "invalid terms")
+
+    def test_signature_algorithm_is_closed(self):
+        for algorithm in ("ed25519", "ecdsa-secp256k1", "sr1-aggregate"):
+            with self.subTest(algorithm=algorithm):
+                listing = _legacy_listing()
+                listing["signature"]["algorithm"] = algorithm
+                self.assert_publishable(listing)
+        for algorithm in ("rsa", "Ed25519", "ed25519 ", "") + tuple(
+            value for _, value in _wrong_typed("ed25519")
+        ):
+            with self.subTest(algorithm=algorithm):
+                listing = _legacy_listing()
+                listing["signature"]["algorithm"] = algorithm
+                self.assert_shape_failure(listing, "invalid listing signature shape")
+
+    def test_storage_program_access_model_is_closed(self):
+        for access_model in ("public", "buyer-only", "encrypt-to-buyer"):
+            with self.subTest(access_model=access_model):
+                listing = _legacy_listing()
+                listing["offering"]["deliverable"] = {
+                    "kind": "storage-program", "accessModel": access_model,
+                }
+                self.assert_publishable(listing)
+        for access_model in ("everyone", "Public", "") + tuple(
+            value for _, value in _wrong_typed("public")
+        ):
+            with self.subTest(access_model=access_model):
+                listing = _legacy_listing()
+                listing["offering"]["deliverable"] = {
+                    "kind": "storage-program", "accessModel": access_model,
+                }
+                self.assert_shape_failure(listing, "invalid offering")
+
+    def test_rail_version_is_a_number(self):
+        listing = _legacy_listing()
+        listing["acceptedRails"][0]["railVersion"] = 1
+        self.assert_publishable(listing)
+        for value in ("1", {}, [1], None, True, False):
+            with self.subTest(rail_version=value):
+                listing = _legacy_listing()
+                listing["acceptedRails"][0]["railVersion"] = value
+                self.assert_shape_failure(listing, "invalid acceptedRails")
+
+
+def _spec_union(text: str, anchor: str, field: str | None = None) -> set:
+    """Quoted members of a spec union: a ``type X =`` block or one field after ``anchor``."""
+    start = text.index(anchor) + len(anchor)
+    if field is None:
+        lines = []
+        for line in text[start:].splitlines()[1:]:
+            if not line.strip().startswith(("|", "//")):
+                break
+            lines.append(line.split("//")[0] if line.strip().startswith("|") else "")
+        return set(re.findall(r'"([^"]*)"', "\n".join(lines)))
+    match = re.compile(rf'\b{field}\??: ((?:"[^"]*"\s*\|?\s*)+)').search(text, start)
+    return set(re.findall(r'"([^"]*)"', match.group(1)))
+
+
+class ListingSpecTableTests(unittest.TestCase):
+    """The module's mirrored closed sets equal the Standard's type definitions."""
+
+    def test_mirrored_tables_match_the_standard(self):
+        dacs1 = (ROOT / "spec/DACS-1-IDENTIFY.md").read_text(encoding="utf-8")
+        dacs4 = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")
+        self.assertEqual(_spec_union(dacs1, "type PhaseType ="), set(listing_artifact.KNOWN_PHASES))
+        self.assertEqual(
+            _spec_union(dacs1, "type SubstrateRequirement ="),
+            set(listing_artifact._CAPABILITIES),
+        )
+        self.assertEqual(
+            _spec_union(dacs1, "type ListingSignature = {", "algorithm"),
+            set(listing_artifact._SIGNATURE_ALGORITHMS),
+        )
+        for field, allowed in listing_artifact._TERMS_ENUMS.items():
+            with self.subTest(field=field):
+                expected = set(allowed) | (
+                    {"rule-ref:<uri>"} if field == "conflictOfLawsRule" else set()
+                )
+                self.assertEqual(_spec_union(dacs1, "type ListingTerms = {", field), expected)
+        self.assertEqual(
+            _spec_union(dacs4, "type DeliverableSpec =", "accessModel"),
+            set(listing_artifact._ACCESS_MODELS),
+        )
+        for field, limit in (
+            ("displayName", listing_artifact._MAX_DISPLAY_NAME),
+            ("title", listing_artifact._MAX_TITLE),
+            ("description", listing_artifact._MAX_DESCRIPTION),
+        ):
+            with self.subTest(field=field):
+                self.assertRegex(dacs1, rf"\n\s+{field}: string\s+// max {limit} chars\n")
+        self.assertRegex(
+            dacs1,
+            rf"\n\s+tags: string\[\]\s+// max {listing_artifact._MAX_TAGS} tags, "
+            rf"max {listing_artifact._MAX_TAG} chars each\n",
+        )
 
 
 class RetainedAdmissionTests(unittest.TestCase):

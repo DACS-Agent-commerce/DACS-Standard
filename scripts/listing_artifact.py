@@ -71,6 +71,23 @@ _HASH = re.compile(r"[0-9a-f]{64}\Z")
 _AMOUNT = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
 _SELECTION_RULES = frozenset({"lowest-price", "highest-price", "first-acceptable"})
 _CAPABILITIES = frozenset({"SR-1", "SR-2", "SR-3", "SR-4", "SR-5"})
+_SIGNATURE_ALGORITHMS = frozenset({"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
+_ACCESS_MODELS = frozenset({"public", "buyer-only", "encrypt-to-buyer"})
+# Closed ListingTerms unions (DACS-1 §6.3.4); conflictOfLawsRule also admits rule-ref:<uri>.
+_TERMS_ENUMS = {
+    "conflictOfLawsRule": frozenset({"buyer-jurisdiction", "seller-jurisdiction"}),
+    "acceptanceModel": frozenset({"auto-accept"}),
+    "cancellationPolicy": frozenset({"none", "pre-commit", "with-fee"}),
+    "transcriptDisclosurePolicy": frozenset({
+        "none", "encrypted-anchored-recommended", "encrypted-anchored-required",
+    }),
+}
+# DACS-1 §6.3.4 "max N chars" bounds, counted in Unicode code points.
+_MAX_DISPLAY_NAME = 200
+_MAX_TITLE = 200
+_MAX_DESCRIPTION = 2000
+_MAX_TAGS = 16
+_MAX_TAG = 32
 _SAFE_INTEGER_MAX = 2**53 - 1
 
 
@@ -85,7 +102,10 @@ def classify_listing_artifact(listing, supported=None):
     if listing.get("dacsVersion") != "1":
         raise ValueError("listing type version is unsupported")
     artifact_type = LEGACY_LISTING
-    if supported is not None and artifact_type not in supported:
+    if supported is not None and (
+        not isinstance(supported, (set, frozenset, list, tuple))
+        or artifact_type not in supported
+    ):
         raise ValueError("listing type is unsupported by this consumer")
     return artifact_type, LISTING_DOMAINS[artifact_type]
 
@@ -110,13 +130,21 @@ def _valid_hash_bound_json(listing):
 
 
 def validate_sealed_session_deadline(listing, session_start):
-    """Apply SE-1 only when admitting a new session, not historical reads."""
+    """Apply SE-1 only when admitting a new session, not historical reads.
+
+    A step whose kind is not a closed ``PhaseType`` member fails as an invalid
+    pipeline rather than being skipped as a non-sealed step.
+    """
     try:
         pipeline = listing.get("pipeline") if isinstance(listing, dict) else None
-        if not isinstance(pipeline, list):
+        if not isinstance(pipeline, list) or not pipeline:
             return False, "invalid pipeline"
         for step in pipeline:
-            if not isinstance(step, dict) or not isinstance(step.get("kind"), str):
+            if (
+                not isinstance(step, dict)
+                or not isinstance(step.get("kind"), str)
+                or step["kind"] not in KNOWN_PHASES
+            ):
                 return False, "invalid pipeline"
             if step["kind"] not in {
                 "negotiate-sealed-envelope",
@@ -229,7 +257,9 @@ def _valid_deliverable(value):
         return False
     kind = value.get("kind")
     if kind == "storage-program":
-        return True
+        return "accessModel" not in value or (
+            isinstance(value["accessModel"], str) and value["accessModel"] in _ACCESS_MODELS
+        )
     if kind == "entitlement":
         return _is_number(value.get("durationSec")) and isinstance(value.get("renewable"), bool)
     if kind == "attested-payload":
@@ -389,6 +419,11 @@ def _valid_pipeline(pipeline, pricing, deliverable):
 def validate_listing_shape(listing, *, now=None, supported=None):
     """Validate the complete required outer shape and closed executable unions.
 
+    This also enforces the §6.3.4 length bounds and the closed ListingTerms,
+    ListingSignature.algorithm and storage-program accessModel unions. It does
+    not check ``revocationState``: RSC-1 maps a malformed reference to
+    indeterminate admission, not to a schema rejection.
+
     Optional fields stay optional. Unknown members are not projected away: the
     caller must hash and verify the original object, including those members.
     """
@@ -421,6 +456,7 @@ def validate_listing_shape(listing, *, now=None, supported=None):
         not isinstance(seller, dict)
         or not isinstance(seller.get("identity"), dict)
         or not _is_nonempty_string(seller.get("displayName"))
+        or len(seller["displayName"]) > _MAX_DISPLAY_NAME
         or ("publicEndpoint" in seller and not _is_nonempty_string(seller["publicEndpoint"]))
     ):
         return False, "invalid seller", artifact_type, domain
@@ -429,17 +465,31 @@ def validate_listing_shape(listing, *, now=None, supported=None):
     if (
         not isinstance(offering, dict)
         or not _is_nonempty_string(offering.get("title"))
+        or len(offering["title"]) > _MAX_TITLE
         or not isinstance(offering.get("description"), str)
+        or len(offering["description"]) > _MAX_DESCRIPTION
         or not _is_nonempty_string(offering.get("category"))
         or not isinstance(offering.get("tags"), list)
-        or any(not isinstance(tag, str) for tag in offering["tags"])
+        or len(offering["tags"]) > _MAX_TAGS
+        or any(not isinstance(tag, str) or len(tag) > _MAX_TAG for tag in offering["tags"])
         or not _valid_deliverable(offering.get("deliverable"))
     ):
         return False, "invalid offering", artifact_type, domain
 
     if not _valid_bundle_requirement(listing.get("buyerRequirement")):
         return False, "invalid buyerRequirement", artifact_type, domain
-    if not isinstance(listing.get("terms"), dict):
+    terms = listing.get("terms")
+    if not isinstance(terms, dict) or any(
+        field in terms
+        and not (
+            isinstance(terms[field], str)
+            and (
+                terms[field] in allowed
+                or field == "conflictOfLawsRule" and terms[field].startswith("rule-ref:")
+            )
+        )
+        for field, allowed in _TERMS_ENUMS.items()
+    ):
         return False, "invalid terms", artifact_type, domain
     if not _valid_pricing(listing.get("pricing")):
         return False, "invalid pricing", artifact_type, domain
@@ -464,7 +514,12 @@ def validate_listing_shape(listing, *, now=None, supported=None):
     accepted = listing.get("acceptedRails")
     if accepted is not None and (
         not isinstance(accepted, list)
-        or any(not isinstance(ref, dict) or not _is_nonempty_string(ref.get("railId")) for ref in accepted)
+        or any(
+            not isinstance(ref, dict)
+            or not _is_nonempty_string(ref.get("railId"))
+            or ("railVersion" in ref and not _is_number(ref["railVersion"]))
+            for ref in accepted
+        )
     ):
         return False, "invalid acceptedRails", artifact_type, domain
     if any(step["kind"] in CONCRETE_PAYMENT_PHASES or step["kind"] == "pay-alternative" for step in pipeline):
@@ -474,7 +529,8 @@ def validate_listing_shape(listing, *, now=None, supported=None):
     signature = listing.get("signature")
     if (
         not isinstance(signature, dict)
-        or not _is_nonempty_string(signature.get("algorithm"))
+        or not isinstance(signature.get("algorithm"), str)
+        or signature["algorithm"] not in _SIGNATURE_ALGORITHMS
         or not _is_nonempty_string(signature.get("signer"))
         or not _is_nonempty_string(signature.get("value"))
     ):

@@ -199,7 +199,7 @@ class ListingArtifactDispatchTests(unittest.TestCase):
     def test_sealed_session_deadline_rejects_wrong_typed_kinds(self):
         sealed = {"kind": "negotiate-sealed-envelope", "parameters": {"commitDeadline": 100_060_000}}
         for kind in ({}, {"kind": "negotiate-sealed-envelope"}, [], ["negotiate-sealed-envelope"],
-                     None, 0, 1.5, True):
+                     None, 0, 1.5, True, False):
             for pipeline in ([{"kind": kind}], [copy.deepcopy(sealed), {"kind": kind}]):
                 with self.subTest(kind=kind, after_sealed=len(pipeline) > 1):
                     self.assertEqual(
@@ -211,6 +211,51 @@ class ListingArtifactDispatchTests(unittest.TestCase):
             listing_artifact.validate_sealed_session_deadline({"pipeline": [{}]}, 100_000_000),
             (False, "invalid pipeline"),
         )
+
+    def test_sealed_session_deadline_rejects_unsupported_kinds_and_empty_pipeline(self):
+        sealed = {"kind": "negotiate-sealed-envelope", "parameters": {"commitDeadline": 100_060_000}}
+        for kind in ("unknown-phase", "", "Negotiate-Sealed-Envelope",
+                     "negotiate-sealed-envelope ", "negotiate-sealed-envelope-completed"):
+            for pipeline in ([{"kind": kind}], [copy.deepcopy(sealed), {"kind": kind}]):
+                with self.subTest(kind=kind, after_sealed=len(pipeline) > 1):
+                    self.assertEqual(
+                        listing_artifact.validate_sealed_session_deadline(
+                            {"pipeline": pipeline}, 100_000_000),
+                        (False, "invalid pipeline"),
+                    )
+        self.assertEqual(
+            listing_artifact.validate_sealed_session_deadline({"pipeline": []}, 100_000_000),
+            (False, "invalid pipeline"),
+        )
+
+    def test_sealed_session_deadline_gates_every_sealed_kind(self):
+        start = 100_000_000
+        for kind in ("negotiate-sealed-envelope", "negotiate-sealed-envelope-procurement",
+                     "negotiate-sealed-envelope-complete",
+                     "negotiate-sealed-envelope-procurement-complete"):
+            def check(parameters, session_start=start):
+                step = {"kind": kind}
+                if parameters is not None:
+                    step["parameters"] = parameters
+                return listing_artifact.validate_sealed_session_deadline(
+                    {"pipeline": [{"kind": "vet-credentials"}, step]}, session_start)
+
+            with self.subTest(kind=kind):
+                self.assertEqual(check({"commitDeadline": start + 60_000}), (True, None))
+                self.assertEqual(check({"commitDeadline": start + 60_000.5}), (True, None))
+                for parameters in ({"commitDeadline": start + 59_999}, {"commitDeadline": start},
+                                   {"commitDeadline": str(start + 60_000)},
+                                   {"commitDeadline": True}, {"commitDeadline": None},
+                                   {"commitDeadline": float("nan")}, {}, None, []):
+                    with self.subTest(parameters=parameters):
+                        self.assertEqual(check(parameters),
+                                         (False, "sealed commit deadline is too early"))
+                for session_start in (None, True, str(start), float("nan"), 2**53):
+                    with self.subTest(session_start=session_start):
+                        self.assertEqual(
+                            check({"commitDeadline": start + 60_000}, session_start),
+                            (False, "invalid session start"),
+                        )
 
     def test_listing_window_is_one_trusted_instant(self):
         listing = {"validity": {"notBefore": 100, "notAfter": 200}}

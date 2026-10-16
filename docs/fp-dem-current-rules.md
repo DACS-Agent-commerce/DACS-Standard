@@ -144,13 +144,15 @@ No open issue tracks these vector gaps yet:
   requirements: an expired commitment, a live instance signature over the
   actual `agreementHash` rather than a placeholder or pre-issued one, and the
   buyer's check of the commitment before relying on auto-accept;
-- no committed vector exercises PS-1 or PS-2; the only PS-2 check is a
-  sealed-envelope pairing gate in the identity-bundle hash-binding reference
-  test, which does not reach a fixed-price pipeline.
+- no committed conformance vector or v0.4 suite case exercises PS-1 or PS-2.
+  The DACS-5 reference regression test
+  (`tests/test_current_evidence_boundary_regressions.py`) and
+  `scripts/listing_artifact.py` do check missing, duplicate and non-adjacent
+  phases on a fixed-price pipeline.
 
 `pay-dem` `bft-final` finality (§9.5.9, §9.7.0) and the `demos-native:DEM`
-registry entry (§9.4.3) also depend on two open upstream issues that §9.5.9
-reaches through #382:
+registry entry (§9.4.2; resolved per §9.4.3) also depend on two open upstream
+issues that §9.5.9 reaches through #382:
 
 - DACS-Agent-commerce/dacs-sdk#284: pin the Demos mainnet trust bootstrap
   before funded live use;

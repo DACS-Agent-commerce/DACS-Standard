@@ -160,9 +160,22 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
         untracked = gaps.split("No open issue tracks these vector gaps yet:", 1)[1].split("\n\n", 2)[1]
         for text in ("§8.4.1", "auto-accept", "PS-1", "PS-2"):
             self.assertIn(text, untracked)
-        upstream = gaps.split("also depend on two open upstream issues", 1)[1]
+        # PS-1/PS-2 lack vectors, not checks: the reference and listing code
+        # named in the gap reject missing, duplicate and non-adjacent phases.
+        self.assertIn("no committed conformance vector or v0.4 suite case exercises PS-1 or PS-2", untracked)
+        regression = (ROOT / "tests" / "test_current_evidence_boundary_regressions.py").read_text(encoding="utf-8")
+        listing = (ROOT / "scripts" / "listing_artifact.py").read_text(encoding="utf-8")
+        self.assertIn('for mutation in ("missing", "duplicate", "nonadjacent"):', regression)
+        self.assertIn("commitments[0] != negotiations[0] + 1", listing)
+        for path in ("tests/test_current_evidence_boundary_regressions.py", "scripts/listing_artifact.py"):
+            self.assertIn(f"`{path}`", untracked.replace("\n  ", " "))
+        upstream = gaps.split("also depend on two open upstream", 1)[1]
         for text in ("DACS-Agent-commerce/dacs-sdk#284", "kynesyslabs/node#994"):
             self.assertIn(text, upstream)
+        # The DEM rail is a §9.4.2 registry row; §9.4.3 covers authoring and resolution.
+        registry = self.sources["DACS-4-SETTLE.md"].split("#### 9.4.2 ", 1)[1].split("\n#### ", 1)[0]
+        self.assertIn("| demos-native:DEM |", registry)
+        self.assertIn("registry entry (§9.4.2; resolved per §9.4.3)", gaps)
         self.assertIn("other\nthan the pull request adding this map", gaps)
 
     def test_readme_and_historical_readiness_page_link_the_map(self):

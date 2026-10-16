@@ -54,15 +54,26 @@ kept, and compares them with this checkout or with a revision of it:
 python3 scripts/check_vendored_vectors.py path/to/vendored/vectors
 python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev v0.4
 python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --json
+python3 scripts/check_vendored_vectors.py path/to/vendored/sets --sets-only
 ```
 
 Point the tool at the directory holding vector sets, such as `vectors/`,
 rather than a copy of the whole `conformance/` tree. Incomplete set objects
-and symlinked subdirectories are bad input. Other JSON files are counted as
-ignored.
+and symlinked subdirectories are bad input.
 
-It reports changes to `vectors`, `count`, declared `hash`, or `spec`, as well
-as missing and extra sets. The checker computes this content hash separately
+Other JSON files under `vectors/`, such as `golden.json`, the
+`dacs-v0.1-*` paths and `examples/`, are matched by their path relative to
+that directory and compared as type-strict parsed JSON. Each is reported as
+matching, drifted (naming its changed top-level members), missing or extra.
+For a copy that holds only the vector sets, `--sets-only` compares the sets
+alone and counts other JSON files as ignored.
+
+For each set, it reports changes to `vectors`, `count`, declared `hash`,
+`spec`, or any other top-level member, as well as missing and extra sets.
+Vectors are evaluated against top-level members such as `agreement`,
+`publicKeys`, `decisionModel`, `trustedFixturePolicy`, `tier` and
+`conformanceProfile`, so every member is compared and each changed one is
+named under `members`. The checker computes this content hash separately
 from each set's declared `hash`, whose encoding varies by set:
 
 ```text
@@ -80,7 +91,9 @@ This is a non-normative tooling choice.
 
 When the Standard supplies the verified encoding, the checker hashes the
 vendored copy under that encoding even if its own declared hash is stale or
-edited. Those changes report drift with exit 1.
+edited. Those changes report drift with exit 1. When the Standard's vectors
+canonicalize and the vendored vectors do not, the vectors differ and the set
+is reported as drifted.
 
 Both modes also compare type-strict parsed values: Unicode normalization,
 `1.0` versus `1`, and float zero-sign changes are drift. Numbers use Python's
@@ -89,8 +102,9 @@ Formatting is ignored. Canonical hashing ignores object member order; the
 fallback mode must reproduce a declared hash under a validator-accepted
 encoding.
 
-Exit 0 means every set matches, exit 1 means drift, and exit 2 means bad input
-or a set with neither a canonical nor a verified declared-encoding hash.
+Exit 0 means every set and compared file matches, exit 1 means drift, and
+exit 2 means bad input or a set with neither a canonical nor a verified
+declared-encoding hash.
 Such a set is `uncheckable`; a known missing or extra set retains that status
 and also contributes to the separate uncheckable count. Exit 2 takes
 precedence over drift.

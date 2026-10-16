@@ -15,6 +15,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "check_vendored_vectors.py"
 V04_COMMIT = "4bb9e48a1095ab32c06c25b7c0b52018d3ce4091"
+NEXT_COMMIT = "df7bc202ebdc179a59d61a8221072f33f482b933"
 BIG = 2**53
 
 
@@ -96,22 +97,126 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(
             report["summary"],
             {"standard": 2, "vendored": 2, "match": 2, "drifted": 0, "missing": 0, "extra": 0,
-             "uncheckable": 0, "ignoredJson": {"standard": 1, "vendored": 1}},
+             "uncheckable": 0, "ignoredJson": {"standard": 0, "vendored": 0},
+             "files": {"standard": 1, "vendored": 1, "match": 1, "drifted": 0, "missing": 0, "extra": 0}},
         )
+        self.assertEqual(report["files"], [{"path": "golden.json", "status": "match", "members": None}])
         alpha = self.result_for(report, "alpha-v0.1")
         self.assertEqual(alpha["standardPath"], "security/alpha-v0.1.json")
         self.assertEqual(alpha["vendoredPath"], "security/alpha-v0.1.json")
         self.assertEqual(alpha["comparison"], "canonical-json-sha256+exact-json")
         self.assertEqual(alpha["contentHash"]["standard"], STANDARD_SETS["alpha-v0.1"]["hash"])
+        self.assertEqual(alpha["members"], [])
 
     def test_flat_vendored_layout_matches_by_set_name(self):
         flat = self.tmp / "flat"
         flat.mkdir()
         for path in (self.vendored / "security").glob("*.json"):
             shutil.copy(path, flat / path.name)
+        # Sets match by name in any layout; other JSON files match by path.
         code, report = self.run_checker(vendored=flat)
+        self.assertEqual(code, 1)
+        self.assertEqual(report["summary"]["match"], 2)
+        self.assertEqual(report["files"], [{"path": "golden.json", "status": "missing", "members": None}])
+        code, report = self.run_checker("--sets-only", vendored=flat)
         self.assertEqual(code, 0)
         self.assertEqual(self.result_for(report, "beta-v0.1")["vendoredPath"], "beta-v0.1.json")
+        shutil.copy(self.vendored / "golden.json", flat / "golden.json")
+        code, report = self.run_checker(vendored=flat)
+        self.assertEqual(code, 0)
+
+    def test_top_level_member_edit_is_drift(self):
+        # Vectors are evaluated against top-level members such as fixtures,
+        # keys and status metadata, so each is compared and named.
+        for name in STANDARD_SETS:
+            data = copy.deepcopy(STANDARD_SETS[name])
+            data.update(publicKeys={"seller": "AAAA"}, tier="historical",
+                        conformanceProfile={"status": "superseded", "currentCollisionAuthority": False})
+            write_json(self.standard / "conformance" / "vectors" / "security" / f"{name}.json", data)
+            write_json(self.vendored_set(name), data)
+        code, report = self.run_checker()
+        self.assertEqual(code, 0)
+        edits = {
+            "alpha-v0.1": lambda data: (data["publicKeys"].update(seller="BBBB"),
+                                        data.update(tier="current", agreement={"parties": []})),
+            "beta-v0.1": lambda data: (data.pop("conformanceProfile"), data.update(publicKeys={"seller": 1})),
+        }
+        for name, change in edits.items():
+            self.edit_vendored(name, change)
+        code, report = self.run_checker()
+        self.assertEqual(code, 1)
+        alpha = self.result_for(report, "alpha-v0.1")
+        self.assertEqual((alpha["status"], alpha["changes"]), ("drifted", ["members"]))
+        self.assertEqual(alpha["members"], ["agreement", "publicKeys", "tier"])
+        beta = self.result_for(report, "beta-v0.1")
+        self.assertEqual((beta["status"], beta["changes"]), ("drifted", ["members"]))
+        self.assertEqual(beta["members"], ["conformanceProfile", "publicKeys"])
+        self.assertIn("  members: agreement, publicKeys, tier", CHECKER.render_text(report))
+        # --sets-only narrows file comparison, never set members.
+        code, report = self.run_checker("--sets-only")
+        self.assertEqual((code, self.result_for(report, "alpha-v0.1")["status"]), (1, "drifted"))
+
+    def test_non_set_json_files_are_compared_by_path(self):
+        standard_vectors = self.standard / "conformance" / "vectors"
+        golden = {"negotiate": [{"id": "neg-ps3", "expect": "fail"}], "signing": {}}
+        example = {"kind": "IdentityBundle", "artifact": {"claims": []}}
+        for base in (standard_vectors, self.vendored):
+            write_json(base / "golden.json", golden)
+            write_json(base / "examples" / "identity-bundle.json", example)
+        code, report = self.run_checker()
+        self.assertEqual(code, 0)
+        self.assertEqual([f["status"] for f in report["files"]], ["match", "match"])
+
+        edited = copy.deepcopy(golden)
+        edited["negotiate"][0]["expect"] = "pass"
+        write_json(self.vendored / "golden.json", edited)
+        (self.vendored / "examples" / "identity-bundle.json").unlink()
+        write_json(self.vendored / "golden-extra.json", {"signing": {}})
+        code, report = self.run_checker()
+        self.assertEqual(code, 1)
+        self.assertTrue(report["drift"])
+        self.assertEqual(report["summary"]["match"], 2)
+        self.assertEqual(
+            report["files"],
+            [{"path": "examples/identity-bundle.json", "status": "missing", "members": None},
+             {"path": "golden-extra.json", "status": "extra", "members": None},
+             {"path": "golden.json", "status": "drifted", "members": ["negotiate"]}],
+        )
+        self.assertEqual(report["summary"]["files"],
+                         {"standard": 2, "vendored": 2, "match": 0, "drifted": 1, "missing": 1, "extra": 1})
+        text = CHECKER.render_text(report)
+        self.assertIn("FILE DRIFTED  golden.json\n  members: negotiate", text)
+        self.assertIn("FILE MISSING  examples/identity-bundle.json", text)
+        self.assertIn("FILE EXTRA    golden-extra.json", text)
+        self.assertIn("2 other standard JSON files, 2 vendored: 0 match, 1 drifted, 1 missing, 1 extra.", text)
+
+        # A changed top-level type is drift without a member list.
+        write_json(self.vendored / "golden.json", [golden])
+        code, report = self.run_checker()
+        self.assertEqual(self.result_for_file(report, "golden.json"),
+                         {"path": "golden.json", "status": "drifted", "members": None})
+
+    def result_for_file(self, report, path):
+        return next(result for result in report["files"] if result["path"] == path)
+
+    def test_vendored_vectors_refused_by_canonical_json_are_drift(self):
+        # The Standard's vectors canonicalize, so a vendored value canonical_json
+        # refuses is a known difference rather than an unknown one.
+        for declared in ("verified", "stale"):
+            with self.subTest(declared=declared):
+                data = make_set("alpha-v0.1", [{"name": "a1", "expected": "pass", "input": {"n": BIG}}])
+                if declared == "stale":
+                    data["hash"] = STANDARD_SETS["alpha-v0.1"]["hash"]
+                write_json(self.vendored_set("alpha-v0.1"), data)
+                code, report = self.run_checker()
+                alpha = self.result_for(report, "alpha-v0.1")
+                self.assertEqual((code, alpha["status"]), (1, "drifted"))
+                self.assertIn("vectors", alpha["changes"])
+                self.assertFalse(alpha["uncheckable"])
+                self.assertFalse(report["uncheckable"])
+                self.assertIn("the Standard's vectors canonicalize", alpha["comparisonNote"])
+                self.assertEqual(alpha["comparison"], "canonical-json-sha256+exact-json")
+                self.assertIn("DRIFTED  alpha-v0.1", CHECKER.render_text(report))
 
     def test_changed_vector_is_drift(self):
         self.edit_vendored("beta-v0.1", lambda data: data["vectors"][0].update(expected="pass"))
@@ -294,12 +399,19 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(result["contentHash"]["standard"], result["contentHash"]["vendored"])
         self.assertIn("differs as exact JSON", result["comparisonNote"])
 
-    def test_ignored_json_counts_are_reported(self):
+    def test_sets_only_reports_ignored_json_counts(self):
         write_json(self.vendored / "another-golden.json", {"signing": {}})
-        code, report = self.run_checker()
+        write_json(self.vendored / "golden.json", {"signing": {"edited": True}})
+        code, report = self.run_checker("--sets-only")
         self.assertEqual(code, 0)
+        self.assertTrue(report["setsOnly"])
+        self.assertEqual(report["files"], [])
+        self.assertIsNone(report["summary"]["files"])
         self.assertEqual(report["summary"]["ignoredJson"], {"standard": 1, "vendored": 2})
-        self.assertIn("Ignored JSON files: 1 standard, 2 vendored.", CHECKER.render_text(report))
+        self.assertIn("Ignored JSON files (--sets-only): 1 standard, 2 vendored.", CHECKER.render_text(report))
+        code, report = self.run_checker()
+        self.assertEqual(code, 1)
+        self.assertFalse(report["setsOnly"])
 
     def test_text_report_names_each_problem(self):
         self.vendored_set("alpha-v0.1").unlink()
@@ -360,11 +472,28 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("unreadable security directory", report["error"])
 
-        for target in ("canonical_json", "same_json"):
-            with self.subTest(recursion=target), mock.patch.object(CHECKER, target, side_effect=RecursionError):
-                code, report = self.run_checker()
+        for target, args, where in (
+            ("canonical_json", (), "vectors"),
+            ("same_json", (), "file golden.json"),
+            ("same_json", ("--sets-only",), "vectors"),
+        ):
+            with self.subTest(recursion=target, args=args), \
+                    mock.patch.object(CHECKER, target, side_effect=RecursionError):
+                code, report = self.run_checker(*args)
                 self.assertEqual(code, 2)
                 self.assertIn("too deeply nested", report["error"])
+                self.assertIn(where, report["error"])
+        for base in (self.standard / "conformance" / "vectors", self.vendored):
+            write_json(base / "security" / "alpha-v0.1.json", dict(valid, fixture={"deep": True}))
+        real_same_json = CHECKER.same_json
+        def deep_members(left, right):
+            if left == {"deep": True}:
+                raise RecursionError
+            return real_same_json(left, right)
+        with mock.patch.object(CHECKER, "same_json", side_effect=deep_members):
+            code, report = self.run_checker("--sets-only")
+        self.assertEqual(code, 2)
+        self.assertIn("members are too deeply nested", report["error"])
         empty_standard = self.tmp / "empty-standard"
         (empty_standard / "conformance" / "vectors").mkdir(parents=True)
         for label, kwargs, args in (
@@ -406,6 +535,30 @@ class RepositoryVectorSetTests(unittest.TestCase):
             else:
                 self.assertEqual(result["comparison"], "canonical-json-sha256+exact-json")
         self.assertTrue(all(r["standardPath"].startswith("security/") for r in report["sets"]))
+        self.assertTrue(all(r["members"] == [] for r in report["sets"]))
+        other_json = [p for p in (ROOT / "conformance" / "vectors").rglob("*.json")
+                      if p.parent.name != "security"]
+        self.assertEqual(report["summary"]["files"]["match"], len(other_json))
+        self.assertIn("golden.json", {f["path"] for f in report["files"]})
+
+    def test_v04_copy_reports_top_level_and_golden_drift(self):
+        # Between v0.4 and the base of this checker, commitment-anchor-authority-v0.3
+        # changed only its top-level agreement fixtures, and golden.json changed.
+        _commit, files = CHECKER.read_revision(ROOT, V04_COMMIT)
+        with tempfile.TemporaryDirectory() as tmp:
+            vendored = Path(tmp)
+            for relative, raw in files:
+                (vendored / relative).parent.mkdir(parents=True, exist_ok=True)
+                (vendored / relative).write_bytes(raw)
+            code, report = self.run_checker(vendored, "--rev", NEXT_COMMIT)
+        self.assertEqual(code, 1)
+        anchor = next(r for r in report["sets"] if r["set"] == "commitment-anchor-authority-v0.3")
+        self.assertEqual((anchor["status"], anchor["changes"]), ("drifted", ["members"]))
+        self.assertTrue({"agreement", "agreementHash", "commitmentRecord", "commitmentRecordHash",
+                         "commitmentSignature"} <= set(anchor["members"]))
+        drifted_files = {f["path"] for f in report["files"] if f["status"] == "drifted"}
+        self.assertTrue({"golden.json", "dacs-v0.1-happy-path.json", "dacs-v0.1-negative-paths.json",
+                         "examples/identity-bundle.json"} <= drifted_files)
 
     def test_revision_mode_reads_committed_sets(self):
         commit, files = CHECKER.read_revision(ROOT, V04_COMMIT)

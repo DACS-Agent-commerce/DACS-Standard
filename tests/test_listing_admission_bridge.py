@@ -643,19 +643,19 @@ class ListingShapeBoundsTests(unittest.TestCase):
                 # Bounds count the CF-1 (NFC) form that is hashed and signed, so
                 # a decomposed spelling of the same signed content is in bounds.
                 listing = _legacy_listing()
-                listing[section][field] = unicodedata.normalize("NFD", "\u1ec7" * limit)
+                listing[section][field] = unicodedata.normalize("NFD", "ệ" * limit)
                 self.assertEqual(len(listing[section][field]), 3 * limit)
                 self.assert_publishable(listing)
-                listing[section][field] += unicodedata.normalize("NFD", "\u1ec7")
+                listing[section][field] += unicodedata.normalize("NFD", "ệ")
                 self.assert_shape_failure(listing, reason)
         listing = _legacy_listing()
         listing["offering"]["tags"] = ["t" * 32] * 16
         self.assert_publishable(listing)
-        listing["offering"]["tags"] = [unicodedata.normalize("NFD", "\u1ec7" * 32)] * 16
+        listing["offering"]["tags"] = [unicodedata.normalize("NFD", "ệ" * 32)] * 16
         self.assert_publishable(listing)
         for tags in (
             ["t" * 32] * 17, ["t" * 33], ["ok", "t" * 33],
-            [unicodedata.normalize("NFD", "\u1ec7" * 33)],
+            [unicodedata.normalize("NFD", "ệ" * 33)],
         ):
             with self.subTest(tags=len(tags), longest=max(map(len, tags))):
                 listing = _legacy_listing()
@@ -666,7 +666,9 @@ class ListingShapeBoundsTests(unittest.TestCase):
         cases = {
             "conflictOfLawsRule": (
                 ("buyer-jurisdiction", "seller-jurisdiction", "rule-ref:https://example.test/law"),
-                ("court-of-mars", "Buyer-Jurisdiction", "rule-ref", ""),
+                ("court-of-mars", "Buyer-Jurisdiction", "rule-ref", "", "rule-ref:", "rule-ref: ",
+                 "rule-ref:https://example.test/ law", "rule-ref:https://example.test/law\n",
+                 "rule-ref:\x00"),
             ),
             "acceptanceModel": (("auto-accept",), ("manual", "Auto-Accept", "")),
             "cancellationPolicy": (
@@ -688,6 +690,106 @@ class ListingShapeBoundsTests(unittest.TestCase):
                     listing = _legacy_listing()
                     listing["terms"][field] = value
                     self.assert_shape_failure(listing, "invalid terms")
+
+    def test_optional_terms_members_have_their_declared_types(self):
+        not_numbers = ("60", "soon", None, True, False, [], [60], {})
+        cases = {
+            "termsOfServiceUrl": (
+                ("https://example.test/tos",),
+                tuple(value for _, value in _wrong_typed("https://example.test/tos")) + (9,),
+            ),
+            "termsOfServiceHash": (
+                ("ab" * 32,), tuple(value for _, value in _wrong_typed("ab" * 32)),
+            ),
+            "jurisdictions": (
+                ([], ["DE"], ["US", "DE"]),
+                ("DE", "US", [5], ["DE", None], [["DE"]], {"DE": "DE"}, None, 1, True),
+            ),
+            "deadlineSecAfterCommit": ((0, 60, 1.5), not_numbers),
+            "retentionYears": ((1, 7), not_numbers + ("1",)),
+        }
+        for field, (valid, invalid) in cases.items():
+            for value in valid:
+                with self.subTest(field=field, value=value):
+                    listing = _legacy_listing()
+                    listing["terms"][field] = value
+                    self.assert_publishable(listing)
+            for value in invalid:
+                with self.subTest(field=field, value=value):
+                    listing = _legacy_listing()
+                    listing["terms"][field] = value
+                    self.assert_shape_failure(listing, "invalid terms")
+
+    def test_optional_offering_and_deliverable_members_have_their_declared_types(self):
+        url = "https://example.test/more"
+        method = {"kind": "tlsnotary", "endpoint": "https://example.test/notary"}
+        not_numbers = ("big", "1024", None, True, False, [], {})
+        not_objects = ("tlsnotary", [], [method], None, 1, True)
+        deliverables = {
+            "storage-program": {"kind": "storage-program"},
+            "attested-payload": {"kind": "attested-payload", "payloadFormat": "application/json"},
+            "external": {"kind": "external", "description": "consulting hours"},
+        }
+        cases = (
+            ("offering", "extendedDescriptionUrl", (url,),
+             tuple(value for _, value in _wrong_typed(url))),
+            ("offering", "extendedDescriptionHash", ("ab" * 32,),
+             tuple(value for _, value in _wrong_typed("ab" * 32))),
+            ("storage-program", "schemaUrl", (url,),
+             tuple(value for _, value in _wrong_typed(url))),
+            ("storage-program", "expectedSizeBytes", (0, 1024), not_numbers),
+            ("attested-payload", "expectedSizeBytes", (0, 1024), not_numbers),
+            ("attested-payload", "verificationMethod", (method,), not_objects),
+            ("external", "verificationMethod", (method,), not_objects),
+        )
+        for target, field, valid, invalid in cases:
+            # Pair each value with its outcome: False == 0, so membership would lie.
+            for value, publishable in [(value, True) for value in valid] + [
+                (value, False) for value in invalid
+            ]:
+                with self.subTest(target=target, field=field, value=value):
+                    listing = _legacy_listing()
+                    if target == "offering":
+                        member = listing["offering"]
+                    else:
+                        member = copy.deepcopy(deliverables[target])
+                        listing["offering"]["deliverable"] = member
+                    member[field] = value
+                    if publishable:
+                        self.assert_publishable(listing)
+                    else:
+                        self.assert_shape_failure(listing, "invalid offering")
+
+    def test_auction_rule_ref_names_a_rule(self):
+        def auction(rule):
+            listing = _legacy_listing()
+            listing["pricing"] = {"kind": "auction", "selectionRule": rule}
+            listing["pipeline"] = [
+                {"kind": "vet-credentials"},
+                {"kind": "negotiate-sealed-envelope", "parameters": {
+                    "commitDeadline": 200_000, "revealWindow": 60, "selectionRule": rule,
+                }},
+                {"kind": "commit-agreement"},
+                {"kind": "pay-dem", "parameters": {"rail": "demos-native:DEM"}},
+                {"kind": "deliver-storage-program"},
+            ]
+            return listing
+
+        for rule in (
+            "lowest-price", "rule-ref:" + "12" * 32 + ":https://rules.example/select",
+            "rule-ref:" + "14" * 32 + ":stor-rule",
+        ):
+            with self.subTest(rule=rule):
+                self.assertEqual(
+                    listing_artifact.validate_listing_shape(auction(rule))[:2], (True, None),
+                )
+        for rule in ("rule-ref:", "rule-ref: ", "rule-ref:" + "12" * 32 + ": https://x",
+                     "rule-ref:https://rules.example/\tselect", "rule-ref"):
+            with self.subTest(rule=rule):
+                self.assertEqual(
+                    listing_artifact.validate_listing_shape(auction(rule)),
+                    (False, "invalid pricing", "Listing", "dacs-listing:v1:"),
+                )
 
     def test_signature_algorithm_is_closed(self):
         for algorithm in ("ed25519", "ecdsa-secp256k1", "sr1-aggregate"):

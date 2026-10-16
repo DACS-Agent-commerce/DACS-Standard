@@ -70,6 +70,8 @@ COMPLETE_SEALED_NEGOTIATIONS = frozenset({
 _LISTING_ID = re.compile(r"[A-Za-z0-9._~-]{1,128}\Z")
 _HASH = re.compile(r"[0-9a-f]{64}\Z")
 _AMOUNT = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
+# "rule-ref:" names its rule with a non-empty, whitespace- and control-free reference.
+_RULE_REF = re.compile(r"rule-ref:[^\s\x00-\x1f\x7f-\x9f]+\Z")
 _SELECTION_RULES = frozenset({"lowest-price", "highest-price", "first-acceptable"})
 _CAPABILITIES = frozenset({"SR-1", "SR-2", "SR-3", "SR-4", "SR-5"})
 _SIGNATURE_ALGORITHMS = frozenset({"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
@@ -200,6 +202,14 @@ def _chars(value):
     return len(unicodedata.normalize("NFC", value))
 
 
+def _optional(value, field, check):
+    return field not in value or check(value[field])
+
+
+def _is_string_list(value):
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
 def _valid_attestation_ref(value):
     if not isinstance(value, dict) or not {"anchor", "contentHash"} <= set(value):
         return False
@@ -247,7 +257,7 @@ def _valid_pricing(value):
         selection = value.get("selectionRule")
         return (
             _is_nonempty_string(selection)
-            and (selection in _SELECTION_RULES or selection.startswith("rule-ref:"))
+            and (selection in _SELECTION_RULES or _RULE_REF.fullmatch(selection) is not None)
             and ("reservePrice" not in value or _valid_price(value["reservePrice"]))
         )
     if kind == "metered":
@@ -264,16 +274,53 @@ def _valid_deliverable(value):
         return False
     kind = value.get("kind")
     if kind == "storage-program":
-        return "accessModel" not in value or (
-            isinstance(value["accessModel"], str) and value["accessModel"] in _ACCESS_MODELS
+        return (
+            _optional(value, "schemaUrl", lambda url: isinstance(url, str))
+            and _optional(value, "expectedSizeBytes", _is_number)
+            and _optional(
+                value, "accessModel",
+                lambda model: isinstance(model, str) and model in _ACCESS_MODELS,
+            )
         )
     if kind == "entitlement":
         return _is_number(value.get("durationSec")) and isinstance(value.get("renewable"), bool)
     if kind == "attested-payload":
-        return _is_nonempty_string(value.get("payloadFormat"))
+        return (
+            _is_nonempty_string(value.get("payloadFormat"))
+            and _optional(value, "verificationMethod", lambda method: isinstance(method, dict))
+            and _optional(value, "expectedSizeBytes", _is_number)
+        )
     if kind == "external":
-        return _is_nonempty_string(value.get("description"))
+        return (
+            _is_nonempty_string(value.get("description"))
+            and _optional(value, "verificationMethod", lambda method: isinstance(method, dict))
+        )
     return False
+
+
+def _valid_terms(value):
+    """ListingTerms (DACS-1 §6.3.4): each present member has its declared type."""
+    if not isinstance(value, dict):
+        return False
+    if any(
+        field in value
+        and not (
+            isinstance(value[field], str)
+            and (
+                value[field] in allowed
+                or field == "conflictOfLawsRule" and _RULE_REF.fullmatch(value[field]) is not None
+            )
+        )
+        for field, allowed in _TERMS_ENUMS.items()
+    ):
+        return False
+    return (
+        _optional(value, "termsOfServiceUrl", lambda url: isinstance(url, str))
+        and _optional(value, "termsOfServiceHash", lambda digest: isinstance(digest, str))
+        and _optional(value, "jurisdictions", _is_string_list)
+        and _optional(value, "deadlineSecAfterCommit", _is_number)
+        and _optional(value, "retentionYears", _is_number)
+    )
 
 
 def _valid_claim_requirement(value):
@@ -426,10 +473,11 @@ def _valid_pipeline(pipeline, pricing, deliverable):
 def validate_listing_shape(listing, *, now=None, supported=None):
     """Validate the complete required outer shape and closed executable unions.
 
-    This also enforces the §6.3.4 length bounds and the closed ListingTerms,
-    ListingSignature.algorithm and storage-program accessModel unions. It does
-    not check ``revocationState``: RSC-1 maps a malformed reference to
-    indeterminate admission, not to a schema rejection.
+    This also enforces the §6.3.4 length bounds, the declared types of the
+    optional ListingTerms, offering and DeliverableSpec members, and the closed
+    ListingTerms, ListingSignature.algorithm and storage-program accessModel
+    unions. It does not check ``revocationState``: RSC-1 maps a malformed
+    reference to indeterminate admission, not to a schema rejection.
 
     Optional fields stay optional. Unknown members are not projected away: the
     caller must hash and verify the original object, including those members.
@@ -480,23 +528,14 @@ def validate_listing_shape(listing, *, now=None, supported=None):
         or len(offering["tags"]) > _MAX_TAGS
         or any(not isinstance(tag, str) or _chars(tag) > _MAX_TAG for tag in offering["tags"])
         or not _valid_deliverable(offering.get("deliverable"))
+        or not _optional(offering, "extendedDescriptionUrl", lambda url: isinstance(url, str))
+        or not _optional(offering, "extendedDescriptionHash", lambda digest: isinstance(digest, str))
     ):
         return False, "invalid offering", artifact_type, domain
 
     if not _valid_bundle_requirement(listing.get("buyerRequirement")):
         return False, "invalid buyerRequirement", artifact_type, domain
-    terms = listing.get("terms")
-    if not isinstance(terms, dict) or any(
-        field in terms
-        and not (
-            isinstance(terms[field], str)
-            and (
-                terms[field] in allowed
-                or field == "conflictOfLawsRule" and terms[field].startswith("rule-ref:")
-            )
-        )
-        for field, allowed in _TERMS_ENUMS.items()
-    ):
+    if not _valid_terms(listing.get("terms")):
         return False, "invalid terms", artifact_type, domain
     if not _valid_pricing(listing.get("pricing")):
         return False, "invalid pricing", artifact_type, domain

@@ -47,8 +47,13 @@ passing claim:
 - the out-of-scope `rfq` pattern is listed as `unsupported`; and
 - `availability` is omitted, as IM-2 allows for a non-operational library capability.
 
-`fixed-price-x402-seller.json` claims `conformance-tested` for PS-3 only, with
-the PS-3 golden case among its evidence; no case it cites exercises PS-1 or PS-2.
+`fixed-price-x402-seller.json` makes one passing claim: its fixed-price claim
+is `conformance-tested` for PS-3 only, with the PS-3 golden case among its
+evidence; no case it cites exercises PS-1 or PS-2. Its `pay-x402` evidence is
+the single golden pass case `settlement-x402-pass`, which exercises none of
+the X402-1..X402-4 rejection paths in DACS-4 §9.5.7 or the SB-1..SB-3 session
+binding in §9.5.8, so `pay-x402` is `partial` and claimed only as
+`implemented`.
 
 This scoping is the examples' own choice. IM-4 requires only that cited case
 ids exist in the pinned conformance manifest, and the validator does not check

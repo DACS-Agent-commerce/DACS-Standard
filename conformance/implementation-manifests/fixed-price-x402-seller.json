@@ -41,7 +41,7 @@
     {
       "id": "claim-pay-x402",
       "level": "capability",
-      "result": "conformance-tested",
+      "result": "implemented",
       "roles": ["seller"],
       "modules": ["DACS-4"],
       "capabilityRefs": ["pay-x402"],
@@ -79,7 +79,7 @@
       "roles": ["seller"],
       "supportStatus": "implemented",
       "availability": "live",
-      "testStatus": "passed",
+      "testStatus": "partial",
       "evidenceRefs": ["x402-vectors"]
     },
     {

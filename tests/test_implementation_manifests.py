@@ -121,6 +121,31 @@ class ImplementationManifestTests(unittest.TestCase):
             if claim["result"] in {"conformant", "conformance-tested"}:
                 self.assertFalse({"PS-1", "PS-2"} & set(claim["ruleRefs"]), claim["id"])
 
+    def test_x402_example_pay_claim_stays_within_its_evidence(self):
+        # At the pin, the only §9.5.7/§9.5.8 case is one golden pass case, so no
+        # case exercises the X402-1..X402-4 rejections or SB-1..SB-3.
+        manifest = load_example()
+        suite_pin = manifest["conformanceSuite"]
+        suite = json.loads(git_show(suite_pin["commit"], suite_pin["manifestPath"]))
+        x402_cases = [(case["id"], case["status"], case["want"]) for case in suite["cases"]
+                      if case["spec"] in {"§9.5.7", "§9.5.8"} or "X402-" in case["spec"] or "SB-" in case["spec"]]
+        self.assertEqual(x402_cases, [("settlement-x402-pass", "golden", "pass")])
+        runs = {run["id"]: run for run in manifest["testRuns"]}
+        claim = next(claim for claim in manifest["claims"] if claim["capabilityRefs"] == ["pay-x402"])
+        capability = next(cap for cap in manifest["capabilities"] if cap["ref"] == "pay-x402")
+        cases = {case for ref in claim["evidenceRefs"] for case in runs[ref]["caseIds"]}
+        self.assertEqual(cases, {"settlement-x402-pass"})
+        self.assertEqual((claim["result"], capability["testStatus"]), ("implemented", "partial"))
+        for passing in manifest["claims"]:
+            if passing["result"] in {"conformant", "conformance-tested"}:
+                rules = set(passing["ruleRefs"])
+                self.assertFalse({rule for rule in rules if rule.startswith(("SB-", "X402-"))}, passing["id"])
+                self.assertNotIn("DACS-4-9.5.7", rules, passing["id"])
+                self.assertNotIn("pay-x402", passing["capabilityRefs"], passing["id"])
+        readme = (EXAMPLE_DIR / "README.md").read_text(encoding="utf-8")
+        self.assertIn("`fixed-price-x402-seller.json` makes one passing claim", readme)
+        self.assertIn("so `pay-x402` is `partial` and claimed only as\n`implemented`", readme)
+
     def seller_example(self):
         manifest = load_example("fixed-price-pay-dem-seller.json")
         self.assertEqual(self.validate(copy.deepcopy(manifest)), [])
@@ -290,8 +315,8 @@ class ImplementationManifestTests(unittest.TestCase):
         manifest["deviations"] = [
             {
                 "id": "known-gap",
-                "capabilityRefs": ["pay-x402"],
-                "ruleRefs": ["SB-3"],
+                "capabilityRefs": ["fixed-price"],
+                "ruleRefs": ["PS-3"],
                 "status": "open",
                 "effect": "nonconforming",
                 "description": "Known protocol mismatch.",

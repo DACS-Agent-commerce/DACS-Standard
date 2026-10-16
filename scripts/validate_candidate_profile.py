@@ -15,12 +15,15 @@ spec validators (which read spec/ only) never see it. This checker pins it:
   every signed type is in the inventory, and no candidate domain is in the
   CORE registry; every other quoted `dacs-*:vN:` literal is registered;
 - the verifier result vocabulary is the DACS four-way disposition;
-- every requirement-bearing rule is listed by at least one rejection,
-  indeterminate, or process case, every case lists only defined rules, and
-  every case declares expected results allowed for its kind;
+- every requirement-bearing rule is listed by at least one rejection or
+  indeterminate case, a process case lists only PROCESS_RULES (the only rules
+  it covers), every case lists only defined rules, and every case declares
+  expected results allowed for its kind;
 - the document stays pre-normative, every external pin links to a 40-hex
-  commit, and the **Checked against** commit exists in this repository with
-  spec/ identical to the working tree;
+  commit, and the **Checked against** commit is an ancestor of HEAD whose
+  spec/ equals spec/ at the candidate's latest revision (the working tree
+  while the document has uncommitted edits); a later spec/ change that does
+  not revise the candidate does not fail the check;
 - the generated rule-to-case matrix is in sync with the document.
 
 The matrix pins a SHA-256 of every rule, case, type block, and section, so a
@@ -57,6 +60,11 @@ ALLOWED_EXPECTED = {
     "I": {"indeterminate"},
     "Q": {"pass"},
 }
+# Case kinds that can fail an implementation that ignores a rule.
+NEGATIVE_KINDS = {"R", "I"}
+# Obligations on the document and the registration process. A process case
+# expects only `pass`, so it may list these and nothing else.
+PROCESS_RULES = {"DRG-2", "DRC-10", "DRC-11"}
 CANDIDATE_REF_RE = re.compile(r"\bDR[A-Z]*-\d+\b")
 INLINE_CODE_RE = re.compile(r"`[^`]*`")
 KEYWORD_RE = re.compile(r"\b(MUST NOT|MUST|SHALL NOT|SHALL|SHOULD NOT|SHOULD|REQUIRED|MAY)\b")
@@ -296,7 +304,8 @@ def external_pin_errors(lines: list[str]) -> list[str]:
             for url in LINK_RE.findall(line):
                 if not PINNED_LINK_RE.match(url):
                     errors.append(f"external pin {url} does not link to a 40-hex commit")
-        elif started:
+        elif started or line.strip():
+            # The list ends at its first non-item line; text before any item means no list.
             break
     if not started:
         errors.append(f"'{EXTERNAL_PINS_HEADING}' list is empty")
@@ -307,26 +316,62 @@ def checked_against(text: str) -> str | None:
     return next((m.group(1) for m in map(CHECKED_AGAINST_RE.match, text.splitlines()) if m), None)
 
 
-def pin_errors(root: Path, commit: str) -> list[str]:
-    """The pin must exist in this checkout and spec/ must equal it (DRG-2)."""
+SHALLOW_CLONE_ERROR = (
+    "the **Checked against** pin cannot be verified in a shallow clone; "
+    "fetch full history (git fetch --unshallow)"
+)
+
+
+def pin_errors(root: Path, commit: str, doc: Path = DOC) -> list[str]:
+    """The pin must be an ancestor of HEAD, and spec/ at the candidate's latest
+    revision must equal it (DRG-2).
+
+    The latest revision is the commit on HEAD's first-parent line that last
+    changed `doc`, or the working tree when `doc` has uncommitted edits or is
+    not a tracked file of `root`. A later spec/ change that does not revise the
+    candidate does not fail. A merge that brings the candidate onto a newer
+    spec/ is itself a revision, so a PR merge tree and its squash agree.
+    """
     def git(*args: str) -> subprocess.CompletedProcess:
         return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
 
     try:
-        exists = git("rev-parse", "--verify", "--quiet", f"{commit}^{{commit}}")
+        shallow = git("rev-parse", "--is-shallow-repository")
     except FileNotFoundError:
         return ["git is required to verify the **Checked against** pin"]
+    if shallow.stdout.strip() == "true":
+        return [SHALLOW_CLONE_ERROR]
+    exists = git("rev-parse", "--verify", "--quiet", f"{commit}^{{commit}}")
     if exists.returncode != 0:
         return [f"**Checked against** commit {commit} is not a commit in this repository"]
-    diff = git("diff", "--quiet", commit, "--", "spec/")
+    if git("merge-base", "--is-ancestor", commit, "HEAD").returncode != 0:
+        return [f"**Checked against** commit {commit} is not an ancestor of HEAD"]
+    revision = candidate_revision(git, root, doc)
+    if revision is None:
+        diff = git("diff", "--quiet", commit, "--", "spec/")
+        where = "the working tree"
+    else:
+        diff = git("diff", "--quiet", commit, revision, "--", "spec/")
+        where = f"commit {revision}, the candidate's latest revision"
     if diff.returncode == 1:
         return [
-            f"spec/ differs from the **Checked against** commit {commit}; "
+            f"spec/ differs from the **Checked against** commit {commit} at {where}; "
             "re-audit every cited rule and update the pin (DRG-2)"
         ]
     if diff.returncode != 0:
         return [f"could not compare spec/ with the **Checked against** commit {commit}: {diff.stderr.strip()}"]
     return []
+
+
+def candidate_revision(git, root: Path, doc: Path) -> str | None:
+    """First-parent commit that last changed `doc`, or None when `doc` is not that committed file."""
+    try:
+        relative = doc.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return None
+    if git("diff", "--quiet", "HEAD", "--", relative).returncode != 0:
+        return None
+    return git("log", "-1", "--first-parent", "--format=%H", "HEAD", "--", relative).stdout.strip() or None
 
 
 def validate_text(text: str, spec_text: str) -> list[str]:
@@ -433,8 +478,16 @@ def validate_text(text: str, spec_text: str) -> list[str]:
             if rule_id not in defined:
                 errors.append(f"case {case['id']} lists undefined rule {rule_id}")
             covered.add(rule_id)
-            if case["kind"] != "P":
+            if case["kind"] in NEGATIVE_KINDS:
                 negative.add(rule_id)
+            elif case["kind"] == "Q":
+                if rule_id in PROCESS_RULES:
+                    negative.add(rule_id)
+                else:
+                    errors.append(
+                        f"process case {case['id']} lists {rule_id}, which is not a process rule; "
+                        "list it in a rejection or indeterminate case"
+                    )
     for rule in rules:
         if not rule["requirement"]:
             continue
@@ -442,8 +495,8 @@ def validate_text(text: str, spec_text: str) -> list[str]:
             errors.append(f"requirement {rule['id']} is not exercised by any section 11 case")
         elif rule["id"] not in negative:
             errors.append(
-                f"requirement {rule['id']} is exercised only by positive cases; "
-                "list it in a rejection, indeterminate, or process case"
+                f"requirement {rule['id']} is exercised only by positive or process cases; "
+                "list it in a rejection or indeterminate case"
             )
     return errors
 
@@ -498,7 +551,7 @@ def validate(doc: Path = DOC, matrix_path: Path | None = MATRIX, root: Path = RO
     errors = validate_text(text, specsource.spec_text(root))
     commit = checked_against(text)
     if commit is not None:
-        errors.extend(pin_errors(root, commit))
+        errors.extend(pin_errors(root, commit, doc))
     if matrix_path is not None:
         expected = render_matrix(build_matrix(text))
         if not matrix_path.exists():

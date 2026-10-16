@@ -751,7 +751,7 @@
         "MUST NOT"
       ],
       "requirement": true,
-      "textSha256": "57a2ce81c85592f6fb0af741497ab9ad9ac28f6adc4e19e7e33ca6a5889962cb",
+      "textSha256": "a03015db175833c96a053e2f26c1b484e607b2428b33c068d6701964cc283c66",
       "cases": [
         "P1",
         "P8",
@@ -1636,7 +1636,8 @@
       "cases": [
         "P1",
         "P13",
-        "I5"
+        "I5",
+        "I8"
       ]
     },
     {
@@ -1647,11 +1648,12 @@
         "MUST NOT"
       ],
       "requirement": true,
-      "textSha256": "5226680837fa77b49b773527ae00ad33605155f85d4d312de9b1206f93c51ee7",
+      "textSha256": "112a14338e5b3b82ab4109f7f4b15995ca6afb58fc53517e0c09d2297f922f3e",
       "cases": [
         "P11",
         "P13",
-        "R32"
+        "R32",
+        "I8"
       ]
     },
     {
@@ -2438,7 +2440,8 @@
         "P1",
         "P12",
         "R14",
-        "I6"
+        "I6",
+        "I8"
       ]
     },
     {
@@ -2951,7 +2954,7 @@
     {
       "id": "P13",
       "section": "11.1 Positive cases",
-      "textSha256": "887751d502009d2cb30047a2b068fcb6593fd615e9f569bc83b35b13143dc4f7",
+      "textSha256": "64620fa34b76ee7c2c3e55fbfbb08f82e00e249e841fda337cbe59f637e1d234",
       "expected": [
         "pass"
       ],
@@ -3781,6 +3784,20 @@
       ]
     },
     {
+      "id": "I8",
+      "section": "11.3 Required indeterminate cases",
+      "textSha256": "646b59c74f0aecaed2a6a2c5dad9c38145b1676bd8e7f499a62ecc699b6f6acd",
+      "expected": [
+        "indeterminate"
+      ],
+      "expectedTextSha256": "35005973e39a478d8eb61c79666e2b3c64552fff13b22292d532d69844979f2d",
+      "rules": [
+        "DRAA-4",
+        "DRAA-3",
+        "DRC-15"
+      ]
+    },
+    {
       "id": "Q1",
       "section": "11.4 Process checks",
       "textSha256": "f1c092434897d550f02ed4c6bfbf427bf219944add5f45bbf9e402399d14d371",
@@ -3946,7 +3963,7 @@
     },
     {
       "heading": "3.1 Wire encodings",
-      "sha256": "120153ec0a242f1918746326093c58a9c958875a5f8642d68453fcd7f186f172"
+      "sha256": "f4d39d136d89497fb09af7c136f4db23e79c790e8de5fdbfc45bda0dd39a029f"
     },
     {
       "heading": "4. Portable job-escrow lifecycle",
@@ -3986,7 +4003,7 @@
     },
     {
       "heading": "6.5 Candidate logical addresses",
-      "sha256": "997fdf764b10178b51acfdf7f35d58873890bc68d8d64b474729d415e18af600"
+      "sha256": "f62fe7a96204b18b6230b85ec84d484f89e6d68c5418bc1ef50389e953952caa"
     },
     {
       "heading": "7. Terminal evidence and DACS-5 projection",
@@ -4026,7 +4043,7 @@
     },
     {
       "heading": "11.1 Positive cases",
-      "sha256": "8c6bcdd82b56f31f43724c8e5338271f1d7bd3112edcce76ddcf7e350f8cb0b4"
+      "sha256": "3592fc82c4b084daa79cfc3d407d762124dc8d56632aa0ad2753ade54b988b3f"
     },
     {
       "heading": "11.2 Required rejection cases",
@@ -4034,7 +4051,7 @@
     },
     {
       "heading": "11.3 Required indeterminate cases",
-      "sha256": "efa18dd606962259203fdad1afb4de8518815b175f131ab75b50ce00c0f103e5"
+      "sha256": "56bababad8bf212b7abb74a116185abb8577e920f52e525fd974e23321dbac49"
     },
     {
       "heading": "11.4 Process checks",
@@ -4046,7 +4063,7 @@
     },
     {
       "heading": "DACS Standard and steward",
-      "sha256": "0710e355404a4979810e35d73dc3a06cdbfed6de7ebf76783cb6ae3c99ff1584"
+      "sha256": "1ae3ea52d5755a2340c88b63ff7762fca0015b37d579bf2aa1aaccc762061b7b"
     },
     {
       "heading": "Contract and reference implementation contributors",

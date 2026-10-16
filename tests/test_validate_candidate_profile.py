@@ -1,8 +1,12 @@
+import copy
 import importlib.util
+import io
+import json
 import os
 import subprocess
 import sys
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
@@ -11,6 +15,8 @@ SCRIPT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_candid
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs" / "delivery-or-remedy-candidate.md"
 MATRIX = ROOT / "conformance" / "candidates" / "delivery-or-remedy" / "rule-case-matrix.json"
+SR2_REFERENCE_PATH = ROOT / "scripts" / "sr2_resolution_reference.py"
+SR2_VECTORS = ROOT / "conformance" / "vectors" / "security" / "sr2-logical-native-resolution-v0.1.json"
 
 
 def shallow_checkout() -> bool:
@@ -27,13 +33,41 @@ SHALLOW = shallow_checkout()
 SHALLOW_REASON = "the **Checked against** pin needs full history (git fetch --unshallow)"
 
 
-def load_validator():
-    spec = importlib.util.spec_from_file_location("validate_candidate_profile", SCRIPT_PATH)
+def load_script(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def load_validator():
+    return load_script("validate_candidate_profile", SCRIPT_PATH)
+
+
+def git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True)
+
+
+def as_committed_candidate(validator):
+    """Check a scratch copy of the candidate at the committed candidate's latest revision.
+
+    A scratch copy lies outside the repository, so pin_errors alone would compare
+    the pin with the working tree's spec/, and every later spec/ change on `next`
+    would fail checks that are not about the pin. DRG-2 asks for a re-pin only
+    when the candidate itself is revised.
+    """
+    revision = validator.candidate_revision(git, ROOT, DOC)
+    return mock.patch.object(validator, "candidate_revision", lambda _git, _root, _doc: revision)
+
+
+def run_main(validator, *args: str) -> tuple[int, str]:
+    """Run the CLI entry point in-process; its return value is the script's exit status."""
+    stderr = io.StringIO()
+    with redirect_stdout(io.StringIO()), redirect_stderr(stderr):
+        status = validator.main(list(args))
+    return status, stderr.getvalue()
 
 
 def mutate(text: str, old: str, new: str) -> str:
@@ -53,14 +87,14 @@ class CandidateProfileValidationTests(unittest.TestCase):
 
     def structural_errors(self, text: str) -> list[str]:
         """Errors that remain even after the matrix is regenerated."""
-        with TemporaryDirectory() as tmp:
+        with TemporaryDirectory() as tmp, as_committed_candidate(self.validator):
             doc = Path(tmp) / "candidate.md"
             doc.write_text(text, encoding="utf-8")
             return self.without_shallow(self.validator.validate(doc, None))
 
     def ci_errors(self, text: str) -> list[str]:
         """Errors CI reports against the committed matrix."""
-        with TemporaryDirectory() as tmp:
+        with TemporaryDirectory() as tmp, as_committed_candidate(self.validator):
             doc = Path(tmp) / "candidate.md"
             doc.write_text(text, encoding="utf-8")
             return self.without_shallow(self.validator.validate(doc, MATRIX))
@@ -147,10 +181,17 @@ class CandidateProfileValidationTests(unittest.TestCase):
             "Its `anchor` MUST be `{kind: \"storage-program\", locator: L}`, where `L` is the artifact's exact logical address",
             "and `dacs4:delivery:{jobId}:{deliveryPhaseIndex}` for `deliveryEvidenceRef` (DRP-7)",
             "The reference MUST NOT carry a native address.",
-            "A second write of byte-identical content is not a distinct artifact",
-            "MUST NOT require proof that it was the first or sole write",
-            "- **P13** — the funding evidence and the post-submission decision each written twice",
             "or a native `stor-` address as its locator",
+            # Sweep 5: a second write follows CORE §5.1 equivocation, even for equal bytes.
+            "so the reference does not depend on the native address",
+            "A producer MUST NOT write a second copy at one of these addresses once a write there "
+            "has a qualifying CORE `AnchorReceipt`, even with byte-identical content.",
+            "MUST apply the CORE §5.1 equivocation rule, even when the two copies are byte-identical. "
+            "It retains both, selects neither, and yields `indeterminate`.",
+            "A consumer that holds a qualifying receipt for only one write MUST NOT require proof that no other write exists.",
+            "- **P13** — the funding evidence and the post-submission decision each written once on Demos",
+            "- **I8** — the funding evidence or the post-submission decision written twice on Demos with byte-identical content",
+            "record the unit of the Demos block `content.timestamp` in DEMOS-MAPPING before promoting DRC-19",
             # Sweep 4: configuration inputs are one-word value types; the node pin is linked.
             "which MUST have an input named `jobId` of type `uint256`",
             "an elementary value type that fills one ABI word",
@@ -170,8 +211,72 @@ class CandidateProfileValidationTests(unittest.TestCase):
             "Each MUST name an input of a static ABI type",
             "a second write at a single-artifact address",
             "`consensus/v2/routines` code",
+            "A consumer MUST accept any copy",
+            "so two writes of identical bytes at two native addresses give one reference",
+            "A second write of byte-identical content is not a distinct artifact",
+            "each written twice on Demos with identical bytes",
         ):
             self.assertNotIn(removed, self.text)
+
+    # Sweep 5: CORE §5.1 makes two receipts for one immutable address an equivocation,
+    # so the candidate's duplicate-write case must expect what the CORE reference returns.
+    def test_duplicate_identical_write_matches_the_core_reference(self):
+        reference = load_script("sr2_resolution_reference", SR2_REFERENCE_PATH)
+        vectors = json.loads(SR2_VECTORS.read_text(encoding="utf-8"))["vectors"]
+        case = copy.deepcopy(next(v for v in vectors if v["name"] == "equivalent-reference-and-receipt-collapse")["input"])
+        first = case["carriers"][0]
+        self.assertEqual(first["kind"], "anchor-receipt")
+        case["carriers"] = [first]
+        self.assertEqual(reference.evaluate_resolution(case), "pass")
+        # Write-input mapping: the same bytes written again get a new native address,
+        # transaction, and nonce under the same logical address and content hash.
+        native = first["receipt"]["nativeAddress"]
+        second = copy.deepcopy(first)
+        second["receipt"]["nativeAddress"] = native + "b"
+        second["receipt"]["transactionRef"]["value"] += "b"
+        second["receipt"]["nonce"] += "b"
+        case["storage"][native + "b"] = copy.deepcopy(case["storage"][native])
+        case["carriers"] = [first, second]
+        self.assertEqual(reference.evaluate_resolution(case), "indeterminate")
+        del case["expectedContentHash"]
+        self.assertEqual(reference.evaluate_resolution(case), "indeterminate")
+
+        cases = {c["id"]: c for c in self.validator.parse_cases(self.text)}
+        self.assertEqual(cases["I8"]["expected"], ["indeterminate"])
+        self.assertLessEqual({"DRAA-4", "DRC-15"}, set(cases["I8"]["rules"]))
+        for positive in (c for c in cases.values() if c["kind"] == "P"):
+            self.assertNotIn("written twice", positive["description"], positive["id"])
+
+    # A later spec/ PR on `next` that does not revise the candidate must not fail
+    # these tests: only the pin check may see spec/, and it pins the committed revision.
+    @unittest.skipIf(SHALLOW, SHALLOW_REASON)
+    def test_scratch_copies_ignore_a_later_spec_change(self):
+        if self.validator.candidate_revision(git, ROOT, DOC) is None:
+            self.skipTest("the candidate has uncommitted edits, so the working tree is its revision")
+        pin = self.validator.checked_against(self.text)
+        real_run = subprocess.run
+
+        def run(cmd, *args, **kwargs):
+            # Only the working tree's spec/ differs from the pin, as on `next` after a spec/ PR.
+            if cmd[3:] == ["diff", "--quiet", pin, "--", "spec/"]:
+                return subprocess.CompletedProcess(cmd, 1, "", "")
+            return real_run(cmd, *args, **kwargs)
+
+        drifted = (f"spec/ differs from the **Checked against** commit {pin} at the working tree; "
+                   "re-audit every cited rule and update the pin (DRG-2)")
+        with mock.patch.object(self.validator.subprocess, "run", run):
+            with TemporaryDirectory() as tmp:
+                doc = Path(tmp) / "candidate.md"
+                doc.write_text(self.text, encoding="utf-8")
+                self.assertEqual(self.validator.validate(doc, None), [drifted])
+            self.assertEqual(self.validator.validate(), [])
+            self.assertEqual(self.structural_errors(self.text), [])
+            self.assert_stale_only(mutate(self.text, "(DRL-7) Value MUST NOT reach", "(DRL-7) Value MAY reach"))
+            with TemporaryDirectory() as tmp, as_committed_candidate(self.validator):
+                doc = Path(tmp) / "candidate.md"
+                doc.write_text(self.text, encoding="utf-8")
+                matrix = Path(tmp) / "matrix.json"
+                self.assertEqual(run_main(self.validator, "--doc", str(doc), "--matrix", str(matrix), "--write"), (0, ""))
 
     # Semantic edits: no structural invariant breaks, but CI fails until the
     # matrix is regenerated and the diff is reviewed.
@@ -308,9 +413,11 @@ class CandidateProfileValidationTests(unittest.TestCase):
             ["git", "-C", str(ROOT), "rev-parse", f"{last_spec_change}^"],
             capture_output=True, text=True, check=True,
         ).stdout.strip()
+        revision = self.validator.candidate_revision(git, ROOT, DOC)
+        where = "the working tree" if revision is None else f"commit {revision}, the candidate's latest revision"
         self.assert_structural(
             mutate(self.text, f"`next` at `{pin}`", f"`next` at `{older}`"),
-            f"spec/ differs from the **Checked against** commit {older} at the working tree",
+            f"spec/ differs from the **Checked against** commit {older} at {where}",
         )
 
     def test_external_pin_must_link_to_a_commit(self):
@@ -571,16 +678,18 @@ class CandidateProfileCliTests(unittest.TestCase):
 
     @unittest.skipIf(SHALLOW, SHALLOW_REASON)
     def test_write_regenerates_a_stale_matrix(self):
-        with TemporaryDirectory() as tmp:
+        # In-process, so the scratch copy is pinned at the committed candidate's revision.
+        validator = load_validator()
+        with TemporaryDirectory() as tmp, as_committed_candidate(validator):
             doc = Path(tmp) / "candidate.md"
             doc.write_text(mutate(self.text, "(DRL-7) Value MUST NOT reach", "(DRL-7) Value MAY reach"), encoding="utf-8")
             matrix = Path(tmp) / "matrix.json"
             matrix.write_text(MATRIX.read_text(encoding="utf-8"), encoding="utf-8")
-            written = self.run_cli("--doc", str(doc), "--matrix", str(matrix), "--write")
-            checked = self.run_cli("--doc", str(doc), "--matrix", str(matrix))
+            written, written_stderr = run_main(validator, "--doc", str(doc), "--matrix", str(matrix), "--write")
+            checked, checked_stderr = run_main(validator, "--doc", str(doc), "--matrix", str(matrix))
             self.assertNotEqual(matrix.read_text(encoding="utf-8"), MATRIX.read_text(encoding="utf-8"))
-        self.assertEqual(written.returncode, 0, written.stderr)
-        self.assertEqual(checked.returncode, 0, checked.stderr)
+        self.assertEqual(written, 0, written_stderr)
+        self.assertEqual(checked, 0, checked_stderr)
 
 
 class CheckedAgainstPinTests(unittest.TestCase):

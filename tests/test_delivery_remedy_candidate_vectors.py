@@ -155,6 +155,15 @@ def _without_reproduction_inputs(value):
     generator.resign_resolver(value, bind=False)
 
 
+def _qualified_writes(edit):
+    def apply(value):
+        value["resolverEvidence"]["qualifiedArtifactWrites"] = {
+            name: [generator.qualified_artifact_write(value, name)] for name in ("funding", "decision")
+        }
+        edit(value["resolverEvidence"]["qualifiedArtifactWrites"])
+    return _signed_by_resolver(apply)
+
+
 def _rail(*path_and_value):
     return put("parameters", *path_and_value)
 
@@ -163,6 +172,10 @@ def _rail(*path_and_value):
 # one guard and pins its full finding, so removing that guard changes the
 # outcome of the case.
 GUARD_CASES = {
+    "qualified-writes-malformed": (_qualified_writes(put("funding", [])), ("error", "DRV-3", "qualified artifact write summaries are malformed")),
+    "qualified-write-other-address": (_qualified_writes(put("funding", 0, "logicalAddress", "dacs-x:other-job")), ("fail", "DRV-6", "qualified writes describe another logical address")),
+    "qualified-write-other-hash": (_qualified_writes(put("funding", 0, "contentHash", "00" * 32)), ("fail", "DRV-6", "qualified write does not bind the referenced artifact")),
+    "qualified-write-other-time": (_qualified_writes(put("decision", 0, "finalizedBlockTimestampSec", 0)), ("fail", "DRV-6", "decision ordering does not use the sole qualifying write")),
     "input-not-an-object": (lambda _pack: [], ("error", "DRV-3", "vector input must be an object")),
     "nesting-too-deep": (_release(put("native", "deep", _nested(verifier.MAX_JSON_DEPTH))), ("error", "DRV-3", f"input nests deeper than {verifier.MAX_JSON_DEPTH} arrays and objects")),
     "number-outside-profile": (_release(put("native", "fundedAtSec", float("nan"))), ("error", "DRV-3", "a number is non-finite or outside the CORE §B.2 safe-integer range")),
@@ -391,7 +404,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 "DRP-10", "DRP-11", "DRP-12", "DRR-2", "DRR-3",
                 # The fixture source revision, the token and implementation
                 # code, the confirmation-block time, and the rule's anchoring.
-                "DRC-14", "DRJ-11", "DRW-2", "DRW-6", "DRE-8",
+                "DRC-14", "DRJ-11", "DRW-2", "DRW-6", "DRE-8", "DRAA-4",
             },
         )
         self.assertLessEqual(set(proofs), tagged)
@@ -822,6 +835,76 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 )[-1]
                 self.assertEqual(observed["result"], vector["expected"])
                 self.assertEqual(observed["rule"], vector["expectedRule"])
+
+    def test_single_sr2_write_reproduces_references_without_an_absence_proof(self):
+        first = self._vector("sr2-single-write-two-producers")
+        second = self._vector("sr2-single-write-resolved-again")
+        repeated = self._vector("sr2-repeated-receipt-same-write")
+        for value in (first, second, repeated):
+            self.assertEqual(finding(value), ("pass", "DRV-7"))
+            self.assertEqual(value["artifacts"]["terminal"], first["artifacts"]["terminal"])
+        for wall_clock in (0, 2000000000):
+            with unittest.mock.patch("time.time", return_value=wall_clock):
+                produced = make_base("release")
+            self.assertEqual(produced["artifacts"]["terminal"], first["artifacts"]["terminal"])
+            for name in ("funding", "decision"):
+                self.assertEqual(
+                    generator.qualified_artifact_write(produced, name),
+                    first["resolverEvidence"]["qualifiedArtifactWrites"][name][0],
+                )
+        # A resolver summary is not trusted if it is edited without a signature.
+        second["resolverEvidence"]["qualifiedArtifactWrites"]["decision"][0]["nonce"] = "changed"
+        self.assertEqual(finding(second), ("fail", "DRV-1"))
+
+    def test_identical_sr2_writes_match_core_and_never_reach_decision_ordering(self):
+        with unittest.mock.patch.object(sys, "path", [str(ROOT / "scripts"), *sys.path]):
+            from scripts import sr2_resolution_reference as core
+
+        for name in ("funding", "decision"):
+            value = self._vector(f"sr2-identical-{name}-writes")
+            summaries = value["resolverEvidence"]["qualifiedArtifactWrites"][name]
+            storage = {}
+            carriers = []
+            for summary in summaries:
+                storage[summary["nativeAddress"]] = verifier.unsigned_artifact(value["artifacts"][name])
+                receipt = {key: copy.deepcopy(item) for key, item in summary.items() if key != "finalizedBlockTimestampSec"}
+                receipt.update({
+                    "receiptVersion": "1", "substrate": "demos", "finalityProfile": "fixture-finalized",
+                    "state": "finalized", "observationDisposition": "established",
+                    "observedAt": summary["finalizedBlockTimestampSec"] * 1000,
+                    "blockRef": {
+                        "id": f"fixture-block-{summary['finalizedBlockTimestampSec']}",
+                        "timestamp": summary["finalizedBlockTimestampSec"],
+                    },
+                    "evidence": {"kind": "fixture-resolver", "value": summary["transactionRef"]["value"]},
+                })
+                carriers.append({"kind": "anchor-receipt", "receipt": receipt, "authorityVerified": True, "receiptEvidenceVerified": True})
+            case = {
+                "expectedLogicalAddress": summaries[0]["logicalAddress"],
+                "expectedContentHash": summaries[0]["contentHash"],
+                "minimumState": "finalized", "storage": storage, "carriers": carriers,
+            }
+            with self.subTest(artifact=name):
+                self.assertEqual(core.evaluate_resolution({**case, "carriers": carriers[:1]}), "pass")
+                self.assertEqual(core.evaluate_resolution(case), "indeterminate")
+                self.assertEqual(len(set(map(canonical_bytes, storage.values()))), 1)
+                terminal_sec = self._observation(value, "JobCompleted")["blockTimestampSec"]
+                self.assertLess(summaries[0]["finalizedBlockTimestampSec"], terminal_sec)
+                self.assertGreater(summaries[1]["finalizedBlockTimestampSec"], terminal_sec)
+            # Neither receipt order nor a resolver-selected early/late anchor
+            # can authorize choosing a copy and evaluating DRC-15 from it.
+            for ordered in (summaries, list(reversed(summaries))):
+                for selected in summaries:
+                    candidate = copy.deepcopy(value)
+                    candidate["resolverEvidence"]["qualifiedArtifactWrites"][name] = ordered
+                    candidate["resolverEvidence"]["decisionAnchor"]["finalizedBlockTimestampSec"] = selected["finalizedBlockTimestampSec"]
+                    generator.resign_resolver(candidate)
+                    before = copy.deepcopy(candidate)
+                    ledger = DecisionLedger()
+                    with unittest.mock.patch.object(verifier, "_decision_ordering_check", side_effect=AssertionError("equivocation must stop before DRC-15")):
+                        self.assertEqual(verdict(evaluate_protocol(candidate, ledger)), ("indeterminate", "DRAA-4"))
+                    self.assertEqual(candidate, before)
+                    self.assertEqual(list(ledger.terminals()), [])
 
     def test_every_negative_fails_only_at_its_intended_guard(self):
         self.assertEqual(generator.negative_isolation_problems(self.vector_pack), [])

@@ -169,6 +169,13 @@ RESOLVER_EVIDENCE_FIELDS = {
     "statuses",
     "signature",
 }
+# Optional fixture proof-verifier outputs, authenticated by the pinned resolver.
+# These summaries are not CORE AnchorReceipt proof bytes. Each describes one
+# qualifying finalized write; repeated summaries describe the same receipt.
+QUALIFIED_ARTIFACT_WRITE_FIELDS = {
+    "logicalAddress", "nativeAddress", "contentHash", "transactionRef", "writer",
+    "nonce", "finalizedBlockTimestampSec",
+}
 # One lifecycle transaction as the resolver authenticated it (DRF-8): its
 # entrypoint selector and calldata decoded under the DRC-17 pins, the native
 # caller and outer submitter (DREB-21, DREB-22), and the native status before
@@ -2064,7 +2071,10 @@ def _evaluation_rule_check(value: dict[str, Any]) -> dict[str, str] | None:
 def _resolver_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
     """Authenticate the pinned resolver record and its binding to this job."""
     resolver = value.get("resolverEvidence")
-    if not isinstance(resolver, dict) or set(resolver) != RESOLVER_EVIDENCE_FIELDS:
+    if not isinstance(resolver, dict) or not (
+        RESOLVER_EVIDENCE_FIELDS <= set(resolver)
+        <= RESOLVER_EVIDENCE_FIELDS | {"qualifiedArtifactWrites"}
+    ):
         return result("error", "DRV-3", "resolver evidence shape is not exact")
     if resolver.get("resolverEvidenceVersion") != "1":
         return result("error", "DRV-2", "unsupported resolver evidence version")
@@ -2106,6 +2116,60 @@ def _resolver_evidence_check(value: dict[str, Any]) -> dict[str, str] | None:
         return result("error", "DRV-3", "resolver status set is incomplete")
     if any(not isinstance(state, str) or state not in EXTERNAL_STATES for state in statuses.values()):
         return result("error", "DRV-3", "unknown resolver status")
+    return None
+
+
+def _qualified_artifact_write_valid(write: Any) -> bool:
+    return (
+        isinstance(write, dict)
+        and set(write) == QUALIFIED_ARTIFACT_WRITE_FIELDS
+        and all(isinstance(write[name], str) and write[name] for name in (
+            "logicalAddress", "nativeAddress", "contentHash", "writer", "nonce",
+        ))
+        and HASH_RE.fullmatch(write["contentHash"]) is not None
+        and isinstance(write["transactionRef"], dict)
+        and set(write["transactionRef"]) == {"kind", "value"}
+        and all(isinstance(item, str) and item for item in write["transactionRef"].values())
+        and _is_unix_sec(write["finalizedBlockTimestampSec"])
+    )
+
+
+def _artifact_write_check(value: dict[str, Any]) -> dict[str, str] | None:
+    """DRAA-4: retain conflicting receipts and select neither, before DRC-15.
+
+    Qualification is a synthetic resolver assertion, not a native SR-2 proof.
+    Omitting this optional input preserves the pack's existing proof boundary.
+    """
+    resolver = value["resolverEvidence"]
+    if "qualifiedArtifactWrites" not in resolver:
+        return None
+    writes = resolver["qualifiedArtifactWrites"]
+    if not isinstance(writes, dict) or not writes or not set(writes) <= {"funding", "decision"} or any(
+        not isinstance(receipts, list) or not receipts
+        or not all(_qualified_artifact_write_valid(receipt) for receipt in receipts)
+        for receipts in writes.values()
+    ):
+        return result("error", "DRV-3", "qualified artifact write summaries are malformed")
+    terminal = value["artifacts"]["terminal"]
+    for name, receipts in writes.items():
+        reference = terminal[f"{name}EvidenceRef" if name == "funding" else "decisionRef"]
+        if reference is None or any(
+            receipt["logicalAddress"] != reference["anchor"]["locator"] for receipt in receipts
+        ):
+            return result("fail", "DRV-6", "qualified writes describe another logical address")
+        # The write identity includes native address, transaction, writer and
+        # nonce, not just contentHash. Unequal immutable snapshots also cannot
+        # be selected. An exact repeat of one receipt is not a second write.
+        if len({canonical_bytes(receipt) for receipt in receipts}) > 1:
+            return result("indeterminate", "DRAA-4", "two qualifying writes at one logical address; retain both and select neither")
+        receipt = receipts[0]
+        if receipt["contentHash"] != reference["contentHash"]:
+            return result("fail", "DRV-6", "qualified write does not bind the referenced artifact")
+        if name == "decision" and resolver["decisionAnchor"] != {
+            "substrate": "demos",
+            "finalizedBlockTimestampSec": receipt["finalizedBlockTimestampSec"],
+        }:
+            return result("fail", "DRV-6", "decision ordering does not use the sole qualifying write")
     return None
 
 
@@ -3527,6 +3591,7 @@ def _protocol_stages(
         ("evaluation-rule", lambda: _evaluation_rule_check(value)),
         ("references", lambda: _reference_check(value)),
         ("resolver-evidence", lambda: _resolver_evidence_check(value)),
+        ("artifact-writes", lambda: _artifact_write_check(value)),
         ("finding", lambda: _finding_check(value)),
         ("evaluation", lambda: _evaluation_check(value)),
         ("canonical-records", lambda: _canonical_record_check(value)),

@@ -24,7 +24,7 @@
     "dacs": {
       "checkedAgainst": "df7bc202ebdc179a59d61a8221072f33f482b933",
       "documents": {
-        "docs/delivery-or-remedy-candidate.md": "1ca15426a8c7980f67c8f587098889c23f5f12010867f61e05d3cb6dd4adfc4f",
+        "docs/delivery-or-remedy-candidate.md": "4ab96c3168a5cefeb75005aecf450ab216b80fcb7c5e868df41702ddc0464089",
         "spec/CORE.md": "113b10f1b152add2a976269fcb0131bf466826f8c6e7ddcbb93da7c76f070203",
         "spec/DACS-1-IDENTIFY.md": "5476dc34a306e2b9268d218d328f00987583e857fd5383ea671c22ec024ec3b6",
         "spec/DACS-2-VET.md": "0bdf4da1b1b703752824048833fbdf6bc00ae61e149da8040bf93057342247ae",
@@ -36,8 +36,8 @@
     }
   },
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "4ee6a67a66ed6a0c58be24943ed723feefe573e25a0403cd305c52f51b7e8d17",
-  "count": 491,
+  "hash": "8c73653431fe1728904dee5b9f35d5ee98d1a0aefcf9fcf3e4033d56ce68a4ee",
+  "count": 496,
   "fixtures": {
     "release": {
       "candidateProfile": "delivery-or-remedy-v1",
@@ -522539,13 +522539,1074 @@
           "value": "rcLqRobFf2qSUhZXcdTrmjOvHMGrScu87Ph_51wljzffzxTpYH-KV2f4tMJ_Bxbjx9PCZDnrKbd1AMNRQ62LCx"
         }
       ]
+    },
+    {
+      "name": "sr2-single-write-two-producers",
+      "base": "release",
+      "expected": "pass",
+      "expectedRule": "DRV-7",
+      "rules": [
+        "DRT-16",
+        "DRW-7"
+      ],
+      "note": "P13: both producers resolve one write through one binding and reproduce the same logical references and terminal hash",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "resolverEvidence",
+            "qualifiedArtifactWrites"
+          ],
+          "value": {
+            "funding": [
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              }
+            ],
+            "decision": [
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              }
+            ]
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "resolverEvidence"
+          ],
+          "value": {
+            "transactions": [
+              {
+                "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+                "entrypoint": "0xb6dbb0b8",
+                "calldata": {
+                  "provider": "0x2222222222222222222222222222222222222222",
+                  "evaluator": "0x3333333333333333333333333333333333333333",
+                  "expiredAt": "1800007200",
+                  "submissionCutoff": "1800000000",
+                  "description": "dacs-x-delivery-remedy:v1:e860e068408dc0ad0006d6f51ad05d45ac7a36eccaa5e4a1e417089984c31c44",
+                  "hook": "0x0000000000000000000000000000000000000000"
+                },
+                "nativeCaller": "0x1111111111111111111111111111111111111111",
+                "outerSubmitter": "0x1111111111111111111111111111111111111111",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": null,
+                "nativeStatusAfter": 0
+              },
+              {
+                "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+                "entrypoint": "0xa65e2cfd",
+                "calldata": {
+                  "jobId": "1",
+                  "expectedBudget": "1000000"
+                },
+                "nativeCaller": "0x1111111111111111111111111111111111111111",
+                "outerSubmitter": "0x1111111111111111111111111111111111111111",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 0,
+                "nativeStatusAfter": 1
+              },
+              {
+                "txHash": "0xf8bf81b097da6629bb4a41d656f2272e26d655c2ebaac3a648a47d58a8cca761",
+                "entrypoint": "0x2ecea788",
+                "calldata": {
+                  "jobId": "1",
+                  "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+                },
+                "nativeCaller": "0x2222222222222222222222222222222222222222",
+                "outerSubmitter": "0x2222222222222222222222222222222222222222",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 1,
+                "nativeStatusAfter": 2
+              },
+              {
+                "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+                "entrypoint": "0xcd56b1b6",
+                "calldata": {
+                  "jobId": "1",
+                  "reason": "0xcfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f"
+                },
+                "nativeCaller": "0x3333333333333333333333333333333333333333",
+                "outerSubmitter": "0x3333333333333333333333333333333333333333",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 2,
+                "nativeStatusAfter": 3
+              }
+            ],
+            "priorTerminals": [],
+            "nativeState": {
+              "submissionCutoffEnforced": true,
+              "expiryRecoveryAtSec": 1800007200,
+              "preterminalProviderPayoutBaseUnits": "0",
+              "platformFeeBP": 0,
+              "evaluatorFeeBP": 0,
+              "evaluatorBindingMode": "direct",
+              "evaluatorAdapter": null,
+              "escrowRuntimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+              "paymentTokenRuntimeBytecodeHash": "0x2561db1e6c25bf3254dea4025373815dcfd2b004b4a8a38ac5a5666559ab3f25",
+              "implementationAddress": null
+            },
+            "deliveryDigestAnchor": {
+              "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+              "blockNumber": 20002450,
+              "blockTimestampSec": 1799994900
+            },
+            "decisionAnchor": {
+              "substrate": "demos",
+              "finalizedBlockTimestampSec": 1800000900
+            },
+            "statuses": {
+              "agreementResolution": "verified",
+              "railResolution": "verified",
+              "codeResolution": "verified",
+              "authorityResolution": "verified",
+              "fundingFinality": "verified",
+              "deliveryFinality": "verified",
+              "decisionFinality": "verified",
+              "terminalFinality": "verified",
+              "transitionResolution": "verified",
+              "nativeStateResolution": "verified"
+            },
+            "resolverEvidenceVersion": "1",
+            "resolver": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+            "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "railDefinitionHash": "87e2897ccda20202abb95ec02d94de564c48ab98899a0174d6c443e09e9d0053",
+            "chainId": 8453,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventObservationsHash": "6ffc322f0c66d0d623169551aabed9904f5eb9e1b18aef2fc774fdfbaff7b31c",
+            "qualifiedArtifactWrites": {
+              "funding": [
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                  "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                  "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                }
+              ],
+              "decision": [
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                  "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                  "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                }
+              ]
+            },
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+              "value": "laFKBXjudnV1MLKqCSaFLb7z-l3ROWMZCwAt3fldq4XSHcBR3oetUfICecDnxq2iaePVZU2yUyNKZU7Ty5j-BA"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "sr2-single-write-resolved-again",
+      "base": "release",
+      "expected": "pass",
+      "expectedRule": "DRV-7",
+      "rules": [
+        "DRT-16",
+        "DRW-7"
+      ],
+      "note": "P13: a later resolution of the same published writes reproduces the same evidence",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "resolverEvidence",
+            "qualifiedArtifactWrites"
+          ],
+          "value": {
+            "funding": [
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              }
+            ],
+            "decision": [
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              }
+            ]
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "resolverEvidence"
+          ],
+          "value": {
+            "transactions": [
+              {
+                "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+                "entrypoint": "0xb6dbb0b8",
+                "calldata": {
+                  "provider": "0x2222222222222222222222222222222222222222",
+                  "evaluator": "0x3333333333333333333333333333333333333333",
+                  "expiredAt": "1800007200",
+                  "submissionCutoff": "1800000000",
+                  "description": "dacs-x-delivery-remedy:v1:e860e068408dc0ad0006d6f51ad05d45ac7a36eccaa5e4a1e417089984c31c44",
+                  "hook": "0x0000000000000000000000000000000000000000"
+                },
+                "nativeCaller": "0x1111111111111111111111111111111111111111",
+                "outerSubmitter": "0x1111111111111111111111111111111111111111",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": null,
+                "nativeStatusAfter": 0
+              },
+              {
+                "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+                "entrypoint": "0xa65e2cfd",
+                "calldata": {
+                  "jobId": "1",
+                  "expectedBudget": "1000000"
+                },
+                "nativeCaller": "0x1111111111111111111111111111111111111111",
+                "outerSubmitter": "0x1111111111111111111111111111111111111111",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 0,
+                "nativeStatusAfter": 1
+              },
+              {
+                "txHash": "0xf8bf81b097da6629bb4a41d656f2272e26d655c2ebaac3a648a47d58a8cca761",
+                "entrypoint": "0x2ecea788",
+                "calldata": {
+                  "jobId": "1",
+                  "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+                },
+                "nativeCaller": "0x2222222222222222222222222222222222222222",
+                "outerSubmitter": "0x2222222222222222222222222222222222222222",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 1,
+                "nativeStatusAfter": 2
+              },
+              {
+                "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+                "entrypoint": "0xcd56b1b6",
+                "calldata": {
+                  "jobId": "1",
+                  "reason": "0xcfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f"
+                },
+                "nativeCaller": "0x3333333333333333333333333333333333333333",
+                "outerSubmitter": "0x3333333333333333333333333333333333333333",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 2,
+                "nativeStatusAfter": 3
+              }
+            ],
+            "priorTerminals": [],
+            "nativeState": {
+              "submissionCutoffEnforced": true,
+              "expiryRecoveryAtSec": 1800007200,
+              "preterminalProviderPayoutBaseUnits": "0",
+              "platformFeeBP": 0,
+              "evaluatorFeeBP": 0,
+              "evaluatorBindingMode": "direct",
+              "evaluatorAdapter": null,
+              "escrowRuntimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+              "paymentTokenRuntimeBytecodeHash": "0x2561db1e6c25bf3254dea4025373815dcfd2b004b4a8a38ac5a5666559ab3f25",
+              "implementationAddress": null
+            },
+            "deliveryDigestAnchor": {
+              "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+              "blockNumber": 20002450,
+              "blockTimestampSec": 1799994900
+            },
+            "decisionAnchor": {
+              "substrate": "demos",
+              "finalizedBlockTimestampSec": 1800000900
+            },
+            "statuses": {
+              "agreementResolution": "verified",
+              "railResolution": "verified",
+              "codeResolution": "verified",
+              "authorityResolution": "verified",
+              "fundingFinality": "verified",
+              "deliveryFinality": "verified",
+              "decisionFinality": "verified",
+              "terminalFinality": "verified",
+              "transitionResolution": "verified",
+              "nativeStateResolution": "verified"
+            },
+            "resolverEvidenceVersion": "1",
+            "resolver": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+            "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "railDefinitionHash": "87e2897ccda20202abb95ec02d94de564c48ab98899a0174d6c443e09e9d0053",
+            "chainId": 8453,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventObservationsHash": "6ffc322f0c66d0d623169551aabed9904f5eb9e1b18aef2fc774fdfbaff7b31c",
+            "qualifiedArtifactWrites": {
+              "funding": [
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                  "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                  "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                }
+              ],
+              "decision": [
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                  "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                  "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                }
+              ]
+            },
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+              "value": "laFKBXjudnV1MLKqCSaFLb7z-l3ROWMZCwAt3fldq4XSHcBR3oetUfICecDnxq2iaePVZU2yUyNKZU7Ty5j-BA"
+            }
+          }
+        }
+      ],
+      "evaluatedWith": [
+        "sr2-single-write-two-producers"
+      ]
+    },
+    {
+      "name": "sr2-repeated-receipt-same-write",
+      "base": "release",
+      "expected": "pass",
+      "expectedRule": "DRV-7",
+      "rules": [
+        "DRT-16",
+        "DRW-7"
+      ],
+      "note": "an exact repeated receipt describes one write, not two",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "resolverEvidence",
+            "qualifiedArtifactWrites"
+          ],
+          "value": {
+            "funding": [
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              },
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              }
+            ],
+            "decision": [
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              },
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              }
+            ]
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "resolverEvidence"
+          ],
+          "value": {
+            "transactions": [
+              {
+                "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+                "entrypoint": "0xb6dbb0b8",
+                "calldata": {
+                  "provider": "0x2222222222222222222222222222222222222222",
+                  "evaluator": "0x3333333333333333333333333333333333333333",
+                  "expiredAt": "1800007200",
+                  "submissionCutoff": "1800000000",
+                  "description": "dacs-x-delivery-remedy:v1:e860e068408dc0ad0006d6f51ad05d45ac7a36eccaa5e4a1e417089984c31c44",
+                  "hook": "0x0000000000000000000000000000000000000000"
+                },
+                "nativeCaller": "0x1111111111111111111111111111111111111111",
+                "outerSubmitter": "0x1111111111111111111111111111111111111111",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": null,
+                "nativeStatusAfter": 0
+              },
+              {
+                "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+                "entrypoint": "0xa65e2cfd",
+                "calldata": {
+                  "jobId": "1",
+                  "expectedBudget": "1000000"
+                },
+                "nativeCaller": "0x1111111111111111111111111111111111111111",
+                "outerSubmitter": "0x1111111111111111111111111111111111111111",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 0,
+                "nativeStatusAfter": 1
+              },
+              {
+                "txHash": "0xf8bf81b097da6629bb4a41d656f2272e26d655c2ebaac3a648a47d58a8cca761",
+                "entrypoint": "0x2ecea788",
+                "calldata": {
+                  "jobId": "1",
+                  "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+                },
+                "nativeCaller": "0x2222222222222222222222222222222222222222",
+                "outerSubmitter": "0x2222222222222222222222222222222222222222",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 1,
+                "nativeStatusAfter": 2
+              },
+              {
+                "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+                "entrypoint": "0xcd56b1b6",
+                "calldata": {
+                  "jobId": "1",
+                  "reason": "0xcfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f"
+                },
+                "nativeCaller": "0x3333333333333333333333333333333333333333",
+                "outerSubmitter": "0x3333333333333333333333333333333333333333",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 2,
+                "nativeStatusAfter": 3
+              }
+            ],
+            "priorTerminals": [],
+            "nativeState": {
+              "submissionCutoffEnforced": true,
+              "expiryRecoveryAtSec": 1800007200,
+              "preterminalProviderPayoutBaseUnits": "0",
+              "platformFeeBP": 0,
+              "evaluatorFeeBP": 0,
+              "evaluatorBindingMode": "direct",
+              "evaluatorAdapter": null,
+              "escrowRuntimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+              "paymentTokenRuntimeBytecodeHash": "0x2561db1e6c25bf3254dea4025373815dcfd2b004b4a8a38ac5a5666559ab3f25",
+              "implementationAddress": null
+            },
+            "deliveryDigestAnchor": {
+              "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+              "blockNumber": 20002450,
+              "blockTimestampSec": 1799994900
+            },
+            "decisionAnchor": {
+              "substrate": "demos",
+              "finalizedBlockTimestampSec": 1800000900
+            },
+            "statuses": {
+              "agreementResolution": "verified",
+              "railResolution": "verified",
+              "codeResolution": "verified",
+              "authorityResolution": "verified",
+              "fundingFinality": "verified",
+              "deliveryFinality": "verified",
+              "decisionFinality": "verified",
+              "terminalFinality": "verified",
+              "transitionResolution": "verified",
+              "nativeStateResolution": "verified"
+            },
+            "resolverEvidenceVersion": "1",
+            "resolver": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+            "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "railDefinitionHash": "87e2897ccda20202abb95ec02d94de564c48ab98899a0174d6c443e09e9d0053",
+            "chainId": 8453,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventObservationsHash": "6ffc322f0c66d0d623169551aabed9904f5eb9e1b18aef2fc774fdfbaff7b31c",
+            "qualifiedArtifactWrites": {
+              "funding": [
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                  "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                  "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                },
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                  "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                  "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                }
+              ],
+              "decision": [
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                  "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                  "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                },
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                  "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                  "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                }
+              ]
+            },
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+              "value": "o1ac8Ma1beyb49h0y4_SkrJhBD8C2McTCZeeNuQcy9KbwvnJZm7nxVtqBYw9lJACoWFggCf3Ba_D6lbHgadeBQ"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "sr2-identical-funding-writes",
+      "base": "release",
+      "expected": "indeterminate",
+      "expectedRule": "DRAA-4",
+      "rules": [
+        "DRAA-4"
+      ],
+      "note": "I8: two qualifying funding writes have identical bytes and different native addresses; retain both, select neither, and do not evaluate DRC-15 from either copy",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "resolverEvidence",
+            "qualifiedArtifactWrites"
+          ],
+          "value": {
+            "funding": [
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              },
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                "nativeAddress": "stor-df9c147ad6bedd9658f3a6b1bd03b3d3c96f00a928a73c3ce53d27681cf746b7",
+                "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "df9c147ad6bedd9658f3a6b1bd03b3d3c96f00a928a73c3ce53d27681cf746b7"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "1",
+                "finalizedBlockTimestampSec": 1800001010
+              }
+            ],
+            "decision": [
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              }
+            ]
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "resolverEvidence"
+          ],
+          "value": {
+            "transactions": [
+              {
+                "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+                "entrypoint": "0xb6dbb0b8",
+                "calldata": {
+                  "provider": "0x2222222222222222222222222222222222222222",
+                  "evaluator": "0x3333333333333333333333333333333333333333",
+                  "expiredAt": "1800007200",
+                  "submissionCutoff": "1800000000",
+                  "description": "dacs-x-delivery-remedy:v1:e860e068408dc0ad0006d6f51ad05d45ac7a36eccaa5e4a1e417089984c31c44",
+                  "hook": "0x0000000000000000000000000000000000000000"
+                },
+                "nativeCaller": "0x1111111111111111111111111111111111111111",
+                "outerSubmitter": "0x1111111111111111111111111111111111111111",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": null,
+                "nativeStatusAfter": 0
+              },
+              {
+                "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+                "entrypoint": "0xa65e2cfd",
+                "calldata": {
+                  "jobId": "1",
+                  "expectedBudget": "1000000"
+                },
+                "nativeCaller": "0x1111111111111111111111111111111111111111",
+                "outerSubmitter": "0x1111111111111111111111111111111111111111",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 0,
+                "nativeStatusAfter": 1
+              },
+              {
+                "txHash": "0xf8bf81b097da6629bb4a41d656f2272e26d655c2ebaac3a648a47d58a8cca761",
+                "entrypoint": "0x2ecea788",
+                "calldata": {
+                  "jobId": "1",
+                  "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+                },
+                "nativeCaller": "0x2222222222222222222222222222222222222222",
+                "outerSubmitter": "0x2222222222222222222222222222222222222222",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 1,
+                "nativeStatusAfter": 2
+              },
+              {
+                "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+                "entrypoint": "0xcd56b1b6",
+                "calldata": {
+                  "jobId": "1",
+                  "reason": "0xcfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f"
+                },
+                "nativeCaller": "0x3333333333333333333333333333333333333333",
+                "outerSubmitter": "0x3333333333333333333333333333333333333333",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 2,
+                "nativeStatusAfter": 3
+              }
+            ],
+            "priorTerminals": [],
+            "nativeState": {
+              "submissionCutoffEnforced": true,
+              "expiryRecoveryAtSec": 1800007200,
+              "preterminalProviderPayoutBaseUnits": "0",
+              "platformFeeBP": 0,
+              "evaluatorFeeBP": 0,
+              "evaluatorBindingMode": "direct",
+              "evaluatorAdapter": null,
+              "escrowRuntimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+              "paymentTokenRuntimeBytecodeHash": "0x2561db1e6c25bf3254dea4025373815dcfd2b004b4a8a38ac5a5666559ab3f25",
+              "implementationAddress": null
+            },
+            "deliveryDigestAnchor": {
+              "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+              "blockNumber": 20002450,
+              "blockTimestampSec": 1799994900
+            },
+            "decisionAnchor": {
+              "substrate": "demos",
+              "finalizedBlockTimestampSec": 1800000900
+            },
+            "statuses": {
+              "agreementResolution": "verified",
+              "railResolution": "verified",
+              "codeResolution": "verified",
+              "authorityResolution": "verified",
+              "fundingFinality": "verified",
+              "deliveryFinality": "verified",
+              "decisionFinality": "verified",
+              "terminalFinality": "verified",
+              "transitionResolution": "verified",
+              "nativeStateResolution": "verified"
+            },
+            "resolverEvidenceVersion": "1",
+            "resolver": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+            "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "railDefinitionHash": "87e2897ccda20202abb95ec02d94de564c48ab98899a0174d6c443e09e9d0053",
+            "chainId": 8453,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventObservationsHash": "6ffc322f0c66d0d623169551aabed9904f5eb9e1b18aef2fc774fdfbaff7b31c",
+            "qualifiedArtifactWrites": {
+              "funding": [
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                  "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                  "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                },
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                  "nativeAddress": "stor-df9c147ad6bedd9658f3a6b1bd03b3d3c96f00a928a73c3ce53d27681cf746b7",
+                  "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "df9c147ad6bedd9658f3a6b1bd03b3d3c96f00a928a73c3ce53d27681cf746b7"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "1",
+                  "finalizedBlockTimestampSec": 1800001010
+                }
+              ],
+              "decision": [
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                  "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                  "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                }
+              ]
+            },
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+              "value": "vyym3Szeg5hf2UH10CWeTEKLdDBxQnLH1I2Bd8qmMH18Jz-FbUS5LOOnWmeVh3l5AgkWteFQDs4xAhQZJ_TCAA"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "sr2-identical-decision-writes",
+      "base": "release",
+      "expected": "indeterminate",
+      "expectedRule": "DRAA-4",
+      "rules": [
+        "DRAA-4"
+      ],
+      "note": "I8: two qualifying decision writes have identical bytes and different native addresses; retain both, select neither, and do not evaluate DRC-15 from either copy",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "resolverEvidence",
+            "qualifiedArtifactWrites"
+          ],
+          "value": {
+            "funding": [
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              }
+            ],
+            "decision": [
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "0",
+                "finalizedBlockTimestampSec": 1800000900
+              },
+              {
+                "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                "nativeAddress": "stor-335140c8bdc68f80a217ba1bea9e727401b87d02e875bc7a869c79c13113be88",
+                "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "335140c8bdc68f80a217ba1bea9e727401b87d02e875bc7a869c79c13113be88"
+                },
+                "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                "nonce": "1",
+                "finalizedBlockTimestampSec": 1800001010
+              }
+            ]
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "resolverEvidence"
+          ],
+          "value": {
+            "transactions": [
+              {
+                "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+                "entrypoint": "0xb6dbb0b8",
+                "calldata": {
+                  "provider": "0x2222222222222222222222222222222222222222",
+                  "evaluator": "0x3333333333333333333333333333333333333333",
+                  "expiredAt": "1800007200",
+                  "submissionCutoff": "1800000000",
+                  "description": "dacs-x-delivery-remedy:v1:e860e068408dc0ad0006d6f51ad05d45ac7a36eccaa5e4a1e417089984c31c44",
+                  "hook": "0x0000000000000000000000000000000000000000"
+                },
+                "nativeCaller": "0x1111111111111111111111111111111111111111",
+                "outerSubmitter": "0x1111111111111111111111111111111111111111",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": null,
+                "nativeStatusAfter": 0
+              },
+              {
+                "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+                "entrypoint": "0xa65e2cfd",
+                "calldata": {
+                  "jobId": "1",
+                  "expectedBudget": "1000000"
+                },
+                "nativeCaller": "0x1111111111111111111111111111111111111111",
+                "outerSubmitter": "0x1111111111111111111111111111111111111111",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 0,
+                "nativeStatusAfter": 1
+              },
+              {
+                "txHash": "0xf8bf81b097da6629bb4a41d656f2272e26d655c2ebaac3a648a47d58a8cca761",
+                "entrypoint": "0x2ecea788",
+                "calldata": {
+                  "jobId": "1",
+                  "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+                },
+                "nativeCaller": "0x2222222222222222222222222222222222222222",
+                "outerSubmitter": "0x2222222222222222222222222222222222222222",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 1,
+                "nativeStatusAfter": 2
+              },
+              {
+                "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+                "entrypoint": "0xcd56b1b6",
+                "calldata": {
+                  "jobId": "1",
+                  "reason": "0xcfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f"
+                },
+                "nativeCaller": "0x3333333333333333333333333333333333333333",
+                "outerSubmitter": "0x3333333333333333333333333333333333333333",
+                "nativeCallerAccountType": "eoa",
+                "priorNativeStatus": 2,
+                "nativeStatusAfter": 3
+              }
+            ],
+            "priorTerminals": [],
+            "nativeState": {
+              "submissionCutoffEnforced": true,
+              "expiryRecoveryAtSec": 1800007200,
+              "preterminalProviderPayoutBaseUnits": "0",
+              "platformFeeBP": 0,
+              "evaluatorFeeBP": 0,
+              "evaluatorBindingMode": "direct",
+              "evaluatorAdapter": null,
+              "escrowRuntimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+              "paymentTokenRuntimeBytecodeHash": "0x2561db1e6c25bf3254dea4025373815dcfd2b004b4a8a38ac5a5666559ab3f25",
+              "implementationAddress": null
+            },
+            "deliveryDigestAnchor": {
+              "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+              "blockNumber": 20002450,
+              "blockTimestampSec": 1799994900
+            },
+            "decisionAnchor": {
+              "substrate": "demos",
+              "finalizedBlockTimestampSec": 1800000900
+            },
+            "statuses": {
+              "agreementResolution": "verified",
+              "railResolution": "verified",
+              "codeResolution": "verified",
+              "authorityResolution": "verified",
+              "fundingFinality": "verified",
+              "deliveryFinality": "verified",
+              "decisionFinality": "verified",
+              "terminalFinality": "verified",
+              "transitionResolution": "verified",
+              "nativeStateResolution": "verified"
+            },
+            "resolverEvidenceVersion": "1",
+            "resolver": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+            "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "railDefinitionHash": "87e2897ccda20202abb95ec02d94de564c48ab98899a0174d6c443e09e9d0053",
+            "chainId": 8453,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "nativeJobId": "1",
+            "eventObservationsHash": "6ffc322f0c66d0d623169551aabed9904f5eb9e1b18aef2fc774fdfbaff7b31c",
+            "qualifiedArtifactWrites": {
+              "funding": [
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
+                  "nativeAddress": "stor-b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2",
+                  "contentHash": "e82fe8978b571f9df65cbb1c9ee829aadd09b2941a5f243f38f8edb56b1b3334",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "b1965c3eb0af3d85a8839a6320578e448e2a60a8939061aebaf1e7560dfbcdd2"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                }
+              ],
+              "decision": [
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                  "nativeAddress": "stor-d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804",
+                  "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "d80352fa82f898d8fbbf32c62dd8c2a6093dfd6be59db18c5dd426fe6028a804"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "0",
+                  "finalizedBlockTimestampSec": 1800000900
+                },
+                {
+                  "logicalAddress": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission",
+                  "nativeAddress": "stor-335140c8bdc68f80a217ba1bea9e727401b87d02e875bc7a869c79c13113be88",
+                  "contentHash": "cfb47943559f2620d61e7a3c8b066e70bc05ec3e801c0fb35d84a4a33f6e046f",
+                  "transactionRef": {
+                    "kind": "demos-transaction",
+                    "value": "335140c8bdc68f80a217ba1bea9e727401b87d02e875bc7a869c79c13113be88"
+                  },
+                  "writer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+                  "nonce": "1",
+                  "finalizedBlockTimestampSec": 1800001010
+                }
+              ]
+            },
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+              "value": "a9Y7vYiye2lJSEr1SZfDRPNhj7BCDlZ7fxxsxWDQUdYkbx1Ewq68tR0aoqZaJaza3OBq74wQtH6SnqQhYzBMDw"
+            }
+          }
+        }
+      ]
     }
   ],
   "promotionBlockedRules": {
     "DRA-12": "requires authenticated ordering of the overlay's SR-2 finality before job creation; the pack resolves the overlay but has no evidence of when it was finalized",
     "DRA-14": "requires authenticated native evidence of every later mutation of the bound parties, token, budget, recipient, policy, and deadlines; the pack models no later replacement",
     "DRAA-3": "requires the normative SR-2 logical-to-native binding and a conforming resolver",
-    "DRAA-4": "requires authenticated SR-2 write-once behavior from the selected storage binding",
     "DRAA-5": "requires authenticated conflicting-write evidence from the selected SR-2 binding",
     "DRAA-8": "requires an authenticated resolver that selects by logical address rather than index or reported time",
     "DRAA-9": "requires CORE SR2-10 through SR2-12 receipt delivery to the entitled participants",
@@ -522568,6 +523629,7 @@
     "DRX-8": "requires artifacts of the output-only DACS-X dispute family to present as this candidate's"
   },
   "promotionBlockedProofs": {
+    "DRAA-4": "requires verified CORE AnchorReceipts and native SR-2 write evidence; the pack checks equivocation only over pinned-resolver summaries of qualifying writes, not receipt proof bytes or producer write-once enforcement",
     "DRA-4": "requires authenticated DACS-1 identity bundles and DACS-2 Vet results, and a control proof for each role's EVM account; the pack binds unsigned fixture role-bundle and Vet-record inputs by hash only",
     "DRA-8": "requires an authenticated DACS-2 CompositeVerificationRecord for the evaluator's BundleRequirement; the pack compares the requirement hash with an unsigned fixture Vet-record input",
     "DRA-9": "requires the authenticated DACS-2 composite result and its freshness rule; the pack reads a pass result and a fixture validFromSec/validUntilSec window from an unsigned Vet-record input, which is not the DACS-2 record shape",

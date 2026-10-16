@@ -10,7 +10,7 @@ The pack turns the pre-normative
 into executable review evidence. Every result is one of the candidate's four
 verification results: `pass`, `fail`, `indeterminate`, or `error` (§9).
 
-- `candidate-vectors-v0.1.json` holds 491 lifecycle and mapping vectors over
+- `candidate-vectors-v0.1.json` holds 496 lifecycle and mapping vectors over
   deterministic, signed synthetic lifecycles: full release, evaluator
   rejection and refund before or after submission, a dispute-outcome release
   and refund, pre-submission expiry, and post-submission expiry. The
@@ -94,6 +94,15 @@ producers write the same bytes (DRW-7). Each event reference list is exactly
 its transition's required events, in ascending log order, from one
 transaction. Each `AttestationRef` omits `signer` and is a `storage-program`
 anchor at the artifact's logical address, never a native `stor-` address.
+
+P13's two producers resolve the same funding and decision writes through one
+binding and reproduce the same terminal evidence. I8's two byte-identical
+funding or decision writes at different native addresses yield `indeterminate`
+under DRAA-4. Both summaries are retained, neither is selected, and DRC-15 is
+not evaluated from either copy, including when their finality times fall on
+opposite sides of the terminal transaction. Receiving the exact same receipt
+twice still describes one write. A consumer with one receipt needs no proof
+that no other write exists.
 
 The protocol verifier requires the finality records embedded in signed funding
 and terminal artifacts to use the exact DACS-4 `SettlementFinalityRecord`
@@ -474,7 +483,7 @@ that proof.
 
 The pack's `promotionBlockedRules` ledger names the rules no vector executes
 and the concrete capability needed before they can be promoted. They cover
-SR-2 logical addressing, anchoring, and write-once behavior, the anchoring
+SR-2 logical addressing and anchoring, the anchoring
 order of the overlay and evaluation (DRA-12, DRE-7), later mutation of the
 bound job (DRA-14), live proxy and authority resolution, the evaluator EOA's
 control proof (DREB-17), explicit-party evidence proof, gate and
@@ -489,7 +498,13 @@ against a synthetic evidence shape whose normative proof shape is undefined.
 Negatives may exercise them, but no `pass` vector claims one, and the
 verifier refuses a pack where one does. It holds DRP-9, whose digest anchor is
 a fixture boundary, and DRE-2 and DRP-7, whose `DeliveryEvidence` is checked
-without the SR-2 receipts that would finalize and resolve it. It holds DRF-8,
+without the SR-2 receipts that would finalize and resolve it. It holds DRAA-4:
+the optional resolver-signed `qualifiedArtifactWrites` inputs summarize
+qualifying finalized funding and decision writes by logical address, native
+address, content hash, transaction, writer, nonce, and consensus finality time.
+They are synthetic proof-verifier outputs, not CORE `AnchorReceipt` proof
+bytes. The pack checks equivocation over these summaries; it does not verify
+native receipt proofs or enforce producer write-once behavior. It holds DRF-8,
 whose chain facts come from the fixture chain and resolver rather than FV-1
 through FV-10, and DRW-6, whose confirmation-depth block time comes from the
 same resolver: a consistent shift of every block time is not detected. It

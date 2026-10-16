@@ -1119,6 +1119,28 @@ def refresh_canonical_records(fixture: dict[str, Any]) -> None:
     fixture["canonicalRecords"] = records
 
 
+def qualified_artifact_write(
+    fixture: dict[str, Any], name: str, copy_index: int = 0,
+    finalized_sec: int | None = None,
+) -> dict[str, Any]:
+    """One synthetic resolver output for a qualifying Demos write (not proof bytes)."""
+    terminal = fixture["artifacts"]["terminal"]
+    reference = terminal["fundingEvidenceRef" if name == "funding" else "decisionRef"]
+    locator = reference["anchor"]["locator"]
+    identity = hashlib.sha256(f"{locator}:write:{copy_index}".encode("ascii")).hexdigest()
+    if finalized_sec is None:
+        finalized_sec = fixture["resolverEvidence"]["decisionAnchor"]["finalizedBlockTimestampSec"]
+    return {
+        "logicalAddress": locator,
+        "nativeAddress": "stor-" + identity,
+        "contentHash": reference["contentHash"],
+        "transactionRef": {"kind": "demos-transaction", "value": identity},
+        "writer": ORCHESTRATOR,
+        "nonce": str(copy_index),
+        "finalizedBlockTimestampSec": finalized_sec,
+    }
+
+
 def vector(
     name: str,
     base: str,
@@ -2577,13 +2599,34 @@ def build_vector_pack() -> dict[str, Any]:
         vector("decision-signature-noncanonical-base64url", "release", "fail", "DRD-1", "CORE SIG-6: a signature value with non-zero pad bits is not repaired", [{"op": "replace", "path": ["artifacts", "decision", "signature", "value"], "value": noncanonical_b64u(decision_value)}]),
         vector("resolver-signature-noncanonical-base64url", "release", "fail", "DRV-1", "CORE SIG-6: a resolver signature value with non-zero pad bits is not repaired", [{"op": "replace", "path": ["resolverEvidence", "signature", "value"], "value": noncanonical_b64u(resolver_value)}]),
     ]
+    # P13 resolves one published write twice. I8 holds two qualifying writes
+    # together: byte equality cannot make either eligible for DRC-15.
+    single_writes = {name: [qualified_artifact_write(release, name)] for name in ("funding", "decision")}
+
+    def write_patch(writes: Any) -> list[dict[str, Any]]:
+        return resolver_patch(release, [{
+            "op": "add", "path": ["resolverEvidence", "qualifiedArtifactWrites"], "value": writes,
+        }])
+
+    vectors += [
+        vector("sr2-single-write-two-producers", "release", "pass", "DRV-7", "P13: both producers resolve one write through one binding and reproduce the same logical references and terminal hash", write_patch(single_writes), rules=["DRW-7", "DRT-16"]),
+        vector("sr2-single-write-resolved-again", "release", "pass", "DRV-7", "P13: a later resolution of the same published writes reproduces the same evidence", write_patch(single_writes), rules=["DRW-7", "DRT-16"], evaluated_with=["sr2-single-write-two-producers"]),
+        vector("sr2-repeated-receipt-same-write", "release", "pass", "DRV-7", "an exact repeated receipt describes one write, not two", write_patch({name: receipts * 2 for name, receipts in single_writes.items()}), rules=["DRW-7", "DRT-16"]),
+    ]
+    for name in ("funding", "decision"):
+        writes = copy.deepcopy(single_writes)
+        writes[name].append(qualified_artifact_write(release, name, 1, release_terminal_sec + 10))
+        vectors.append(vector(
+            f"sr2-identical-{name}-writes", "release", "indeterminate", "DRAA-4",
+            f"I8: two qualifying {name} writes have identical bytes and different native addresses; retain both, select neither, and do not evaluate DRC-15 from either copy",
+            write_patch(writes), rules=["DRAA-4"],
+        ))
     # Rules no vector executes: each needs evidence or an actor outside this
     # offline pack.  A vector may not tag one.
     promotion_blocked_rules = {
         "DRA-12": "requires authenticated ordering of the overlay's SR-2 finality before job creation; the pack resolves the overlay but has no evidence of when it was finalized",
         "DRA-14": "requires authenticated native evidence of every later mutation of the bound parties, token, budget, recipient, policy, and deadlines; the pack models no later replacement",
         "DRAA-3": "requires the normative SR-2 logical-to-native binding and a conforming resolver",
-        "DRAA-4": "requires authenticated SR-2 write-once behavior from the selected storage binding",
         "DRAA-5": "requires authenticated conflicting-write evidence from the selected SR-2 binding",
         "DRAA-8": "requires an authenticated resolver that selects by logical address rather than index or reported time",
         "DRAA-9": "requires CORE SR2-10 through SR2-12 receipt delivery to the entitled participants",
@@ -2609,6 +2652,11 @@ def build_vector_pack() -> dict[str, Any]:
     # proof shape is still undefined.  Negatives may exercise them; no pass
     # vector claims them, and the verifier refuses a pack where one does.
     promotion_blocked_proofs = {
+        "DRAA-4": (
+            "requires verified CORE AnchorReceipts and native SR-2 write evidence; the pack "
+            "checks equivocation only over pinned-resolver summaries of qualifying writes, "
+            "not receipt proof bytes or producer write-once enforcement"
+        ),
         "DRA-4": (
             "requires authenticated DACS-1 identity bundles and DACS-2 Vet results, and a "
             "control proof for each role's EVM account; the pack binds unsigned fixture "

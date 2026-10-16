@@ -41,9 +41,76 @@ python3 scripts/validate_implementation_manifests.py
 
 Implementation support claims use the optional normative
 [`ImplementationManifest`](implementation-manifest.schema.json) reporting shape.
-Four validated examples live in [`implementation-manifests/`](implementation-manifests/).
+Six validated examples live in [`implementation-manifests/`](implementation-manifests/).
 They pin this vector manifest by commit and SHA-256 hash; live-only tests remain
 separate and cannot substitute for deterministic cases.
+
+An implementation that copies the vector sets under `vectors/` into its own
+tree can check those copies for drift. The non-normative checker matches sets
+by their `set` name, in a flat directory or with the `security/` subdirectory
+kept, and compares them with this checkout or with a revision of it:
+
+```sh
+python3 scripts/check_vendored_vectors.py path/to/vendored/vectors
+python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev v0.4
+python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --json
+python3 scripts/check_vendored_vectors.py path/to/vendored/sets --sets-only
+```
+
+Point the tool at the directory holding vector sets, such as `vectors/`,
+rather than a copy of the whole `conformance/` tree. Incomplete set objects
+and symlinked subdirectories are bad input.
+
+Other JSON files under `vectors/`, such as `golden.json`, the
+`dacs-v0.1-*` paths and `examples/`, are matched by their path relative to
+that directory and compared as type-strict parsed JSON. Each is reported as
+matching, drifted (naming its changed top-level members), missing or extra.
+For a copy that holds only the vector sets, `--sets-only` compares the sets
+alone and counts other JSON files as ignored.
+
+For each set, it reports changes to `vectors`, `count`, declared `hash`,
+`spec`, or any other top-level member, as well as missing and extra sets.
+Vectors are evaluated against top-level members such as `agreement`,
+`publicKeys`, `decisionModel`, `trustedFixturePolicy`, `tier` and
+`conformanceProfile`, so every member is compared and each changed one is
+named under `members`. The checker computes this content hash separately
+from each set's declared `hash`, whose encoding varies by set:
+
+```text
+sha256(canonical_json(vectors))
+```
+
+It uses `canonical_json` from `scripts/validate_conformance_vectors.py`.
+When that function refuses a set, the checker verifies its declared hash
+using the compact encodings accepted by `scripts/validate_security_vectors.py`
+and compares computed hashes under the selected encoding. Text and JSON
+output label this mode `declared-encoding-sha256+parsed-json` and name the
+encoding. The four current sets containing integers beyond the CORE §B.2
+safe range use this mode, so a self-check can pass without changing vectors.
+This is a non-normative tooling choice.
+
+When the Standard supplies the verified encoding, the checker hashes the
+vendored copy under that encoding even if its own declared hash is stale or
+edited. Those changes report drift with exit 1. When the Standard's vectors
+canonicalize and the vendored vectors do not, the vectors differ and the set
+is reported as drifted. The same applies when the vendored vectors cannot be
+encoded with the Standard's verified declared encoding. Each encoding is tried
+on its own, so a lone surrogate, which only the UTF-8 encodings refuse, still
+hashes under an ASCII encoding.
+
+Both modes also compare type-strict parsed values: Unicode normalization,
+`1.0` versus `1`, and float zero-sign changes are drift. Numbers use Python's
+parsed values; spelling and precision lost during parsing are not compared.
+Formatting is ignored. Canonical hashing ignores object member order; the
+fallback mode must reproduce a declared hash under a validator-accepted
+encoding.
+
+Exit 0 means every set and compared file matches, exit 1 means drift, and
+exit 2 means bad input or a set with neither a canonical nor a verified
+declared-encoding hash.
+Such a set is `uncheckable`; a known missing or extra set retains that status
+and also contributes to the separate uncheckable count. Exit 2 takes
+precedence over drift.
 
 For a runnable five-stage builder path, see the dependency-free
 [`walkthrough/`](./walkthrough/) reference tool. It verifies the current signed

@@ -1,0 +1,163 @@
+{
+  "manifestVersion": "1",
+  "generatedAt": "2026-10-15T00:00:00Z",
+  "implementation": {
+    "name": "illustrative-fixed-price-pay-dem-seller",
+    "version": "0.0.0-illustrative",
+    "repository": "https://example.invalid/illustrative/fixed-price-pay-dem-seller",
+    "commit": "5555555555555555555555555555555555555555"
+  },
+  "profile": {
+    "id": "DACS-v0.1",
+    "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+    "commit": "4bb9e48a1095ab32c06c25b7c0b52018d3ce4091",
+    "documents": {
+      "CORE": "0.1",
+      "DACS-1": "0.3",
+      "DACS-2": "0.2",
+      "DACS-3": "0.3",
+      "DACS-4": "0.3",
+      "DACS-5": "0.3"
+    }
+  },
+  "roles": ["seller"],
+  "conformanceSuite": {
+    "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+    "commit": "4bb9e48a1095ab32c06c25b7c0b52018d3ce4091",
+    "manifestPath": "conformance/MANIFEST.json",
+    "manifestSha256": "d25d2af14adabc5ac7daa25a7c1424a5e8151d6fb08326d1f596d1204b05c30b"
+  },
+  "claims": [
+    {
+      "id": "claim-fixed-price-seller",
+      "level": "capability",
+      "result": "implemented",
+      "roles": ["seller"],
+      "modules": ["DACS-3"],
+      "capabilityRefs": ["fixed-price"],
+      "ruleRefs": ["DACS-3-8.4.1", "DACS-3-8.5.1", "DACS-3-8.5.2", "PS-1", "PS-2", "PS-3"],
+      "evidenceRefs": ["fixed-price-vectors"]
+    },
+    {
+      "id": "claim-pay-dem-seller",
+      "level": "capability",
+      "result": "implemented",
+      "roles": ["seller"],
+      "modules": ["DACS-4"],
+      "capabilityRefs": ["pay-dem"],
+      "ruleRefs": ["DACS-4-9.5.9", "PB-1", "PB-2", "PB-3"],
+      "evidenceRefs": ["pay-dem-vectors"]
+    },
+    {
+      "id": "claim-dem-native-rail-seller",
+      "level": "capability",
+      "result": "implemented",
+      "roles": ["seller"],
+      "modules": ["DACS-4"],
+      "capabilityRefs": ["demos-native-dem-rail"],
+      "ruleRefs": ["DACS-4-9.4.2"],
+      "evidenceRefs": ["pay-dem-vectors"]
+    },
+    {
+      "id": "claim-storage-program-delivery-seller",
+      "level": "capability",
+      "result": "implemented",
+      "roles": ["seller"],
+      "modules": ["DACS-4"],
+      "capabilityRefs": ["storage-program-delivery"],
+      "ruleRefs": ["DACS-4-9.6.1"],
+      "evidenceRefs": ["storage-program-delivery-vectors"]
+    }
+  ],
+  "capabilities": [
+    {
+      "ref": "fixed-price",
+      "kind": "negotiation-pattern",
+      "id": "fixed-price",
+      "modules": ["DACS-3"],
+      "roles": ["seller"],
+      "supportStatus": "implemented",
+      "testStatus": "partial",
+      "evidenceRefs": ["fixed-price-vectors"]
+    },
+    {
+      "ref": "pay-dem",
+      "kind": "payment-phase",
+      "id": "pay-dem",
+      "modules": ["DACS-4"],
+      "roles": ["seller"],
+      "supportStatus": "implemented",
+      "testStatus": "partial",
+      "evidenceRefs": ["pay-dem-vectors"]
+    },
+    {
+      "ref": "demos-native-dem-rail",
+      "kind": "payment-rail",
+      "id": "demos-native:DEM",
+      "modules": ["DACS-4"],
+      "roles": ["seller"],
+      "supportStatus": "implemented",
+      "testStatus": "partial",
+      "evidenceRefs": ["pay-dem-vectors"]
+    },
+    {
+      "ref": "storage-program-delivery",
+      "kind": "delivery-type",
+      "id": "deliver-storage-program",
+      "modules": ["DACS-4"],
+      "roles": ["seller"],
+      "supportStatus": "implemented",
+      "testStatus": "partial",
+      "evidenceRefs": ["storage-program-delivery-vectors"]
+    },
+    {
+      "ref": "rfq",
+      "kind": "negotiation-pattern",
+      "id": "rfq",
+      "modules": ["DACS-3"],
+      "roles": ["seller"],
+      "supportStatus": "unsupported",
+      "testStatus": "not_tested",
+      "evidenceRefs": []
+    }
+  ],
+  "testRuns": [
+    {
+      "id": "fixed-price-vectors",
+      "result": "pass",
+      "caseIds": [
+        "neg-band-inclusive",
+        "neg-currency-mismatch",
+        "neg-rail-reject",
+        "neg-deliverable",
+        "neg-deadline-committedat",
+        "neg-notafter",
+        "neg-pattern-mismatch",
+        "neg-ps3-fixed-over-negotiable",
+        "neg-priceanchor-absent-ok",
+        "neg-priceanchor-present",
+        "neg-price-noncanonical"
+      ],
+      "command": "illustrative-example conformance run --capability fixed-price"
+    },
+    {
+      "id": "pay-dem-vectors",
+      "result": "pass",
+      "caseIds": ["pb2-tier1-pay-dem-intrinsic-matches"],
+      "command": "illustrative-example conformance run --capability pay-dem"
+    },
+    {
+      "id": "storage-program-delivery-vectors",
+      "result": "pass",
+      "caseIds": [
+        "settlement-delivery-pass",
+        "settlement-delivery-missing-deliverable-fail",
+        "settlement-delivery-malformed-contenthash-fail",
+        "settlement-storage-anchored-as-entitlement-fail"
+      ],
+      "command": "illustrative-example conformance run --capability deliver-storage-program"
+    }
+  ],
+  "liveTests": [],
+  "deviations": []
+}

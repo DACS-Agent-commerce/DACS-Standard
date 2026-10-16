@@ -818,6 +818,26 @@ def document() -> dict:
         {"status": "unavailable", "reason": "maintenance", "retryAfterMs": 1000},
         signed_time=ACQUIRED_AT - 100,
     )
+    # FRC-8: the one optional member is typed `object`; a signed scalar or
+    # null in its place is outside the closed type.
+    transport_metadata_scalar_input = closed_member_input(
+        "observer-a", {"status": "observed", "observation": observation},
+        transport_metadata=7,
+    )
+    transport_metadata_null_input = closed_member_input(
+        "observer-a", {"status": "observed", "observation": observation},
+        extra_members={"transportMetadata": None},
+    )
+    # FRC-8: observer-b's view carries only the threshold's two RPC
+    # signatures where observer-a's carries all three.  Both are sufficient
+    # authentication of one head, path, transaction and event.
+    threshold_observation = copy.deepcopy(observation)
+    threshold_attestations = threshold_observation["observation"]["authorityEvidence"]["attestations"]
+    threshold_attestations[:] = threshold_attestations[:profile["observation"]["threshold"]]
+    threshold_set_input = closed_member_input(
+        "observer-b", {"status": "observed", "observation": threshold_observation},
+        transport_metadata={"arrivalSequence": 1, "channel": "fixture-b"},
+    )
 
     # FRC-5: each verifier-local acquisition record names the issued nonce,
     # an obtained status, one response hash and the signed responder.
@@ -1076,6 +1096,23 @@ def document() -> dict:
          "note": "observer-b genuinely signs and the verifier acquires an "
                  "unavailable arm carrying an extra member",
          "input": unavailable_arm_extra_member_input},
+        {"name": "response-transport-metadata-not-object", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires a response "
+                 "whose optional transportMetadata is the integer 7",
+         "input": transport_metadata_scalar_input},
+        {"name": "response-transport-metadata-null", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires a response "
+                 "whose optional transportMetadata is null",
+         "input": transport_metadata_null_input},
+        {"name": "equivalent-sufficient-authentication-sets", "expected": "pass",
+         "operation": "verify",
+         "note": "observer-a's view carries three RPC signatures and observer-b's "
+                 "the threshold's two over the same head, path, transaction and "
+                 "event; which sufficient set authenticates a view is not a "
+                 "finality conflict",
+         "input": threshold_set_input},
         {"name": "acquisition-record-other-nonce", "expected": "error",
          "operation": "verify",
          "note": "observer-a's verifier-local acquisition record names another "

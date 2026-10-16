@@ -18,6 +18,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 import dacs5_reference as D5
 import finality_resolution_context_reference as FRC
+import generate_finality_resolution_context_vectors as GEN
 from finality_resolution_context_reference import (
     CAPABILITY,
     CONTEXT_VERSION,
@@ -325,6 +326,50 @@ class FinalityResolutionContextTests(unittest.TestCase):
         responses = value["context"]["responseArtifacts"]
         self.assertNotEqual(responses[0].get("transportMetadata"), responses[1].get("transportMetadata"))
 
+    def test_equivalent_sufficient_authentication_sets_are_one_view(self):
+        case = self.case("equivalent-sufficient-authentication-sets")
+        value = case["input"]["value"]
+        views = {
+            response["authorityId"]: response["response"]["observation"]
+            for response in value["context"]["responseArtifacts"]
+        }
+        attestations = {
+            authority_id: view["observation"]["authorityEvidence"]["attestations"]
+            for authority_id, view in views.items()
+        }
+        threshold = value["rail"]["consumerFinalityProfile"]["settlement"]["observation"]["threshold"]
+        self.assertEqual(threshold + 1, len(attestations["observer-a"]))
+        self.assertEqual(threshold, len(attestations["observer-b"]))
+        self.assertEqual(
+            FRC._projection(views["observer-a"]), FRC._projection(views["observer-b"])
+        )
+        self.assertEqual("pass", self.execute_vector(case)["decision"])
+
+        # Each view is still authenticated on its own: below the threshold
+        # observer-b's view does not verify, so the pair cannot pass.
+        thin = copy.deepcopy(views["observer-b"])
+        del thin["observation"]["authorityEvidence"]["attestations"][threshold - 1:]
+        key = GEN.Ed25519PrivateKey.from_private_bytes(
+            bytes.fromhex(GEN.AUTHORITY_SEEDS["observer-b-key"])
+        )
+        query = case["input"]["authority"]["issuedQuery"]
+        response = GEN.signed_response(
+            key,
+            authority_id="observer-b",
+            key_id="observer-b-key",
+            query=query,
+            checkpoint=query["checkpoint"],
+            arm={"status": "observed", "observation": thin},
+        )
+        changed, payload = self.replace_seat(
+            value, case["input"]["authority"],
+            {
+                "response": response,
+                "acquisition": GEN.acquisition(response, query["nonce"], GEN.ACQUIRED_AT),
+            },
+        )
+        self.assertNotEqual("pass", self.verify(changed, self.authority(payload))["decision"])
+
     def test_transport_omission_cannot_erase_retained_response(self):
         value = copy.deepcopy(self.data["positive"]["value"])
         value["context"]["responseArtifacts"] = [
@@ -388,7 +433,7 @@ class FinalityResolutionContextTests(unittest.TestCase):
         return case, copy.deepcopy(case["input"]["value"]), copy.deepcopy(case["input"]["authority"])
 
     def test_materialized_cases_execute_their_expectation(self):
-        self.assertEqual(43, self.data["count"])
+        self.assertEqual(46, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         self.assertEqual(
             hashlib.sha256(json.dumps(
@@ -427,6 +472,12 @@ class FinalityResolutionContextTests(unittest.TestCase):
             ('if not _exact(response, required, {"transportMetadata"}):',
              'if not isinstance(response, dict) or not required <= set(response):',
              "pass", ["response-extra-member"]),
+            ('    if "transportMetadata" in response and not isinstance(response["transportMetadata"], dict):\n'
+             '        return False\n', "", "pass",
+             ["response-transport-metadata-not-object", "response-transport-metadata-null"]),
+            # FRC-8 projection: authentication evidence is not finality meaning.
+            ('item.pop("authorityEvidence", None)', "pass", "indeterminate",
+             ["equivalent-sufficient-authentication-sets"]),
             ('return _exact(arm, {"status", "observation"}) and', "return", "pass",
              ["response-observed-arm-extra-member"]),
             ('return _exact(arm, {"status", "reason"}) and', "return", None,

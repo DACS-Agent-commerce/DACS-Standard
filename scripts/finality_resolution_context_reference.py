@@ -499,6 +499,8 @@ def _response_shape(response: Any) -> bool:
     }
     if not _exact(response, required, {"transportMetadata"}):
         return False
+    if "transportMetadata" in response and not isinstance(response["transportMetadata"], dict):
+        return False
     arm = response.get("response")
     signature = response.get("signature")
     if (
@@ -575,19 +577,17 @@ def _acquisition_map(authority: FinalityResolutionAuthority) -> tuple[dict | Non
 
 
 def _projection(observation: dict) -> str:
-    """Canonical fixture meaning; signature arrival order is transport-irrelevant."""
+    """Canonical fixture meaning, compared only after FV verified the view.
+
+    Which sufficient set of authority signatures accompanies a view, and in
+    what order, is authentication evidence, not finality meaning: the head,
+    ancestry, inclusion, transaction and event remain.
+    """
     value = copy.deepcopy(observation)
 
     def normalize(item: Any) -> None:
         if isinstance(item, dict):
-            authority = item.get("authorityEvidence")
-            if isinstance(authority, dict) and isinstance(authority.get("attestations"), list):
-                authority["attestations"].sort(
-                    key=lambda row: (
-                        row.get("authorityRef", "") if isinstance(row, dict) else "",
-                        canonicalize(row),
-                    )
-                )
+            item.pop("authorityEvidence", None)
             for member in item.values():
                 normalize(member)
         elif isinstance(item, list):

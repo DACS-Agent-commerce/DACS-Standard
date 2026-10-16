@@ -66,6 +66,11 @@ PAYMENT_IDENTIFIER_EXTENSIONS = {
         },
     },
 }
+# The schema the pinned reference SDKs' declarePaymentIdentifierExtension()
+# emits (typescript/packages/extensions/src/payment-identifier/schema.ts and its
+# Python and Go twins): the markdown example plus the `id` character pattern.
+PAYMENT_IDENTIFIER_SDK_SCHEMA = copy.deepcopy(PAYMENT_IDENTIFIER_EXTENSIONS["payment-identifier"]["schema"])
+PAYMENT_IDENTIFIER_SDK_SCHEMA["properties"]["id"]["pattern"] = "^[a-zA-Z0-9_-]+$"
 # DACS-4 §9.5.7 failure modes (`x402:protocol`): the PC-4 errorClass of each
 # handler result the list names. Unsupported or undefined members, like
 # unsupported capability, are `permanent`, never the seller's fault.
@@ -91,6 +96,14 @@ EIP712_SIGNATURE = "0x" + hashlib.sha256(b"DACS #274 EIP-712 r").hexdigest() + h
     b"DACS #274 EIP-712 s").hexdigest() + "1b"
 SOLANA_PAYMENT_TRANSACTION = base64.b64encode(b"DACS #274 partially signed transaction").decode("ascii")
 FACILITATOR = "https://facilitator-a.example"
+# X402-1: the v1 SettlementResponse of the x402-receipt-hash corpus's
+# `v1-success-x-payment-response` case (its `canonicalReceipt`).
+V1_RECEIPT = {
+    "network": "base-sepolia",
+    "payer": "0x857b06519E91e3A54538791bDbb0E22373e36b66",
+    "success": True,
+    "transaction": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de",
+}
 # The EIP-3009 authorization's validBefore, in seconds, as the handler retains it.
 VALID_BEFORE = 1787443260
 SOLANA_NETWORK = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
@@ -2035,6 +2048,40 @@ def build_vectors() -> list[dict]:
                      {**legacy_response, "transaction": "cd" * 32})})),
              operation="legacy-replay", authorization_submitted=True,
              reason="legacy-receipt-transaction")
+    # X402-1/X402-3: a v1 record selects X-PAYMENT-RESPONSE, and its v1 network
+    # maps to the recorded chainId through the registered v1 mapping. The
+    # receipt is the x402-receipt-hash corpus's v1 `pass` case.
+    def legacy_v1(network="base-sepolia", chain_id=84532):
+        def mutate(v):
+            legacy_replay(v)
+            response = {**V1_RECEIPT, "network": network}
+            raw = json.dumps(response, separators=(",", ":")).encode("utf-8")
+            v["http"]["responseHeader"] = {
+                "name": "X-PAYMENT-RESPONSE", "value": base64.b64encode(raw).decode("ascii"),
+            }
+            v["evidence"]["paymentTxRefs"][0].update({
+                "paymentReceiptHash": digest(response),
+                "settlementTxHash": V1_RECEIPT["transaction"],
+                "chainId": chain_id,
+                "protocolVersion": "1",
+            })
+            v["runtime"]["sessionState"] = "in-flight"
+        return mutate
+    add_case(vectors, "legacy-v1-continuation-registered-network", "pass", "X402-1..X402-4/XN-10",
+             "a v1 receipt's base-sepolia maps to the recorded chainId 84532 through the "
+             "registered v1 mapping", legacy_v1(), operation="legacy-continuation",
+             authorization_submitted=True)
+    add_case(vectors, "legacy-v1-replay-presented-response", "pass", "X402-4",
+             "a replay verifier presented with the v1 response maps its network the same way",
+             legacy_v1(), operation="legacy-replay", authorization_submitted=True)
+    for name, network, chain_id, note in (
+        ("other-chain", "base-sepolia", 8453, "base-sepolia maps to 84532, not the recorded 8453"),
+        ("unregistered-network", "iotex", 84532,
+         "a v1 network the registered mapping does not name maps to no chain"),
+    ):
+        add_case(vectors, f"legacy-v1-continuation-{name}", "fail", "X402-3", note,
+                 legacy_v1(network, chain_id), operation="legacy-continuation",
+                 authorization_submitted=True, reason="legacy-receipt-network")
 
     # XN-11 retry: the retained identity must be this session's, and then the
     # payment disposition is the ledger reconciliation's, as after the execute
@@ -3217,12 +3264,33 @@ def build_vectors() -> list[dict]:
                                                    "id": {"type": "string"}}}}),
         ("info-id-below-schema-minimum", {**advertised, "info": {"required": False, "id": "short"}}),
         ("info-id-not-string", {**advertised, "info": {"required": False, "id": 2**52}}),
+        ("info-id-outside-character-set", {**advertised, "info": {
+            "required": False, "id": "pay." + "7" * 16}}),
+        ("schema-other-id-pattern", {**advertised, "schema": {
+            **PAYMENT_IDENTIFIER_SDK_SCHEMA, "properties": {
+                "required": {"type": "boolean"},
+                "id": {**PAYMENT_IDENTIFIER_SDK_SCHEMA["properties"]["id"], "pattern": "^.+$"}}}}),
     ):
         add_case(vectors, f"payment-identifier-{name}", "fail", "XN-6/§9.5.7.1",
                  "the advertisement must have upstream's {info: {required: boolean}, schema} "
                  "shape, with the pinned schema and an info that satisfies it, before it can be "
                  "judged optional",
                  payment_identifier(value), refresh=True, reason="extension-value")
+    # The pinned reference SDKs advertise the schema with the `id` pattern;
+    # that default optional advertisement is upstream's own, so it pays.
+    sdk_advertised = {"info": {"required": False}, "schema": PAYMENT_IDENTIFIER_SDK_SCHEMA}
+    add_case(vectors, "payment-identifier-sdk-schema", "pass", "XN-6/§9.5.7.1",
+             "the optional advertisement the pinned reference SDKs emit, whose schema adds the "
+             "id character pattern, is the other pinned schema",
+             payment_identifier(sdk_advertised), refresh=True)
+    add_case(vectors, "payment-identifier-sdk-schema-with-id", "pass", "XN-6/§9.5.7.1",
+             "an id of 16 to 128 alphanumerics, hyphens or underscores satisfies either schema",
+             payment_identifier({**sdk_advertised, "info": {"required": False, "id": "pay_" + "7" * 16}}),
+             refresh=True)
+    add_case(vectors, "payment-identifier-sdk-schema-required", "fail", "XN-6/§9.5.7.1",
+             "the required form stays an unsupported action under the SDK schema too",
+             payment_identifier({**sdk_advertised, "info": {"required": True}}), refresh=True,
+             reason="unsupported-action-extension")
     add_case(vectors, "eip155-extra-carries-solana-fee-payer", "fail", "XN-6",
              "feePayer is the Solana adapter's member, not the EIP-155 adapter's",
              signed_and_received(extra={"feePayer": SELLER_ADDRESS}), refresh=True,
@@ -3502,6 +3570,35 @@ def build_vectors() -> list[dict]:
     ):
         add_case(vectors, f"fee-rate-{name}", verdict, "FR-2", note, mutate,
                  operation="fee-rate-amount", reason=reason)
+    # FR-2 resolves only signed terms under the pinned definition, with the
+    # adapter's metadata for the selected asset on the selected network. Each
+    # derived amount is right for the inputs as given, so only the gate rejects.
+    def fee_rate_where(member, changes):
+        def mutate(v):
+            fee_rate(33, "0.004125")(v)
+            target = v["railDefinition"] if member == "definition" else v["capability"]["assetMetadata"]
+            target.update(changes)
+        return mutate
+    for name, mutate, tamper, verdict, reason, note in (
+        ("agreement-signature-invalid", fee_rate(33, "0.00825"),
+         lambda v: v["agreement"]["terms"]["price"].update({"amount": "2.5"}), "fail", "signature",
+         "a price changed after signing is not a signed term, though its fee is derived right"),
+        ("definition-malformed", fee_rate_where("definition", {"providers": ["facilitator.example"]}),
+         None, "error", "definition",
+         "the rate resolves under the pinned protocol definition, re-validated even when signed"),
+        ("definition-other-revision", fee_rate_where("definition", {"railVersion": 2}),
+         None, "fail", "rail-version", "the rate resolves under the revision the signed reference pins"),
+        ("metadata-other-asset", fee_rate_where("metadata", {"asset": "0x" + "99" * 20}),
+         None, "fail", "asset-metadata",
+         "metadata for another asset with equal decimals does not establish the precision"),
+        ("metadata-other-network", fee_rate_where("metadata", {"network": "eip155:1"}),
+         None, "fail", "asset-metadata",
+         "metadata for the asset on another network does not establish the precision"),
+        ("metadata-asset-not-20-bytes", fee_rate_where("metadata", {"asset": "0x1234"}),
+         None, "error", "address-form", "an EIP-155 metadata asset is an XN-5 address"),
+    ):
+        add_case(vectors, f"fee-rate-{name}", verdict, "FR-2/XN-1/XN-5", note, mutate,
+                 operation="fee-rate-amount", reason=reason, tamper=tamper)
     return vectors
 
 
@@ -3838,6 +3935,27 @@ def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, respons
         ("solana-carries-evm-authorization", paid_payload(
             lambda payload: payload["payload"].update({"authorization": {}}), network="solana"),
          "the Solana payload is only the transaction"),
+        ("solana-transaction-not-base64", paid_payload(
+            lambda payload: payload["payload"].update({"transaction": "not base64!"}), network="solana"),
+         "the Solana transaction is base64"),
+        ("solana-transaction-empty", paid_payload(
+            lambda payload: payload["payload"].update({"transaction": ""}), network="solana"),
+         "the Solana transaction is a non-empty base64 string"),
+        ("version-string", paid_payload(lambda payload: payload.update({"x402Version": "2"})),
+         "x402Version is the integer 2, not a string"),
+        ("payload-not-object", paid_payload(lambda payload: payload.update({"payload": EIP712_SIGNATURE})),
+         "the binding's payload is an object"),
+        ("from-not-20-bytes", paid_payload(authorization(**{"from": "0x1234"})),
+         "the authorization's from is an XN-5 address, 0x plus 40 hex digits"),
+        ("authorization-unknown-member", paid_payload(authorization(memo="x")),
+         "the EIP-3009 authorization has exactly its six members"),
+        ("authorization-without-nonce", paid_payload(
+            lambda payload: payload["payload"]["authorization"].pop("nonce")),
+         "the EIP-3009 authorization carries its nonce"),
+        ("valid-after-not-decimal", paid_payload(authorization(validAfter="0x10")),
+         "EIP-3009 times travel as unsigned decimal strings"),
+        ("valid-before-not-decimal", paid_payload(authorization(validBefore=str(VALID_BEFORE) + ".0")),
+         "EIP-3009 times travel as unsigned decimal strings"),
     ):
         add_case(vectors, f"paid-request-payload-{name}", "fail", "XN-6/§9.5.7.1", note, mutate,
                  refresh=True, authorization_submitted=True, reason="paid-request-payload")
@@ -3848,6 +3966,63 @@ def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, respons
              "resource and extensions are optional in the v2 PaymentPayload",
              paid_payload(lambda payload: (payload.pop("resource"), payload.pop("extensions"))),
              refresh=True)
+    add_case(vectors, "verify-evidence-ignores-paid-request-payload", "pass", "XN-8",
+             "a verifier judges the stored record, not the paid request the handler sent",
+             paid_value("garbage"), refresh=True, operation="verify-evidence")
+    # XN-4/XN-6: `accepted` is the matched requirement even when it is not the
+    # first, matched with its addresses compared as XN-5 values and its
+    # `extra` without the Solana hints.
+    def matched_second(change, network=None):
+        def mutate(v):
+            if network == "solana":
+                solana_exact(v)
+            matched = v["http"]["paymentRequired"]["accepts"][0]
+            change(v, matched)
+            decoy = {**copy.deepcopy(matched), "amount": "1250001"}
+            v["http"]["paymentRequired"]["accepts"] = [decoy, matched]
+        return mutate
+
+    def checksummed_pay_to(v, matched):
+        v["agreement"]["terms"]["payoutBindings"][0]["payeeAddress"] = LETTERED_SELLER
+        v["runtime"]["payee"]["payeeAddress"] = LETTERED_SELLER
+        v["ledger"]["payTo"] = LETTERED_SELLER
+        matched["payTo"] = eip55(LETTERED_SELLER)
+
+    def blockhash_hint(v, matched):
+        matched["extra"]["recentBlockhash"] = base58(hashlib.sha256(b"DACS #274 recent blockhash").digest())
+    add_case(vectors, "paid-request-payload-accepted-second-checksummed-payto", "pass", "XN-4/XN-5/XN-6",
+             "accepted is the second requirement, whose EIP-55 payTo matches the lower-case "
+             "binding; the first differs in amount", matched_second(checksummed_pay_to), refresh=True)
+    add_case(vectors, "paid-request-payload-accepted-second-solana-hint", "pass", "XN-4/XN-6",
+             "accepted is the second requirement, which carries a recentBlockhash hint the signed "
+             "extra omits; the first differs in amount",
+             matched_second(blockhash_hint, network="solana"), refresh=True)
+
+    # XN-11/§9.5.7.1: the EIP-3009 validBefore is retained as a safe integer
+    # before the wallet signs, so a handler without one makes no wallet call,
+    # with or without a later response.
+    def retain_valid_before(value, *changes):
+        def mutate(v):
+            for change in changes:
+                change(v)
+            if value is None:
+                del v["runtime"]["reconciliationState"]["validBefore"]
+            else:
+                v["runtime"]["reconciliationState"]["validBefore"] = value
+        return mutate
+    for name, mutate, note in (
+        ("absent", retain_valid_before(None),
+         "without a retained validBefore no later reconciliation can prove the expiry"),
+        ("decimal-string", retain_valid_before(str(VALID_BEFORE)),
+         "the retained validBefore is integer seconds, not the payload's decimal string"),
+        ("above-safe-integer", retain_valid_before(2**53),
+         "the retained validBefore is a safe integer"),
+        ("absent-response-lost", retain_valid_before(None, response_lost()),
+         "the response-loss path reconciles on the retained validBefore, so it is needed "
+         "before signing"),
+    ):
+        add_case(vectors, f"execute-retained-valid-before-{name}", "error", "XN-11/§9.5.7.1", note,
+                 mutate, refresh=True, reason="authorization-valid-before")
 
     # XN-5: the adapter's metadata binds the currency to the asset.
     def relabel_currency(v):
@@ -3922,6 +4097,15 @@ def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, respons
                  lambda v, availability=availability: v["railDefinition"].update(
                      {"availability": availability}),
                  operation="new-session", reason="rail-availability")
+    # §9.3: availability is one of RailAvailability's seven values, checked
+    # with the rest of the signed definition before RAV-R2 reads it.
+    for name, availability in (("outside-union", "unknown"), ("not-string", ["disabled"])):
+        add_case(vectors, f"new-session-availability-{name}", "error", "XN-1/RAV-R2",
+                 "a signed definition whose availability is not a RailAvailability value is "
+                 "malformed, so no session starts on it",
+                 lambda v, availability=availability: v["railDefinition"].update(
+                     {"availability": availability}),
+                 operation="new-session", reason="definition")
 
 
 def diff_ops(base: object, target: object, path: tuple = ()) -> list[dict]:

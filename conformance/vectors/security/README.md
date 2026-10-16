@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2 | 582 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2 | 615 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1118,10 +1118,19 @@ That header's value is upstream's version 2 `PaymentPayload` under DACS-4
 authorization names the payer, `payTo`, the exact amount, the retained
 `validBefore` and the SB-3 nonce. A value that is not base64, an empty or
 version-only object, or any other payload is `fail` (`paid-request-payload`)
-after the one wallet call (`paid-request-payload-*`). The corpus checks the
+after the one wallet call (`paid-request-payload-*`). Two passing cases put the
+matched requirement second, matched only with its payTo compared as an XN-5
+value or its `extra` compared without the Solana hints. A verifier judges the
+stored record, not the paid request
+(`verify-evidence-ignores-paid-request-payload`). The corpus checks the
 EIP-712 signature's form only; the token contract and facilitator verify it.
+The Solana payload is checked for form only too: a non-empty base64
+`transaction`, whose transfer, fee payer and memo the corpus does not decode.
 The retained `validBefore` is a safe integer of seconds, so a decimal string,
-2⁵³ or a boolean is `error` (`retry-eip3009-retained-valid-before-*`).
+2⁵³ or a boolean is `error` (`retry-eip3009-retained-valid-before-*`). An
+EIP-155 `execute` without one is `error` (`authorization-valid-before`) with no
+wallet call, since a later reconciliation could not prove the expiry
+(`execute-retained-valid-before-*`, the response-loss path included).
 DNS answer validation, rebinding, redirect connections, timeouts, and
 response-size enforcement remain adapter-level obligations because a URL-only
 corpus cannot execute a network stack.
@@ -1321,12 +1330,17 @@ ERC-7710 examples are `fail` (`unsupported-transfer-method`) before
 authorization. Any other member of the matched `extra` or of `extensions` is
 unclassified and `fail`, even when it is signed and received and the local
 capability lists it (`unclassified-extra-member`, `unclassified-extension`).
-A defined extension that `capability.understoodActionExtensions` omits is
-`fail` (`unsupported-action-extension`) only in its required form. The
+The required form of `payment-identifier` is `fail`
+(`unsupported-action-extension`) whatever the local capability lists. The
 optional form is descriptive and needs no local capability, so a capability
 that lists no extension still pays
-(`optional-payment-identifier-needs-no-capability`). Its `schema` is the pinned
-upstream one and its `info` satisfies it, or it is `fail` (`extension-value`).
+(`optional-payment-identifier-needs-no-capability`). Its `schema` is one of the
+two pinned upstream forms, and its `info` satisfies it, or it is `fail`
+(`extension-value`). One form is the example in `payment_identifier.md`. The
+other is the schema the pinned reference SDKs emit, which adds the `id`
+pattern (`payment-identifier-sdk-schema*`). Either way an `id` has 16 to 128
+alphanumerics, hyphens or underscores
+(`payment-identifier-info-id-outside-character-set`).
 The vectors carry no `http.actionBearingExtensions` list.
 `descriptive-extension-omitted-from-claim` adds one that omits the received
 member and still passes, and the unit suite checks that adding any such list
@@ -1343,17 +1357,27 @@ X402-1..X402-4. The response is the version's successful `SettlementResponse`
 with `transaction` and `network` (`legacy-response`), its recomputed receipt
 hash equals the stored one (`legacy-receipt-hash`), and it names the recorded
 `settlementTxHash` and `chainId` (`legacy-receipt-transaction`,
-`legacy-receipt-network`). `new-session` refuses a `disabled` or `failed`
-definition under RAV-R2 (`rail-availability`). The production-only `mocked`
-arm needs the operator's mode, which the corpus does not model.
+`legacy-receipt-network`). A v2 network maps as `eip155:{chainId}`. A v1
+network maps through the registered v1 mapping, the supported-network table of
+the pinned v1 specification (`x402-foundation/x402@22a7677f`,
+`specs/x402-specification-v1.md` §11.1): `base-sepolia` 84532, `base` 8453,
+`avalanche-fuji` 43113 and `avalanche` 43114. Any other v1 network maps to no
+chain. The `legacy-v1-*` cases carry the `x402-receipt-hash` corpus's v1
+`pass` receipt. `new-session` refuses a `disabled` or `failed` definition
+under RAV-R2 (`rail-availability`), and one whose `availability` is not a
+`RailAvailability` value is `error` (`definition`). The production-only
+`mocked` arm needs the operator's mode, which the corpus does not model.
 
 The `fee-rate-amount` operation pins DACS-4 FR-2 for `x402:protocol`. Its
 `feeDerivation` is `{rateBps, amount}`, and `amount` must equal
 `price.amount × rateBps ÷ 10000` rounded half-up at the signed selection's
-`assetDecimals`. The adapter's metadata must establish that precision
-(`asset-metadata` otherwise). The `fee-rate-*` cases cover 6 and 18 decimals,
-the exact-half boundary, a half-even result, and rounding at another precision
-(`fail`, `fee-amount`).
+`assetDecimals`. The adapter's metadata must establish that precision for the
+selected asset on the selected network, as in `execute` (`asset-metadata`
+otherwise). The `fee-rate-*` cases cover 6 and 18 decimals, the exact-half
+boundary, a half-even result, and rounding at another precision (`fail`,
+`fee-amount`). They also cover a tampered agreement signature (`signature`), a
+malformed or other-revision definition (`definition`, `rail-version`), and
+metadata for another asset or network.
 
 Every evaluator check has a case that reaches it alone with its
 `expectedReason` pinned, and the challenge substitutions refresh the received

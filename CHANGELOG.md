@@ -50,11 +50,16 @@ The format used per release:
   reconciliation retry make zero authorization calls. The paid request's
   `PAYMENT-SIGNATURE` value is upstream's version 2 `PaymentPayload` of the
   authorization, checked against the matched requirement, the retained
-  `validBefore` and the SB-3 nonce. The optional `payment-identifier`
-  advertisement is descriptive and carries the pinned schema. Legacy
-  continuation applies the full X402-1..X402-4 receipt checks, and x402 FR-2
-  cases pin half-up rounding at `selection.assetDecimals`. Every clean `pass`
-  vector pins `expectedReason: null`.
+  `validBefore` and the SB-3 nonce. An EIP-155 handler authorizes only once it
+  retains that `validBefore` as a safe integer. The optional
+  `payment-identifier` advertisement is descriptive and carries one of the two
+  pinned schemas: the `payment_identifier.md` example, or the one upstream's
+  reference SDKs emit with the `id` pattern. Legacy continuation applies the
+  full X402-1..X402-4 receipt checks, with v1 networks mapped through the
+  pinned v1 supported-network table, and x402 FR-2 cases pin half-up rounding
+  at `selection.assetDecimals` under the same signature, definition and asset
+  metadata gates as execute. Every clean `pass` vector pins
+  `expectedReason: null`.
   This addition is part of the existing unreleased coordinated candidate
   (DACS-3 v0.6 / DACS-4 v0.8); it does not create another module-version bump.
 - **Listing-time agreement type for `x402:protocol`** (DACS-1 §6.3.4 LRR-4/LRR-5;

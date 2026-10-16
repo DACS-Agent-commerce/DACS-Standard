@@ -453,8 +453,8 @@
       }
     }
   },
-  "count": 582,
-  "hash": "9a618ebfa1e8c21a9d8aaa8218718876e67ebf0c0ef6af5c3a5b0d6f59cdbeb4",
+  "count": 615,
+  "hash": "e2d37020137aab0acc442c36a9736aadce5190033dde8396c25ff6ccf11a7143",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -25009,6 +25009,914 @@
         }
       ],
       "expectedReason": "legacy-receipt-transaction"
+    },
+    {
+      "name": "legacy-v1-continuation-registered-network",
+      "expected": "pass",
+      "rule": "X402-1..X402-4/XN-10",
+      "operation": "legacy-continuation",
+      "note": "a v1 receipt's base-sepolia maps to the recorded chainId 84532 through the registered v1 mapping",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "x402Version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "chainId"
+          ],
+          "value": 84532
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "logIndex"
+          ],
+          "value": 7
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "protocolVersion"
+          ],
+          "value": "1"
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTxHash"
+          ],
+          "value": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "kind"
+          ],
+          "value": "x402-event"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "9856a8f91bc693aa4a064c64a1faf714c6a3fd5b9f94d2bec83cc174a8be4be0"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "oU-nIe--Yw7aTm21Kj6yM3tzjwj1bgWZ11pUZYBuXhLnbyyow4NCsqqLFOEOeeENAszoubS4mc1ePq3BixgUCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "name"
+          ],
+          "value": "X-PAYMENT-RESPONSE"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJuZXR3b3JrIjoiYmFzZS1zZXBvbGlhIiwicGF5ZXIiOiIweDg1N2IwNjUxOUU5MWUzQTU0NTM4NzkxYkRiYjBFMjIzNzNlMzZiNjYiLCJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSJ9"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "railDefinition",
+            "resolution"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "asset"
+          ],
+          "value": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x3333333333333333333333333333333333333333",
+            "symbol": "USDC",
+            "decimals": 6
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "network"
+          ],
+          "value": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/dacs/resource?job=274"
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "parameters"
+          ],
+          "value": {
+            "authorization": "eip-3009"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "governance",
+            "acceptedAt"
+          ],
+          "value": 1787356800000
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "railId"
+          ],
+          "value": "x402:default"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "_ONmJM0xMj0UEPEesxoSFWAL0dsWW4D1kAlrt7g96rKy4FEVBIDVmLZ3sdXm79kelgiQHoPJ0HX2UKtqP80VCQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "sessionState"
+          ],
+          "value": "in-flight"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": null
+    },
+    {
+      "name": "legacy-v1-replay-presented-response",
+      "expected": "pass",
+      "rule": "X402-4",
+      "operation": "legacy-replay",
+      "note": "a replay verifier presented with the v1 response maps its network the same way",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "x402Version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "chainId"
+          ],
+          "value": 84532
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "logIndex"
+          ],
+          "value": 7
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "protocolVersion"
+          ],
+          "value": "1"
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTxHash"
+          ],
+          "value": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "kind"
+          ],
+          "value": "x402-event"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "9856a8f91bc693aa4a064c64a1faf714c6a3fd5b9f94d2bec83cc174a8be4be0"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "oU-nIe--Yw7aTm21Kj6yM3tzjwj1bgWZ11pUZYBuXhLnbyyow4NCsqqLFOEOeeENAszoubS4mc1ePq3BixgUCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "name"
+          ],
+          "value": "X-PAYMENT-RESPONSE"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJuZXR3b3JrIjoiYmFzZS1zZXBvbGlhIiwicGF5ZXIiOiIweDg1N2IwNjUxOUU5MWUzQTU0NTM4NzkxYkRiYjBFMjIzNzNlMzZiNjYiLCJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSJ9"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "railDefinition",
+            "resolution"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "asset"
+          ],
+          "value": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x3333333333333333333333333333333333333333",
+            "symbol": "USDC",
+            "decimals": 6
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "network"
+          ],
+          "value": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/dacs/resource?job=274"
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "parameters"
+          ],
+          "value": {
+            "authorization": "eip-3009"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "governance",
+            "acceptedAt"
+          ],
+          "value": 1787356800000
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "railId"
+          ],
+          "value": "x402:default"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "_ONmJM0xMj0UEPEesxoSFWAL0dsWW4D1kAlrt7g96rKy4FEVBIDVmLZ3sdXm79kelgiQHoPJ0HX2UKtqP80VCQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "sessionState"
+          ],
+          "value": "in-flight"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": null
+    },
+    {
+      "name": "legacy-v1-continuation-other-chain",
+      "expected": "fail",
+      "rule": "X402-3",
+      "operation": "legacy-continuation",
+      "note": "base-sepolia maps to 84532, not the recorded 8453",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "x402Version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "chainId"
+          ],
+          "value": 8453
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "logIndex"
+          ],
+          "value": 7
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "protocolVersion"
+          ],
+          "value": "1"
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTxHash"
+          ],
+          "value": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "kind"
+          ],
+          "value": "x402-event"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "9856a8f91bc693aa4a064c64a1faf714c6a3fd5b9f94d2bec83cc174a8be4be0"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "80FTiHgtjWoHXCQcBlnIzp9smKyZVWURoDpNi8CJsQ_V-5WrJGQwGTMMwu-C3Kc_GuWInGn_6Wsq9Yki0zEQAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "name"
+          ],
+          "value": "X-PAYMENT-RESPONSE"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJuZXR3b3JrIjoiYmFzZS1zZXBvbGlhIiwicGF5ZXIiOiIweDg1N2IwNjUxOUU5MWUzQTU0NTM4NzkxYkRiYjBFMjIzNzNlMzZiNjYiLCJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSJ9"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "railDefinition",
+            "resolution"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "asset"
+          ],
+          "value": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x3333333333333333333333333333333333333333",
+            "symbol": "USDC",
+            "decimals": 6
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "network"
+          ],
+          "value": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/dacs/resource?job=274"
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "parameters"
+          ],
+          "value": {
+            "authorization": "eip-3009"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "governance",
+            "acceptedAt"
+          ],
+          "value": 1787356800000
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "railId"
+          ],
+          "value": "x402:default"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "_ONmJM0xMj0UEPEesxoSFWAL0dsWW4D1kAlrt7g96rKy4FEVBIDVmLZ3sdXm79kelgiQHoPJ0HX2UKtqP80VCQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "sessionState"
+          ],
+          "value": "in-flight"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "legacy-receipt-network"
+    },
+    {
+      "name": "legacy-v1-continuation-unregistered-network",
+      "expected": "fail",
+      "rule": "X402-3",
+      "operation": "legacy-continuation",
+      "note": "a v1 network the registered mapping does not name maps to no chain",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "x402Version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "chainId"
+          ],
+          "value": 84532
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "logIndex"
+          ],
+          "value": 7
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "protocolVersion"
+          ],
+          "value": "1"
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTxHash"
+          ],
+          "value": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "kind"
+          ],
+          "value": "x402-event"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "7c494ccaaea557a77a674d3b35fa57b1d22a79772fa6ef273a57d729715500fa"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "0FROM_qVn_OzW9dQxbBQkPAZY3AZKzrngceKGbdjx_OYhgKpcfuVDL8zJVJb18IvtsbjPli5_dxfgxuI3iA8Ag"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "name"
+          ],
+          "value": "X-PAYMENT-RESPONSE"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJuZXR3b3JrIjoiaW90ZXgiLCJwYXllciI6IjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiIsInN1Y2Nlc3MiOnRydWUsInRyYW5zYWN0aW9uIjoiMHgxZmI4NjExYzFhZWY0MThmMjcxNGRjNWVjMDRmNjg1NmMzYzJhNmY2NGJmNDU4NDYyZWU0NjMyOTMwNmMxNGRlIn0="
+        },
+        {
+          "op": "remove",
+          "path": [
+            "railDefinition",
+            "resolution"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "asset"
+          ],
+          "value": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x3333333333333333333333333333333333333333",
+            "symbol": "USDC",
+            "decimals": 6
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "network"
+          ],
+          "value": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/dacs/resource?job=274"
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "parameters"
+          ],
+          "value": {
+            "authorization": "eip-3009"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "governance",
+            "acceptedAt"
+          ],
+          "value": 1787356800000
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "railId"
+          ],
+          "value": "x402:default"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "_ONmJM0xMj0UEPEesxoSFWAL0dsWW4D1kAlrt7g96rKy4FEVBIDVmLZ3sdXm79kelgiQHoPJ0HX2UKtqP80VCQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "sessionState"
+          ],
+          "value": "in-flight"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "legacy-receipt-network"
     },
     {
       "name": "retry-indeterminate-remains-pending",
@@ -50776,6 +51684,768 @@
       "expectedErrorClass": "counterparty"
     },
     {
+      "name": "payment-identifier-info-id-outside-character-set",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "the advertisement must have upstream's {info: {required: boolean}, schema} shape, with the pinned schema and an info that satisfies it, before it can be judged optional",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "kuEuAreOmiuBST90_ZhIg8Tcs54gX2GwlPvsMrVJ6wDetpA5IUVi9B_cTA_22Im9dTxJiQlulrqPocD1uywMCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "w9ajqdvgvG72kvY8LPHDOsJkJjGjliS2KW4faXrd2D34gE80Uy_DDnIKGFXne0BXQ_KqjJIC9NCLIqC4t6rMDA"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "info",
+            "id"
+          ],
+          "value": "pay.7777777777777777"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "37e55080d051000393caa9094339e4ae7ecdfb8936767baea510618a9f9fbdfb"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "acN4vImnNZvHcYWKIh2aIhz2iuguZFC61fbOcG5WDjU7LtM-Zjl5Dp36YBAy0ZYEwog2uDempDVep3Wp274LDw"
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "extensions",
+            "payment-identifier",
+            "info",
+            "id"
+          ],
+          "value": "pay.7777777777777777"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "info",
+            "id"
+          ],
+          "value": "pay.7777777777777777"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "LKUnpVpVK4dMtBGpJLjvuwxoDYBd_6NPZblYORrWcTHzN3Awrq3RDW10bmFw-YpjRQ6ffzin8TlbRfRy6avUAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZSwiaWQiOiJwYXkuNzc3Nzc3Nzc3Nzc3Nzc3NyJ9LCJzY2hlbWEiOnsiJHNjaGVtYSI6Imh0dHBzOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LzIwMjAtMTIvc2NoZW1hIiwidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicmVxdWlyZWQiOnsidHlwZSI6ImJvb2xlYW4ifSwiaWQiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTYsIm1heExlbmd0aCI6MTI4fX0sInJlcXVpcmVkIjpbInJlcXVpcmVkIl19fX19"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "info",
+            "id"
+          ],
+          "value": "pay.7777777777777777"
+        }
+      ],
+      "expectedReason": "extension-value",
+      "expectedErrorClass": "counterparty"
+    },
+    {
+      "name": "payment-identifier-schema-other-id-pattern",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "the advertisement must have upstream's {info: {required: boolean}, schema} shape, with the pinned schema and an info that satisfies it, before it can be judged optional",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "B_JhCXD1vYwrfDbRn6GwLP-UnkyVwVcTYk09P81DPQpQA3chJdv3fMSnbR8r-dMqwrregL7n8m3LA8cSqv-fDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "1OQfcujbzBu7nmkh_eEV-PeWsPLV70SHf2kGQazzCcrykK9Hbn7aIi9FQjMy8OxScmhYRJF6cn7Rp8UUvRhzDg"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^.+$"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "a07acb5f8af5e034e09a5a14ad959317165fb2735cad787d7695c7ffe4e6fdde"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "aP52JnD5uC4ZcpjrPdu17sSFF-HvCjbcTvW6RrzrKvtyc-8kB65-JT7y1Ly3vk6r45sARgQGM0h8finZSN_BBw"
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "extensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^.+$"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^.+$"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "1OJzEkmePRrsg3W9-lvVPLOJSPezw735YecHVcMEgiAdo5nBNTsQzL-JCZGzv7ItSr6pNF9CUMTYyz94bJC7DA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjgsInBhdHRlcm4iOiJeLiskIn19LCJyZXF1aXJlZCI6WyJyZXF1aXJlZCJdfX19fQ=="
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^.+$"
+        }
+      ],
+      "expectedReason": "extension-value",
+      "expectedErrorClass": "counterparty"
+    },
+    {
+      "name": "payment-identifier-sdk-schema",
+      "expected": "pass",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "the optional advertisement the pinned reference SDKs emit, whose schema adds the id character pattern, is the other pinned schema",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "ofynUeWx5gFG5GGJ0MJISfiOVrZCXDG43kPWzehoNDFICFXNK_rcyguxlcNgQGUhvZRZlqLEJYkkdsjIDTDmDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "JgVVljvNDF8_rojBbQ_PhrM7XvzLiT5HeJLGlrM46yijJGPoVeAIwB6TI7aUZhEo2xkh45phjZAi3UoqCX4yDQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "f5f750323fdd5e6fb4653a92afd83fe71802ecfc69df7ccc4a135b50fc773d3c"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "5NdqijkJXb0aJWM7lhebTtS7xWn31eojoUSp3bUkpc_ncvYr6ZugwPBd4INVk_RiNW3m5qyXsTKd0TcE4STiBQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "extensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "gqJ_siwJjbfpAgT-bL5Y8QM9_wS_zAMp3SVveJYXoTnsWkvhjg95q3zhi5KqrM48Az01KvsjWZ1dwsiXs9WJDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjgsInBhdHRlcm4iOiJeW2EtekEtWjAtOV8tXSskIn19LCJyZXF1aXJlZCI6WyJyZXF1aXJlZCJdfX19fQ=="
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        }
+      ],
+      "expectedReason": null
+    },
+    {
+      "name": "payment-identifier-sdk-schema-with-id",
+      "expected": "pass",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "an id of 16 to 128 alphanumerics, hyphens or underscores satisfies either schema",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "_UaYEdxqED0Uf_Ywwo6U-vRSQQUr-aewjRJjv48S-DKtRv87zxEyZfzoroppocr79d2jaLBZl-QeV3W0byjWCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "JMVj6M0CCjVSNVTv9IajW8SZ654IIKSyoaq2ESHuh59luxOqIrGDI8-pYnbrrB7hrTWqcdBoOW77R6nVhizABw"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "info",
+            "id"
+          ],
+          "value": "pay_7777777777777777"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "ee91ff866f9fbfa7b8819c13d3af4588b8dc7304a86f8bfac316b3e0bae9d5de"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "SxStD5Jb-xfO4x1UCu5X1dZhjl5VQ3tvb-zUWYapoCi-pRkCn_PnYGScb_J5DhIGA94bsvFZZE9ksYCt7Ce5DA"
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "extensions",
+            "payment-identifier",
+            "info",
+            "id"
+          ],
+          "value": "pay_7777777777777777"
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "extensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "info",
+            "id"
+          ],
+          "value": "pay_7777777777777777"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "rpHRcYNcs_KLpx2okW8EhKBDmUU-G1M0X0G6G-f9Sz5ES1ngRyWSy2NvyhHBjzz375mk4mABfA2gBrTMQVRsAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZSwiaWQiOiJwYXlfNzc3Nzc3Nzc3Nzc3Nzc3NyJ9LCJzY2hlbWEiOnsiJHNjaGVtYSI6Imh0dHBzOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LzIwMjAtMTIvc2NoZW1hIiwidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicmVxdWlyZWQiOnsidHlwZSI6ImJvb2xlYW4ifSwiaWQiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTYsIm1heExlbmd0aCI6MTI4LCJwYXR0ZXJuIjoiXlthLXpBLVowLTlfLV0rJCJ9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "info",
+            "id"
+          ],
+          "value": "pay_7777777777777777"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        }
+      ],
+      "expectedReason": null
+    },
+    {
+      "name": "payment-identifier-sdk-schema-required",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "the required form stays an unsupported action under the SDK schema too",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "L01EWVOr4_N7ARRLOhALm46FdGbdaD7i6whh22cu8BjqtQOjsxM3faS21jpuJ4ukIHSdLifUFul99LN9-BEsDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "r3fB5RrKbyC3RTQIjlZQqKhV1UVijwz5usHoVZM1VgumnfFwr4OhpYDuRRQRv5qxUDRFcFmFP9yPwS9-iHyIDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "info",
+            "required"
+          ],
+          "value": true
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "e342e2f13463463841b3057c6d1a862fc7a8cfb33ab2da3fc8e7ffa0067ce1ae"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "gac_4aunL5KBqdNMAb9w-iDBC_bGGHkP8euqX4mIvoVkIrZMoZPXSDbvxDzekz2wmEecv4L2lnOqR5mkw-3HBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "extensions",
+            "payment-identifier",
+            "info",
+            "required"
+          ],
+          "value": true
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "extensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "info",
+            "required"
+          ],
+          "value": true
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "VJsdXR1l8WQ969WDk2q7BZ11kldlphMyLbO_V78jFZ7tJYJgJdFvREDhLcBqn6EKOwBwJF48qDIqUue07RJNBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjp0cnVlfSwic2NoZW1hIjp7IiRzY2hlbWEiOiJodHRwczovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC8yMDIwLTEyL3NjaGVtYSIsInR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InJlcXVpcmVkIjp7InR5cGUiOiJib29sZWFuIn0sImlkIjp7InR5cGUiOiJzdHJpbmciLCJtaW5MZW5ndGgiOjE2LCJtYXhMZW5ndGgiOjEyOCwicGF0dGVybiI6Il5bYS16QS1aMC05Xy1dKyQifX0sInJlcXVpcmVkIjpbInJlcXVpcmVkIl19fX19"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "info",
+            "required"
+          ],
+          "value": true
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "paymentRequiredExtensions",
+            "payment-identifier",
+            "schema",
+            "properties",
+            "id",
+            "pattern"
+          ],
+          "value": "^[a-zA-Z0-9_-]+$"
+        }
+      ],
+      "expectedReason": "unsupported-action-extension",
+      "expectedErrorClass": "permanent"
+    },
+    {
       "name": "eip155-extra-carries-solana-fee-payer",
       "expected": "fail",
       "rule": "XN-6",
@@ -58297,6 +59967,1484 @@
       "expectedReason": "paid-request-payload"
     },
     {
+      "name": "paid-request-payload-solana-transaction-not-base64",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "the Solana transaction is base64",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            0,
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "EshYwbvUvW9LbkfA1E97bR-_my8EWfhdpaujXatJAX_9R-Ub8IprQgM20PlS29bbGf8urNu8akCgtNJkx1tzAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "Mjy7FRpFUDEMaPByK5JV0n5wjefRSfxV2WMyq9Dw1QSxr_TM9m8TxXL_Ba9Xe1VnjReF4FLy2u-l7oRa8Pr9Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "payoutBindings",
+            0,
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "assetTransferMethod"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "algorithm"
+          ],
+          "value": "ed25519"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "publicKey"
+          ],
+          "value": "PCOjnRpQN0vCcoKcDVU7Bk5NfrBeIibXRa6Du1WRzQ4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "LCyZRHh3dZsJv7zBrDifn1L4D5jyaa90sOFbv3NpChXUT9xdF_6AV6frCg9_yvTX6hGaIMAHgnZxGyGgOwgcCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "signature"
+          ],
+          "value": "Jgu141BVWeH7D6tPR_JWZfAerYNIwR2izxYOviZu1STntC-i9pqiergfNeqQnMu8wTHIwE17yXJRmtBygFyUCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "supportedTuples",
+            0,
+            2
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "e3e079fb81f44bc54e27106f71dac5a51426e872f4f1d74253d813a29bb2782d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "342c43053aa524076cc744a608023fdf63ef45c94f262f0348bec22eb3c835a0"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "settlementFinality",
+            "schemeNetworkFinality",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "x-fyX8JqKQhJGpEtKd9jMu4VaIv43RUUDKU7SeA1kckVTfeVJOeFqZ86K-P_yicGuKCfP5Gi6xCEvDJxccVzAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "assetTransferMethod"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "feePayer"
+          ],
+          "value": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjUza3l2MmJpVE1aQnk4ZzJjeGhQcFNLVkhZenFqVmVyOG1HUHVxaUUzazZaIiwidHJhbnNhY3Rpb24iOiIxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwibmV0d29yayI6InNvbGFuYTpFdFdUUkFCWmFZcTZpTWZlWUtvdVJ1MTY2VlUyeHFhMSJ9"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "authorization"
+          ],
+          "value": "solana-transfer"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payer"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "absent"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "assetTransferMethod"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "U-nCjNzegt5_jp2twIekvuSMdUuvWYEFI9EqrN_0HmyFRjt0-ShbflnO9JkHIXOUVYJA5K-SJPwXrEk4aOoVDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJzb2xhbmE6RXRXVFJBQlphWXE2aU1mZVlLb3VSdTE2NlZVMnhxYTEiLCJhbW91bnQiOiIxMjUwMDAwIiwicGF5VG8iOiI1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NSIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyIsImV4dHJhIjp7ImZlZVBheWVyIjoiRkwyYmlwUnUxalNoa2g2SGRhbUZ6SGpGczVqVUgzbmY1SGFMVkxWalN6UVQifX0sInBheWxvYWQiOnsidHJhbnNhY3Rpb24iOiJub3QgYmFzZTY0ISJ9LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "payingKey"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "assetTransferMethod"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        }
+      ],
+      "expectedReason": "paid-request-payload"
+    },
+    {
+      "name": "paid-request-payload-solana-transaction-empty",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "the Solana transaction is a non-empty base64 string",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            0,
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "EshYwbvUvW9LbkfA1E97bR-_my8EWfhdpaujXatJAX_9R-Ub8IprQgM20PlS29bbGf8urNu8akCgtNJkx1tzAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "Mjy7FRpFUDEMaPByK5JV0n5wjefRSfxV2WMyq9Dw1QSxr_TM9m8TxXL_Ba9Xe1VnjReF4FLy2u-l7oRa8Pr9Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "payoutBindings",
+            0,
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "assetTransferMethod"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "algorithm"
+          ],
+          "value": "ed25519"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "publicKey"
+          ],
+          "value": "PCOjnRpQN0vCcoKcDVU7Bk5NfrBeIibXRa6Du1WRzQ4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "LCyZRHh3dZsJv7zBrDifn1L4D5jyaa90sOFbv3NpChXUT9xdF_6AV6frCg9_yvTX6hGaIMAHgnZxGyGgOwgcCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "signature"
+          ],
+          "value": "Jgu141BVWeH7D6tPR_JWZfAerYNIwR2izxYOviZu1STntC-i9pqiergfNeqQnMu8wTHIwE17yXJRmtBygFyUCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "supportedTuples",
+            0,
+            2
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "e3e079fb81f44bc54e27106f71dac5a51426e872f4f1d74253d813a29bb2782d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "342c43053aa524076cc744a608023fdf63ef45c94f262f0348bec22eb3c835a0"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "settlementFinality",
+            "schemeNetworkFinality",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "x-fyX8JqKQhJGpEtKd9jMu4VaIv43RUUDKU7SeA1kckVTfeVJOeFqZ86K-P_yicGuKCfP5Gi6xCEvDJxccVzAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "assetTransferMethod"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "feePayer"
+          ],
+          "value": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjUza3l2MmJpVE1aQnk4ZzJjeGhQcFNLVkhZenFqVmVyOG1HUHVxaUUzazZaIiwidHJhbnNhY3Rpb24iOiIxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwibmV0d29yayI6InNvbGFuYTpFdFdUUkFCWmFZcTZpTWZlWUtvdVJ1MTY2VlUyeHFhMSJ9"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "authorization"
+          ],
+          "value": "solana-transfer"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payer"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "absent"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "assetTransferMethod"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "U-nCjNzegt5_jp2twIekvuSMdUuvWYEFI9EqrN_0HmyFRjt0-ShbflnO9JkHIXOUVYJA5K-SJPwXrEk4aOoVDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJzb2xhbmE6RXRXVFJBQlphWXE2aU1mZVlLb3VSdTE2NlZVMnhxYTEiLCJhbW91bnQiOiIxMjUwMDAwIiwicGF5VG8iOiI1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NSIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyIsImV4dHJhIjp7ImZlZVBheWVyIjoiRkwyYmlwUnUxalNoa2g2SGRhbUZ6SGpGczVqVUgzbmY1SGFMVkxWalN6UVQifX0sInBheWxvYWQiOnsidHJhbnNhY3Rpb24iOiIifSwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOnsiaW5mbyI6eyJyZXF1aXJlZCI6ZmFsc2V9LCJzY2hlbWEiOnsiJHNjaGVtYSI6Imh0dHBzOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LzIwMjAtMTIvc2NoZW1hIiwidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicmVxdWlyZWQiOnsidHlwZSI6ImJvb2xlYW4ifSwiaWQiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTYsIm1heExlbmd0aCI6MTI4fX0sInJlcXVpcmVkIjpbInJlcXVpcmVkIl19fX19"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "payingKey"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "assetTransferMethod"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        }
+      ],
+      "expectedReason": "paid-request-payload"
+    },
+    {
+      "name": "paid-request-payload-version-string",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "x402Version is the integer 2, not a string",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6IjIiLCJyZXNvdXJjZSI6eyJ1cmwiOiJodHRwczovL3NlbGxlci5leGFtcGxlL2RhY3MvcmVzb3VyY2U/am9iPTI3NCIsImRlc2NyaXB0aW9uIjoiREFDUyAjMjc0IHJlc291cmNlIiwibWltZVR5cGUiOiJhcHBsaWNhdGlvbi9qc29uIn0sImFjY2VwdGVkIjp7InNjaGVtZSI6ImV4YWN0IiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiYW1vdW50IjoiMTI1MDAwMCIsInBheVRvIjoiMHgyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwibWF4VGltZW91dFNlY29uZHMiOjYwLCJhc3NldCI6IjB4MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyIsImV4dHJhIjp7ImFzc2V0VHJhbnNmZXJNZXRob2QiOiJlaXAzMDA5IiwibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fSwicGF5bG9hZCI6eyJzaWduYXR1cmUiOiIweDNmOTUwOTdhZTgxMmVkZTJhMTBiYjM4NjJmZGE4ZTNmNDEwNjFkZjJmMzQwOGFkZmIzMmU2Y2Y2NjE1OWJjNjMxNDVhNGI3ZThlYmZmMWZkMzhhZDE1MjQ2YzU3YWI4NWQ2MDAwNmJjMjE2Nzg4MWZmMzBmMDJmZDJjODE5YzJlMWIiLCJhdXRob3JpemF0aW9uIjp7ImZyb20iOiIweDdlNWY0NTUyMDkxYTY5MTI1ZDVkZmNiN2I4YzI2NTkwMjkzOTViZGYiLCJ0byI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsInZhbHVlIjoiMTI1MDAwMCIsInZhbGlkQWZ0ZXIiOiIxNzg3NDQyNjAwIiwidmFsaWRCZWZvcmUiOiIxNzg3NDQzMjYwIiwibm9uY2UiOiIweDdjNDMwYzc2ZDhmZjkwMmQyMmRhZjc5ZWVlZWQ1MWY0OGVhM2JhNzc5N2ViMmFlZjY1MjViYzVjOGMwMjFlZmMifX0sImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjp7ImluZm8iOnsicmVxdWlyZWQiOmZhbHNlfSwic2NoZW1hIjp7IiRzY2hlbWEiOiJodHRwczovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC8yMDIwLTEyL3NjaGVtYSIsInR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InJlcXVpcmVkIjp7InR5cGUiOiJib29sZWFuIn0sImlkIjp7InR5cGUiOiJzdHJpbmciLCJtaW5MZW5ndGgiOjE2LCJtYXhMZW5ndGgiOjEyOH19LCJyZXF1aXJlZCI6WyJyZXF1aXJlZCJdfX19fQ=="
+        }
+      ],
+      "expectedReason": "paid-request-payload"
+    },
+    {
+      "name": "paid-request-payload-payload-not-object",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "the binding's payload is an object",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOiIweDNmOTUwOTdhZTgxMmVkZTJhMTBiYjM4NjJmZGE4ZTNmNDEwNjFkZjJmMzQwOGFkZmIzMmU2Y2Y2NjE1OWJjNjMxNDVhNGI3ZThlYmZmMWZkMzhhZDE1MjQ2YzU3YWI4NWQ2MDAwNmJjMjE2Nzg4MWZmMzBmMDJmZDJjODE5YzJlMWIiLCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
+        }
+      ],
+      "expectedReason": "paid-request-payload"
+    },
+    {
+      "name": "paid-request-payload-from-not-20-bytes",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "the authorization's from is an XN-5 address, 0x plus 40 hex digits",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHgxMjM0IiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
+        }
+      ],
+      "expectedReason": "paid-request-payload"
+    },
+    {
+      "name": "paid-request-payload-authorization-unknown-member",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "the EIP-3009 authorization has exactly its six members",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIiwibWVtbyI6IngifX0sImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjp7ImluZm8iOnsicmVxdWlyZWQiOmZhbHNlfSwic2NoZW1hIjp7IiRzY2hlbWEiOiJodHRwczovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC8yMDIwLTEyL3NjaGVtYSIsInR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InJlcXVpcmVkIjp7InR5cGUiOiJib29sZWFuIn0sImlkIjp7InR5cGUiOiJzdHJpbmciLCJtaW5MZW5ndGgiOjE2LCJtYXhMZW5ndGgiOjEyOH19LCJyZXF1aXJlZCI6WyJyZXF1aXJlZCJdfX19fQ=="
+        }
+      ],
+      "expectedReason": "paid-request-payload"
+    },
+    {
+      "name": "paid-request-payload-authorization-without-nonce",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "the EIP-3009 authorization carries its nonce",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCJ9fSwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOnsiaW5mbyI6eyJyZXF1aXJlZCI6ZmFsc2V9LCJzY2hlbWEiOnsiJHNjaGVtYSI6Imh0dHBzOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LzIwMjAtMTIvc2NoZW1hIiwidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicmVxdWlyZWQiOnsidHlwZSI6ImJvb2xlYW4ifSwiaWQiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTYsIm1heExlbmd0aCI6MTI4fX0sInJlcXVpcmVkIjpbInJlcXVpcmVkIl19fX19"
+        }
+      ],
+      "expectedReason": "paid-request-payload"
+    },
+    {
+      "name": "paid-request-payload-valid-after-not-decimal",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "EIP-3009 times travel as unsigned decimal strings",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMHgxMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
+        }
+      ],
+      "expectedReason": "paid-request-payload"
+    },
+    {
+      "name": "paid-request-payload-valid-before-not-decimal",
+      "expected": "fail",
+      "rule": "XN-6/§9.5.7.1",
+      "operation": "execute",
+      "note": "EIP-3009 times travel as unsigned decimal strings",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MC4wIiwibm9uY2UiOiIweDdjNDMwYzc2ZDhmZjkwMmQyMmRhZjc5ZWVlZWQ1MWY0OGVhM2JhNzc5N2ViMmFlZjY1MjViYzVjOGMwMjFlZmMifX0sImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjp7ImluZm8iOnsicmVxdWlyZWQiOmZhbHNlfSwic2NoZW1hIjp7IiRzY2hlbWEiOiJodHRwczovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC8yMDIwLTEyL3NjaGVtYSIsInR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InJlcXVpcmVkIjp7InR5cGUiOiJib29sZWFuIn0sImlkIjp7InR5cGUiOiJzdHJpbmciLCJtaW5MZW5ndGgiOjE2LCJtYXhMZW5ndGgiOjEyOH19LCJyZXF1aXJlZCI6WyJyZXF1aXJlZCJdfX19fQ=="
+        }
+      ],
+      "expectedReason": "paid-request-payload"
+    },
+    {
       "name": "paid-request-payload-payer-upper-case",
       "expected": "pass",
       "rule": "XN-5/XN-6",
@@ -58351,6 +61499,862 @@
         }
       ],
       "expectedReason": null
+    },
+    {
+      "name": "verify-evidence-ignores-paid-request-payload",
+      "expected": "pass",
+      "rule": "XN-8",
+      "operation": "verify-evidence",
+      "note": "a verifier judges the stored record, not the paid request the handler sent",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "garbage"
+        }
+      ],
+      "expectedReason": null
+    },
+    {
+      "name": "paid-request-payload-accepted-second-checksummed-payto",
+      "expected": "pass",
+      "rule": "XN-4/XN-5/XN-6",
+      "operation": "execute",
+      "note": "accepted is the second requirement, whose EIP-55 payTo matches the lower-case binding; the first differs in amount",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "W-lXvFteUK2iA-1KepfkbvWeGOM0_Qp-gQn-d78oBnzspQRYMxJS6BmKmNnRu4EVIipsIHEr7a5zvJeqpMjsBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "ttmLz736EE3x4QjHm4-S55eHfBSbgBz7BaZHrsWcFpeLdlkMsLbQsqtK3018I5ZfRRL6gV7g2G60OSEz6G2aDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "payoutBindings",
+            0,
+            "payeeAddress"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "dcba33f5df8d7dfcb2166750b353e13644c9f22bc88e3b0ef20fe009010cc909"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "vEwTuWZKLRCLwMl2YJZx9ecSvTgaNud6aOrGztG_DiPfU-CltGP8FOb5rRBuY9ady9nQrLfF6xvOqJ1ly65gBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts"
+          ],
+          "value": [
+            {
+              "scheme": "exact",
+              "network": "eip155:8453",
+              "amount": "1250001",
+              "payTo": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
+              "maxTimeoutSeconds": 60,
+              "asset": "0x3333333333333333333333333333333333333333",
+              "extra": {
+                "assetTransferMethod": "eip3009",
+                "name": "USDC",
+                "version": "2"
+              }
+            },
+            {
+              "scheme": "exact",
+              "network": "eip155:8453",
+              "amount": "1250000",
+              "payTo": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
+              "maxTimeoutSeconds": 60,
+              "asset": "0x3333333333333333333333333333333333333333",
+              "extra": {
+                "assetTransferMethod": "eip3009",
+                "name": "USDC",
+                "version": "2"
+              }
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4NWFBZWI2MDUzRjNFOTRDOWI5QTA5ZjMzNjY5NDM1RTdFZjFCZUFlZCIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDVhQWViNjA1M0YzRTk0QzliOUEwOWYzMzY2OTQzNUU3RWYxQmVBZWQiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed"
+        }
+      ],
+      "expectedReason": null
+    },
+    {
+      "name": "paid-request-payload-accepted-second-solana-hint",
+      "expected": "pass",
+      "rule": "XN-4/XN-6",
+      "operation": "execute",
+      "note": "accepted is the second requirement, which carries a recentBlockhash hint the signed extra omits; the first differs in amount",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            0,
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "EshYwbvUvW9LbkfA1E97bR-_my8EWfhdpaujXatJAX_9R-Ub8IprQgM20PlS29bbGf8urNu8akCgtNJkx1tzAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "Mjy7FRpFUDEMaPByK5JV0n5wjefRSfxV2WMyq9Dw1QSxr_TM9m8TxXL_Ba9Xe1VnjReF4FLy2u-l7oRa8Pr9Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "payoutBindings",
+            0,
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "assetTransferMethod"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "algorithm"
+          ],
+          "value": "ed25519"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "publicKey"
+          ],
+          "value": "PCOjnRpQN0vCcoKcDVU7Bk5NfrBeIibXRa6Du1WRzQ4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "LCyZRHh3dZsJv7zBrDifn1L4D5jyaa90sOFbv3NpChXUT9xdF_6AV6frCg9_yvTX6hGaIMAHgnZxGyGgOwgcCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "signature"
+          ],
+          "value": "Jgu141BVWeH7D6tPR_JWZfAerYNIwR2izxYOviZu1STntC-i9pqiergfNeqQnMu8wTHIwE17yXJRmtBygFyUCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "supportedTuples",
+            0,
+            2
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "e3e079fb81f44bc54e27106f71dac5a51426e872f4f1d74253d813a29bb2782d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "a14daac3c426efc262364df659bf3ddd9b61e571d57352b339d6a2e0b8742acf"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "settlementFinality",
+            "schemeNetworkFinality",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "_mMRfWWAwVYPbLpoFck6ChpMsE7Z0eD1B7a1Qp_w3jud4lV6GD02byI_-KRkhKyj0BImAlSmTaePgZ3WCwJcAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts"
+          ],
+          "value": [
+            {
+              "scheme": "exact",
+              "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+              "amount": "1250001",
+              "payTo": "55555555555555555555555555555555555555555555",
+              "maxTimeoutSeconds": 60,
+              "asset": "33333333333333333333333333333333333333333333",
+              "extra": {
+                "feePayer": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT",
+                "recentBlockhash": "6knCmSQoFssnngWgmW6PKBjpxX2bncf8h1np6ThC5xaX"
+              }
+            },
+            {
+              "scheme": "exact",
+              "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+              "amount": "1250000",
+              "payTo": "55555555555555555555555555555555555555555555",
+              "maxTimeoutSeconds": 60,
+              "asset": "33333333333333333333333333333333333333333333",
+              "extra": {
+                "feePayer": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT",
+                "recentBlockhash": "6knCmSQoFssnngWgmW6PKBjpxX2bncf8h1np6ThC5xaX"
+              }
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjUza3l2MmJpVE1aQnk4ZzJjeGhQcFNLVkhZenFqVmVyOG1HUHVxaUUzazZaIiwidHJhbnNhY3Rpb24iOiIxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwibmV0d29yayI6InNvbGFuYTpFdFdUUkFCWmFZcTZpTWZlWUtvdVJ1MTY2VlUyeHFhMSJ9"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "authorization"
+          ],
+          "value": "solana-transfer"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payer"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBinding",
+            "state"
+          ],
+          "value": "absent"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "assetTransferMethod"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "U-nCjNzegt5_jp2twIekvuSMdUuvWYEFI9EqrN_0HmyFRjt0-ShbflnO9JkHIXOUVYJA5K-SJPwXrEk4aOoVDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJzb2xhbmE6RXRXVFJBQlphWXE2aU1mZVlLb3VSdTE2NlZVMnhxYTEiLCJhbW91bnQiOiIxMjUwMDAwIiwicGF5VG8iOiI1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NSIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyIsImV4dHJhIjp7ImZlZVBheWVyIjoiRkwyYmlwUnUxalNoa2g2SGRhbUZ6SGpGczVqVUgzbmY1SGFMVkxWalN6UVQiLCJyZWNlbnRCbG9ja2hhc2giOiI2a25DbVNRb0Zzc25uZ1dnbVc2UEtCanB4WDJibmNmOGgxbnA2VGhDNXhhWCJ9fSwicGF5bG9hZCI6eyJ0cmFuc2FjdGlvbiI6IlJFRkRVeUFqTWpjMElIQmhjblJwWVd4c2VTQnphV2R1WldRZ2RISmhibk5oWTNScGIyND0ifSwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOnsiaW5mbyI6eyJyZXF1aXJlZCI6ZmFsc2V9LCJzY2hlbWEiOnsiJHNjaGVtYSI6Imh0dHBzOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LzIwMjAtMTIvc2NoZW1hIiwidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicmVxdWlyZWQiOnsidHlwZSI6ImJvb2xlYW4ifSwiaWQiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTYsIm1heExlbmd0aCI6MTI4fX0sInJlcXVpcmVkIjpbInJlcXVpcmVkIl19fX19"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "payingKey"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "assetTransferMethod"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "FL2bipRu1jShkh6HdamFzHjFs5jUH3nf5HaLVLVjSzQT"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        }
+      ],
+      "expectedReason": null
+    },
+    {
+      "name": "execute-retained-valid-before-absent",
+      "expected": "error",
+      "rule": "XN-11/§9.5.7.1",
+      "operation": "execute",
+      "note": "without a retained validBefore no later reconciliation can prove the expiry",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "validBefore"
+          ]
+        }
+      ],
+      "expectedReason": "authorization-valid-before"
+    },
+    {
+      "name": "execute-retained-valid-before-decimal-string",
+      "expected": "error",
+      "rule": "XN-11/§9.5.7.1",
+      "operation": "execute",
+      "note": "the retained validBefore is integer seconds, not the payload's decimal string",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "validBefore"
+          ],
+          "value": "1787443260"
+        }
+      ],
+      "expectedReason": "authorization-valid-before"
+    },
+    {
+      "name": "execute-retained-valid-before-above-safe-integer",
+      "expected": "error",
+      "rule": "XN-11/§9.5.7.1",
+      "operation": "execute",
+      "note": "the retained validBefore is a safe integer",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiOTAwNzE5OTI1NDc0MDMzMiIsInZhbGlkQmVmb3JlIjoiOTAwNzE5OTI1NDc0MDk5MiIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "validBefore"
+          ],
+          "value": 9007199254740992
+        }
+      ],
+      "expectedReason": "authorization-valid-before"
+    },
+    {
+      "name": "execute-retained-valid-before-absent-response-lost",
+      "expected": "error",
+      "rule": "XN-11/§9.5.7.1",
+      "operation": "execute",
+      "note": "the response-loss path reconciles on the retained validBefore, so it is needed before signing",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "responseHeader"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "reconciliationState",
+            "validBefore"
+          ]
+        }
+      ],
+      "expectedReason": "authorization-valid-before"
     },
     {
       "name": "currency-relabelled-over-same-asset",
@@ -59602,6 +63606,64 @@
       "expectedReason": "rail-availability"
     },
     {
+      "name": "new-session-availability-outside-union",
+      "expected": "error",
+      "rule": "XN-1/RAV-R2",
+      "operation": "new-session",
+      "note": "a signed definition whose availability is not a RailAvailability value is malformed, so no session starts on it",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "availability"
+          ],
+          "value": "unknown"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "SNsgwERZugnuGVxvhcBPZ1Qo73ceObt7iVXDkyKxY69Z3Q07WRT_ya6MZc0ZXrQsxAUjQyU1T3DRmomsupDJBw"
+        }
+      ],
+      "expectedReason": "definition"
+    },
+    {
+      "name": "new-session-availability-not-string",
+      "expected": "error",
+      "rule": "XN-1/RAV-R2",
+      "operation": "new-session",
+      "note": "a signed definition whose availability is not a RailAvailability value is malformed, so no session starts on it",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "availability"
+          ],
+          "value": [
+            "disabled"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "VxdaX5vxAoTfq1ZgH18yqN04cwDetTXhuWlhLE6R9RyJgn0T1esUouv7TPNMQ668m2Ul-3cB4_E5UjFm66CiAw"
+        }
+      ],
+      "expectedReason": "definition"
+    },
+    {
       "name": "signed-request-without-method",
       "expected": "error",
       "rule": "XN-2",
@@ -60451,6 +64513,205 @@
         }
       ],
       "expectedReason": "fee-rate"
+    },
+    {
+      "name": "fee-rate-agreement-signature-invalid",
+      "expected": "fail",
+      "rule": "FR-2/XN-1/XN-5",
+      "operation": "fee-rate-amount",
+      "note": "a price changed after signing is not a signed term, though its fee is derived right",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "feeDerivation"
+          ],
+          "value": {
+            "rateBps": 33,
+            "amount": "0.00825"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "amount"
+          ],
+          "value": "2.5"
+        }
+      ],
+      "expectedReason": "signature"
+    },
+    {
+      "name": "fee-rate-definition-malformed",
+      "expected": "error",
+      "rule": "FR-2/XN-1/XN-5",
+      "operation": "fee-rate-amount",
+      "note": "the rate resolves under the pinned protocol definition, re-validated even when signed",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "feeDerivation"
+          ],
+          "value": {
+            "rateBps": 33,
+            "amount": "0.004125"
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "providers"
+          ],
+          "value": [
+            "facilitator.example"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "fmxjob4aBuByyEVLxRGvZvlvWZC6NsJzLxfJiscHw7WWfGcy5k8IUpyQj25eXX-l3MbZS2eiKRmWlNqk9eKnAw"
+        }
+      ],
+      "expectedReason": "definition"
+    },
+    {
+      "name": "fee-rate-definition-other-revision",
+      "expected": "fail",
+      "rule": "FR-2/XN-1/XN-5",
+      "operation": "fee-rate-amount",
+      "note": "the rate resolves under the revision the signed reference pins",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "feeDerivation"
+          ],
+          "value": {
+            "rateBps": 33,
+            "amount": "0.004125"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "railVersion"
+          ],
+          "value": 2
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "tM7TMO5DVYGDYQLAeox4WnJTdTY2qqvCHdUzMkibnwb77OzdoYtADt_1lEAOeznog-BKeD3lJXpULGWY5mvpBg"
+        }
+      ],
+      "expectedReason": "rail-version"
+    },
+    {
+      "name": "fee-rate-metadata-other-asset",
+      "expected": "fail",
+      "rule": "FR-2/XN-1/XN-5",
+      "operation": "fee-rate-amount",
+      "note": "metadata for another asset with equal decimals does not establish the precision",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "feeDerivation"
+          ],
+          "value": {
+            "rateBps": 33,
+            "amount": "0.004125"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "0x9999999999999999999999999999999999999999"
+        }
+      ],
+      "expectedReason": "asset-metadata"
+    },
+    {
+      "name": "fee-rate-metadata-other-network",
+      "expected": "fail",
+      "rule": "FR-2/XN-1/XN-5",
+      "operation": "fee-rate-amount",
+      "note": "metadata for the asset on another network does not establish the precision",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "feeDerivation"
+          ],
+          "value": {
+            "rateBps": 33,
+            "amount": "0.004125"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "network"
+          ],
+          "value": "eip155:1"
+        }
+      ],
+      "expectedReason": "asset-metadata"
+    },
+    {
+      "name": "fee-rate-metadata-asset-not-20-bytes",
+      "expected": "error",
+      "rule": "FR-2/XN-1/XN-5",
+      "operation": "fee-rate-amount",
+      "note": "an EIP-155 metadata asset is an XN-5 address",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "feeDerivation"
+          ],
+          "value": {
+            "rateBps": 33,
+            "amount": "0.004125"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "0x1234"
+        }
+      ],
+      "expectedReason": "address-form"
     }
   ]
 }

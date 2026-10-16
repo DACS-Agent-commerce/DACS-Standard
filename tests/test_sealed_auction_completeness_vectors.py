@@ -830,6 +830,7 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
         actual = {item["name"]: item for item in json.loads(result.stdout)}
         controls = {
             "auction-pricing-without-reserve",
+            "auction-pricing-selection-rule-mismatch-rejected",
             "trailing-linebreak-price-amounts-rejected",
             "complete-lowest-price",
             "complete-demand-absent-auction-mode",
@@ -1056,6 +1057,24 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             changed = copy.deepcopy(control)
             changed["listing"]["pricing"]["reservePrice"] = value
             with self.subTest(reserve=value):
+                self.assertEqual(Evaluator(changed).evaluate(), "fail")
+
+    def test_pricing_rule_must_equal_signed_phase_rule(self):
+        vectors = {item["name"]: item for item in self.data["vectors"]}
+        control = vectors["auction-pricing-without-reserve"]
+        mismatch = vectors["auction-pricing-selection-rule-mismatch-rejected"]
+        self.assertEqual(Evaluator(control).evaluate(), "pass")
+        self.assertEqual(mismatch["expected"], "fail")
+        # Everything but the PricingSpec rule matches the passing control.
+        aligned = copy.deepcopy(mismatch)
+        aligned["listing"]["pricing"]["selectionRule"] = control["listing"]["parameters"]["selectionRule"]
+        for key in ("listing", "receipt", "agreement", "context"):
+            self.assertEqual(aligned[key], control[key])
+        self.assertEqual(Evaluator(mismatch).evaluate(), "fail")
+        for rule in ("highest-price", "first-acceptable", "rule-ref:" + "12" * 32 + ":stor-rule", None):
+            changed = copy.deepcopy(control)
+            changed["listing"]["pricing"]["selectionRule"] = rule
+            with self.subTest(rule=rule):
                 self.assertEqual(Evaluator(changed).evaluate(), "fail")
 
     def test_unsupported_rules_fail_before_runtime_outcome_is_read(self):

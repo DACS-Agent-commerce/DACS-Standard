@@ -325,6 +325,7 @@ const controls = new Set([
   "procurement-phase-demand-mode-rejected",
   "demand-role-direction-rejected",
   "auction-pricing-without-reserve",
+  "auction-pricing-selection-rule-mismatch-rejected",
   "complete-highest-price",
   "finalized-state-at-reveal-deadline",
   "finalized-state-before-reveal-deadline-rejected",

@@ -358,25 +358,22 @@ def validate_retained_admission(
     return "pass", "verified", digest
 
 
-def listing_phase(
-    context: dict,
+def pipeline_structure(
+    pipeline,
     supported_phases: frozenset[str] = generator.CURRENT_SUPPORTED_PHASES,
-) -> tuple[str, str, str | None]:
-    listing = context.get("listing")
-    if not isinstance(listing, dict):
-        return "error", "malformed-input", None
-    pipeline = listing.get("pipeline")
-    seller = listing.get("seller")
+) -> tuple[str, str | None, int | None]:
+    """Closed PhaseType membership plus PS-1/PS-2 cardinality and adjacency.
+
+    Returns the index of the sole commitment phase on pass. Listing signature
+    and agreement-pattern checks stay with their callers.
+    """
     if (
-        listing.get("dacsVersion") != "1"
-        or not isinstance(pipeline, list)
+        not isinstance(pipeline, list)
         or not pipeline
         or any(
             not isinstance(step, dict) or not isinstance(step.get("kind"), str)
             for step in pipeline
         )
-        or not isinstance(seller, dict)
-        or not isinstance(seller.get("identity"), dict)
     ):
         return "error", "malformed-input", None
     if any(step["kind"] not in supported_phases for step in pipeline):
@@ -397,6 +394,28 @@ def listing_phase(
         return "fail", "negotiate-phase-cardinality-invalid", None
     if negotiation_indexes[0] + 1 != phase_indexes[0]:
         return "fail", "negotiate-commit-order-invalid", None
+    return "pass", None, phase_indexes[0]
+
+
+def listing_phase(
+    context: dict,
+    supported_phases: frozenset[str] = generator.CURRENT_SUPPORTED_PHASES,
+) -> tuple[str, str, str | None]:
+    listing = context.get("listing")
+    if not isinstance(listing, dict):
+        return "error", "malformed-input", None
+    pipeline = listing.get("pipeline")
+    seller = listing.get("seller")
+    if (
+        listing.get("dacsVersion") != "1"
+        or not isinstance(seller, dict)
+        or not isinstance(seller.get("identity"), dict)
+    ):
+        return "error", "malformed-input", None
+    verdict, reason, commitment_index = pipeline_structure(pipeline, supported_phases)
+    if verdict != "pass":
+        return verdict, reason, None
+    negotiation_index = commitment_index - 1
     agreement = context.get("agreement")
     pattern = agreement.get("derivedFromPattern") if isinstance(agreement, dict) else None
     expected_negotiations = {
@@ -411,7 +430,7 @@ def listing_phase(
     }.get(pattern)
     if (
         not isinstance(expected_negotiations, set)
-        or pipeline[negotiation_indexes[0]]["kind"] not in expected_negotiations
+        or pipeline[negotiation_index]["kind"] not in expected_negotiations
     ):
         return "fail", "negotiate-pattern-mismatch", None
     signer = seller["identity"].get("presentedBy")
@@ -422,7 +441,7 @@ def listing_phase(
     )
     if bundle_result != "pass":
         return bundle_result, bundle_reason, None
-    return "pass", "verified", pipeline[phase_indexes[0]]["kind"]
+    return "pass", "verified", pipeline[commitment_index]["kind"]
 
 
 def string_phase_kinds(pipeline: list) -> bool:
@@ -444,23 +463,15 @@ def session_pipeline_gate(
     """The pipeline checks of ``listing_phase``, for session admission.
 
     The sealed gates skip steps they do not own, so session admission first
-    refuses a non-object step or a kind this reader does not support. Listing
-    signature and pattern checks stay with ``listing_phase``.
+    refuses a non-object step, a kind this reader does not support, and a
+    pipeline without exactly one negotiation immediately followed by exactly
+    one commitment (PS-1/PS-2). Listing signature and pattern checks stay with
+    ``listing_phase``.
     """
     listing = context.get("listing")
     pipeline = listing.get("pipeline") if isinstance(listing, dict) else None
-    if (
-        not isinstance(pipeline, list)
-        or not pipeline
-        or any(
-            not isinstance(step, dict) or not isinstance(step.get("kind"), str)
-            for step in pipeline
-        )
-    ):
-        return "error", "malformed-input"
-    if any(step["kind"] not in supported_phases for step in pipeline):
-        return "fail", "unsupported-phase"
-    return "pass", None
+    verdict, reason, _ = pipeline_structure(pipeline, supported_phases)
+    return verdict, reason
 
 
 def sealed_deadline_gate(context: dict) -> tuple[str, str | None]:
@@ -4289,6 +4300,53 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 changed = copy.deepcopy(vector)
                 changed["mutations"] = [*changed.get("mutations", []), mutation]
                 self.assertEqual(evaluate(self.data, changed), outcome(verdict, reason))
+
+    def test_session_admission_enforces_ps1_ps2_cardinality(self):
+        # The intact sealed phase and its adjacent selection-bound commitment
+        # satisfy the sealed gates, so these pin the pipeline-wide count.
+        for name, reason in (
+            ("sealed-session-admission-second-negotiation-refused",
+             "negotiate-phase-cardinality-invalid"),
+            ("sealed-session-admission-second-commitment-refused",
+             "commitment-phase-cardinality-invalid"),
+            ("sealed-session-admission-second-selection-bound-commitment-refused",
+             "commitment-phase-cardinality-invalid"),
+        ):
+            with self.subTest(name=name):
+                case = self.cases[name]
+                self.assertEqual(case["expected"], "fail")
+                self.assertEqual(evaluate(self.data, case), outcome("fail", reason))
+        vector = self.cases["sealed-deadline-exact-boundary"]
+        pipeline = ["listing", "pipeline"]
+        for mutation, reason in (
+            ({"op": "append-value", "path": pipeline, "value": {"kind": "negotiate-rfq"}},
+             "negotiate-phase-cardinality-invalid"),
+            ({"op": "set", "path": pipeline + [0, "kind"], "value": "negotiate-fixed-price"},
+             "negotiate-phase-cardinality-invalid"),
+            ({"op": "append-value", "path": pipeline,
+              "value": {"kind": "commit-payee-bound-agreement"}},
+             "commitment-phase-cardinality-invalid"),
+            ({"op": "delete", "path": pipeline + [2]},
+             "malformed-input"),
+        ):
+            with self.subTest(mutation=mutation):
+                changed = copy.deepcopy(vector)
+                changed["mutations"] = [*changed.get("mutations", []), mutation]
+                verdict, want = evaluate(self.data, changed)
+                self.assertFalse(want["authorizedAction"])
+                self.assertEqual(
+                    (verdict, want["reason"]),
+                    ("error" if reason == "malformed-input" else "fail", reason),
+                )
+        for steps, reason in (
+            (["negotiate-sealed-envelope-complete", "vet-credentials",
+              "commit-selection-bound-agreement"], "negotiate-commit-order-invalid"),
+            (["vet-credentials", "commit-selection-bound-agreement"],
+             "negotiate-phase-cardinality-invalid"),
+        ):
+            with self.subTest(steps=steps):
+                context = {"listing": {"pipeline": [{"kind": kind} for kind in steps]}}
+                self.assertEqual(session_pipeline_gate(context), ("fail", reason))
 
     def test_deadline_gate_missing_or_malformed_trusted_start_refuses(self):
         context = copy.deepcopy(self.data["scenarios"]["selectionBoundDemand"])

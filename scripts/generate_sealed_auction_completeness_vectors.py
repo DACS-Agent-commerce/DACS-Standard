@@ -1171,6 +1171,12 @@ def build() -> dict:
     no_reserve = make_vector("auction-pricing-without-reserve", "pass", "optional reservePrice may be absent from valid auction pricing", entries, records, receipt, agreement)
     no_reserve["listing"]["pricing"] = {"kind": "auction", "selectionRule": "lowest-price"}
     vectors.append(no_reserve)
+    # §8.4.3: PricingSpec.selectionRule MUST equal the signed phase rule. The
+    # receipt and agreement are the valid lowest-price ones, so only that
+    # equality refuses this listing before selection is accepted or committed.
+    rule_mismatch = make_vector("auction-pricing-selection-rule-mismatch-rejected", "fail", "auction pricing selectionRule must equal the signed phase selectionRule", entries, records, receipt, agreement)
+    rule_mismatch["listing"]["pricing"] = {"kind": "auction", "selectionRule": "highest-price"}
+    vectors.append(rule_mismatch)
 
     high_receipt = signed_receipt(entries, records, selection_rule="highest-price")
     vectors.append(make_vector("complete-highest-price", "pass", "highest price deterministically selects bidder C", entries, records, high_receipt, signed_agreement(high_receipt)))

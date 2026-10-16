@@ -462,8 +462,8 @@
       }
     }
   },
-  "count": 616,
-  "hash": "5ab6ec89c309cd4a6cc05b75abff4995828ea3cb671cf0c534c5769030c16b9d",
+  "count": 643,
+  "hash": "2ca3af42bfe1a869b89dbacadd81bdeacc96d4e1cdcab55e44e950769a38c164",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -56506,6 +56506,942 @@
       "expectedReason": "evidence-hash-shape"
     },
     {
+      "name": "verify-evidence-record-paymentRequiredHash-not-string-number",
+      "expected": "error",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "verify-evidence",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": 123
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "JiPMdNNkHQYlYjTl0x8nbdQD-SXAXtoiScpulsqzPTOYQJVh0_gjdR6c1lKlnNqU05WiUw_xjtcIssA5inQEDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "execute-record-paymentRequiredHash-not-string-number",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "execute",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": 123
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "JiPMdNNkHQYlYjTl0x8nbdQD-SXAXtoiScpulsqzPTOYQJVh0_gjdR6c1lKlnNqU05WiUw_xjtcIssA5inQEDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "retry-record-paymentRequiredHash-not-string-number",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "retry",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": 123
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "JiPMdNNkHQYlYjTl0x8nbdQD-SXAXtoiScpulsqzPTOYQJVh0_gjdR6c1lKlnNqU05WiUw_xjtcIssA5inQEDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "verify-evidence-record-paymentRequiredHash-not-string-null",
+      "expected": "error",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "verify-evidence",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "_BeYsE5lpzrN3a2h4co1lzSAI6u6jYdDrjkYO8n-M4CabdURhIGAh_FdjjgvRXfpAycRNkGuNkvjDv2cWGP-Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "execute-record-paymentRequiredHash-not-string-null",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "execute",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "_BeYsE5lpzrN3a2h4co1lzSAI6u6jYdDrjkYO8n-M4CabdURhIGAh_FdjjgvRXfpAycRNkGuNkvjDv2cWGP-Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "retry-record-paymentRequiredHash-not-string-null",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "retry",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "_BeYsE5lpzrN3a2h4co1lzSAI6u6jYdDrjkYO8n-M4CabdURhIGAh_FdjjgvRXfpAycRNkGuNkvjDv2cWGP-Aw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "verify-evidence-record-paymentRequiredHash-not-string-list",
+      "expected": "error",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "verify-evidence",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": [
+            "a"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "Y4e_QG93feUjs0x2Ad99_LH2YbrVVaj44P8pKE-DNIzYv9qTyg0vpPWuS26UVHQkNcYUwyetxJ9Xra69l__qCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "execute-record-paymentRequiredHash-not-string-list",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "execute",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": [
+            "a"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "Y4e_QG93feUjs0x2Ad99_LH2YbrVVaj44P8pKE-DNIzYv9qTyg0vpPWuS26UVHQkNcYUwyetxJ9Xra69l__qCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "retry-record-paymentRequiredHash-not-string-list",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "retry",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": [
+            "a"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "Y4e_QG93feUjs0x2Ad99_LH2YbrVVaj44P8pKE-DNIzYv9qTyg0vpPWuS26UVHQkNcYUwyetxJ9Xra69l__qCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "verify-evidence-record-paymentRequiredHash-not-string-object",
+      "expected": "error",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "verify-evidence",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": {
+            "x": 1
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "8qPwNeaVG1nFo2to_3eS5zXH8rhbvmtHY15OJe88XL73XULg5yd3zJn3DaGBw3DkAlP0aA-L-8Ld7R5ZjFdmBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "execute-record-paymentRequiredHash-not-string-object",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "execute",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": {
+            "x": 1
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "8qPwNeaVG1nFo2to_3eS5zXH8rhbvmtHY15OJe88XL73XULg5yd3zJn3DaGBw3DkAlP0aA-L-8Ld7R5ZjFdmBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "retry-record-paymentRequiredHash-not-string-object",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "retry",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": {
+            "x": 1
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "8qPwNeaVG1nFo2to_3eS5zXH8rhbvmtHY15OJe88XL73XULg5yd3zJn3DaGBw3DkAlP0aA-L-8Ld7R5ZjFdmBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "verify-evidence-record-paymentReceiptHash-not-string-number",
+      "expected": "error",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "verify-evidence",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": 123
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "aYS9mLQxGh5WdIvYFVtEiwbY3HUVogiSrPgD_Dw8pcWLiMR9HjO3XGfJXUl2oM3eVVm-MCRYuOQfkDa0xepzAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "execute-record-paymentReceiptHash-not-string-number",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "execute",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": 123
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "aYS9mLQxGh5WdIvYFVtEiwbY3HUVogiSrPgD_Dw8pcWLiMR9HjO3XGfJXUl2oM3eVVm-MCRYuOQfkDa0xepzAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "retry-record-paymentReceiptHash-not-string-number",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "retry",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": 123
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "aYS9mLQxGh5WdIvYFVtEiwbY3HUVogiSrPgD_Dw8pcWLiMR9HjO3XGfJXUl2oM3eVVm-MCRYuOQfkDa0xepzAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "verify-evidence-record-paymentReceiptHash-not-string-null",
+      "expected": "error",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "verify-evidence",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ZZ7JhIHv1vSI9vT5CSYshdqjkP10wTkH64TA3rd1cEyhLjY4vvNsdUgMQgSx9IGdBstZYp3-uvi4x54JI8aNCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "execute-record-paymentReceiptHash-not-string-null",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "execute",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ZZ7JhIHv1vSI9vT5CSYshdqjkP10wTkH64TA3rd1cEyhLjY4vvNsdUgMQgSx9IGdBstZYp3-uvi4x54JI8aNCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "retry-record-paymentReceiptHash-not-string-null",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "retry",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ZZ7JhIHv1vSI9vT5CSYshdqjkP10wTkH64TA3rd1cEyhLjY4vvNsdUgMQgSx9IGdBstZYp3-uvi4x54JI8aNCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "verify-evidence-record-paymentReceiptHash-not-string-list",
+      "expected": "error",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "verify-evidence",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": [
+            "a"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "G9HllKdLOQalr0jtezSRurU6LopwC0ggGRCAU0dKSzOlxhiF487eMJeVYxfgzqzXDE6Y51-Wr8-4fX0ignxMCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "execute-record-paymentReceiptHash-not-string-list",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "execute",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": [
+            "a"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "G9HllKdLOQalr0jtezSRurU6LopwC0ggGRCAU0dKSzOlxhiF487eMJeVYxfgzqzXDE6Y51-Wr8-4fX0ignxMCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "retry-record-paymentReceiptHash-not-string-list",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "retry",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": [
+            "a"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "G9HllKdLOQalr0jtezSRurU6LopwC0ggGRCAU0dKSzOlxhiF487eMJeVYxfgzqzXDE6Y51-Wr8-4fX0ignxMCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "verify-evidence-record-paymentReceiptHash-not-string-object",
+      "expected": "error",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "verify-evidence",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": {
+            "x": 1
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "hTRYZ48i5n0ie_Rj8YbU3OZDzMIXGr616_EHIuV3vGkb-zKRFZl_NOs0bAhA1Cga4__soelCTZx8sTDleKy2BA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "execute-record-paymentReceiptHash-not-string-object",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "execute",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": {
+            "x": 1
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "hTRYZ48i5n0ie_Rj8YbU3OZDzMIXGr616_EHIuV3vGkb-zKRFZl_NOs0bAhA1Cga4__soelCTZx8sTDleKy2BA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
+      "name": "retry-record-paymentReceiptHash-not-string-object",
+      "expected": "pass",
+      "rule": "XN-7/XN-8/XN-11",
+      "operation": "retry",
+      "note": "a re-signed non-string record hash is a verifier error; execute and retry rebuild the unanchored record while the ledger decides the payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": {
+            "x": 1
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "hTRYZ48i5n0ie_Rj8YbU3OZDzMIXGr616_EHIuV3vGkb-zKRFZl_NOs0bAhA1Cga4__soelCTZx8sTDleKy2BA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "evidence-hash-shape"
+    },
+    {
       "name": "definition-rail-type-value-mismatch",
       "expected": "error",
       "rule": "XN-1/RD-5",
@@ -58136,19 +59072,11 @@
     {
       "name": "paid-request-payload-not-base64",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the header value is not base64",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58159,24 +59087,17 @@
           "value": "garbage"
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-empty",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "an empty header value carries no payload",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58187,24 +59108,17 @@
           "value": ""
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-empty-object",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "an empty object is not a PaymentPayload",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58215,24 +59129,17 @@
           "value": "e30="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-version-only",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "a payload with no accepted requirement and no authorization is not the payment",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58243,24 +59150,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6Mn0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-version-1",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the paid payload names the selected version 2",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58271,24 +59171,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MSwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-unknown-member",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the PaymentPayload is closed",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58299,24 +59192,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fSwibWVtbyI6IngifQ=="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-accepted-other-amount",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "accepted is the matched requirement as received",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58327,24 +59213,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDEiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-resource-changed",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "an echoed resource is the challenge's own",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58355,24 +59234,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9vdGhlci5leGFtcGxlL3BheSIsImRlc2NyaXB0aW9uIjoiREFDUyAjMjc0IHJlc291cmNlIiwibWltZVR5cGUiOiJhcHBsaWNhdGlvbi9qc29uIn0sImFjY2VwdGVkIjp7InNjaGVtZSI6ImV4YWN0IiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiYW1vdW50IjoiMTI1MDAwMCIsInBheVRvIjoiMHgyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwibWF4VGltZW91dFNlY29uZHMiOjYwLCJhc3NldCI6IjB4MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyIsImV4dHJhIjp7ImFzc2V0VHJhbnNmZXJNZXRob2QiOiJlaXAzMDA5IiwibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fSwicGF5bG9hZCI6eyJzaWduYXR1cmUiOiIweDNmOTUwOTdhZTgxMmVkZTJhMTBiYjM4NjJmZGE4ZTNmNDEwNjFkZjJmMzQwOGFkZmIzMmU2Y2Y2NjE1OWJjNjMxNDVhNGI3ZThlYmZmMWZkMzhhZDE1MjQ2YzU3YWI4NWQ2MDAwNmJjMjE2Nzg4MWZmMzBmMDJmZDJjODE5YzJlMWIiLCJhdXRob3JpemF0aW9uIjp7ImZyb20iOiIweDdlNWY0NTUyMDkxYTY5MTI1ZDVkZmNiN2I4YzI2NTkwMjkzOTViZGYiLCJ0byI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsInZhbHVlIjoiMTI1MDAwMCIsInZhbGlkQWZ0ZXIiOiIxNzg3NDQyNjAwIiwidmFsaWRCZWZvcmUiOiIxNzg3NDQzMjYwIiwibm9uY2UiOiIweDdjNDMwYzc2ZDhmZjkwMmQyMmRhZjc5ZWVlZWQ1MWY0OGVhM2JhNzc5N2ViMmFlZjY1MjViYzVjOGMwMjFlZmMifX0sImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjp7ImluZm8iOnsicmVxdWlyZWQiOmZhbHNlfSwic2NoZW1hIjp7IiRzY2hlbWEiOiJodHRwczovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC8yMDIwLTEyL3NjaGVtYSIsInR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InJlcXVpcmVkIjp7InR5cGUiOiJib29sZWFuIn0sImlkIjp7InR5cGUiOiJzdHJpbmciLCJtaW5MZW5ndGgiOjE2LCJtYXhMZW5ndGgiOjEyOH19LCJyZXF1aXJlZCI6WyJyZXF1aXJlZCJdfX19fQ=="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-extensions-carry-identifier",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "v0.8 defines no payment identifier, so the echoed extensions add none",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58383,24 +59255,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZSwiaWQiOiJwYXlfNzc3Nzc3Nzc3Nzc3Nzc3NyJ9LCJzY2hlbWEiOnsiJHNjaGVtYSI6Imh0dHBzOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LzIwMjAtMTIvc2NoZW1hIiwidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicmVxdWlyZWQiOnsidHlwZSI6ImJvb2xlYW4ifSwiaWQiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTYsIm1heExlbmd0aCI6MTI4fX0sInJlcXVpcmVkIjpbInJlcXVpcmVkIl19fX19"
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-authorization-absent",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the EIP-155 payload carries the EIP-3009 authorization",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58411,12 +59276,13 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIn0sImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjp7ImluZm8iOnsicmVxdWlyZWQiOmZhbHNlfSwic2NoZW1hIjp7IiRzY2hlbWEiOiJodHRwczovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC8yMDIwLTEyL3NjaGVtYSIsInR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InJlcXVpcmVkIjp7InR5cGUiOiJib29sZWFuIn0sImlkIjp7InR5cGUiOiJzdHJpbmciLCJtaW5MZW5ndGgiOjE2LCJtYXhMZW5ndGgiOjEyOH19LCJyZXF1aXJlZCI6WyJyZXF1aXJlZCJdfX19fQ=="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-signature-absent",
-      "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "expected": "pass",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the EIP-155 payload carries the EIP-712 signature",
       "base": "v2",
@@ -58443,8 +59309,8 @@
     },
     {
       "name": "paid-request-payload-signature-short",
-      "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "expected": "pass",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "an EIP-712 signature is 65 bytes",
       "base": "v2",
@@ -58472,19 +59338,11 @@
     {
       "name": "paid-request-payload-other-recipient",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the authorization pays the signed payTo",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58495,24 +59353,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweGZiNjkxNjA5NWNhMWRmNjBiYjc5Y2U5MmNlM2VhNzRjMzdjNWQzNTkiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-other-payer",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the authorization is the derived payer's",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58523,24 +59374,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHhmYjY5MTYwOTVjYTFkZjYwYmI3OWNlOTJjZTNlYTc0YzM3YzVkMzU5IiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-other-value",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the authorization is for the exact amount",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58551,24 +59395,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDEiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-value-not-decimal",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "EIP-3009 values travel as decimal strings",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58579,24 +59416,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjB4MTMxMmQwIiwidmFsaWRBZnRlciI6IjE3ODc0NDI2MDAiLCJ2YWxpZEJlZm9yZSI6IjE3ODc0NDMyNjAiLCJub25jZSI6IjB4N2M0MzBjNzZkOGZmOTAyZDIyZGFmNzllZWVlZDUxZjQ4ZWEzYmE3Nzk3ZWIyYWVmNjUyNWJjNWM4YzAyMWVmYyJ9fSwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOnsiaW5mbyI6eyJyZXF1aXJlZCI6ZmFsc2V9LCJzY2hlbWEiOnsiJHNjaGVtYSI6Imh0dHBzOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LzIwMjAtMTIvc2NoZW1hIiwidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicmVxdWlyZWQiOnsidHlwZSI6ImJvb2xlYW4ifSwiaWQiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTYsIm1heExlbmd0aCI6MTI4fX0sInJlcXVpcmVkIjpbInJlcXVpcmVkIl19fX19"
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-valid-before-not-retained",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "validBefore is the one the handler retains for XN-11",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58607,24 +59437,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MSIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-valid-after-not-before",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the authorization's validity window is not empty",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58635,24 +59458,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MzI2MCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-nonce-not-derived",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the EIP-3009 nonce is the SB-3 one derived from (jobId, phaseIndex)",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58663,24 +59479,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHhhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-nonce-upper-case",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "DACS serialises the derived nonce as 0x plus lower-case hex",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -58691,12 +59500,13 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3QzQzMEM3NkQ4RkY5MDJEMjJEQUY3OUVFRUVENTFGNDhFQTNCQTc3OTdFQjJBRUY2NTI1QkM1QzhDMDIxRUZDIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-solana-transaction-absent",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the Solana payload carries the transaction",
       "base": "v2",
@@ -59215,14 +60025,6 @@
           "op": "replace",
           "path": [
             "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
             "paidHeaders",
             "PAYMENT-SIGNATURE"
           ],
@@ -59332,12 +60134,13 @@
           "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-solana-carries-evm-authorization",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the Solana payload is only the transaction",
       "base": "v2",
@@ -59856,14 +60659,6 @@
           "op": "replace",
           "path": [
             "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
             "paidHeaders",
             "PAYMENT-SIGNATURE"
           ],
@@ -59973,12 +60768,13 @@
           "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-solana-transaction-not-base64",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the Solana transaction is base64",
       "base": "v2",
@@ -60497,14 +61293,6 @@
           "op": "replace",
           "path": [
             "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
             "paidHeaders",
             "PAYMENT-SIGNATURE"
           ],
@@ -60614,12 +61402,13 @@
           "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-solana-transaction-empty",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the Solana transaction is a non-empty base64 string",
       "base": "v2",
@@ -61138,14 +61927,6 @@
           "op": "replace",
           "path": [
             "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
             "paidHeaders",
             "PAYMENT-SIGNATURE"
           ],
@@ -61255,24 +62036,17 @@
           "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-version-string",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "x402Version is the integer 2, not a string",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -61283,24 +62057,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6IjIiLCJyZXNvdXJjZSI6eyJ1cmwiOiJodHRwczovL3NlbGxlci5leGFtcGxlL2RhY3MvcmVzb3VyY2U/am9iPTI3NCIsImRlc2NyaXB0aW9uIjoiREFDUyAjMjc0IHJlc291cmNlIiwibWltZVR5cGUiOiJhcHBsaWNhdGlvbi9qc29uIn0sImFjY2VwdGVkIjp7InNjaGVtZSI6ImV4YWN0IiwibmV0d29yayI6ImVpcDE1NTo4NDUzIiwiYW1vdW50IjoiMTI1MDAwMCIsInBheVRvIjoiMHgyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwibWF4VGltZW91dFNlY29uZHMiOjYwLCJhc3NldCI6IjB4MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMyIsImV4dHJhIjp7ImFzc2V0VHJhbnNmZXJNZXRob2QiOiJlaXAzMDA5IiwibmFtZSI6IlVTREMiLCJ2ZXJzaW9uIjoiMiJ9fSwicGF5bG9hZCI6eyJzaWduYXR1cmUiOiIweDNmOTUwOTdhZTgxMmVkZTJhMTBiYjM4NjJmZGE4ZTNmNDEwNjFkZjJmMzQwOGFkZmIzMmU2Y2Y2NjE1OWJjNjMxNDVhNGI3ZThlYmZmMWZkMzhhZDE1MjQ2YzU3YWI4NWQ2MDAwNmJjMjE2Nzg4MWZmMzBmMDJmZDJjODE5YzJlMWIiLCJhdXRob3JpemF0aW9uIjp7ImZyb20iOiIweDdlNWY0NTUyMDkxYTY5MTI1ZDVkZmNiN2I4YzI2NTkwMjkzOTViZGYiLCJ0byI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsInZhbHVlIjoiMTI1MDAwMCIsInZhbGlkQWZ0ZXIiOiIxNzg3NDQyNjAwIiwidmFsaWRCZWZvcmUiOiIxNzg3NDQzMjYwIiwibm9uY2UiOiIweDdjNDMwYzc2ZDhmZjkwMmQyMmRhZjc5ZWVlZWQ1MWY0OGVhM2JhNzc5N2ViMmFlZjY1MjViYzVjOGMwMjFlZmMifX0sImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjp7ImluZm8iOnsicmVxdWlyZWQiOmZhbHNlfSwic2NoZW1hIjp7IiRzY2hlbWEiOiJodHRwczovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC8yMDIwLTEyL3NjaGVtYSIsInR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InJlcXVpcmVkIjp7InR5cGUiOiJib29sZWFuIn0sImlkIjp7InR5cGUiOiJzdHJpbmciLCJtaW5MZW5ndGgiOjE2LCJtYXhMZW5ndGgiOjEyOH19LCJyZXF1aXJlZCI6WyJyZXF1aXJlZCJdfX19fQ=="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-payload-not-object",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the binding's payload is an object",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -61311,24 +62078,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOiIweDNmOTUwOTdhZTgxMmVkZTJhMTBiYjM4NjJmZGE4ZTNmNDEwNjFkZjJmMzQwOGFkZmIzMmU2Y2Y2NjE1OWJjNjMxNDVhNGI3ZThlYmZmMWZkMzhhZDE1MjQ2YzU3YWI4NWQ2MDAwNmJjMjE2Nzg4MWZmMzBmMDJmZDJjODE5YzJlMWIiLCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-from-not-20-bytes",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the authorization's from is an XN-5 address, 0x plus 40 hex digits",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -61339,24 +62099,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHgxMjM0IiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-authorization-unknown-member",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the EIP-3009 authorization has exactly its six members",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -61367,24 +62120,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIiwibWVtbyI6IngifX0sImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjp7ImluZm8iOnsicmVxdWlyZWQiOmZhbHNlfSwic2NoZW1hIjp7IiRzY2hlbWEiOiJodHRwczovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC8yMDIwLTEyL3NjaGVtYSIsInR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InJlcXVpcmVkIjp7InR5cGUiOiJib29sZWFuIn0sImlkIjp7InR5cGUiOiJzdHJpbmciLCJtaW5MZW5ndGgiOjE2LCJtYXhMZW5ndGgiOjEyOH19LCJyZXF1aXJlZCI6WyJyZXF1aXJlZCJdfX19fQ=="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-authorization-without-nonce",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "the EIP-3009 authorization carries its nonce",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -61395,24 +62141,17 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCJ9fSwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOnsiaW5mbyI6eyJyZXF1aXJlZCI6ZmFsc2V9LCJzY2hlbWEiOnsiJHNjaGVtYSI6Imh0dHBzOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LzIwMjAtMTIvc2NoZW1hIiwidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicmVxdWlyZWQiOnsidHlwZSI6ImJvb2xlYW4ifSwiaWQiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTYsIm1heExlbmd0aCI6MTI4fX0sInJlcXVpcmVkIjpbInJlcXVpcmVkIl19fX19"
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-valid-after-not-decimal",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "EIP-3009 times travel as unsigned decimal strings",
       "base": "v2",
       "patch": [
-        {
-          "op": "replace",
-          "path": [
-            "runtime",
-            "authorizationSubmitted"
-          ],
-          "value": true
-        },
         {
           "op": "replace",
           "path": [
@@ -61423,16 +62162,130 @@
           "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMHgxMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MCIsIm5vbmNlIjoiMHg3YzQzMGM3NmQ4ZmY5MDJkMjJkYWY3OWVlZWVkNTFmNDhlYTNiYTc3OTdlYjJhZWY2NTI1YmM1YzhjMDIxZWZjIn19LCJleHRlbnNpb25zIjp7InBheW1lbnQtaWRlbnRpZmllciI6eyJpbmZvIjp7InJlcXVpcmVkIjpmYWxzZX0sInNjaGVtYSI6eyIkc2NoZW1hIjoiaHR0cHM6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQvMjAyMC0xMi9zY2hlbWEiLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJyZXF1aXJlZCI6eyJ0eXBlIjoiYm9vbGVhbiJ9LCJpZCI6eyJ0eXBlIjoic3RyaW5nIiwibWluTGVuZ3RoIjoxNiwibWF4TGVuZ3RoIjoxMjh9fSwicmVxdWlyZWQiOlsicmVxdWlyZWQiXX19fX0="
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-valid-before-not-decimal",
       "expected": "fail",
-      "rule": "XN-6/§9.5.7.1",
+      "rule": "XN-6/§9.5.7.1/XN-11",
       "operation": "execute",
       "note": "EIP-3009 times travel as unsigned decimal strings",
       "base": "v2",
       "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MC4wIiwibm9uY2UiOiIweDdjNDMwYzc2ZDhmZjkwMmQyMmRhZjc5ZWVlZWQ1MWY0OGVhM2JhNzc5N2ViMmFlZjY1MjViYzVjOGMwMjFlZmMifX0sImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjp7ImluZm8iOnsicmVxdWlyZWQiOmZhbHNlfSwic2NoZW1hIjp7IiRzY2hlbWEiOiJodHRwczovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC8yMDIwLTEyL3NjaGVtYSIsInR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InJlcXVpcmVkIjp7InR5cGUiOiJib29sZWFuIn0sImlkIjp7InR5cGUiOiJzdHJpbmciLCJtaW5MZW5ndGgiOjE2LCJtYXhMZW5ndGgiOjEyOH19LCJyZXF1aXJlZCI6WyJyZXF1aXJlZCJdfX19fQ=="
+        }
+      ],
+      "expectedReason": "paid-request-payload",
+      "expectedErrorClass": "permanent"
+    },
+    {
+      "name": "paid-request-signature-short-ledger-unavailable",
+      "expected": "indeterminate",
+      "rule": "XN-6/XN-11",
+      "operation": "execute",
+      "note": "the handler records the post-signing signature defect and takes the payment disposition only from reconciliation",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "amount"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "asset"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "assetDecimals"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "authorization"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "finalized"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "network"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payTo"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payer"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "scheme"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "sessionBinding"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "transaction"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
         {
           "op": "replace",
           "path": [
@@ -61448,10 +62301,237 @@
             "paidHeaders",
             "PAYMENT-SIGNATURE"
           ],
-          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZTFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg3ZTVmNDU1MjA5MWE2OTEyNWQ1ZGZjYjdiOGMyNjU5MDI5Mzk1YmRmIiwidG8iOiIweDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIiLCJ2YWx1ZSI6IjEyNTAwMDAiLCJ2YWxpZEFmdGVyIjoiMTc4NzQ0MjYwMCIsInZhbGlkQmVmb3JlIjoiMTc4NzQ0MzI2MC4wIiwibm9uY2UiOiIweDdjNDMwYzc2ZDhmZjkwMmQyMmRhZjc5ZWVlZWQ1MWY0OGVhM2JhNzc5N2ViMmFlZjY1MjViYzVjOGMwMjFlZmMifX0sImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjp7ImluZm8iOnsicmVxdWlyZWQiOmZhbHNlfSwic2NoZW1hIjp7IiRzY2hlbWEiOiJodHRwczovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC8yMDIwLTEyL3NjaGVtYSIsInR5cGUiOiJvYmplY3QiLCJwcm9wZXJ0aWVzIjp7InJlcXVpcmVkIjp7InR5cGUiOiJib29sZWFuIn0sImlkIjp7InR5cGUiOiJzdHJpbmciLCJtaW5MZW5ndGgiOjE2LCJtYXhMZW5ndGgiOjEyOH19LCJyZXF1aXJlZCI6WyJyZXF1aXJlZCJdfX19fQ=="
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZSIsImF1dGhvcml6YXRpb24iOnsiZnJvbSI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRvIjoiMHgyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwidmFsdWUiOiIxMjUwMDAwIiwidmFsaWRBZnRlciI6IjE3ODc0NDI2MDAiLCJ2YWxpZEJlZm9yZSI6IjE3ODc0NDMyNjAiLCJub25jZSI6IjB4N2M0MzBjNzZkOGZmOTAyZDIyZGFmNzllZWVlZDUxZjQ4ZWEzYmE3Nzk3ZWIyYWVmNjUyNWJjNWM4YzAyMWVmYyJ9fSwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOnsiaW5mbyI6eyJyZXF1aXJlZCI6ZmFsc2V9LCJzY2hlbWEiOnsiJHNjaGVtYSI6Imh0dHBzOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LzIwMjAtMTIvc2NoZW1hIiwidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicmVxdWlyZWQiOnsidHlwZSI6ImJvb2xlYW4ifSwiaWQiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTYsIm1heExlbmd0aCI6MTI4fX0sInJlcXVpcmVkIjpbInJlcXVpcmVkIl19fX19"
         }
       ],
-      "expectedReason": "paid-request-payload"
+      "expectedReason": "independent-settlement-unavailable"
+    },
+    {
+      "name": "paid-request-signature-short-authorization-pending",
+      "expected": "indeterminate",
+      "rule": "XN-6/XN-11",
+      "operation": "execute",
+      "note": "the handler records the post-signing signature defect and takes the payment disposition only from reconciliation",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "amount"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "asset"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "assetDecimals"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "authorization"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "network"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payTo"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payer"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "scheme"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "sessionBinding"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "transaction"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "ledger",
+            "nonceState"
+          ],
+          "value": "unused"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZSIsImF1dGhvcml6YXRpb24iOnsiZnJvbSI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRvIjoiMHgyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwidmFsdWUiOiIxMjUwMDAwIiwidmFsaWRBZnRlciI6IjE3ODc0NDI2MDAiLCJ2YWxpZEJlZm9yZSI6IjE3ODc0NDMyNjAiLCJub25jZSI6IjB4N2M0MzBjNzZkOGZmOTAyZDIyZGFmNzllZWVlZDUxZjQ4ZWEzYmE3Nzk3ZWIyYWVmNjUyNWJjNWM4YzAyMWVmYyJ9fSwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOnsiaW5mbyI6eyJyZXF1aXJlZCI6ZmFsc2V9LCJzY2hlbWEiOnsiJHNjaGVtYSI6Imh0dHBzOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LzIwMjAtMTIvc2NoZW1hIiwidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicmVxdWlyZWQiOnsidHlwZSI6ImJvb2xlYW4ifSwiaWQiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTYsIm1heExlbmd0aCI6MTI4fX0sInJlcXVpcmVkIjpbInJlcXVpcmVkIl19fX19"
+        }
+      ],
+      "expectedReason": "authorization-unsettled"
+    },
+    {
+      "name": "paid-request-signature-short-authorization-cancelled",
+      "expected": "fail",
+      "rule": "XN-6/XN-11",
+      "operation": "execute",
+      "note": "the handler records the post-signing signature defect and takes the payment disposition only from reconciliation",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "amount"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "asset"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "assetDecimals"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "authorization"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "network"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payTo"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "payer"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "scheme"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "sessionBinding"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "ledger",
+            "transaction"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "ledger",
+            "nonceState"
+          ],
+          "value": "cancelled"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "PAYMENT-SIGNATURE"
+          ],
+          "value": "eyJ4NDAyVmVyc2lvbiI6MiwicmVzb3VyY2UiOnsidXJsIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZS9kYWNzL3Jlc291cmNlP2pvYj0yNzQiLCJkZXNjcmlwdGlvbiI6IkRBQ1MgIzI3NCByZXNvdXJjZSIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LCJhY2NlcHRlZCI6eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEyNTAwMDAiLCJwYXlUbyI6IjB4MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMiIsIm1heFRpbWVvdXRTZWNvbmRzIjo2MCwiYXNzZXQiOiIweDMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMiLCJleHRyYSI6eyJhc3NldFRyYW5zZmVyTWV0aG9kIjoiZWlwMzAwOSIsIm5hbWUiOiJVU0RDIiwidmVyc2lvbiI6IjIifX0sInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHgzZjk1MDk3YWU4MTJlZGUyYTEwYmIzODYyZmRhOGUzZjQxMDYxZGYyZjM0MDhhZGZiMzJlNmNmNjYxNTliYzYzMTQ1YTRiN2U4ZWJmZjFmZDM4YWQxNTI0NmM1N2FiODVkNjAwMDZiYzIxNjc4ODFmZjMwZjAyZmQyYzgxOWMyZSIsImF1dGhvcml6YXRpb24iOnsiZnJvbSI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRvIjoiMHgyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyIiwidmFsdWUiOiIxMjUwMDAwIiwidmFsaWRBZnRlciI6IjE3ODc0NDI2MDAiLCJ2YWxpZEJlZm9yZSI6IjE3ODc0NDMyNjAiLCJub25jZSI6IjB4N2M0MzBjNzZkOGZmOTAyZDIyZGFmNzllZWVlZDUxZjQ4ZWEzYmE3Nzk3ZWIyYWVmNjUyNWJjNWM4YzAyMWVmYyJ9fSwiZXh0ZW5zaW9ucyI6eyJwYXltZW50LWlkZW50aWZpZXIiOnsiaW5mbyI6eyJyZXF1aXJlZCI6ZmFsc2V9LCJzY2hlbWEiOnsiJHNjaGVtYSI6Imh0dHBzOi8vanNvbi1zY2hlbWEub3JnL2RyYWZ0LzIwMjAtMTIvc2NoZW1hIiwidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsicmVxdWlyZWQiOnsidHlwZSI6ImJvb2xlYW4ifSwiaWQiOnsidHlwZSI6InN0cmluZyIsIm1pbkxlbmd0aCI6MTYsIm1heExlbmd0aCI6MTI4fX0sInJlcXVpcmVkIjpbInJlcXVpcmVkIl19fX19"
+        }
+      ],
+      "expectedReason": "terminal-non-settlement",
+      "expectedErrorClass": "permanent"
     },
     {
       "name": "paid-request-payload-payer-upper-case",

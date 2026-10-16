@@ -159,6 +159,7 @@ FAILURE_MODE_ERROR_CLASSES = {
     # PC-5: a price currency that does not resolve to the selected asset.
     "currency": "permanent",
     "asset-currency": "permanent",
+    "paid-request-payload": "permanent",
 }
 # X402-3: the registered v1 legacy-network mapping, the supported-network table
 # of the pinned v1 specification (x402-foundation/x402@22a7677f,
@@ -1186,7 +1187,7 @@ def sb3_eip3009_nonce(job_id, phase_index):
     return "0x" + hashlib.sha256(preimage).hexdigest()
 
 
-def payment_payload_defect(v, required, matched, network, payer, pay_to):
+def payment_payload_defect(v, required, matched, network, payer, pay_to, *, before_signing=False):
     """XN-6/§9.5.7.1: whether the paid request's PAYMENT-SIGNATURE fails to carry this payment.
 
     Its value is the base64 of a v2 PaymentPayload (x402 v2 §5.2) that CF-5
@@ -1197,6 +1198,9 @@ def payment_payload_defect(v, required, matched, network, payer, pay_to):
     `validBefore` is the retained one and whose nonce is the SB-3 derived one.
     On Solana it is the base64 transaction. The paid request carries no
     payment identifier, since v0.8 defines none.
+
+    Before signing, judge the envelope and to-be-signed fields, allowing the
+    EIP-712 signature to be absent. Its form is judged after the wallet call.
     """
     paid = request_headers(v.get("runtime", {}).get("paidHeaders")) or {}
     try:
@@ -1222,8 +1226,9 @@ def payment_payload_defect(v, required, matched, network, payer, pay_to):
             return True
     authorization = body.get("authorization")
     if (
-        set(body) != {"signature", "authorization"}
-        or not (isinstance(body["signature"], str) and EVM_SIGNATURE.fullmatch(body["signature"]))
+        set(body) - {"signature"} != {"authorization"}
+        or (not before_signing and not (
+            isinstance(body.get("signature"), str) and EVM_SIGNATURE.fullmatch(body["signature"])))
         or not isinstance(authorization, dict)
         or set(authorization) != EIP3009_AUTHORIZATION_FIELDS
         # EIP-3009's value and times are uint256, so at most 78 decimal digits
@@ -1237,8 +1242,8 @@ def payment_payload_defect(v, required, matched, network, payer, pay_to):
         or int(authorization["validAfter"]) >= int(authorization["validBefore"])
     ):
         return True
-    # Execute refused an EIP-155 authorization without a retained safe
-    # integer before the wallet call, so `retained` is one here.
+    # Execute already required a retained safe integer before inspecting the
+    # to-be-signed fields, so retained_valid_before yields one here.
     if authorization["validBefore"] != str(retained_valid_before(v)):
         return True
     try:
@@ -1489,9 +1494,8 @@ def check_record(v, required, response, response_fault, selection, request):
         return ("error", "evidence-version"), None
     if evidence_ref["x402Version"] != selection["x402Version"]:
         return ("fail", "evidence-version"), None
-    if not HEX_32.fullmatch(evidence_ref.get("paymentRequiredHash", "")) or not HEX_32.fullmatch(
-        evidence_ref.get("paymentReceiptHash", "")
-    ):
+    if not all(isinstance(evidence_ref.get(name), str) and HEX_32.fullmatch(evidence_ref[name])
+               for name in ("paymentRequiredHash", "paymentReceiptHash")):
         return ("error", "evidence-hash-shape"), None
     if evidence_ref["paymentRequiredHash"] != digest(required):
         return ("fail", "payment-required-hash"), None
@@ -1818,8 +1822,9 @@ def evaluate(v, effects=None):
 
     # `execute` runs the handler; `verify-evidence` is a verifier judging a
     # stored success record (XN-7/XN-8) and never authorizes. Both apply the
-    # same gates, except that only `execute` judges the `PAYMENT-SIGNATURE`
-    # value, and a stored record is judged apart from the payment.
+    # same gates, except that only `execute` checks the retained `validBefore`,
+    # calls the wallet and judges the `PAYMENT-SIGNATURE` value. A stored
+    # record is judged apart from the payment.
     if operation not in {"execute", "verify-evidence"}:
         return "error", "operation"
     # The stored record's own signature is judged in check_record.
@@ -2009,20 +2014,29 @@ def evaluate(v, effects=None):
     ):
         return "error", "authorization-valid-before"
 
+    # XN-6: validate the envelope and every to-be-signed authorization field
+    # before asking the wallet. The payer-control gate already validated payer.
+    payer = adapter_address(network, runtime["payer"]["paymentAddress"])
+    if operation == "execute" and payment_payload_defect(
+        v, required, matches[0], network, payer, pay_to, before_signing=True
+    ):
+        return "fail", "paid-request-payload"
+
     # This is the sole authorization site in the executable reference path.
     # Every gate above is therefore mechanically pre-authorization; retry
     # returns through the reconciliation branch and a verifier never gets here.
     if operation == "execute":
         record_wallet_authorization(effects)
 
-    # The payer-control gate already validated the authorization payer.
-    payer = adapter_address(network, runtime["payer"]["paymentAddress"])
-    # XN-6: the paid request sends that authorization for the matched
-    # requirement; a PAYMENT-SIGNATURE without it is not the paid request.
+    # A defect only observable after signing (including the signature's form)
+    # is the handler's fault, recorded separately from the ledger disposition.
     # A verifier judges the stored record, not the `PAYMENT-SIGNATURE` value, so
     # it skips this; the paid request's other gates above still apply to it.
-    if operation == "execute" and payment_payload_defect(v, required, matches[0], network, payer, pay_to):
-        return "fail", "paid-request-payload"
+    payload_fault = operation == "execute" and payment_payload_defect(
+        v, required, matches[0], network, payer, pay_to)
+    if payload_fault and effects is not None:
+        effects["handlerFault"] = "paid-request-payload"
+        effects["handlerErrorClass"] = FAILURE_MODE_ERROR_CLASSES["paid-request-payload"]
     # A response defect is the seller's protocol fault: it is returned as the
     # reason beside the verdict and never replaces it.
     response, response_fault = read_settlement_response(
@@ -2065,6 +2079,8 @@ def evaluate(v, effects=None):
     if "evidence" in v:
         defect = stored_record_defect(v, required, response, response_fault, selection, request, event)
         keep_anchored_record(v, effects, defect)
+    if payload_fault:
+        return "pass", "paid-request-payload"
     if response_fault is not None:
         return "pass", response_fault
     return "pass", defect and defect[1]
@@ -2254,7 +2270,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         self.assertEqual(by_reason["unclassified-extra-member"], {"permanent"})
         self.assertEqual(by_reason["challenge-match"], {"counterparty"})
         self.assertEqual(by_reason["unpaid-request-transient"], {"transient"})
-        self.assertEqual(pinned, 97)
+        self.assertEqual(by_reason["paid-request-payload"], {"permanent"})
+        self.assertEqual(pinned, 127)
 
     def test_resolution_inputs_are_inside_real_agreement_signatures(self):
         original = self.by_name["protocol-v2-exact-success"]
@@ -2568,6 +2585,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-retained-facilitator-absent",
             "retry-static-arm-ref",
         )
+        names += tuple(f"retry-record-{member}-not-string-{shape}"
+                       for member in ("paymentRequiredHash", "paymentReceiptHash")
+                       for shape in ("number", "null", "list", "object"))
         self.assertEqual(set(names), {v["name"] for v in self.vectors if v["operation"] == "retry"})
         for name in names:
             with self.subTest(vector=name):
@@ -2727,15 +2747,24 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
     def test_payment_disposition_never_comes_from_a_record_or_the_response(self):
         """XN-11: after the wallet call the verdict is the ledger reconciliation's alone.
 
-        For every execute vector that reaches the wallet call, removing the
-        stored record or the settlement response changes at most the reason.
+        Every execute vector that reaches the wallet call has exactly the
+        reconciliation verdict. Removing the record or response changes at
+        most the reason.
         """
         reached = 0
         for vector in self.vectors:
-            if vector["operation"] != "execute" or not vector["runtime"]["authorizationSubmitted"]:
+            if vector["operation"] != "execute":
+                continue
+            effects = {}
+            verdict = evaluate(copy.deepcopy(vector), effects)[0]
+            if not effects.get("walletAuthorizationCalls"):
                 continue
             reached += 1
-            verdict = evaluate(copy.deepcopy(vector))[0]
+            selection, amount, payer, pay_to = reconciliation_terms(vector)
+            with self.subTest(vector=vector["name"], change="ledger disposition"):
+                self.assertEqual(verdict, reconcile_settlement(
+                    vector.get("ledger"), selection, amount, payer, pay_to,
+                    retained_valid_before(vector))[0])
             for label, strip in (("no record", ("evidence",)), ("no response", ("http", "responseHeader"))):
                 with self.subTest(vector=vector["name"], change=label):
                     changed = copy.deepcopy(vector)
@@ -2770,7 +2799,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # Every stored-record verdict a verifier gives leaves the payment to the
         # ledger, after the wallet call and on retry alike.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
-        self.assertEqual(len(records), 42)
+        self.assertEqual(len(records), 50)
         for vector in records:
             for operation in ("execute", "retry"):
                 with self.subTest(record=vector["name"], operation=operation):
@@ -4055,6 +4084,81 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         changed["runtime"]["paidHeaders"]["PAYMENT-SIGNATURE"] = base64.b64encode(
             json.dumps(long_time).encode("utf-8")).decode("ascii")
         self.assertEqual(evaluate(changed), ("fail", "paid-request-payload"))
+
+    def test_unsigned_payload_defects_never_reach_the_wallet(self):
+        cases = [v for v in self.vectors if v["name"].startswith("paid-request-payload-")
+                 and v.get("expectedReason") == "paid-request-payload"]
+        self.assertEqual(len(cases), 31)
+        for vector in cases:
+            with self.subTest(vector=vector["name"]):
+                effects = {}
+                result = evaluate(copy.deepcopy(vector), effects)
+                signed = vector["name"] in {"paid-request-payload-signature-absent",
+                                            "paid-request-payload-signature-short"}
+                self.assertEqual(result, ("pass" if signed else "fail", "paid-request-payload"))
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), int(signed))
+                if signed:
+                    self.assertEqual(effects["handlerFault"], "paid-request-payload")
+                    self.assertEqual(effects["handlerErrorClass"], "permanent")
+                    self.assertIn("builtEvidence", effects)
+                else:
+                    self.assertEqual(vector["expectedErrorClass"], "permanent")
+                    self.assertNotIn("builtEvidence", effects)
+
+    def test_payload_defects_discovered_after_signing_only_record_a_handler_fault(self):
+        """Even a changed envelope after the wallet call cannot replace reconciliation."""
+        cases = [v for v in self.vectors if v["name"].startswith("paid-request-payload-")
+                 and v.get("expectedReason") == "paid-request-payload"]
+        wallet = record_wallet_authorization
+        for bad in cases:
+            is_solana = bad["agreement"]["terms"]["rail"]["parameters"]["selection"]["network"].startswith(
+                "solana:")
+            base = self.by_name["protocol-v2-solana-exact-success" if is_solana
+                                else "protocol-v2-exact-success"]
+            for state, ledger, verdict, reason in (
+                ("settled", base["ledger"], "pass", "paid-request-payload"),
+                ("unavailable", {"available": False}, "indeterminate", "independent-settlement-unavailable"),
+                ("pending", {"available": True, "finalized": True}, "indeterminate", "authorization-unsettled"),
+                ("contradictory", {**base["ledger"], "amount": "1"}, "fail", "ledger-event"),
+                ("malformed", {**base["ledger"], "transaction": None}, "error", "ledger-transaction-form"),
+            ):
+                with self.subTest(payload=bad["name"], ledger=state):
+                    changed = copy.deepcopy(base)
+                    changed["ledger"] = copy.deepcopy(ledger)
+
+                    def sign_then_observe_defect(effects):
+                        wallet(effects)
+                        changed["runtime"]["paidHeaders"] = copy.deepcopy(bad["runtime"]["paidHeaders"])
+
+                    effects = {}
+                    with mock.patch(__name__ + ".record_wallet_authorization", sign_then_observe_defect):
+                        self.assertEqual(evaluate(changed, effects), (verdict, reason))
+                    self.assertEqual(effects["walletAuthorizationCalls"], 1)
+                    self.assertEqual(effects["handlerFault"], "paid-request-payload")
+                    self.assertEqual(effects["handlerErrorClass"], "permanent")
+                    self.assertEqual("builtEvidence" in effects, verdict == "pass")
+
+    def test_non_string_record_hashes_are_verifier_errors_and_rebuilt_by_handlers(self):
+        for member in ("paymentRequiredHash", "paymentReceiptHash"):
+            for shape in ("number", "null", "list", "object"):
+                for operation in ("verify-evidence", "execute", "retry"):
+                    name = f"{operation}-record-{member}-not-string-{shape}"
+                    with self.subTest(vector=name):
+                        vector = self.by_name[name]
+                        self.assertTrue(verify_record_signature(vector))
+                        effects = {}
+                        self.assertEqual(evaluate(copy.deepcopy(vector), effects),
+                                         ("error" if operation == "verify-evidence" else "pass",
+                                          "evidence-hash-shape"))
+                        self.assertEqual(effects.get("walletAuthorizationCalls", 0), int(operation == "execute"))
+                        if operation != "verify-evidence":
+                            self.assertIn("builtEvidence", effects)
+                            unavailable = copy.deepcopy(vector)
+                            unavailable["ledger"] = {"available": False}
+                            effects = {}
+                            self.assertEqual(evaluate(unavailable, effects),
+                                             ("indeterminate", "independent-settlement-unavailable"))
+                            self.assertNotIn("builtEvidence", effects)
 
     def test_paid_payload_accepts_the_matched_requirement_when_it_is_not_first(self):
         """XN-4/XN-6: `accepted` is the one matched requirement, here the second.

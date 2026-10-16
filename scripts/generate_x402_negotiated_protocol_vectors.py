@@ -85,7 +85,7 @@ FAILURE_MODE_ERROR_CLASSES = {
     **{reason: "permanent" for reason in (
         "x402-capability-unsupported", "unsupported-transfer-method", "unsupported-payment-flow",
         "unsupported-action-extension", "unclassified-extra-member", "unclassified-extension",
-        "terminal-non-settlement", "ledger-event", "currency", "asset-currency",
+        "terminal-non-settlement", "ledger-event", "currency", "asset-currency", "paid-request-payload",
     )},
 }
 REQUEST_HEADERS = {"Accept": "application/json"}
@@ -3724,6 +3724,16 @@ def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, respons
              lambda v: v["evidence"]["paymentTxRefs"][0].update(
                  {"paymentRequiredHash": v["evidence"]["paymentTxRefs"][0]["paymentRequiredHash"].upper()}),
              operation="verify-evidence", reason="evidence-hash-shape")
+    for member in ("paymentRequiredHash", "paymentReceiptHash"):
+        for shape, value in (("number", 123), ("null", None), ("list", ["a"]), ("object", {"x": 1})):
+            for operation in ("verify-evidence", "execute", "retry"):
+                add_case(vectors, f"{operation}-record-{member}-not-string-{shape}",
+                         "error" if operation == "verify-evidence" else "pass", "XN-7/XN-8/XN-11",
+                         "a re-signed non-string record hash is a verifier error; execute and retry "
+                         "rebuild the unanchored record while the ledger decides the payment",
+                         lambda v, member=member, value=value: v["evidence"]["paymentTxRefs"][0].update(
+                             {member: value}), operation=operation, authorization_submitted=True,
+                         reason="evidence-hash-shape")
     add_case(vectors, "definition-rail-type-value-mismatch", "error", "XN-1/RD-5",
              "the protocol arm must match its discriminated values exactly",
              lambda v: v["railDefinition"].update({"railType": "evm-erc20"}),
@@ -3866,8 +3876,9 @@ def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, respons
              "header names compare case-insensitively", lower_case_payment_header)
 
     # XN-6/§9.5.7.1: the PAYMENT-SIGNATURE value is the v2 PaymentPayload of
-    # this authorization for the matched requirement. The wallet has already
-    # authorized, so the handler that sends anything else fails after one call.
+    # this authorization for the matched requirement. Envelope and unsigned
+    # field defects fail before signing. Signature-form defects are recorded
+    # after signing, with the payment disposition taken only from the ledger.
     def paid_value(value):
         def mutate(v):
             v["runtime"]["paidHeaders"]["PAYMENT-SIGNATURE"] = value
@@ -3957,8 +3968,24 @@ def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, respons
         ("valid-before-not-decimal", paid_payload(authorization(validBefore=str(VALID_BEFORE) + ".0")),
          "EIP-3009 times travel as unsigned decimal strings"),
     ):
-        add_case(vectors, f"paid-request-payload-{name}", "fail", "XN-6/§9.5.7.1", note, mutate,
-                 refresh=True, authorization_submitted=True, reason="paid-request-payload")
+        after_signing = name in {"signature-absent", "signature-short"}
+        add_case(vectors, f"paid-request-payload-{name}", "pass" if after_signing else "fail",
+                 "XN-6/§9.5.7.1/XN-11", note, mutate, refresh=True,
+                 authorization_submitted=after_signing, reason="paid-request-payload")
+    for name, ledger, expected, reason in (
+        ("ledger-unavailable", {"available": False}, "indeterminate", "independent-settlement-unavailable"),
+        ("authorization-pending", {"available": True, "finalized": True, "nonceState": "unused"},
+         "indeterminate", "authorization-unsettled"),
+        ("authorization-cancelled", {"available": True, "finalized": True, "nonceState": "cancelled"},
+         "fail", "terminal-non-settlement"),
+    ):
+        def signature_and_ledger(v, ledger=ledger):
+            paid_payload(lambda payload: payload["payload"].update({"signature": EIP712_SIGNATURE[:-2]}))(v)
+            v["ledger"] = copy.deepcopy(ledger)
+        add_case(vectors, f"paid-request-signature-short-{name}", expected, "XN-6/XN-11",
+                 "the handler records the post-signing signature defect and takes the payment "
+                 "disposition only from reconciliation", signature_and_ledger, refresh=True,
+                 authorization_submitted=True, reason=reason)
     add_case(vectors, "paid-request-payload-payer-upper-case", "pass", "XN-5/XN-6",
              "the authorization's addresses compare as 20-byte values",
              paid_payload(authorization(**{"from": "0x" + BUYER_ADDRESS[2:].upper()})), refresh=True)

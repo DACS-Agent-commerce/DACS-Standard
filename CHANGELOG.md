@@ -51,7 +51,11 @@ The format used per release:
   `PAYMENT-SIGNATURE` value is upstream's version 2 `PaymentPayload` of the
   authorization, checked against the matched requirement, the retained
   `validBefore` and the SB-3 nonce. An EIP-155 handler authorizes only once it
-  retains that `validBefore` as a safe integer. The optional
+  retains that `validBefore` as a safe integer and validates the composed
+  envelope and to-be-signed fields. Post-signing payload defects are recorded
+  as handler faults while ledger reconciliation alone determines the payment
+  disposition. Re-signed record hashes of a non-string type are verifier
+  errors and do not replace the handler's ledger disposition. The optional
   `payment-identifier` advertisement is descriptive and carries one of the two
   pinned schemas: the `payment_identifier.md` example, or the one upstream's
   reference SDKs emit with the `id` pattern. Legacy continuation applies the

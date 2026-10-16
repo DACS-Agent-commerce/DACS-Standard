@@ -170,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(269, self.data["count"])
+        self.assertEqual(274, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -346,9 +346,24 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
              '"keccak256": lambda preimage: hashlib.sha3_256(preimage).hexdigest(),', 1, "pass", [
                  "fv-htlc-keccak256-hashlock-is-sha3-256",
              ]),
+            # Registering sha3-256 leaves only the HTLC-6 chain-native guard.
             ('"keccak256": lambda preimage: keccak256(preimage).hex(),',
              '"keccak256": lambda preimage: keccak256(preimage).hex(),\n    "sha3-256": lambda preimage: hashlib.sha3_256(preimage).hexdigest(),',
-             1, "pass", ["fv-htlc-hash-algorithm-sha3-256-unregistered"]),
+             1, "fail", ["fv-htlc-hash-algorithm-sha3-256-unregistered"]),
+            # HTLC-6: a registered identifier that is not the leg chain's hash.
+            ('        parameters["sourceHashAlgorithm"] != _chain_native_hash(profile["source"]["networkId"])\n'
+             '        or parameters["destinationHashAlgorithm"] != _chain_native_hash(profile["destination"]["networkId"])\n',
+             "        False\n", 1, "pass", ["fv-htlc-evm-leg-sha256-hashlock"]),
+            # HTLC-8: the destination lock follows pinned source-lock finality.
+            ('if destination_mined < source_mined + parameters["sourceFinalitySec"] * 1000:',
+             "if destination_mined < source_mined:", 1, "pass", [
+                 "fv-htlc-destination-lock-before-source-finality",
+                 "fv-htlc-destination-lock-one-ms-before-source-finality",
+             ]),
+            ('if destination_mined < source_mined + parameters["sourceFinalitySec"] * 1000:',
+             'if destination_mined <= source_mined + parameters["sourceFinalitySec"] * 1000:', 1, "fail", [
+                 "fv-htlc-destination-lock-at-source-finality",
+             ]),
             ('return _result("error", "unsupported AP2 protocolVersion")', "pass", 1, "pass", [
                 "fv-ap2-protocol-version-unsupported", "fv-ap2-sr3-protocol-version-unsupported",
             ]),
@@ -399,6 +414,22 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                         self.assertNotEqual(case["expected"], result["decision"], result["reason"])
                     else:
                         self.assertEqual(mutant_decision, result["decision"], result["reason"])
+
+    def test_malformed_validator_set_map_is_error_on_every_bft_path(self):
+        """FV entry: a non-object trusted validatorSets map is malformed."""
+        for name in (
+            "fv-bft-final-canonical-success",
+            "fv-ap2-sr3-canonical-success",
+            "fv-liquidity-tank-canonical-success",
+        ):
+            case = self.cases[name]
+            self.assertEqual("pass", self.evaluate_case(case)["decision"])
+            for malformed in ([1], "map", True, []):
+                trust = copy.deepcopy(self.trust)
+                trust["validatorSets"] = malformed
+                with self.subTest(case=name, validatorSets=malformed):
+                    result = verify_finality(copy.deepcopy(case["input"]), trust)
+                    self.assertEqual("error", result["decision"], result["reason"])
 
     def test_empty_or_signerless_trusted_key_maps_are_indeterminate(self):
         """FV entry: missing trusted authority is indeterminate.
@@ -628,6 +659,29 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         result = self.evaluate_case(case)
         self.assertEqual("fail", result["decision"])
         self.assertIn("ancestry link does not extend the authenticated path", result["reason"])
+
+    def test_htlc_legs_hash_under_their_own_chain_native_algorithm(self):
+        """HTLC-6: legs MUST NOT be forced to share one hash function.
+
+        The fixture codec registers only EVM HTLC legs, so the mixed
+        sha256/keccak256 route is checked under a chain table in which the
+        source chain is sha256-native.  The same bytes fail under the real
+        table, where both legs are EVM.
+        """
+        case = self.cases["fv-htlc-evm-leg-sha256-hashlock"]
+        self.assertEqual("fail", self.evaluate_case(case)["decision"])
+        parameters = case["input"]["rail"]["parameters"]
+        self.assertEqual(
+            ("sha256", "keccak256"),
+            (parameters["sourceHashAlgorithm"], parameters["destinationHashAlgorithm"]),
+        )
+        native = SFV._chain_native_hash
+        with patch.object(
+            SFV, "_chain_native_hash",
+            lambda network: "sha256" if network == "eip155:1" else native(network),
+        ):
+            result = verify_finality(copy.deepcopy(case["input"]), self.trust)
+        self.assertEqual("pass", result["decision"], result["reason"])
 
     def test_missing_htlc_and_tank_arms_never_pass(self):
         models = {

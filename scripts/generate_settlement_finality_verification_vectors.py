@@ -513,7 +513,7 @@ class FixtureFactory:
             parameters = {
                 "sourceContract": "0x00000000000000000000000000000000000000a1",
                 "destinationContract": "0x00000000000000000000000000000000000000b2",
-                "sourceHashAlgorithm": "sha256",
+                "sourceHashAlgorithm": "keccak256",
                 "destinationHashAlgorithm": "keccak256",
                 "timelockSourceSec": 7200,
                 "timelockDestSec": 3600,
@@ -708,7 +708,7 @@ class FixtureFactory:
             }
             preimage = b"fixture-htlc-preimage-392"
             encoded_preimage = b64u(preimage)
-            source_hash = hashlib.sha256(preimage).hexdigest()
+            source_hash = keccak256(preimage).hex()
             destination_hash = keccak256(preimage).hex()
             source_mined = 1_899_990_000_000
             destination_mined = source_mined + 700_000
@@ -1687,8 +1687,8 @@ def build_rejection_vectors(factory: FixtureFactory) -> list[dict]:
         event.update({
             "eventType": "htlc-lock",
             "contractAddress": "0x00000000000000000000000000000000000000a1",
-            "hashAlgorithm": "sha256",
-            "hashlock": hashlib.sha256(b"fixture-htlc-preimage-392").hexdigest(),
+            "hashAlgorithm": "keccak256",
+            "hashlock": keccak256(b"fixture-htlc-preimage-392").hex(),
             "expiry": 1_899_997_200_000,
             "minedAt": 1_899_990_000_000,
         })
@@ -2153,18 +2153,46 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
     preimage = b"fixture-htlc-preimage-392"
     sha3_hashlock = hashlib.sha3_256(preimage).hexdigest()
 
-    def destination_commits_sha3(value, algorithm):
-        for arm in ("destinationLock", "destinationReveal"):
+    def destination_commits_sha3(value, algorithm, arms=("destinationLock", "destinationReveal")):
+        for arm in arms:
             factory.rebuild_observation_event(value, (arm,), lambda event: event.update({"hashAlgorithm": algorithm, "hashlock": sha3_hashlock}))
 
     keccak_as_sha3 = factory.model_input("htlc-reveal")
-    destination_commits_sha3(keccak_as_sha3, "keccak256")
-    vectors.append(case("fv-htlc-keccak256-hashlock-is-sha3-256", "fail", "the keccak256 destination lock and reveal commit the FIPS SHA3-256 digest of the preimage", keccak_as_sha3))
+    destination_commits_sha3(keccak_as_sha3, "keccak256", ("sourceLock", "sourceClaim", "destinationLock", "destinationReveal"))
+    vectors.append(case("fv-htlc-keccak256-hashlock-is-sha3-256", "fail", "every keccak256 lock, claim and reveal commits the FIPS SHA3-256 digest of the preimage", keccak_as_sha3))
     sha3_rail = factory.model_input("htlc-reveal")
     sha3_rail["rail"]["parameters"]["destinationHashAlgorithm"] = "sha3-256"
     factory.rebind_rail(sha3_rail)
     destination_commits_sha3(sha3_rail, "sha3-256")
     vectors.append(case("fv-htlc-hash-algorithm-sha3-256-unregistered", "error", "the signed HTLC rail selects FIPS SHA3-256, which is not a registered hash identifier; the destination events commit it consistently", sha3_rail))
+    # HTLC-6: the registered identifier must also be the leg chain's native
+    # hash; sha256 is registered, but not for an EVM leg.
+    evm_sha256 = factory.model_input("htlc-reveal")
+    evm_sha256["rail"]["parameters"]["sourceHashAlgorithm"] = "sha256"
+    factory.rebind_rail(evm_sha256)
+    for arm in ("sourceLock", "sourceClaim"):
+        factory.rebuild_observation_event(evm_sha256, (arm,), lambda event: event.update({"hashAlgorithm": "sha256", "hashlock": hashlib.sha256(preimage).hexdigest()}))
+    vectors.append(case("fv-htlc-evm-leg-sha256-hashlock", "fail", "the signed HTLC rail selects sha256 for its eip155:1 source leg and both source events commit it consistently; EVM's chain-native hash is keccak256", evm_sha256))
+
+    # HTLC-8: the destination lock is mined no earlier than the source lock's
+    # mined instant plus the pinned sourceFinalitySec.  Each schedule keeps
+    # the HTLC-7 absolute-expiry inequality, so only the epoch check decides.
+    def destination_locked_after(offset_ms):
+        value = factory.model_input("htlc-reveal")
+        parameters = value["rail"]["parameters"]
+        source_mined = 1_899_990_000_000
+        destination_mined = source_mined + offset_ms
+        factory.rebuild_observation_event(value, ("destinationLock",), lambda event: event.update({
+            "minedAt": destination_mined,
+            "expiry": destination_mined + parameters["timelockDestSec"] * 1000,
+        }))
+        return value
+
+    finality_ms = 600_000
+    vectors.append(case("fv-htlc-destination-lock-before-source-finality", "fail", "the destination lock is mined 1s after the source lock, inside the pinned 600s source-finality interval; 7200s > 3601s + 600s + 600s still holds", destination_locked_after(1_000)))
+    vectors.append(case("fv-htlc-destination-lock-one-ms-before-source-finality", "fail", "the destination lock is mined 1ms before the source lock's pinned finality instant", destination_locked_after(finality_ms - 1)))
+    vectors.append(case("fv-htlc-destination-lock-at-source-finality", "pass", "the destination lock is mined exactly at the source lock's pinned finality instant", destination_locked_after(finality_ms)))
+    rail("fv-htlc-source-finality-parameter-missing", "the signed HTLC rail omits sourceFinalitySec, the pinned bound HTLC-7 and HTLC-8 are evaluated against", "htlc-reveal", lambda r: r["parameters"].pop("sourceFinalitySec"))
 
     # §9.5.6 step 6: the AP2 protocolVersion selects the rules of its era; a
     # version whose rules the verifier does not implement is error.

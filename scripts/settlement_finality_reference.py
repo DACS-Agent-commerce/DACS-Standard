@@ -977,7 +977,10 @@ def _verify_bft_certificate(observation: dict, profile: dict, trusted: dict) -> 
     set_hash = profile["validatorSetRef"]["contentHash"]
     if certificate.get("validatorSetHash") != set_hash or certificate.get("blockId") != observation["inclusionBlock"]["id"]:
         return "fail", "BFT certificate binds the wrong block or validator set"
-    validator_set = (trusted.get("validatorSets") or {}).get(set_hash)
+    validator_sets = trusted.get("validatorSets")
+    if validator_sets is not None and not isinstance(validator_sets, dict):
+        return "error", "malformed trusted validator-set map"
+    validator_set = (validator_sets or {}).get(set_hash)
     if validator_set is None:
         return "indeterminate", "trusted validator set unavailable"
     if not isinstance(validator_set, dict) or hash_value(validator_set) != set_hash:
@@ -1533,6 +1536,14 @@ def _hash_preimage(algorithm: str, preimage: bytes) -> str | None:
     return None if function is None else function(preimage)
 
 
+# HTLC-6: each leg's hashlock is its chain's native hash.
+HTLC_CHAIN_NATIVE_HASH = {"eip155": "keccak256", "solana": "sha256", "bip122": "sha256"}
+
+
+def _chain_native_hash(network_id: str) -> str | None:
+    return HTLC_CHAIN_NATIVE_HASH.get(network_id.split(":", 1)[0])
+
+
 def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, trusted: dict) -> dict:
     context = input_value.get("context")
     if not _exact_object(context, {"kind", "sourceLock", "sourceClaim", "destinationLock", "destinationReveal"}) or context.get("kind") != "htlc":
@@ -1578,6 +1589,11 @@ def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, t
     if source_hash is None or destination_hash is None:
         return _result("error", "HTLC rail selects an unsupported hash algorithm")
     if (
+        parameters["sourceHashAlgorithm"] != _chain_native_hash(profile["source"]["networkId"])
+        or parameters["destinationHashAlgorithm"] != _chain_native_hash(profile["destination"]["networkId"])
+    ):
+        return _result("fail", "HTLC rail hash algorithm is not its leg's chain-native hash")
+    if (
         events["sourceLock"].get("hashAlgorithm") != parameters["sourceHashAlgorithm"]
         or events["sourceClaim"].get("hashAlgorithm") != parameters["sourceHashAlgorithm"]
         or events["sourceLock"].get("hashlock") != source_hash
@@ -1601,9 +1617,12 @@ def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, t
         source_expiry != source_mined + parameters["timelockSourceSec"] * 1000
         or destination_expiry != destination_mined + parameters["timelockDestSec"] * 1000
         or source_expiry <= destination_expiry + (parameters["sourceFinalitySec"] + parameters["safetyWindowSec"]) * 1000
-        or destination_mined < events["sourceLock"].get("minedAt")
     ):
         return _result("fail", "HTLC timelock relation does not satisfy the signed route")
+    # HTLC-8 schedule check against the pinned source-finality bound (the
+    # HTLC-7 `source_finality`), not a proof of when the source finalized.
+    if destination_mined < source_mined + parameters["sourceFinalitySec"] * 1000:
+        return _result("fail", "HTLC destination lock was mined before pinned source-lock finality")
     return _settle(deferred, _result("pass", "all four HTLC observations and recomputed relations verified"))
 
 

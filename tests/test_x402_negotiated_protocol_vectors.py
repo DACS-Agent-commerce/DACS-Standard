@@ -23,6 +23,7 @@ from scripts.evm_crypto import evm_address
 from scripts.jcs import canonicalize as jcs_canonicalize
 from scripts.raw_json_profile import RawJsonProfileError, loads as admit_raw_json
 from scripts.sb3_binding import binding_branch
+from scripts.solana_authorization import authorization_identity as solana_identity
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -927,6 +928,18 @@ def record_wallet_authorization(effects):
         effects["walletAuthorizationCalls"] = effects.get("walletAuthorizationCalls", 0) + 1
 
 
+def retained_solana_identity(v):
+    """Derive the identity from the durably retained client-signed transaction."""
+    try:
+        runtime = v["runtime"]
+        selection = v["agreement"]["terms"]["rail"]["parameters"]["selection"]
+        return solana_identity(runtime.get("solanaAuthorization"),
+                               runtime["payer"]["paymentAddress"],
+                               selection["extra"]["feePayer"])[0]
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def reconciliation_identity(v):
     """XN-11: this session's identity, from the signed agreement and the runtime.
 
@@ -943,7 +956,11 @@ def reconciliation_identity(v):
         "jobId": agreement.get("jobId"),
         "phaseIndex": runtime.get("phaseIndex"),
         "requirementHash": digest(selected),
-        "authorizationIdentity": runtime.get("payer", {}).get("paymentAddress"),
+        "authorizationIdentity": (
+            retained_solana_identity(v)
+            if selected.get("parameters", {}).get("selection", {}).get("network", "").startswith("solana:")
+            else runtime.get("payer", {}).get("paymentAddress")
+        ),
         "facilitator": runtime.get("facilitator"),
     }
 
@@ -954,10 +971,10 @@ def reconciliation_matches(retained, v):
     The retained state may also hold the known settlementTransaction (absent or
     null after response loss) and the authorization's EIP-3009 `validBefore`.
     The transaction is the response's, so it is compared with the reconciled
-    one only after the ledger decides, as a recorded defect. The authorization
-    identity is the authorization payer, so it compares in the XN-5 adapter
-    form, and a malformed one on either side is AddressFormError even when both
-    spellings are identical.
+    one only after the ledger decides, as a recorded defect. An EIP-155
+    authorization identity is the payer in XN-5 adapter form. Solana compares
+    the message/client-signature identity derived from the durably retained
+    client transaction instead.
     """
     identity = reconciliation_identity(v)
     if identity is None or not isinstance(retained, dict):
@@ -967,6 +984,9 @@ def reconciliation_matches(retained, v):
     parameters = v["agreement"]["terms"]["rail"].get("parameters")
     selection = parameters.get("selection") if isinstance(parameters, dict) else None
     network = selection.get("network") if isinstance(selection, dict) else None
+    if network.startswith("solana:"):
+        return identity["authorizationIdentity"] is not None and all(
+            retained[field] == value for field, value in identity.items())
     try:
         payers = [adapter_address(network, payer) for payer in (
             retained["authorizationIdentity"], identity["authorizationIdentity"])]
@@ -1221,8 +1241,15 @@ def payment_payload_defect(v, required, matched, network, payer, pay_to, *, befo
     if network.startswith("solana:"):
         transaction = body.get("transaction")
         try:
-            return set(body) != {"transaction"} or not base64.b64decode(transaction, validate=True)
-        except (TypeError, ValueError):
+            if set(body) != {"transaction"}:
+                return True
+            identity, _ = solana_identity(transaction, payer, matched["extra"]["feePayer"],
+                                          before_signing=before_signing)
+            retained = retained_solana_identity(v)
+            if before_signing:
+                return retained is None or identity["messageHash"] != retained["messageHash"]
+            return identity != retained
+        except (KeyError, TypeError, ValueError):
             return True
     authorization = body.get("authorization")
     if (
@@ -1338,7 +1365,8 @@ def native_event_matches(event, network, transaction):
     return False
 
 
-def reconcile_settlement(ledger, selection, amount, payer, pay_to, valid_before=None):
+def reconcile_settlement(ledger, selection, amount, payer, pay_to, valid_before=None,
+                         authorization_identity=None):
     """XN-11/XN-8: the payment disposition, from authenticated ledger data alone.
 
     `ledger` is what the adapter resolves for the retained authorization
@@ -1393,6 +1421,19 @@ def reconcile_settlement(ledger, selection, amount, payer, pay_to, valid_before=
         return "error", "ledger-transaction-form", None
     if not native_event_matches(ledger["settlementEvent"], network, transaction):
         return "error", "ledger-event-key", None
+    if network.startswith("solana:"):
+        # A response transaction or matching transfer terms cannot identify a
+        # client authorization. Resolve its exact message/signatures from the
+        # authenticated transaction bytes, including the sponsor's signature.
+        if authorization_identity is None or ledger.get("transactionBase64") is None:
+            return "indeterminate", "authorization-identity-unavailable", None
+        try:
+            resolved, transaction_id = solana_identity(
+                ledger["transactionBase64"], payer, selection["extra"]["feePayer"], finalized=True)
+        except (KeyError, TypeError, ValueError):
+            return "error", "ledger-authorization-form", None
+        if transaction_id != transaction or resolved != authorization_identity:
+            return "indeterminate", "authorization-identity-mismatch", None
     try:
         ledger_payer = adapter_address(network, ledger.get("payer"))
         ledger_pay_to = adapter_address(network, ledger.get("payTo"))
@@ -1753,7 +1794,8 @@ def evaluate(v, effects=None):
         except (AttributeError, KeyError, TypeError, ValueError):
             return "error", "reconciliation-terms"
         verdict, reason, event = reconcile_settlement(
-            v.get("ledger"), selection, amount, payer, pay_to, retained.get("validBefore")
+            v.get("ledger"), selection, amount, payer, pay_to, retained.get("validBefore"),
+            retained_solana_identity(v)
         )
         if verdict != "pass":
             return verdict, reason
@@ -2050,7 +2092,8 @@ def evaluate(v, effects=None):
         defect, record = check_record(v, required, response, response_fault, selection, request)
         if defect is not None:
             return defect
-        verdict, reason, event = reconcile_settlement(ledger, selection, amount, payer, pay_to)
+        verdict, reason, event = reconcile_settlement(
+            ledger, selection, amount, payer, pay_to, authorization_identity=retained_solana_identity(v))
         if verdict != "pass":
             return verdict, reason
         return record_ledger_defect(record, event) or ("pass", record["responseFault"])
@@ -2059,7 +2102,7 @@ def evaluate(v, effects=None):
     # authorization identity against authenticated ledger data. It needs no
     # success record, and no response material or stored record can replace it.
     verdict, reason, event = reconcile_settlement(
-        ledger, selection, amount, payer, pay_to, retained_valid_before(v)
+        ledger, selection, amount, payer, pay_to, retained_valid_before(v), retained_solana_identity(v)
     )
     if verdict != "pass":
         return verdict, reason
@@ -2584,6 +2627,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-facilitator-switched",
             "retry-retained-facilitator-absent",
             "retry-static-arm-ref",
+            "retry-solana-response-lost-settled",
+            "retry-solana-substituted-transaction",
+            "retry-solana-identity-lookup-unavailable",
+            "retry-solana-response-lost-unsettled",
         )
         names += tuple(f"retry-record-{member}-not-string-{shape}"
                        for member in ("paymentRequiredHash", "paymentReceiptHash")
@@ -2764,7 +2811,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             with self.subTest(vector=vector["name"], change="ledger disposition"):
                 self.assertEqual(verdict, reconcile_settlement(
                     vector.get("ledger"), selection, amount, payer, pay_to,
-                    retained_valid_before(vector))[0])
+                    retained_valid_before(vector), retained_solana_identity(vector))[0])
             for label, strip in (("no record", ("evidence",)), ("no response", ("http", "responseHeader"))):
                 with self.subTest(vector=vector["name"], change=label):
                     changed = copy.deepcopy(vector)
@@ -2799,7 +2846,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # Every stored-record verdict a verifier gives leaves the payment to the
         # ledger, after the wallet call and on retry alike.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
-        self.assertEqual(len(records), 50)
+        self.assertEqual(len(records), 52)
         for vector in records:
             for operation in ("execute", "retry"):
                 with self.subTest(record=vector["name"], operation=operation):
@@ -3138,15 +3185,127 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 effects = {}
                 self.assertEqual(evaluate(vector, effects), want)
                 self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
-        # Solana stays exact: one changed letter case is another authorization
-        # identity. Unchanged, it reconciles to the settled ledger event.
+        # Solana retains a signed-message/client-signature identity, separate
+        # from the sponsor signature that later becomes the transaction ID.
         vector = copy.deepcopy(self.by_name["protocol-v2-solana-exact-success"])
         vector["operation"] = "retry"
         vector["runtime"]["reconciliationState"] = reconciliation_identity(vector)
         self.assertEqual(evaluate(copy.deepcopy(vector)), ("pass", None))
         state = vector["runtime"]["reconciliationState"]
-        state["authorizationIdentity"] = state["authorizationIdentity"].swapcase()
+        state["authorizationIdentity"]["payer"] = state["authorizationIdentity"]["payer"].swapcase()
         self.assertEqual(evaluate(vector), ("fail", "reconciliation-binding"))
+
+    def test_solana_reconciliation_rejects_substituted_transaction_coordinates(self):
+        """Changing only valid ledger coordinates cannot credit another payment."""
+        base = self.by_name["protocol-v2-solana-exact-success"]
+        selection = base["agreement"]["terms"]["rail"]["parameters"]["selection"]
+        for operation in ("execute", "retry", "verify-evidence"):
+            for transaction in (base58(bytes([2]) * 64), base58(bytes([3]) * 64)):
+                with self.subTest(operation=operation, transaction=transaction):
+                    vector = copy.deepcopy(base)
+                    vector["operation"] = operation
+                    self.assertIsNotNone(adapter_canonical_transaction(selection["network"], transaction))
+                    vector["ledger"].update({"transaction": transaction,
+                                             "settlementEvent": f"solana:devnet:{transaction}:4"})
+                    effects = {}
+                    self.assertEqual(evaluate(vector, effects),
+                                     ("indeterminate", "authorization-identity-mismatch"))
+                    self.assertEqual(effects.get("walletAuthorizationCalls", 0),
+                                     int(operation == "execute"))
+                    self.assertNotIn("builtEvidence", effects)
+        # Also reject another genuinely signed, finalized transaction rather
+        # than just mismatched coordinates beside the original wire bytes.
+        for operation in ("execute", "retry", "verify-evidence"):
+            with self.subTest(genuine_substitution=operation):
+                vector = copy.deepcopy(self.by_name[f"{operation}-solana-substituted-transaction"])
+                for field in ("network", "scheme", "asset", "assetDecimals", "amount", "payer", "payTo"):
+                    self.assertEqual(vector["ledger"][field], base["ledger"][field])
+                self.assertEqual(vector["runtime"]["paidHeaders"], base["runtime"]["paidHeaders"])
+                self.assertNotEqual(vector["ledger"]["transactionBase64"], base["ledger"]["transactionBase64"])
+                effects = {}
+                self.assertEqual(evaluate(vector, effects), ("indeterminate", "authorization-identity-mismatch"))
+                self.assertNotIn("builtEvidence", effects)
+
+    def test_solana_retry_uses_the_retained_authorization_after_response_loss(self):
+        """No paid header, response, record or sponsor transaction ID is needed on retry."""
+        vector = copy.deepcopy(self.by_name["retry-solana-response-lost-settled"])
+        vector["runtime"].pop("paidHeaders")
+        state = vector["runtime"]["reconciliationState"]
+        state.pop("settlementTransaction")
+        effects = {}
+        self.assertEqual(evaluate(vector, effects), ("pass", None))
+        self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+        self.assertEqual(effects["builtEvidence"]["settlementTransaction"], vector["ledger"]["transaction"])
+        for field, value in (("transactionBase64", None), ("available", False), ("finalized", False)):
+            with self.subTest(unavailable=field):
+                pending = copy.deepcopy(vector)
+                pending["ledger"][field] = value
+                effects = {}
+                self.assertEqual(evaluate(pending, effects)[0], "indeterminate")
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+                self.assertNotIn("builtEvidence", effects)
+        # Retained bytes are immutable: changing the message invalidates its
+        # client signature and cannot turn another message into this identity.
+        raw = bytearray(base64.b64decode(vector["runtime"]["solanaAuthorization"]))
+        raw[-2] ^= 1
+        vector["runtime"]["solanaAuthorization"] = base64.b64encode(raw).decode()
+        self.assertEqual(evaluate(vector), ("fail", "reconciliation-binding"))
+
+    def test_solana_wallet_is_after_message_validation_and_signature_faults_reconcile(self):
+        base = self.by_name["protocol-v2-solana-exact-success"]
+        for transaction in (base64.b64encode(b"opaque transaction").decode(),
+                            base64.b64encode(base64.b64decode(base["runtime"]["solanaAuthorization"])[:-1]).decode()):
+            with self.subTest(malformed=transaction):
+                vector = copy.deepcopy(base)
+                payload = admit_raw_json(base64.b64decode(vector["runtime"]["paidHeaders"]["PAYMENT-SIGNATURE"]))
+                payload["payload"]["transaction"] = transaction
+                vector["runtime"]["paidHeaders"]["PAYMENT-SIGNATURE"] = base64.b64encode(
+                    json.dumps(payload).encode()).decode()
+                effects = {}
+                self.assertEqual(evaluate(vector, effects), ("fail", "paid-request-payload"))
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+        vector = copy.deepcopy(base)
+        payload = admit_raw_json(base64.b64decode(vector["runtime"]["paidHeaders"]["PAYMENT-SIGNATURE"]))
+        raw = bytearray(base64.b64decode(payload["payload"]["transaction"]))
+        raw[65] ^= 1  # the first client-signature byte, without changing its message
+        payload["payload"]["transaction"] = base64.b64encode(raw).decode()
+        vector["runtime"]["paidHeaders"]["PAYMENT-SIGNATURE"] = base64.b64encode(json.dumps(payload).encode()).decode()
+        for available in (False, True):
+            vector["ledger"]["available"] = available
+            effects = {}
+            want = ("pass", "paid-request-payload") if available else (
+                "indeterminate", "independent-settlement-unavailable")
+            self.assertEqual(evaluate(vector, effects), want)
+            self.assertEqual(effects.get("walletAuthorizationCalls", 0), 1)
+            self.assertEqual(effects["handlerFault"], "paid-request-payload")
+            self.assertEqual("builtEvidence" in effects, available)
+
+    def test_solana_malformed_resolved_transaction_never_builds_success_evidence(self):
+        base = self.by_name["protocol-v2-solana-exact-success"]
+        wire = base64.b64decode(base["ledger"]["transactionBase64"])
+        malformed = [wire + b"trailing"]
+        for signature_offset in (1, 65):
+            corrupted = bytearray(wire)
+            corrupted[signature_offset] ^= 1
+            malformed.append(bytes(corrupted))
+        for operation in ("execute", "retry", "verify-evidence"):
+            for raw in malformed:
+                with self.subTest(operation=operation, malformed=raw[:3]):
+                    vector = copy.deepcopy(base)
+                    vector["operation"] = operation
+                    vector["ledger"]["transactionBase64"] = base64.b64encode(raw).decode()
+                    effects = {}
+                    self.assertEqual(evaluate(vector, effects), ("error", "ledger-authorization-form"))
+                    self.assertEqual(effects.get("walletAuthorizationCalls", 0), int(operation == "execute"))
+                    self.assertNotIn("builtEvidence", effects)
+
+    def test_solana_verifier_uses_disclosed_authorization_not_paid_header(self):
+        vector = copy.deepcopy(self.by_name["protocol-v2-solana-exact-success"])
+        vector["operation"] = "verify-evidence"
+        vector["runtime"]["paidHeaders"]["PAYMENT-SIGNATURE"] = "unreadable"
+        self.assertEqual(evaluate(vector), ("pass", None))
+        vector["runtime"].pop("solanaAuthorization")
+        self.assertEqual(evaluate(vector), ("indeterminate", "authorization-identity-unavailable"))
 
     def test_literal_public_target_classes_are_explicit(self):
         rejected = (
@@ -3509,11 +3668,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
 
     def test_every_member_classification_vector_depends_on_its_check(self):
-        """Each vector the XN-6 member check rejects would otherwise pass.
+        """Member classification precedes the independent authorization checks.
 
-        With the check removed, every vector pinned to one of its reasons
-        reaches `pass`: each member is signed and received, so only the
-        classification rejects it.
+        Most classified members are rejected only by this gate. A malformed
+        Solana sponsor also fails the independent transaction-identity gate.
         """
         global challenge_member_defect
         reasons = {
@@ -3529,7 +3687,15 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         try:
             for name in names:
                 with self.subTest(vector=name, mutant="member check removed"):
-                    self.assertEqual(evaluate(copy.deepcopy(self.by_name[name])), ("pass", None))
+                    # The transaction identity check independently requires a
+                    # real sponsor key; removing classification cannot make a
+                    # missing or malformed Solana fee payer usable.
+                    redundant = name in {
+                        "solana-extra-fee-payer-absent", "solana-extra-fee-payer-object",
+                        "solana-extra-fee-payer-not-base58", "solana-extra-fee-payer-short",
+                    }
+                    want = ("fail", "paid-request-payload") if redundant else ("pass", None)
+                    self.assertEqual(evaluate(copy.deepcopy(self.by_name[name])), want)
         finally:
             challenge_member_defect = check
 
@@ -3867,7 +4033,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "each an ASCII letter, digit, hyphen, or underscore",
             "`nonce` MUST be the SB-3 derived nonce.",
             "The handler MUST retain that `validBefore` in the XN-11 form before the wallet signs.",
-            "This profile checks that form only: it does not decode the partially signed transaction.",
+            "The message and client signatures MUST equal the durably retained XN-11 authorization identity.",
+            "verify all required signatures including the sponsor signature",
+            "If the adapter cannot resolve the transaction or obtain the authenticated message/signatures",
             "`base-sepolia` 84532, `base` 8453, `avalanche-fuji` 43113, and `avalanche` 43114. Any "
             "other v1 network maps to no `chainId`.",
             "**Failure modes (`x402:protocol` only).**",

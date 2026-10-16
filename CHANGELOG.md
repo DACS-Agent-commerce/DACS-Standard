@@ -54,7 +54,10 @@ The format used per release:
   retains that `validBefore` as a safe integer and validates the composed
   envelope and to-be-signed fields. Post-signing payload defects are recorded
   as handler faults while ledger reconciliation alone determines the payment
-  disposition. Re-signed record hashes of a non-string type are verifier
+  disposition. Solana reconciliation retains the exact signed message and
+  client signatures, verifies the resolved full transaction and sponsor
+  transaction ID, and keeps an unresolved identity pending after response loss.
+  Re-signed record hashes of a non-string type are verifier
   errors and do not replace the handler's ledger disposition. The optional
   `payment-identifier` advertisement is descriptive and carries one of the two
   pinned schemas: the `payment_identifier.md` example, or the one upstream's

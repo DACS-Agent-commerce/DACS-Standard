@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from jcs import canonicalize as jcs_canonicalize
 from raw_json_profile import loads as admit_raw_json
+from solana_authorization import authorization_identity as solana_identity
 from evm_crypto import (
     deterministic_ecdsa_sha256,
     evm_address,
@@ -94,7 +95,6 @@ REQUEST_HEADERS = {"Accept": "application/json"}
 # facilitator verify the signature itself.
 EIP712_SIGNATURE = "0x" + hashlib.sha256(b"DACS #274 EIP-712 r").hexdigest() + hashlib.sha256(
     b"DACS #274 EIP-712 s").hexdigest() + "1b"
-SOLANA_PAYMENT_TRANSACTION = base64.b64encode(b"DACS #274 partially signed transaction").decode("ascii")
 FACILITATOR = "https://facilitator-a.example"
 # X402-1: the v1 SettlementResponse of the x402-receipt-hash corpus's
 # `v1-success-x-payment-response` case (its `canonicalReceipt`).
@@ -109,7 +109,6 @@ VALID_BEFORE = 1787443260
 SOLANA_NETWORK = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
 SOLANA_ASSET = "3" * 44
 SOLANA_SELLER = "5" * 44
-SOLANA_TX = "1" * 64
 BUYER_CLAIM = "did:demos:agent:" + "11" * 32
 SELLER_CLAIM = "did:demos:agent:" + "22" * 32
 STEWARD_CLAIM = "did:demos:agent:" + "44" * 32
@@ -181,7 +180,41 @@ SOLANA_BUYER = base58(solana_public_key_bytes())
 # XN-5 Solana case vectors need a seller with letters, which SOLANA_SELLER lacks.
 LETTERED_SOLANA_SELLER = base58(hashlib.sha256(b"DACS #274 lettered Solana seller").digest())
 # A Solana `extra` names the fee payer's key; the mint is the `asset`.
-SOLANA_FEE_PAYER = base58(hashlib.sha256(b"DACS #274 Solana fee payer").digest())
+SOLANA_SPONSOR_KEY = Ed25519PrivateKey.from_private_bytes(
+    hashlib.sha256(b"DACS #274 Solana fee payer").digest())
+SOLANA_SPONSOR_PUBLIC = SOLANA_SPONSOR_KEY.public_key().public_bytes(
+    encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw)
+SOLANA_FEE_PAYER = base58(SOLANA_SPONSOR_PUBLIC)
+
+
+def solana_transactions(blockhash=b"DACS #274 Solana blockhash"):
+    """Wire-valid v0 fixtures: sponsor + client, TransferChecked, no lookups.
+
+    These offline fixture keys and synthetic accounts never hold real funds.
+    The ledger fixture supplies the independently verified execution outcome.
+    """
+    def key_bytes(value):
+        number = 0
+        for char in value:
+            number = number * 58 + "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz".index(char)
+        return number.to_bytes(32, "big")
+
+    keys = [SOLANA_SPONSOR_PUBLIC, solana_public_key_bytes(),
+            hashlib.sha256(b"source token account").digest(),
+            hashlib.sha256(b"destination token account").digest(),
+            key_bytes(SOLANA_ASSET), key_bytes("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")]
+    data = b"\x0c" + (1250000).to_bytes(8, "little") + b"\x06"
+    instruction = bytes([5, 4, 2, 4, 3, 1, len(data)]) + data
+    message = (bytes([128, 2, 1, 2, len(keys)]) + b"".join(keys)
+               + hashlib.sha256(blockhash).digest() + b"\x01" + instruction + b"\x00")
+    client = solana_payment_key().sign(message)
+    sponsor = SOLANA_SPONSOR_KEY.sign(message)
+    partial = base64.b64encode(b"\x02" + bytes(64) + client + message).decode("ascii")
+    full = base64.b64encode(b"\x02" + sponsor + client + message).decode("ascii")
+    return partial, full, base58(sponsor)
+
+
+SOLANA_PAYMENT_TRANSACTION, SOLANA_FINAL_TRANSACTION, SOLANA_TX = solana_transactions()
 
 
 def public_key(role: str) -> str:
@@ -614,7 +647,7 @@ def payment_payload(value: dict) -> dict:
     payload["accepted"] = copy.deepcopy(accepted)
     network = value["agreement"]["terms"]["rail"]["parameters"]["selection"].get("network")
     if isinstance(network, str) and network.startswith("solana:"):
-        payload["payload"] = {"transaction": SOLANA_PAYMENT_TRANSACTION}
+        payload["payload"] = {"transaction": value["runtime"].get("solanaAuthorization", SOLANA_PAYMENT_TRANSACTION)}
     else:
         retained = value["runtime"].get("reconciliationState")
         valid_before = retained.get("validBefore") if isinstance(retained, dict) else None
@@ -878,8 +911,19 @@ def build_vectors() -> list[dict]:
             "decimals": 6,
             "currency": "USDC",
         }
+        v["runtime"]["solanaAuthorization"] = SOLANA_PAYMENT_TRANSACTION
+        v["runtime"]["reconciliationState"] = {
+            "jobId": v["agreement"]["jobId"],
+            "phaseIndex": v["runtime"]["phaseIndex"],
+            "requirementHash": digest(v["agreement"]["terms"]["rail"]),
+            "authorizationIdentity": solana_identity(
+                SOLANA_PAYMENT_TRANSACTION, SOLANA_BUYER, SOLANA_FEE_PAYER)[0],
+            "facilitator": v["runtime"]["facilitator"],
+            "settlementTransaction": SOLANA_TX,
+        }
         event = f"solana:{cluster}:{SOLANA_TX}:4"
         v["ledger"].update({
+            "transactionBase64": SOLANA_FINAL_TRANSACTION,
             "network": network,
             "transaction": SOLANA_TX,
             "settlementEvent": event,
@@ -2301,12 +2345,15 @@ def build_vectors() -> list[dict]:
         v["ledger"]["available"] = False
         v["runtime"]["reconciliationState"].update({
             "requirementHash": digest(v["agreement"]["terms"]["rail"]),
-            "authorizationIdentity": SOLANA_BUYER.replace("k", "K", 1),
+            "authorizationIdentity": {
+                **v["runtime"]["reconciliationState"]["authorizationIdentity"],
+                "payer": SOLANA_BUYER.replace("k", "K", 1),
+            },
             "settlementTransaction": SOLANA_TX,
         })
     add_case(vectors, "retry-solana-authorization-identity-case-changed", "fail", "XN-11/XN-5",
              "base58 is case-sensitive, so a retained Solana authorization identity with one "
-             "changed letter case names a different payer",
+             "changed letter case differs from the retained signed authorization",
              retry_solana_authorization_identity_case_changed, operation="retry",
              authorization_submitted=True, reason="reconciliation-binding")
 
@@ -3515,6 +3562,7 @@ def build_vectors() -> list[dict]:
         add_case(vectors, f"listing-{name}", "fail", "XN-2/LR-2", note, listing_shape(change),
                  operation="admit-listing", reason="listing-shape")
 
+    add_solana_identity_cases(vectors, solana_exact)
     add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, response_lost,
                            listing_pipeline(fixed_price, "commit-payee-bound-agreement"),
                            listing_pipeline(fixed_price, "commit-identity-bound-payee-agreement"))
@@ -3600,6 +3648,60 @@ def build_vectors() -> list[dict]:
         add_case(vectors, f"fee-rate-{name}", verdict, "FR-2/XN-1/XN-5", note, mutate,
                  operation="fee-rate-amount", reason=reason, tamper=tamper)
     return vectors
+
+
+def add_solana_identity_cases(vectors, solana_exact):
+    def lost(v):
+        solana_exact(v)
+        v.pop("evidence", None)
+        v["http"].pop("responseHeader", None)
+        v["runtime"]["reconciliationState"]["settlementTransaction"] = None
+
+    add_case(vectors, "solana-response-lost-settled", "pass", "XN-11",
+             "the retained client-signed message resolves after response loss without evidence",
+             lost, reason="response-header", authorization_submitted=True)
+    add_case(vectors, "retry-solana-response-lost-settled", "pass", "XN-11",
+             "a retry resolves the retained client signatures without knowing the sponsor transaction ID",
+             lost, operation="retry", authorization_submitted=True)
+
+    for operation in ("execute", "retry", "verify-evidence"):
+        def substituted(v):
+            solana_exact(v)
+            _, full, transaction = solana_transactions(b"different valid blockhash")
+            v["ledger"].update({"transaction": transaction, "transactionBase64": full,
+                                 "settlementEvent": f"solana:devnet:{transaction}:4"})
+        add_case(vectors, f"{operation}-solana-substituted-transaction", "indeterminate", "XN-8/XN-11",
+                 "a genuinely signed different message with identical transfer terms cannot settle this authorization",
+                 substituted, operation=operation, refresh=True,
+                 authorization_submitted=True, reason="authorization-identity-mismatch")
+
+    for operation in ("execute", "retry", "verify-evidence"):
+        def unknown(v):
+            solana_exact(v)
+            v["ledger"].pop("transactionBase64")
+        add_case(vectors, f"{operation}-solana-identity-lookup-unavailable", "indeterminate", "XN-8/XN-11",
+                 "matching transfer metadata without authenticated transaction bytes leaves identity unresolved",
+                 unknown, operation=operation, refresh=True, authorization_submitted=True,
+                 reason="authorization-identity-unavailable")
+
+    for operation in ("execute", "retry"):
+        def pending(v):
+            lost(v)
+            v["ledger"] = {"available": True, "finalized": True}
+        add_case(vectors, f"{operation}-solana-response-lost-unsettled", "indeterminate", "XN-11",
+                 "no resolved transaction after response loss stays pending without a new authorization",
+                 pending, operation=operation, authorization_submitted=True,
+                 reason="authorization-unsettled")
+
+    def mismatched_coordinate(v):
+        solana_exact(v)
+        _, _, transaction = solana_transactions(b"another transaction coordinate")
+        v["ledger"].update({"transaction": transaction,
+                             "settlementEvent": f"solana:devnet:{transaction}:4"})
+    add_case(vectors, "solana-transaction-id-not-sponsor-signature", "indeterminate", "XN-8/XN-11",
+             "the ledger coordinate must equal the authenticated full transaction's sponsor signature",
+             mismatched_coordinate, refresh=True, authorization_submitted=True,
+             reason="authorization-identity-mismatch")
 
 
 def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, response_lost,

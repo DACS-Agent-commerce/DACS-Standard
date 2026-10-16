@@ -152,3 +152,10 @@ The vector validator checks:
 These vectors are non-normative tooling around the standard. The normative source
 remains the [spec documents](../../spec/). When a vector and
 the specification disagree, the specification wins and the vector should be fixed.
+
+The negotiated x402 corpus also exercises Solana transaction-specific authorization
+retention: complete legacy/v0 framing, verified client signatures, sponsor
+co-signing, authenticated finalized transaction identity, retry and response loss,
+substituted transactions, and unavailable identity lookups. Offline signed wire
+fixtures model transaction identity; authenticated ledger fixtures still supply
+execution outcomes and finality. They do not implement a live RPC resolver.

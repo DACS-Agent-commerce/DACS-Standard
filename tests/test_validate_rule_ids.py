@@ -63,6 +63,49 @@ class RuleIdValidationTests(unittest.TestCase):
             errors = validator.validate_repo(root)
             self.assertEqual(errors, ["docs/rule-id-index.md: missing rule family entry: XYZ-*"])
 
+    def test_capabilities_use_table_definitions_without_a_rule_family_index_entry(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "spec").mkdir()
+            (root / "spec" / "CORE.md").write_text(
+                "# Core\n\n"
+                "| ID | Capability | Description | Used by |\n"
+                "| --- | --- | --- | --- |\n"
+                "| SR-1 | Identity | Optional aggregation | DACS-1 |\n"
+                "| SR-2 | Storage | Anchored storage | DACS-1 |\n",
+                encoding="utf-8",
+            )
+            module = root / "spec" / "DACS-1-IDENTIFY.md"
+            module.write_text("Uses SR-1 and SR-2; composes EIP-4361 and ERC-8004.\n", encoding="utf-8")
+            validator = load_validator()
+            self.assertEqual(validator.validate_repo(root), [])
+            # A parenthesized reference must not become a capability definition.
+            module.write_text("Uses SR-99 (SR-99), which is absent from CORE's table.\n", encoding="utf-8")
+            self.assertEqual(validator.validate_repo(root), [
+                "spec/SPECIFICATION.md: referenced substrate capability SR-99 is not defined"
+            ])
+
+    def test_missing_capability_table_does_not_silently_accept_a_reference(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "spec").mkdir()
+            (root / "spec" / "SPECIFICATION.md").write_text("Requires SR-2.\n", encoding="utf-8")
+            self.assertEqual(load_validator().validate_repo(root), [
+                "spec/SPECIFICATION.md: referenced substrate capability SR-2 is not defined"
+            ])
+
+    def test_sr2_rules_still_require_definitions_and_index_entries(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "spec").mkdir()
+            (root / "spec" / "SPECIFICATION.md").write_text(
+                "(SR2-1) Readers MUST check receipts. See SR2-99.\n", encoding="utf-8"
+            )
+            self.assertEqual(load_validator().validate_repo(root), [
+                "spec/SPECIFICATION.md: referenced rule SR2-99 is not defined",
+                "docs/rule-id-index.md: missing rule family entry: SR2-*",
+            ])
+
 
 if __name__ == "__main__":
     unittest.main()

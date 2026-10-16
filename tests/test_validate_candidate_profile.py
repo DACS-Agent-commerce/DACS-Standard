@@ -337,6 +337,15 @@ class CandidateProfileValidationTests(unittest.TestCase):
             "reference to rule SIG-99 that spec/ does not define",
         )
 
+    def test_unknown_substrate_capability_is_rejected(self):
+        text = mutate(self.text, "job reference through SR-2.", "job reference through SR-99.")
+        self.assert_structural(text, "reference to substrate capability SR-99 that spec/ does not define")
+
+    def test_candidate_cannot_define_its_own_substrate_capability(self):
+        text = mutate(self.text, "job reference through SR-2.", "job reference through SR-99.")
+        text += "\n| SR-99 | Candidate-only capability | Unregistered | DACS-4 |\n"
+        self.assert_structural(text, "reference to substrate capability SR-99 that spec/ does not define")
+
     def test_m08_domain_version_mismatch(self):
         self.assert_structural(
             mutate(self.text, '  escrowDecisionVersion: "1"', '  escrowDecisionVersion: "2"'),

@@ -8,7 +8,7 @@ spec validators (which read spec/ only) never see it. This checker pins it:
 - every capitalized requirement keyword sits in a labelled rule, and no
   prohibition is phrased as "No ... MAY"; a "MAY ... only" restriction counts
   as a requirement;
-- every rule reference resolves in the candidate or in spec/;
+- every rule or substrate-capability reference resolves in the candidate or in spec/;
 - every type in SIGNED_TYPES is defined once with exactly one version member
   and is signed by exactly one `"dacs-x-...:vN:" || <operand>` line whose
   version matches; every signing-domain line in a code block has that form,
@@ -401,6 +401,7 @@ def validate_text(text: str, spec_text: str) -> list[str]:
             errors.append(f"rule family {family} has gaps: " + ", ".join(f"{family}-{n}" for n in missing))
 
     spec_defined = validate_rule_ids.defined_rule_ids(spec_text)
+    spec_capabilities = validate_rule_ids.defined_capability_ids(spec_text)
     spec_families = {validate_rule_ids.rule_family(rule_id) for rule_id in spec_defined}
     for family in sorted(set(families) & spec_families):
         errors.append(f"candidate rule family {family} collides with a spec/ rule family")
@@ -419,6 +420,12 @@ def validate_text(text: str, spec_text: str) -> list[str]:
         if is_rule and NO_MAY_RE.search(line):
             errors.append(f"line {number}: prohibition phrased as 'No ... MAY'; use MUST NOT")
         for token in validate_rule_ids.RULE_ID_RE.findall(INLINE_CODE_RE.sub("", line)):
+            if validate_rule_ids.CAPABILITY_REF_RE.fullmatch(token):
+                if token not in spec_capabilities:
+                    errors.append(
+                        f"line {number}: reference to substrate capability {token} that spec/ does not define"
+                    )
+                continue
             if not validate_rule_ids.is_rule_like(token):
                 continue
             if validate_rule_ids.rule_family(token) in NON_RULE_FAMILIES:

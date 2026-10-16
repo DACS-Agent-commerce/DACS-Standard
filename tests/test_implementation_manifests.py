@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -8,6 +9,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "validate_implementation_manifests.py"
 EXAMPLE_DIR = ROOT / "conformance" / "implementation-manifests"
+V04_COMMIT = "4bb9e48a1095ab32c06c25b7c0b52018d3ce4091"
+
+
+def git_show(commit, path):
+    return subprocess.run(["git", "-C", str(ROOT), "show", f"{commit}:{path}"],
+                          capture_output=True, text=True, check=True).stdout
 
 
 def load_validator():
@@ -51,6 +58,102 @@ class ImplementationManifestTests(unittest.TestCase):
                 self.assertTrue(manifest["implementation"]["repository"].startswith("https://example.invalid/"))
                 self.assertEqual(manifest["liveTests"], [])
         self.assertIn("not a claim about any implementation", readme)
+
+    def test_fixed_price_pay_dem_claims_stay_within_their_evidence(self):
+        # IM-4 does not check case tiers or rule coverage, so the examples' own
+        # scoping is pinned here against the v0.4 suite they cite.
+        suite = json.loads(git_show(V04_COMMIT, "conformance/MANIFEST.json"))
+        tiers = {case["id"]: case["status"] for case in suite["cases"]}
+        applicable_fixed_price = {
+            case["id"] for case in suite["cases"]
+            if case["area"] == "negotiate" and case["status"] == "golden"
+            and case["spec"] in {"§8.5.1", "§8.5.2"} and "sealed-envelope" not in case["id"]
+        }
+        rd5 = {case["id"] for case in suite["cases"]
+               if case["status"] == "golden" and case["spec"].endswith(" RD-5")}
+        # No v0.4 case exercises these; RD-1..RD-4 are registry-steward duties.
+        unexercised = {"DACS-3-8.4.1", "PS-1", "PS-2"}
+        steward = {"RD-1", "RD-2", "RD-3", "RD-4"}
+        for role in ("seller", "buyer"):
+            with self.subTest(role=role):
+                manifest = load_example(f"fixed-price-pay-dem-{role}.json")
+                runs = {run["id"]: run for run in manifest["testRuns"]}
+                capabilities = {cap["ref"]: cap for cap in manifest["capabilities"]}
+                self.assertEqual(manifest["conformanceSuite"]["commit"], V04_COMMIT)
+                self.assertEqual(set(runs["fixed-price-vectors"]["caseIds"]), applicable_fixed_price)
+                self.assertEqual(set(runs["rail-coherence-vectors"]["caseIds"]), rd5)
+                self.assertEqual(capabilities["fixed-price"]["testStatus"], "partial")
+                for claim in manifest["claims"]:
+                    rules = set(claim["ruleRefs"])
+                    self.assertFalse(rules & steward, claim["id"])
+                    if role == "buyer":
+                        self.assertFalse({rule for rule in rules if rule.startswith("PS-")}, claim["id"])
+                    if claim["result"] in {"conformant", "conformance-tested"}:
+                        self.assertFalse(rules & unexercised, claim["id"])
+                        cases = {case for ref in claim["evidenceRefs"] for case in runs[ref]["caseIds"]}
+                        self.assertEqual({tiers[case] for case in cases}, {"golden"}, claim["id"])
+                fixed = next(c for c in manifest["claims"] if c["capabilityRefs"] == ["fixed-price"])
+                self.assertEqual(fixed["result"], "implemented")
+                self.assertTrue(unexercised - {"PS-1", "PS-2"} <= set(fixed["ruleRefs"]))
+        readme = (EXAMPLE_DIR / "README.md").read_text(encoding="utf-8")
+        self.assertIn("does not check\nwhether a cited case is golden or candidate", readme)
+
+    def seller_example(self):
+        manifest = load_example("fixed-price-pay-dem-seller.json")
+        self.assertEqual(self.validate(copy.deepcopy(manifest)), [])
+        return manifest
+
+    def passing_claim(self, manifest):
+        return next(claim for claim in manifest["claims"] if claim["result"] == "conformance-tested")
+
+    def test_suite_manifest_path_must_stay_within_the_repository(self):
+        # IM-1 pins the suite by path as well as commit and hash.
+        for path in ("../MANIFEST.json", "/conformance/MANIFEST.json", "conformance/../../MANIFEST.json", ""):
+            with self.subTest(path=path):
+                manifest = self.seller_example()
+                manifest["conformanceSuite"]["manifestPath"] = path
+                errors = self.validate(manifest)
+                self.assertTrue(any("manifestPath must" in error for error in errors), errors)
+        manifest = self.seller_example()
+        manifest["conformanceSuite"]["manifestPath"] = "conformance/vectors/golden.json"
+        self.assertTrue(any("manifestPath" in error for error in self.validate(manifest)))
+
+    def test_full_profile_claim_must_cover_every_pinned_document(self):
+        manifest = self.seller_example()
+        claim = self.passing_claim(manifest)
+        claim.update(level="full-profile", result="conformant",
+                     modules=["CORE", "DACS-1", "DACS-2", "DACS-3", "DACS-4"])
+        errors = self.validate(manifest)
+        self.assertTrue(any("full-profile claim must cover every pinned document" in error for error in errors))
+        claim["modules"].append("DACS-5")
+        errors = self.validate(manifest)
+        self.assertFalse(any("full-profile claim must cover" in error for error in errors))
+
+    def test_manifest_version_must_be_one(self):
+        for version in ("2", 1, None):
+            with self.subTest(version=version):
+                manifest = self.seller_example()
+                manifest["manifestVersion"] = version
+                self.assertIn('test-manifest.manifestVersion must be "1"', self.validate(manifest))
+
+    def test_rule_refs_resolve_at_the_pinned_profile_commit(self):
+        # LAA-1 is defined in this checkout but not at the examples' v0.4 pin.
+        self.assertIn("(LAA-1)", (ROOT / "spec" / "DACS-4-SETTLE.md").read_text(encoding="utf-8"))
+        self.assertNotIn("(LAA-1)", git_show(V04_COMMIT, "spec/DACS-4-SETTLE.md"))
+        manifest = self.seller_example()
+        manifest["claims"][0]["ruleRefs"].append("LAA-1")
+        errors = self.validate(manifest)
+        self.assertTrue(any("unresolved specification references: LAA-1" in error for error in errors), errors)
+
+    def test_experimental_capability_cannot_appear_in_passing_claim(self):
+        # IM-6's second sentence, with a correctly x- prefixed capability.
+        manifest = self.seller_example()
+        claim = self.passing_claim(manifest)
+        capability = next(cap for cap in manifest["capabilities"] if cap["ref"] == claim["capabilityRefs"][0])
+        capability.update(supportStatus="experimental", id="x-" + capability["id"])
+        errors = self.validate(manifest)
+        self.assertFalse(any("experimental id must start with x-" in error for error in errors))
+        self.assertTrue(any("passing claim cannot include non-implemented" in error for error in errors), errors)
 
     def test_schema_and_workflow_pin_versioned_validation(self):
         schema_errors = []

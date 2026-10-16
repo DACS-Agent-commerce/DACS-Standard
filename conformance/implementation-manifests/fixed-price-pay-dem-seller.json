@@ -31,11 +31,11 @@
     {
       "id": "claim-fixed-price-seller",
       "level": "capability",
-      "result": "conformance-tested",
+      "result": "implemented",
       "roles": ["seller"],
       "modules": ["DACS-3"],
       "capabilityRefs": ["fixed-price"],
-      "ruleRefs": ["DACS-3-8.4.1", "DACS-3-8.5.2", "PS-1", "PS-2", "PS-3"],
+      "ruleRefs": ["DACS-3-8.4.1", "DACS-3-8.5.1", "DACS-3-8.5.2", "PS-1", "PS-2", "PS-3"],
       "evidenceRefs": ["fixed-price-vectors"]
     },
     {
@@ -55,8 +55,8 @@
       "roles": ["seller"],
       "modules": ["DACS-4"],
       "capabilityRefs": ["demos-native-dem-rail"],
-      "ruleRefs": ["RD-1", "RD-2", "RD-3", "RD-4", "RD-5"],
-      "evidenceRefs": ["pay-dem-vectors"]
+      "ruleRefs": ["RD-5"],
+      "evidenceRefs": ["pay-dem-vectors", "rail-coherence-vectors"]
     },
     {
       "id": "claim-storage-program-delivery-seller",
@@ -77,7 +77,7 @@
       "modules": ["DACS-3"],
       "roles": ["seller"],
       "supportStatus": "implemented",
-      "testStatus": "passed",
+      "testStatus": "partial",
       "evidenceRefs": ["fixed-price-vectors"]
     },
     {
@@ -98,7 +98,7 @@
       "roles": ["seller"],
       "supportStatus": "implemented",
       "testStatus": "partial",
-      "evidenceRefs": ["pay-dem-vectors"]
+      "evidenceRefs": ["pay-dem-vectors", "rail-coherence-vectors"]
     },
     {
       "ref": "storage-program-delivery",
@@ -126,10 +126,17 @@
       "id": "fixed-price-vectors",
       "result": "pass",
       "caseIds": [
+        "neg-band-inclusive",
+        "neg-currency-mismatch",
+        "neg-rail-reject",
+        "neg-deliverable",
+        "neg-deadline-committedat",
+        "neg-notafter",
         "neg-pattern-mismatch",
         "neg-ps3-fixed-over-negotiable",
         "neg-priceanchor-absent-ok",
-        "neg-priceanchor-present"
+        "neg-priceanchor-present",
+        "neg-price-noncanonical"
       ],
       "command": "illustrative-example conformance run --capability fixed-price"
     },
@@ -138,6 +145,16 @@
       "result": "pass",
       "caseIds": ["pb2-tier1-pay-dem-intrinsic-matches"],
       "command": "illustrative-example conformance run --capability pay-dem"
+    },
+    {
+      "id": "rail-coherence-vectors",
+      "result": "pass",
+      "caseIds": [
+        "settlement-incoherent-rail-type-handler-fail",
+        "settlement-rail-network-mismatch-fail",
+        "settlement-cross-chainid-matching-kind-pass"
+      ],
+      "command": "illustrative-example conformance run --rail demos-native:DEM"
     },
     {
       "id": "storage-program-delivery-vectors",

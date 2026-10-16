@@ -63,40 +63,63 @@ class ImplementationManifestTests(unittest.TestCase):
         # IM-4 does not check case tiers or rule coverage, so the examples' own
         # scoping is pinned here against the v0.4 suite they cite.
         suite = json.loads(git_show(V04_COMMIT, "conformance/MANIFEST.json"))
-        tiers = {case["id"]: case["status"] for case in suite["cases"]}
         applicable_fixed_price = {
             case["id"] for case in suite["cases"]
             if case["area"] == "negotiate" and case["status"] == "golden"
             and case["spec"] in {"§8.5.1", "§8.5.2"} and "sealed-envelope" not in case["id"]
         }
-        rd5 = {case["id"] for case in suite["cases"]
-               if case["status"] == "golden" and case["spec"].endswith(" RD-5")}
-        # No v0.4 case exercises these; RD-1..RD-4 are registry-steward duties.
-        unexercised = {"DACS-3-8.4.1", "PS-1", "PS-2"}
-        steward = {"RD-1", "RD-2", "RD-3", "RD-4"}
+        # No v0.4 case exercises §8.4.1, PS-1, PS-2, a demos-native rail or the
+        # §9.6.1 DV rules, so every capability is partial and claimed as implemented.
+        self.assertFalse([case["id"] for case in suite["cases"] if "DV-" in case["spec"]])
+        delivery = {"settlement-delivery-pass", "settlement-delivery-missing-deliverable-fail",
+                    "settlement-delivery-malformed-contenthash-fail",
+                    "settlement-storage-anchored-as-entitlement-fail"}
         for role in ("seller", "buyer"):
             with self.subTest(role=role):
                 manifest = load_example(f"fixed-price-pay-dem-{role}.json")
                 runs = {run["id"]: run for run in manifest["testRuns"]}
-                capabilities = {cap["ref"]: cap for cap in manifest["capabilities"]}
+                claims = {claim["capabilityRefs"][0]: claim for claim in manifest["claims"]}
                 self.assertEqual(manifest["conformanceSuite"]["commit"], V04_COMMIT)
                 self.assertEqual(set(runs["fixed-price-vectors"]["caseIds"]), applicable_fixed_price)
-                self.assertEqual(set(runs["rail-coherence-vectors"]["caseIds"]), rd5)
-                self.assertEqual(capabilities["fixed-price"]["testStatus"], "partial")
+                self.assertEqual(set(runs["storage-program-delivery-vectors"]["caseIds"]), delivery)
+                self.assertEqual({claim["result"] for claim in manifest["claims"]}, {"implemented"})
+                self.assertEqual({cap["testStatus"] for cap in manifest["capabilities"]
+                                  if cap["supportStatus"] == "implemented"}, {"partial"})
+                # The RD-5 cases test EVM and Solana rails, and `next` withdrew the
+                # chain-ID pass case; RD-1..RD-5 are rail-author duties (§9.4.3, §9.10).
+                cited = {case for run in runs.values() for case in run["caseIds"]}
+                self.assertNotIn("settlement-cross-chainid-matching-kind-pass", cited)
+                self.assertNotIn("rail-coherence-vectors", runs)
+                self.assertEqual(claims["demos-native-dem-rail"]["ruleRefs"], ["DACS-4-9.4.2"])
+                self.assertEqual(claims["demos-native-dem-rail"]["evidenceRefs"], ["pay-dem-vectors"])
                 for claim in manifest["claims"]:
                     rules = set(claim["ruleRefs"])
-                    self.assertFalse(rules & steward, claim["id"])
+                    self.assertFalse({rule for rule in rules if rule.startswith("RD-")}, claim["id"])
                     if role == "buyer":
                         self.assertFalse({rule for rule in rules if rule.startswith("PS-")}, claim["id"])
-                    if claim["result"] in {"conformant", "conformance-tested"}:
-                        self.assertFalse(rules & unexercised, claim["id"])
-                        cases = {case for ref in claim["evidenceRefs"] for case in runs[ref]["caseIds"]}
-                        self.assertEqual({tiers[case] for case in cases}, {"golden"}, claim["id"])
-                fixed = next(c for c in manifest["claims"] if c["capabilityRefs"] == ["fixed-price"])
-                self.assertEqual(fixed["result"], "implemented")
-                self.assertTrue(unexercised - {"PS-1", "PS-2"} <= set(fixed["ruleRefs"]))
+                self.assertIn("DACS-3-8.4.1", claims["fixed-price"]["ruleRefs"])
+                self.assertEqual(claims["storage-program-delivery"]["ruleRefs"], ["DACS-4-9.6.1"])
         readme = (EXAMPLE_DIR / "README.md").read_text(encoding="utf-8")
         self.assertIn("does not check\nwhether a cited case is golden or candidate", readme)
+        self.assertIn("RD-1..RD-5 are rail-author duties (§9.4.3, §9.10)", readme)
+        self.assertIn("none exercises DV-1..DV-4", readme)
+
+    def test_x402_example_passing_claims_omit_unexercised_pipeline_rules(self):
+        # Neither original fixed-price case exercises PS-1 or PS-2; the PS-3
+        # golden case backs the narrowed claim.
+        manifest = load_example()
+        suite_pin = manifest["conformanceSuite"]
+        suite = json.loads(git_show(suite_pin["commit"], suite_pin["manifestPath"]))
+        tiers = {case["id"]: case["status"] for case in suite["cases"]}
+        runs = {run["id"]: run for run in manifest["testRuns"]}
+        fixed = next(claim for claim in manifest["claims"] if claim["capabilityRefs"] == ["fixed-price"])
+        self.assertEqual((fixed["result"], fixed["ruleRefs"]), ("conformance-tested", ["PS-3"]))
+        cases = {case for ref in fixed["evidenceRefs"] for case in runs[ref]["caseIds"]}
+        self.assertIn("neg-ps3-fixed-over-negotiable", cases)
+        self.assertEqual({tiers[case] for case in cases}, {"golden"})
+        for claim in manifest["claims"]:
+            if claim["result"] in {"conformant", "conformance-tested"}:
+                self.assertFalse({"PS-1", "PS-2"} & set(claim["ruleRefs"]), claim["id"])
 
     def seller_example(self):
         manifest = load_example("fixed-price-pay-dem-seller.json")
@@ -104,7 +127,15 @@ class ImplementationManifestTests(unittest.TestCase):
         return manifest
 
     def passing_claim(self, manifest):
-        return next(claim for claim in manifest["claims"] if claim["result"] == "conformance-tested")
+        # The examples make no passing claim, so promote the delivery claim and
+        # check that the promoted manifest is valid before the test changes it.
+        claim = next(claim for claim in manifest["claims"]
+                     if claim["capabilityRefs"] == ["storage-program-delivery"])
+        claim["result"] = "conformance-tested"
+        capability = next(cap for cap in manifest["capabilities"] if cap["ref"] == "storage-program-delivery")
+        capability["testStatus"] = "passed"
+        self.assertEqual(self.validate(copy.deepcopy(manifest)), [])
+        return claim
 
     def test_suite_manifest_path_must_stay_within_the_repository(self):
         # IM-1 pins the suite by path as well as commit and hash.

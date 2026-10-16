@@ -55,13 +55,13 @@
       "roles": ["buyer"],
       "modules": ["DACS-4"],
       "capabilityRefs": ["demos-native-dem-rail"],
-      "ruleRefs": ["RD-5"],
-      "evidenceRefs": ["pay-dem-vectors", "rail-coherence-vectors"]
+      "ruleRefs": ["DACS-4-9.4.2"],
+      "evidenceRefs": ["pay-dem-vectors"]
     },
     {
       "id": "claim-storage-program-delivery-buyer",
       "level": "capability",
-      "result": "conformance-tested",
+      "result": "implemented",
       "roles": ["buyer"],
       "modules": ["DACS-4"],
       "capabilityRefs": ["storage-program-delivery"],
@@ -98,7 +98,7 @@
       "roles": ["buyer"],
       "supportStatus": "implemented",
       "testStatus": "partial",
-      "evidenceRefs": ["pay-dem-vectors", "rail-coherence-vectors"]
+      "evidenceRefs": ["pay-dem-vectors"]
     },
     {
       "ref": "storage-program-delivery",
@@ -107,7 +107,7 @@
       "modules": ["DACS-4"],
       "roles": ["buyer"],
       "supportStatus": "implemented",
-      "testStatus": "passed",
+      "testStatus": "partial",
       "evidenceRefs": ["storage-program-delivery-vectors"]
     },
     {
@@ -145,16 +145,6 @@
       "result": "pass",
       "caseIds": ["pb2-tier1-pay-dem-intrinsic-matches"],
       "command": "illustrative-example conformance run --capability pay-dem"
-    },
-    {
-      "id": "rail-coherence-vectors",
-      "result": "pass",
-      "caseIds": [
-        "settlement-incoherent-rail-type-handler-fail",
-        "settlement-rail-network-mismatch-fail",
-        "settlement-cross-chainid-matching-kind-pass"
-      ],
-      "command": "illustrative-example conformance run --rail demos-native:DEM"
     },
     {
       "id": "storage-program-delivery-vectors",

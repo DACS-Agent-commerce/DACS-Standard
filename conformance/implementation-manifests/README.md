@@ -24,10 +24,9 @@ say this through those placeholder values.
 Both pin the coordinated v0.4 release: the annotated tag `v0.4` named in
 [PROFILE](../../spec/PROFILE.md), at commit `4bb9e48`, with the conformance
 manifest at that commit. They scope each claim to what its cited cases
-exercise:
+exercise, and no capability is exercised fully enough at that pin for a
+passing claim:
 
-- `deliver-storage-program`, whose golden cases exercise the claimed section,
-  is `conformance-tested`;
 - `fixed-price` cites every golden §8.5.x case that applies to it, but no case
   in the v0.4 suite exercises the §8.4.1 procedure (including its auto-accept
   checks) or PS-1 and PS-2. It is therefore `partial` and claimed only as
@@ -36,10 +35,20 @@ exercise:
   them to the listing publisher;
 - `pay-dem`, with a single candidate case, is `partial` and claimed only as
   `implemented`;
-- the `demos-native:DEM` rail claims RD-5 with its golden cases, not the
-  registry steward's RD-1..RD-4 authoring duties;
+- the `demos-native:DEM` rail is claimed against its DACS-4 §9.4.2 registry
+  entry with the `pay-dem` case, as `implemented`. No v0.4 case exercises a
+  `demos-native` rail, and RD-1..RD-5 are rail-author duties (§9.4.3, §9.10);
+- `deliver-storage-program` cites four golden cases that check delivery
+  evidence and its anchor, but none exercises DV-1..DV-4 or the extended
+  pointer that §9.6.1 requires above the 128 KB cap. The v0.4
+  `private-deliverables-v0.1` security set probes the DV rules, but its
+  vectors are not cases in the pinned conformance manifest. Delivery is
+  therefore `partial` and claimed only as `implemented`;
 - the out-of-scope `rfq` pattern is listed as `unsupported`; and
 - `availability` is omitted, as IM-2 allows for a non-operational library capability.
+
+`fixed-price-x402-seller.json` claims `conformance-tested` for PS-3 only, with
+the PS-3 golden case among its evidence; no case it cites exercises PS-1 or PS-2.
 
 This scoping is the examples' own choice. IM-4 requires only that cited case
 ids exist in the pinned conformance manifest, and the validator does not check

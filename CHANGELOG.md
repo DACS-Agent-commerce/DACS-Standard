@@ -332,6 +332,22 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
     record (`fail`), a record (`pass`, fixture-only), and a malformed
     record (`error`).
 
+### Conformance coverage and reference alignment
+
+- Finality fixtures now cover combined staleness, missing authority and
+  deterministic signature or relation failures (249 → 269 cases). The reference
+  retains uncertainty while checking available certificate, event and provider
+  data, preserving the FV-10 four-value precedence.
+- Tank completion policy applies to every operational availability, including
+  `operator_gated`, `closed_data` and `bilateral` (33 → 36 availability cases).
+  The specification, mapping and flow trace distinguish the pinned node's
+  experimental status from hypothetical completed-node fixtures.
+- Historical current-use replay pins the original mapping's exact bundle bytes
+  with a second valid signed binding at the same address (35 → 36 cases).
+- Keccak-256 tests include known digests and SHA3-padding checks against
+  `hashlib.sha3_256` at block boundaries. The release-pin tuple test reports an
+  explicit skip when a source archive or shallow clone lacks the pinned commit.
+
 ### Changed — current-delivery admission corrective boundary
 
 - **Breaking pre-v1 correction** (CORE v0.3 §11.1.2, DACS-4 v0.8 PDE-7/PDE-8,

@@ -22,7 +22,7 @@ AVAILABILITY = {
 }
 GATED = {"operator_gated", "closed_data", "bilateral"}
 # DEMOS-MAPPING A.5: handlers whose substrate the pinned node does not
-# complete; a live rail needs trusted policy saying the node completes them.
+# complete; every operational availability needs trusted completion policy.
 NODE_GATED_HANDLERS = {"pay-cross-chain-liquidity-tank"}
 REQUIRED_RAIL_FIELDS = {
     "railVersion", "railId", "railType", "asset", "network", "phaseHandler",
@@ -113,7 +113,7 @@ def evaluate(vector):
     if not isinstance(completed, list) or any(type(item) is not str for item in completed):
         return "error"
     if (
-        availability == "live"
+        availability in {"live", *GATED}
         and rail.get("phaseHandler") in NODE_GATED_HANDLERS
         and rail["phaseHandler"] not in completed
     ):
@@ -276,6 +276,24 @@ class RailAvailabilitySelectionVectorTests(unittest.TestCase):
         testing = copy.deepcopy(incomplete)
         testing["ctx"]["operatorContext"]["production"] = False
         self.assertEqual("fail", evaluate(testing))
+
+    def test_gated_tank_rails_require_completion_in_every_execution_mode(self):
+        for availability in sorted(GATED):
+            case = self.by_name[
+                "tank-" + availability.replace("_", "-") + "-signed-node-incomplete"
+            ]
+            for production in (True, False):
+                value = copy.deepcopy(case)
+                value["ctx"]["operatorContext"]["production"] = production
+                with self.subTest(availability=availability, production=production):
+                    self.assertTrue(value["ctx"]["operatorPreflightOk"])
+                    self.assertEqual("fail", evaluate(value))
+                    value["ctx"]["operatorContext"]["nodeCompletedHandlers"] = [
+                        "pay-cross-chain-liquidity-tank"
+                    ]
+                    self.assertEqual("pass", evaluate(value))
+                    value["ctx"]["operatorPreflightOk"] = False
+                    self.assertEqual("fail", evaluate(value))
 
     def test_discovery_hint_never_changes_authoritative_result(self):
         for vector in self.data["vectors"]:

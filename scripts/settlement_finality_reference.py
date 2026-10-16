@@ -184,8 +184,7 @@ def _trusted_key_map(trusted: dict, name: str) -> tuple[str, str] | None:
     ``indeterminate`` and malformed is ``error`` (FV entry); a usable map
     returns ``None``. Callers treat an absent entry for a signer that trusted
     authority names (session orchestrator or party, profile authority or
-    provider) as missing authority, not as a bad signature. Every such
-    absent-key reason starts with ``trusted `` (see ``_key_absent``)."""
+    provider) as missing authority, not as a bad signature (``_key_absent``)."""
     keys = trusted.get(name)
     if keys is None or keys == {}:
         return "indeterminate", f"trusted {name} unavailable"
@@ -201,11 +200,19 @@ def _key_absent(decision: str, reason: str) -> bool:
     Its caller defers it and keeps checking every later signature with an
     available key and every deterministic fact, so an absent key cannot hide
     a ``fail`` or ``error`` (FV entry, FV-10)."""
-    return decision == "indeterminate" and reason.startswith("trusted ")
+    reasons = {
+        "trusted partyKeys unavailable", "trusted stewardKeys unavailable",
+        "trusted observationAuthorityKeys unavailable", "trusted providerAuthorityKeys unavailable",
+        "trusted key for the authenticated phase orchestrator unavailable",
+        "trusted key for an authenticated session party unavailable",
+        "trusted key for a profile-pinned observation authority unavailable",
+        "trusted key for the profile provider unavailable",
+    }
+    return decision == "indeterminate" and reason in reasons
 
 
 def _settle(deferred: dict | None, result: dict) -> dict:
-    """Report a deferred absent-key ``indeterminate`` unless the later checks
+    """Report a deferred ``indeterminate`` unless the later checks
     established ``error`` or ``fail``."""
     if deferred is None or result["decision"] in {"error", "fail"}:
         return result
@@ -1152,7 +1159,7 @@ def _verify_chain_observation(
     authority_decision, authority_reason = _verify_authority(observation, profile, path_ids, trusted)
     deferred = None
     if authority_decision != "pass":
-        if not _key_absent(authority_decision, authority_reason):
+        if authority_decision != "indeterminate":
             return _result(authority_decision, authority_reason), None
         deferred = _result(authority_decision, authority_reason)
     verification_time = trusted.get("verificationTimeMs")
@@ -1162,7 +1169,7 @@ def _verify_chain_observation(
         return _result("fail", "authenticated head observation is from the future"), None
     age_ms = verification_time - head["observedAt"]
     if age_ms > profile["observation"]["maxHeadAgeSec"] * 1000:
-        return _settle(deferred, _result("indeterminate", "authenticated head observation is stale")), None
+        deferred = deferred or _result("indeterminate", "authenticated head observation is stale")
 
     kind = profile["kind"]
     if kind == "block-depth":
@@ -1177,10 +1184,12 @@ def _verify_chain_observation(
             return _result("fail", "authenticated commitment is below the signed requirement"), None
     else:
         bft_decision, bft_reason = _verify_bft_certificate(observation, profile, trusted)
-        if bft_decision != "pass":
-            return _settle(deferred, _result(bft_decision, bft_reason)), None
-    # A deferred absent key still returns the event, so the caller's
-    # deterministic event checks run before it is reported.
+        if bft_decision in {"error", "fail"}:
+            return _result(bft_decision, bft_reason), None
+        if bft_decision == "indeterminate":
+            deferred = deferred or _result(bft_decision, bft_reason)
+    # Uncertainty still returns the structurally verified event, so the
+    # caller can reject deterministic event and cross-arm relation defects.
     return _settle(deferred, _result("pass", "chain observation verified")), event
 
 
@@ -1370,7 +1379,7 @@ def _verify_sr3_native_transaction(
     authority_decision, authority_reason = _verify_authority(observation, profile, path_ids, trusted)
     deferred = None
     if authority_decision != "pass":
-        if not _key_absent(authority_decision, authority_reason):
+        if authority_decision != "indeterminate":
             return authority_decision, authority_reason
         deferred = authority_decision, authority_reason
     verification_time = trusted.get("verificationTimeMs")
@@ -1380,7 +1389,7 @@ def _verify_sr3_native_transaction(
         return "fail", "SR-3 authenticated head observation is from the future"
     age_ms = verification_time - head["observedAt"]
     if age_ms > profile["observation"]["maxHeadAgeSec"] * 1000:
-        return deferred or ("indeterminate", "SR-3 authenticated head observation is stale")
+        deferred = deferred or ("indeterminate", "SR-3 authenticated head observation is stale")
 
     bft_decision, bft_reason = _verify_bft_certificate(observation, profile, trusted)
     if bft_decision in {"error", "fail"}:
@@ -1402,12 +1411,12 @@ def _combine(results: list[dict]) -> dict | None:
 
 def _combine_arms(results: list[dict], events: dict) -> tuple[dict | None, dict | None]:
     """Combine composite arm results into ``(stop, deferred)``. When every arm
-    passed or only lacks a trusted key and still produced its event, the
-    absent key is deferred so the cross-arm relations are checked first
+    passed or is indeterminate and still produced its event, the
+    uncertainty is deferred so the cross-arm relations are checked first
     (FV-10); otherwise ``stop`` is the combined result to return now."""
     combined = _combine(results)
     if combined is not None and len(events) == len(results) and all(
-        result["decision"] == "pass" or _key_absent(result["decision"], result["reason"])
+        result["decision"] in {"pass", "indeterminate"}
         for result in results
     ):
         return None, combined
@@ -1688,6 +1697,21 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
     response_hash = hashlib.sha256(response_raw).hexdigest()
     if context["responseAttestation"].get("contentHash") != response_hash:
         return _result("fail", "provider response hash differs from signed attestation reference")
+    expected_response = {
+        "providerRef": ref["providerRef"],
+        "endpointOrigin": profile["statusEndpointOrigin"],
+        "jobId": expected["jobId"],
+        "phaseIndex": expected["phaseIndex"],
+        "status": response.get("status") if isinstance(response, dict) else None,
+        "amount": expected["amount"],
+        "currency": expected["currency"],
+        "payer": expected["payer"],
+        "payee": expected["payee"],
+    }
+    if not isinstance(response, dict) or response != expected_response:
+        return _result("fail", "provider response bytes do not bind exact payment economics")
+    if response["status"] not in profile["captureStatuses"]:
+        return _result("fail", "authenticated provider status is not captured")
     deferred = None
     if sr3:
         sr3_decision, sr3_reason = _verify_sr3_native_transaction(
@@ -1699,7 +1723,7 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
             trusted,
         )
         if sr3_decision != "pass":
-            if not _key_absent(sr3_decision, sr3_reason):
+            if sr3_decision != "indeterminate":
                 return _result(sr3_decision, sr3_reason)
             deferred = _result(sr3_decision, sr3_reason)
     attestation_map = trusted.get("providerAttestations")
@@ -1747,21 +1771,6 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
         or not _finite_time(attestation.get("observedAt"))
     ):
         return _result("fail", "provider attestation does not bind the signed profile and response")
-    expected_response = {
-        "providerRef": ref["providerRef"],
-        "endpointOrigin": profile["statusEndpointOrigin"],
-        "jobId": expected["jobId"],
-        "phaseIndex": expected["phaseIndex"],
-        "status": response.get("status") if isinstance(response, dict) else None,
-        "amount": expected["amount"],
-        "currency": expected["currency"],
-        "payer": expected["payer"],
-        "payee": expected["payee"],
-    }
-    if not isinstance(response, dict) or response != expected_response:
-        return _result("fail", "provider response bytes do not bind exact payment economics")
-    if response["status"] not in profile["captureStatuses"]:
-        return _result("fail", "authenticated provider status is not captured")
     verification_time = trusted.get("verificationTimeMs")
     if not _finite_time(verification_time):
         return _result("error", "trusted verifier-local clock is malformed")

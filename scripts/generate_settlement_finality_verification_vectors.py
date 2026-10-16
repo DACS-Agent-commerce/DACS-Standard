@@ -2068,7 +2068,7 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
         assert attestations[2]["authorityRef"] == "rpc-d"
         attestations[2]["value"] = "==not base64url=="
 
-    # FV-3: a presented signature skipped for lack of a key still gets the
+    # CORE §B.7 SIG-6: a signature skipped for lack of a key still gets the
     # keyed path's encoding check, so the verdict does not depend on the key.
     vectors.append(case(
         "fv-trusted-observation-authority-key-absent-attestation-noncanonical", "fail",
@@ -2174,6 +2174,108 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
 
     vectors.append(case("fv-ap2-protocol-version-unsupported", "error", "the signed frozen ap2 reference names AP2 protocolVersion 1, whose rules the verifier does not implement", changed("provider-receipt", other_ap2_version)))
     vectors.append(case("fv-ap2-sr3-protocol-version-unsupported", "error", "the signed ap2-sr3 reference names AP2 protocolVersion 1, whose rules the verifier does not implement", changed_sr3(other_ap2_version)))
+    # FV-10: preserve deterministic checks across unavailable authority.
+    def bad_certificate(value, sr3=False):
+        observation = (value["context"]["receiptTransactionObservation"] if sr3
+                       else value["context"]["observation"])
+        signatures = observation["finalityCertificate"]["signatures"]
+        signatures[0]["value"] = signatures[1]["value"]
+
+    for sr3 in (False, True):
+        for stale in (False, True):
+            for missing_key in (False, True):
+                value = factory.provider_sr3_value() if sr3 else factory.model_input("bft-final")
+                bad_certificate(value, sr3)
+                overrides = {}
+                if stale:
+                    overrides["verificationTimeMs"] = OBSERVED_AT + 61_000
+                if missing_key:
+                    overrides["observationAuthorityKeys"] = None
+                vectors.append(case(
+                    "fv-" + ("ap2-sr3" if sr3 else "bft") + "-bad-certificate"
+                    + ("-stale" if stale else "-fresh")
+                    + ("-observation-key-absent" if missing_key else ""),
+                    "fail", "an available-key BFT signature mismatch takes precedence over staleness and absent observation keys",
+                    value, trusted_overrides=overrides,
+                ))
+
+    value = factory.provider_sr3_value()
+    native(value)["authorityEvidence"]["attestations"][0]["value"] = "==junk=="
+    vectors.append(case(
+        "fv-ap2-sr3-keyless-attestation-noncanonical", "fail",
+        "SIG-6 checks a presented SR-3 head signature even without its key", value,
+        trusted_overrides={"observationAuthorityKeys": None},
+    ))
+    value = changed("block-depth", lambda v: v["evidence"]["signature"].__setitem__("value", "==junk=="))
+    vectors.append(case(
+        "fv-keyless-evidence-signature-noncanonical", "fail",
+        "SIG-6 checks presented evidence signature encoding independently of party-key availability",
+        value, trusted_overrides={"partyKeys": None},
+    ))
+    value = unconfigured_and(lambda v: v["evidence"]["signature"].__setitem__("value", "==junk=="))
+    vectors.append(case(
+        "fv-orchestrator-key-absent-evidence-signature-noncanonical", "fail",
+        "the session names a keyless orchestrator while the other party keys remain available; malformed evidence signature encoding is still fail",
+        value, trusted_overrides=unconfigured_authority,
+    ))
+    for key_map in ("partyKeys", "stewardKeys"):
+        value = changed("block-depth", lambda v: (
+            v["evidence"]["settlementFinality"].__setitem__("finalityBlocks", 13),
+            factory.resign_evidence(v["evidence"]),
+        ))
+        vectors.append(case(
+            "fv-" + key_map + "-absent-depth-echo-mismatch", "fail",
+            "a missing stage key cannot hide the signed report's depth mismatch",
+            value, trusted_overrides={key_map: None},
+        ))
+
+    for sr3, key_map in ((True, "observationAuthorityKeys"), (False, "providerAuthorityKeys")):
+        value = factory.provider_sr3_value() if sr3 else factory.model_input("provider-receipt")
+        response_hash = value["context"]["responseAttestation"]["contentHash"]
+        attestation = copy.deepcopy(factory.trusted["providerAttestations"][response_hash])
+        attestation["providerRef"] = "other-provider-ref"
+        vectors.append(case(
+            "fv-" + ("ap2-sr3" if sr3 else "provider") + "-key-absent-provider-binding-mismatch", "fail",
+            "a missing observation or provider key cannot hide a provider signature or binding mismatch",
+            value, trusted_overrides={key_map: None, "providerAttestations": {response_hash: attestation}},
+        ))
+        if sr3:
+            value = copy.deepcopy(value)
+            value["context"].pop("receiptTransactionObservation")
+            vectors.append(case(
+                "fv-ap2-sr3-observation-absent-provider-signature-invalid", "fail",
+                "an unavailable SR-3 observation cannot hide a bad available-key provider signature",
+                value, trusted_overrides={"providerAttestations": {response_hash: attestation}},
+            ))
+
+    # A decoded event remains usable for deterministic cross-arm checks even
+    # when its finality authority is unavailable or stale.
+    tank_mismatch = factory.model_input("liquidity-tank")
+    factory.rebuild_observation_event(
+        tank_mismatch, ("coordinator",),
+        lambda event: event.__setitem__("sourceEventHash", "00" * 32),
+    )
+    for label, overrides in (
+        ("validator-set-absent", {"validatorSets": None}),
+        ("stale", {"verificationTimeMs": OBSERVED_AT + 61_000}),
+    ):
+        vectors.append(case(
+            "fv-tank-relation-mismatch-" + label, "fail",
+            "deterministic tank relations take precedence over incomplete finality authority",
+            copy.deepcopy(tank_mismatch), trusted_overrides=overrides,
+        ))
+    value = copy.deepcopy(tank_mismatch)
+    value["context"]["coordinator"]["finalityCertificate"] = None
+    vectors.append(case(
+        "fv-tank-relation-mismatch-certificate-absent", "fail",
+        "a missing BFT certificate cannot hide a decoded tank relation mismatch", value,
+    ))
+    provider_not_captured, _ = factory.provider_variant(status="declined")
+    vectors.append(case(
+        "fv-provider-attestation-absent-noncapture", "fail",
+        "an absent provider attestation cannot hide a proved noncapture in the response bytes",
+        copy.deepcopy(provider_not_captured), trusted_overrides={"providerAttestations": None},
+    ))
     return vectors
 
 

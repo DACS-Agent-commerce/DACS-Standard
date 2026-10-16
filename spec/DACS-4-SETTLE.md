@@ -299,7 +299,7 @@ The v0.1 registry contains rail entries for the most-used settlement paths in pr
 | ap2:stripe-paymentintents | pay-ap2 | AP2 mandate to Stripe PaymentIntents |
 | x402:default | pay-x402 | Generic x402 HTTP 402 micropayment |
 
-**v0.1 cross-chain settlement scope.** Production availability of `pay-cross-chain-liquidity-tank` is **unavailable/experimental** (DEMOS-MAPPING §A.5): at the pinned Demos node the compiled bridge operation is unsigned, the chain parsers return no result, and the cited route registry does not exist. Until a pinned node commit returns a complete, signed compiled operation and publishes its route registry, the steward MUST NOT sign this rail `live`, and an orchestrator MUST NOT select it, even from a steward-signed, pinned `live` definition, unless its trusted local operator policy (the RAV-R2 source) records that its pinned node completes `pay-cross-chain-liquidity-tank` (RAV-R1). Missing policy is not that record; malformed policy fails closed. The intended initial scope is ETH Sepolia → Polygon Amoy testnet, USDC, EVM-source unidirectional. All other tank rails are 🟡 to-add. v0.1 keeps both `pay-cross-chain-liquidity-tank` and `pay-cross-chain-htlc` first-class.
+**v0.1 cross-chain settlement scope.** Production availability of `pay-cross-chain-liquidity-tank` is **unavailable/experimental** (DEMOS-MAPPING §A.5): at the pinned Demos node the compiled bridge operation is unsigned, the chain parsers return no result, and the cited route registry does not exist. Until a pinned node commit returns a complete, signed compiled operation and publishes its route registry, the steward MUST NOT sign this rail `live`, and an orchestrator MUST NOT select it with `live`, `operator_gated`, `closed_data` or `bilateral` availability unless its trusted local operator policy (the RAV-R2 source) records that its pinned node completes `pay-cross-chain-liquidity-tank` (RAV-R1). Missing policy is not that record; malformed policy fails closed. The intended initial scope is ETH Sepolia → Polygon Amoy testnet, USDC, EVM-source unidirectional. All other tank rails are 🟡 to-add. v0.1 keeps both `pay-cross-chain-liquidity-tank` and `pay-cross-chain-htlc` first-class.
 
 > **Note (non-normative).** Further tank routes unlock as Native Bridges Phase 2–4 ship: Solana tanks, bidirectional routes, additional EVM rails, mainnet deployments, non-USDC stablecoins. HTLC is the path the reference implementation runs today — a ~929-LOC reference (Solana Anchor program + Base Sepolia EVM HTLC contract) with lock/reveal/refund implemented end-to-end.
 
@@ -425,7 +425,7 @@ Every RailDefinition MUST declare an availability value, with the same value set
 
 **Orchestrator obligations.**
 
-- (RAV-R1) An orchestrator MUST inspect rail availability before selecting a rail for a session.
+- (RAV-R1) An orchestrator MUST inspect rail availability before selecting a rail for a session. For `pay-cross-chain-liquidity-tank`, every otherwise selectable operational availability (`live`, `operator_gated`, `closed_data`, or `bilateral`) additionally requires trusted local operator policy recording that the pinned node completes the handler (§9.4). Operator preflight alone does not establish node completion. Non-production `mocked` fixtures remain subject to RAV-R2.
 - (RAV-R2) For any new session, an orchestrator MUST NOT select a rail with availability `disabled` or `failed`. For a new production session, it additionally MUST NOT select a rail with availability `mocked`. Production/non-production mode for this decision MUST come from trusted local implementation or operator execution policy established before rail selection. It is not a `RailDefinition` or session-artifact field and MUST NOT be supplied or overridden by a listing, rail definition, discovery/catalog record, counterparty, or other evaluated protocol input. Non-production mode MUST be explicitly configured for development or testing; missing, malformed, or unauthenticated mode is not authority to select `mocked`, and the orchestrator MUST fail closed. A session that already pinned a rail MAY continue under that pinned definition when a later registry revision marks the rail `disabled`; the orchestrator MUST NOT reinterpret that permission as authority to create a replacement or additional session. `failed` settlement attempts remain subject to RAV-R4.
 - (RAV-R3) An orchestrator MAY select rails with availability values operator_gated, closed_data, or bilateral only if the relevant operator-side configuration is in place; this is a runtime preflight check, not a static property of the rail.
 - (RAV-R4) A rail's `availability` is pinned at session start (§9.13), so a mid-session availability *flip* is not observable from the pinned definition; RAV-R4 therefore binds at the point of use. If a settlement attempt on the pinned rail fails because the rail is non-operational, the orchestrator MUST classify the failure `errorClass: "substrate"`, not `counterparty`. Rail-non-operational means a rail-down / substrate failure, as distinct from a transient RPC hiccup or a counterparty error.
@@ -2069,17 +2069,20 @@ is `error`. A missing or empty key map is missing authority. So is a
 well-formed map that lacks the key of a signer the authenticated session or
 signed profile names (the phase orchestrator, a session party, a pinned
 observation authority, or the profile provider); such a signer cannot count
-toward a quorum. A signature is `fail` only when checked against an available
-key. An absent key does not end evaluation: across the evidence, Agreement,
-rail and context stages, within one observation, and across a composite
+toward a quorum. A cryptographic signature mismatch is `fail` only when
+checked against an available key. An absent key does not end evaluation: across
+the evidence, Agreement, rail and context stages, within one observation, and across a composite
 model's arms and their relations, every signature with an available key and
 every deterministic check still runs, and any `error` or
 `fail` they establish is the result; the absent key is reported as
 `indeterminate` only when none does (FV-10). A presented signature value whose
 key is absent still gets the encoding check a keyed verification applies first,
 so a malformed value is `fail` whether or not the verifier holds the key
-(FV-3). A rail signer absent from a non-empty steward key map is not a trusted
-steward and is `fail`.
+(CORE §B.7 SIG-6; encoding is checked independently). A rail signer absent
+from a non-empty steward key map is not a trusted steward and is `fail`.
+A missing validator-set checkpoint is authority uncertainty, distinct from
+an absent key map; on chain, SR-3 and composite paths it is deferred while
+available deterministic checks run (FV-10).
 
 - **(FV-1) Exact rail authority.** A consumer MUST classify the record by
   `finalityBoundEvidenceVersion` before finality action, resolve
@@ -2183,8 +2186,15 @@ steward and is `fail`.
   strength or non-capture is `fail`; unavailable, conflicting or unstable
   authority is `indeterminate`; only complete verification is `pass`. Evaluate
   deterministic `error`/`fail` facts before unrelated uncertainty so an
-  attacker cannot hide a mismatch by withholding another input. For the
-  `ap2-sr3` arm, a missing `receiptTransactionObservation` or a missing
+  attacker cannot hide a mismatch by withholding another input. A stale head,
+  missing certificate or validator checkpoint, or absent SR-3 observation does
+  not suppress independent certificate, event, provider or composite-relation
+  checks for which the required data is present. Within rail verification,
+  envelope shape is checked first, then signature verification, then reference
+  and governance/common-field checks. Thus an available-key signature mismatch
+  is `fail` before a later malformed governance field; an absent key defers to
+  that field's `error`. Both deterministic outcomes take precedence over
+  uncertainty. For the `ap2-sr3` arm, a missing `receiptTransactionObservation` or a missing
   `sr3Binding`-bound finality authority is `indeterminate`, a malformed
   observation or malformed trusted authority is `error`, and a malformed
   observation is `error` before an unrelated missing authority is considered.

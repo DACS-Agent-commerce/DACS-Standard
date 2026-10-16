@@ -5,6 +5,7 @@ import base64
 import copy
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -1766,8 +1767,22 @@ class ChannelMessageVectorTests(unittest.TestCase):
 
         Read at the pinned commit itself: the PROFILE.md coordinated tuple and
         each module's front matter must equal CURRENT_MODULE_VERSIONS. CI
-        checks out full history, so the object is local; no network is used.
+        checks out full history. Source archives and shallow clones skip this
+        history-only check with an explicit reason; no network is used.
         """
+        try:
+            available = subprocess.run(
+                ["git", "cat-file", "-e", f"{CURRENT_RELEASE_PIN}^{{commit}}"],
+                cwd=ROOT, capture_output=True, text=True,
+                env={**os.environ, "GIT_NO_LAZY_FETCH": "1"},
+            )
+        except FileNotFoundError:
+            self.skipTest("release-pin history check requires git and the pinned commit locally")
+        if available.returncode:
+            self.skipTest(
+                f"release pin {CURRENT_RELEASE_PIN} unavailable locally; full git history is required "
+                "for this check (source archives and shallow clones may omit it)"
+            )
         documents = {
             "core": ("CORE", "CORE"), "dacs1": ("DACS-1-IDENTIFY", "DACS-1"),
             "dacs2": ("DACS-2-VET", "DACS-2"), "dacs3": ("DACS-3-NEGOTIATE", "DACS-3"),
@@ -1824,6 +1839,15 @@ class ChannelMessageVectorTests(unittest.TestCase):
         }
         self.assertEqual({"dacs5"}, differing)
         self.assertEqual("fail", self.fixture_result(vector, vector["operation"], AUTHORITY))
+
+    def test_release_pin_history_check_skips_when_commit_or_git_is_unavailable(self):
+        unavailable = subprocess.CompletedProcess(["git"], 128, "", "missing commit")
+        with mock.patch.object(subprocess, "run", return_value=unavailable):
+            with self.assertRaisesRegex(unittest.SkipTest, "full git history is required"):
+                self.test_release_pin_names_the_complete_module_tuple()
+        with mock.patch.object(subprocess, "run", side_effect=FileNotFoundError):
+            with self.assertRaisesRegex(unittest.SkipTest, "requires git"):
+                self.test_release_pin_names_the_complete_module_tuple()
 
     def test_ecdsa_accepts_only_canonical_der_low_s(self):
         """CORE §B.7: secp256k1 values are canonical DER with low S."""

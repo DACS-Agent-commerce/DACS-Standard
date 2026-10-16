@@ -165,7 +165,7 @@ def build() -> dict:
     live_evm = sign_rail("x402:failure-test", "live")
     # DEMOS-MAPPING A.5: the tank rail is unavailable/experimental, so the
     # fixture signs it mocked; nothing the node returns can make it live.
-    # A steward-signed live copy is selectable only when trusted local
+    # A steward-signed operational copy is selectable only when trusted local
     # operator policy records that the pinned node completes the handler.
     tank_fields = {
         "railType": "cross-chain-liquidity-tank",
@@ -264,7 +264,7 @@ def build() -> dict:
         vector(
             "tank-live-signed-node-completes",
             "pass",
-            "DACS-4 §9.4: a steward-signed, pinned live tank rail is selectable once trusted operator policy records that the pinned node completes the tank handler (fixture-only; no pinned node does today)",
+            "DACS-4 §9.4: fixture-only post-condition after a pinned node commit completes signed operations and publishes routes; trusted operator policy records handler completion (no pinned node does today)",
             tank_live,
             node_completed_handlers=["pay-cross-chain-liquidity-tank"],
         ),
@@ -289,6 +289,13 @@ def build() -> dict:
             sign_rail("x402:default", "experimental"),
         ),
     ]
+    for availability in ("operator_gated", "closed_data", "bilateral"):
+        rail = sign_rail("cross-chain-liquidity-tank:USDC", availability, fields=tank_fields)
+        vectors.append(vector(
+            "tank-" + availability.replace("_", "-") + "-signed-node-incomplete",
+            "fail", "RAV-R1: operator preflight cannot replace trusted node completion",
+            rail, preflight=True,
+        ))
     return {
         "set": "rail-availability-selection-v0.1",
         "spec": "DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6)",
@@ -301,7 +308,7 @@ def build() -> dict:
             "digest": "sha256(canonical complete unsigned RailDefinition)",
             "signature": "RailSignature.algorithm=ed25519; value is unpadded Base64URL Ed25519(dacs-rail:v1: || lowercase-hex digest)",
             "productionContext": "trusted local-operator-policy input; counterparty and discovery hints are non-authoritative",
-            "nodeCompletedHandlers": "trusted local-operator-policy list of handlers the pinned node completes; required before a live pay-cross-chain-liquidity-tank rail is selectable (DEMOS-MAPPING A.5)",
+            "nodeCompletedHandlers": "trusted local-operator-policy list of handlers the pinned node completes; required before any operational pay-cross-chain-liquidity-tank availability is selectable (DEMOS-MAPPING A.5)",
             "generator": "scripts/generate_rail_availability_selection_vectors.py",
         },
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),

@@ -1447,6 +1447,31 @@ def _lab_authority_replays() -> list[tuple]:
         "LAB-2 original BB-6 selection",
     ))
 
+    # LAB-2: the selected address must resolve the exact historical bundle,
+    # even if another authorized binding at that address verifies too.
+    factory, request = _binding_job()
+    original = _era(request)["originalMapping"]
+    address = original["binding"]["nativeAddress"]
+    bundle = factory.dependencies["bundlesByNativeAddress"][address]
+    other_bundle = factory._legacy_bundle(
+        bundle["jobId"], "buyer", factory._historical_listing(),
+        finalised_at=bundle["finalisedAt"] - 1,
+    )
+    original_hash, other_hash = bundle_hash(bundle), bundle_hash(other_bundle)
+    assert original_hash != other_hash
+    factory.dependencies["bundleAuthorityByContentHash"][other_hash] = copy.deepcopy(
+        factory.dependencies["bundleAuthorityByContentHash"][original_hash]
+    )
+    other_binding = copy.deepcopy(original["binding"])
+    other_binding["bundleContentHash"] = other_hash
+    factory.sign_bundle_binding(other_binding, "buyer")
+    factory.dependencies["bundlesByNativeAddress"][address] = other_bundle
+    original["selectionContext"]["candidateBindings"].append(other_binding)
+    cases.append(_replay_case(
+        factory, request, "historical-original-mapping-other-bytes", "fail",
+        "LAB-2 original selected bundle bytes",
+    ))
+
     # BB-7: an authorized current candidate that cannot be fetched.
     factory, request = _binding_job()
     role_request = request["roles"]["buyer"]

@@ -170,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(249, self.data["count"])
+        self.assertEqual(269, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -307,7 +307,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ('hash_value(inclusion_header) != inclusion["id"]\n        or ', "", 2, "pass", [
                 "fv-inclusion-header-bytes-substitution", "fv-ap2-sr3-inclusion-header-bytes-substitution",
             ]),
-            ('return deferred or ("indeterminate", "SR-3 authenticated head observation is stale")', "pass", 1, "pass", [
+            ('deferred = deferred or ("indeterminate", "SR-3 authenticated head observation is stale")', "pass", 1, "pass", [
                 "fv-ap2-sr3-native-head-stale-provider-fresh",
             ]),
             ('return "fail", "SR-3 authenticated head observation is from the future"', "pass", 1, "pass", [
@@ -377,11 +377,11 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ]),
             # FV-10: without deferral the earlier absent key hides the later
             # signature checked against an available key.
-            ('return decision == "indeterminate" and reason.startswith("trusted ")', "return False", 1, "indeterminate", [
+            ('return decision == "indeterminate" and reason in reasons', "return False", 1, "indeterminate", [
                 "fv-trusted-party-key-for-orchestrator-absent-agreement-signature-invalid",
                 "fv-trusted-party-key-for-orchestrator-absent-rail-signature-invalid",
             ]),
-            # FV-3: skipping a keyless attestation without its encoding check
+            # SIG-6: skipping a keyless attestation without its encoding check
             # admits the malformed value.
             ('valid_value = _signature_encoding(attestation.get("value"))', "valid_value = True", 1, "pass", [
                 "fv-trusted-observation-authority-key-absent-attestation-noncanonical",
@@ -479,6 +479,70 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                     with self.subTest(case=case["name"]):
                         expected = "1" if case["name"].endswith("protocol-version-unsupported") else pinned
                         self.assertEqual(expected, ref["protocolVersion"])
+
+    def test_keccak_known_answers_and_sha3_padding(self):
+        known = {
+            b"": "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+            b"abc": "4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45",
+        }
+        for value, digest in known.items():
+            with self.subTest(value=value):
+                self.assertEqual(digest, SFV.keccak256(value).hex())
+                self.assertNotEqual(hashlib.sha3_256(value).digest(), SFV.keccak256(value))
+        for length in (0, 1, 134, 135, 136, 137, 271, 272, 273, 1024):
+            value = bytes(index % 256 for index in range(length))
+            with self.subTest(length=length):
+                self.assertEqual(
+                    hashlib.sha3_256(value).digest(), SFV.keccak256(value, domain_padding=0x06)
+                )
+
+    def test_missing_and_empty_key_maps_preserve_deterministic_rejections(self):
+        names = {
+            "fv-ap2-sr3-keyless-attestation-noncanonical": "observationAuthorityKeys",
+            "fv-keyless-evidence-signature-noncanonical": "partyKeys",
+            "fv-partyKeys-absent-depth-echo-mismatch": "partyKeys",
+            "fv-stewardKeys-absent-depth-echo-mismatch": "stewardKeys",
+            "fv-ap2-sr3-key-absent-provider-binding-mismatch": "observationAuthorityKeys",
+            "fv-provider-key-absent-provider-binding-mismatch": "providerAuthorityKeys",
+        }
+        reasons = {
+            "fv-ap2-sr3-keyless-attestation-noncanonical": "observation authority signature does not verify",
+            "fv-keyless-evidence-signature-noncanonical": "finality-bound evidence signature does not verify",
+            "fv-partyKeys-absent-depth-echo-mismatch": "producer report depth differs from signed rail profile",
+            "fv-stewardKeys-absent-depth-echo-mismatch": "producer report depth differs from signed rail profile",
+            "fv-ap2-sr3-key-absent-provider-binding-mismatch": "provider response attestation signature does not verify",
+            "fv-provider-key-absent-provider-binding-mismatch": "provider attestation does not bind the signed profile and response",
+        }
+        for name, key_map in names.items():
+            case = self.cases[name]
+            for missing in (None, {}):
+                trust = merge(self.trust, case.get("trustedOverrides"))
+                trust[key_map] = missing
+                with self.subTest(case=name, keys=missing):
+                    result = verify_finality(case["input"], trust)
+                    self.assertEqual("fail", result["decision"], result["reason"])
+                    self.assertEqual(reasons[name], result["reason"])
+
+    def test_bft_signature_failure_precedes_staleness_with_and_without_head_keys(self):
+        for sr3 in (False, True):
+            for stale in (False, True):
+                for absent in (False, True):
+                    name = "fv-" + ("ap2-sr3" if sr3 else "bft") + "-bad-certificate"
+                    name += "-stale" if stale else "-fresh"
+                    name += "-observation-key-absent" if absent else ""
+                    result = self.evaluate_case(self.cases[name])
+                    with self.subTest(case=name):
+                        self.assertEqual("fail", result["decision"])
+                        self.assertEqual("BFT certificate signature does not verify", result["reason"])
+
+    def test_rail_signature_and_governance_precedence_matches_fv10(self):
+        case = self.cases["fv-rail-signature-key-substitution"]
+        self.assertEqual("fail", self.evaluate_case(case)["decision"])
+        trust = copy.deepcopy(self.trust)
+        trust["stewardKeys"] = {}
+        result = verify_finality(case["input"], trust)
+        self.assertEqual("error", result["decision"])
+        self.assertEqual("malformed rail authority or common fields", result["reason"])
 
     def test_every_finality_model_has_a_legitimate_control(self):
         controls = {

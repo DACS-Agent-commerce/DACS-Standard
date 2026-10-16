@@ -92,7 +92,7 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
         cls.cases = {vector["name"]: vector for vector in cls.data["vectors"]}
 
     def test_set_hash_binds_the_complete_replay_inputs(self):
-        self.assertEqual(35, self.data["count"])
+        self.assertEqual(36, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         encoded = canonical(self.data["vectors"])
         self.assertEqual(
@@ -681,6 +681,12 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
 
         real_mapping = D5._verify_original_binding_mapping
 
+        def mapping_without_bytes_join(*args):
+            outcome = real_mapping(*args)
+            if outcome == ("fail", "historical original mapping resolves different bundle bytes"):
+                return ("pass", "LAB-2 original bytes join omitted")
+            return outcome
+
         def original_candidates(keep):
             def mapping(bundle, evidence, original, receipt, dependencies,
                         verifier_config, role_map, signer_map):
@@ -771,6 +777,9 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
             "historical-bb6-candidate-not-dereferenceable": original_candidates(retrievable),
             "historical-original-party-map-not-authenticated": request_party_map(),
             "historical-original-budget-differs": request_budget(),
+            "historical-original-mapping-other-bytes": mock.patch.object(
+                D5, "_verify_original_binding_mapping", side_effect=mapping_without_bytes_join
+            ),
             # LAB-2 read as accepting the presented original binding without
             # reproducing BB-6 over the other authorized candidates.
             "historical-original-selection-not-reproducible": original_candidates(

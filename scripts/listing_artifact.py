@@ -257,6 +257,16 @@ def _valid_price(value):
     )
 
 
+def _valid_payment_rail_ref(value):
+    """PaymentRailRef (DACS-4 §9.2), in acceptedRails and pay-alternative."""
+    return (
+        isinstance(value, dict)
+        and _is_nonempty_string(value.get("railId"))
+        and _optional(value, "railVersion", _is_number)
+        and _optional(value, "parameters", lambda parameters: isinstance(parameters, dict))
+    )
+
+
 def _valid_rule_uri(value):
     """A nonempty RFC 3986 URI-reference, including relative storage names."""
     if not isinstance(value, str) or not value:
@@ -515,7 +525,7 @@ def _valid_pipeline(pipeline, pricing, deliverable):
             or concrete
             or not isinstance(refs, list)
             or len(refs) < 2
-            or any(not isinstance(ref, dict) or not _is_nonempty_string(ref.get("railId")) for ref in refs)
+            or any(not _valid_payment_rail_ref(ref) for ref in refs)
         ):
             return False
     if any(
@@ -561,8 +571,9 @@ def validate_listing_shape(listing, *, now=None, supported=None):
         or _LISTING_ID.fullmatch(listing["listingId"]) is None
     ):
         return False, "invalid listing identity", artifact_type, domain
+    # An explicit null is a present member of the wrong type, not an absent one.
     capabilities = listing.get("requiredCapabilities")
-    if capabilities is not None and (
+    if "requiredCapabilities" in listing and (
         not isinstance(capabilities, list)
         or any(not isinstance(item, str) or item not in _CAPABILITIES for item in capabilities)
     ):
@@ -620,14 +631,9 @@ def validate_listing_shape(listing, *, now=None, supported=None):
         return False, "invalid or unsupported pipeline", artifact_type, domain
 
     accepted = listing.get("acceptedRails")
-    if accepted is not None and (
+    if "acceptedRails" in listing and (
         not isinstance(accepted, list)
-        or any(
-            not isinstance(ref, dict)
-            or not _is_nonempty_string(ref.get("railId"))
-            or ("railVersion" in ref and not _is_number(ref["railVersion"]))
-            for ref in accepted
-        )
+        or any(not _valid_payment_rail_ref(ref) for ref in accepted)
     ):
         return False, "invalid acceptedRails", artifact_type, domain
     if any(step["kind"] in CONCRETE_PAYMENT_PHASES or step["kind"] == "pay-alternative" for step in pipeline):

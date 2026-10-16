@@ -511,6 +511,118 @@ class CurrentSealedPhaseShapeTests(unittest.TestCase):
                 listing["pipeline"][1]["parameters"]["candidateSetBinding"]["definitionRef"] = invalid_ref
                 self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
 
+    def historical_listing(self, rule="lowest-price", reveal_window=60):
+        listing = _legacy_listing()
+        listing["pricing"] = {"kind": "auction", "selectionRule": rule}
+        listing["pipeline"][1] = {
+            "kind": "negotiate-sealed-envelope",
+            "parameters": {
+                "commitDeadline": 200_000,
+                "revealWindow": reveal_window,
+                "selectionRule": rule,
+            },
+        }
+        listing["pipeline"][2] = {"kind": "commit-agreement"}
+        return listing
+
+    def test_auction_pricing_rule_must_equal_the_signed_phase_rule(self):
+        # DACS-3 §8.4.3: the phase rule is authoritative; PricingSpec's MUST equal it.
+        for procurement in (False, True):
+            for phase_rule, pricing_rule in (
+                ("lowest-price", "highest-price"), ("highest-price", "lowest-price"),
+            ):
+                with self.subTest(procurement=procurement, phase=phase_rule):
+                    listing = self.listing(procurement=procurement)
+                    listing["pipeline"][1]["parameters"]["selectionRule"] = phase_rule
+                    listing["pricing"]["selectionRule"] = phase_rule
+                    self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+                    listing["pricing"]["selectionRule"] = pricing_rule
+                    self.assertEqual(
+                        listing_artifact.validate_listing_shape(listing)[:2],
+                        (False, "invalid or unsupported pipeline"),
+                    )
+        rule_ref = "rule-ref:" + "ab" * 32 + ":stor-rule"
+        other_ref = "rule-ref:" + "cd" * 32 + ":stor-rule"
+        for phase_rule, pricing_rule in (
+            (rule_ref, "first-acceptable"), ("first-acceptable", rule_ref), (rule_ref, other_ref),
+        ):
+            with self.subTest(phase=phase_rule, pricing=pricing_rule):
+                listing = self.historical_listing(phase_rule)
+                self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+                listing["pricing"]["selectionRule"] = pricing_rule
+                self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+
+    def test_signed_listing_with_disagreeing_rules_is_rejected_at_admission(self):
+        key = _public_hex(_seller_private())
+        for base in (self.listing(), self.historical_listing()):
+            for pricing_rule, shape_valid in (("lowest-price", True), ("highest-price", False)):
+                listing = copy.deepcopy(base)
+                listing["pricing"]["selectionRule"] = pricing_rule
+                listing["signature"] = _sign(
+                    listing, listing_artifact.LISTING_DOMAINS[listing_artifact.LEGACY_LISTING],
+                    _seller_private(),
+                )
+                with self.subTest(negotiation=listing["pipeline"][1]["kind"], pricing=pricing_rule):
+                    verdict, reason, record = listing_admission.admit_listing(
+                        listing, inclusion_key=key, session_boundary="new-session",
+                        native_binding=_native_binding(),
+                    )
+                    self.assertIsNone(record)
+                    if shape_valid:
+                        self.assertNotEqual(reason, "listing shape is invalid")
+                    else:
+                        self.assertEqual((verdict, reason), ("rejected", "listing shape is invalid"))
+
+    def test_sealed_reveal_window_is_at_least_sixty_seconds(self):
+        for reveal_window, valid in ((59, False), (59.5, False), (60, True), (61, True)):
+            with self.subTest(reveal_window=reveal_window):
+                listing = self.historical_listing(reveal_window=reveal_window)
+                self.assertIs(listing_artifact.validate_listing_shape(listing)[0], valid)
+                listing = self.listing()
+                listing["pipeline"][1]["parameters"]["revealWindow"] = reveal_window
+                self.assertIs(listing_artifact.validate_listing_shape(listing)[0], valid)
+
+    def test_rfq_requires_at_least_two_turns(self):
+        for max_turns, valid in ((0, False), (1, False), (1.5, False), (2, True), (3, True)):
+            with self.subTest(max_turns=max_turns):
+                listing = _legacy_listing()
+                listing["pricing"] = {
+                    "kind": "negotiable",
+                    "bandCenter": {"amount": "1", "currency": "DEM"},
+                    "minPct": 0,
+                    "maxPct": 10,
+                }
+                listing["pipeline"][1] = {
+                    "kind": "negotiate-rfq",
+                    "parameters": {"maxTurns": max_turns, "timeoutSec": 30},
+                }
+                self.assertIs(listing_artifact.validate_listing_shape(listing)[0], valid)
+
+    def test_negotiation_pattern_must_match_the_pricing_kind(self):
+        # DACS-3 PS-3: an incompatible PricingSpec makes the pipeline invalid.
+        fixed = {"kind": "fixed", "price": {"amount": "1", "currency": "DEM"}}
+        auction = {"kind": "auction", "selectionRule": "lowest-price"}
+        listing = _legacy_listing()
+        self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+        listing["pricing"] = auction
+        self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+        listing = self.historical_listing()
+        self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+        listing["pricing"] = fixed
+        self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+        listing = self.listing()
+        listing["pricing"] = fixed
+        self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+        for pricing in (fixed, auction):
+            with self.subTest(rfq_pricing=pricing["kind"]):
+                listing = _legacy_listing()
+                listing["pricing"] = pricing
+                listing["pipeline"][1] = {
+                    "kind": "negotiate-rfq",
+                    "parameters": {"maxTurns": 2, "timeoutSec": 30},
+                }
+                self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+
 
 def _wrong_typed(known: str) -> tuple:
     """Every non-string JSON type, including containers that hold a known member."""
@@ -884,6 +996,47 @@ class ListingShapeBoundsTests(unittest.TestCase):
                 listing = _legacy_listing()
                 listing["acceptedRails"][0]["railVersion"] = value
                 self.assert_shape_failure(listing, "invalid acceptedRails")
+
+    def test_payment_rail_ref_parameters_is_an_object(self):
+        listing = _legacy_listing()
+        listing["acceptedRails"][0]["parameters"] = {"network": "fixture"}
+        self.assert_publishable(listing)
+        for value in (None, [], "not-an-object", True, 1):
+            with self.subTest(parameters=value):
+                listing = _legacy_listing()
+                listing["acceptedRails"][0]["parameters"] = value
+                self.assert_shape_failure(listing, "invalid acceptedRails")
+
+    def test_alternative_rail_refs_have_the_payment_rail_ref_shape(self):
+        listing = _legacy_listing()
+        refs = [{"railId": "demos-native:DEM", "railVersion": 1}, {"railId": "x402:USDC"}]
+        listing["pipeline"][3] = {"kind": "pay-alternative", "parameters": {"alternatives": refs}}
+        self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+        for member, value in (
+            ("railVersion", "1"), ("railVersion", None), ("railVersion", True),
+            ("parameters", None), ("parameters", []), ("parameters", "x"),
+        ):
+            with self.subTest(member=member, value=value):
+                changed = copy.deepcopy(listing)
+                changed["pipeline"][3]["parameters"]["alternatives"][1][member] = value
+                self.assert_shape_failure(changed, "invalid or unsupported pipeline")
+
+    def test_present_optional_arrays_are_arrays(self):
+        # An explicit null is a present, wrong-typed member, not an absent one.
+        listing = _legacy_listing()
+        listing["pipeline"] = [
+            step for step in listing["pipeline"] if not step["kind"].startswith("pay-")
+        ]
+        self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+        for field, reason in (
+            ("requiredCapabilities", "invalid requiredCapabilities"),
+            ("acceptedRails", "invalid acceptedRails"),
+        ):
+            for value in (None, {}, "SR-1"):
+                with self.subTest(field=field, value=value):
+                    changed = copy.deepcopy(listing)
+                    changed[field] = value
+                    self.assert_shape_failure(changed, reason)
 
 
 def _spec_union(text: str, anchor: str, field: str | None = None) -> set:

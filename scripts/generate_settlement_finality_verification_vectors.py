@@ -246,16 +246,19 @@ class FixtureFactory:
         commitment: str | None = None,
         bft_signers=("validator-a", "validator-b"),
         parent_id: str | None = None,
+        transaction_status: str = "success",
     ) -> dict:
         event_proof = self.merkle_proof(
             "fixture-event-merkle-v1", "eventBytes", event, label + ":event"
         )
+        # The fixture codec's "success" stands in for an executed native
+        # record (Demos `confirmed`, DACS-4 §9.5.9 DEM-7).
         transaction = {
             "networkId": profile["networkId"],
             "genesisHash": profile["genesisHash"],
             "transactionRef": copy.deepcopy(reference),
             "eventsRoot": event_proof["root"],
-            "status": "success",
+            "status": transaction_status,
         }
         transaction_proof = self.merkle_proof(
             "fixture-transaction-merkle-v1", "transactionBytes", transaction, label + ":transaction"
@@ -1392,6 +1395,19 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-bft-quorum-insufficient", "fail", "weighted quorum is recomputed from the pinned validator set", changed("bft-final", lambda v: v["context"]["observation"]["finalityCertificate"].__setitem__("signatures", v["context"]["observation"]["finalityCertificate"]["signatures"][:1]))),
         case("fv-bft-validator-key-substitution", "fail", "unknown validator cannot enter the pinned set", changed("bft-final", lambda v: v["context"]["observation"]["finalityCertificate"]["signatures"][0].__setitem__("validatorId", CLAIMS["orchestrator"]))),
     ])
+
+    # Same transfer, inclusion block and BFT certificate as the canonical
+    # bft-final case; only the authenticated execution record failed.
+    execution_failed = factory.model_input("bft-final")
+    obs = execution_failed["context"]["observation"]
+    encoded = obs["selectedEventProof"]["eventBytes"]
+    event = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+    execution_failed["context"]["observation"] = factory.chain_observation(
+        execution_failed["rail"]["consumerFinalityProfile"]["settlement"],
+        execution_failed["evidence"]["paymentTxRefs"][0], event, "bft-final",
+        transaction_status="failed",
+    )
+    vectors.append(case("fv-bft-final-included-execution-failed", "fail", "BFT-final inclusion of a Demos transfer whose authenticated record failed is not settlement", execution_failed))
 
     provider_not_captured, provider_override = factory.provider_variant(status="declined")
     vectors.extend([

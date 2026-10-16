@@ -3,8 +3,8 @@
   "spec": "DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef",
   "tier": "golden",
   "description": "Exact positive and negative wire-shape cases for every normative AttestationRef anchor kind and every ChainTxRef discriminator.",
-  "count": 26,
-  "hash": "3465f37dc3dc757cad3ac5ec0f8bfe176dda55ce2c89f57e5ac950bd4ae4b674",
+  "count": 29,
+  "hash": "f6d99cb4ee907fb6115c6a7b59e39e47388ba686714908c4ec5b2e791cd2c759",
   "vectors": [
     {
       "name": "attestation-storage-program",
@@ -180,6 +180,51 @@
         "chainId": 8453,
         "logIndex": 2,
         "protocolVersion": "2"
+      }
+    },
+    {
+      "name": "txref-x402-protocol",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "x402-protocol",
+        "httpResource": "https://merchant.test/resource/274",
+        "paymentRequiredHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "paymentReceiptHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "x402Version": 2,
+        "settlementNetwork": "eip155:8453",
+        "settlementTransaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "settlementEvent": "evm:8453:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:2"
+      }
+    },
+    {
+      "name": "txref-x402-protocol-string-version",
+      "type": "ChainTxRef",
+      "expected": "fail",
+      "value": {
+        "kind": "x402-protocol",
+        "httpResource": "https://merchant.test/resource/274",
+        "paymentRequiredHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "paymentReceiptHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "x402Version": "2",
+        "settlementNetwork": "eip155:8453",
+        "settlementTransaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "settlementEvent": "evm:8453:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:2"
+      }
+    },
+    {
+      "name": "txref-x402-protocol-boolean-version",
+      "type": "ChainTxRef",
+      "expected": "fail",
+      "value": {
+        "kind": "x402-protocol",
+        "httpResource": "https://merchant.test/resource/274",
+        "paymentRequiredHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "paymentReceiptHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "x402Version": true,
+        "settlementNetwork": "eip155:8453",
+        "settlementTransaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "settlementEvent": "evm:8453:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:2"
       }
     },
     {

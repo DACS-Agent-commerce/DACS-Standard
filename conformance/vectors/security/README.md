@@ -38,7 +38,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
 | [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.8 current composed profile (JID-1 boundary declared at v0.7): §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 66 | `error` / `fail` / `pass` |
-| [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 26 | `fail` / `pass` |
+| [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 29 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 54 | `fail` / `indeterminate` / `pass` |
@@ -99,6 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2 | 691 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -998,6 +999,494 @@ Each entry carries `protocolVersion`, the received `responseHeader`, optional
 `evidence`, and `want`. Positive cases pin the JCS string and receipt hash;
 negative cases pin the rejection reason. This is a candidate set. Independent
 implementation cross-run and golden promotion remain pending.
+
+### `x402-negotiated-protocol-v0.8.json` — §9.5.7 XN-1..XN-11
+
+The negotiated-protocol set exercises the provider-neutral `x402:protocol`
+definition and the complete agreement-signed request and
+`PaymentRequirements` selection. Its Ed25519-signed Listing, Agreement, and
+SettlementEvidence fixtures cover the x402 version 2 challenge shape (v0.8
+binds no other version, so a version 1 selection is `error`), the
+`PAYMENT-REQUIRED` header as the only challenge location (an HTML body is
+ignored and a body-only challenge is `error`), the paid request adding only
+`PAYMENT-SIGNATURE`, exact full-reference membership, payee and payer binding,
+the adapter's metadata currency, exact decimal conversion beyond any fixed
+arithmetic precision, request-body and extension commitments, challenge/receipt
+hashes over decomposed (non-NFC) strings after the CF-1 pass, local capability
+separation, the stored record's own version, outcome, phase, job and amount,
+and the independent scheme/network finality floor, including an
+EVM-to-direct-rail key alias and a non-EVM Solana exact settlement on devnet and
+on mainnet-beta (the closed DACS-4 §9.5.7.1 table maps the mainnet, devnet and
+testnet CAIP-2 genesis references to their event-key clusters, and any other
+Solana reference is unsupported). The `dacs-x402-exact:v1` member and value
+rules are DACS-4 §9.5.7.1's, derived from
+`x402-foundation/x402@230e6a9a7eebce22c911a0687d6f4e6d1ac019f7` (the set's
+`upstream` block names each file). The challenge, `extra`, `payment-identifier`
+advertisement and response fixtures use upstream's version 2 shapes at that
+commit; the request, header, ledger and capability models are DACS's own.
+
+Amount cases pin XN-5's overflow ceiling per binding at the limit and one
+above it: an EIP-155 atomic amount of 2²⁵⁶−1 passes and 2²⁵⁶ is rejected (the
+EIP-3009 `value` is `uint256`), and a Solana amount of 2⁶⁴−1 passes and 2⁶⁴ is
+rejected (SPL Token amounts are `u64`). `assetDecimals` 255 passes and 256 is
+malformed; the unit suite also checks that an `assetDecimals` of 10⁹ is
+rejected before any power of ten is computed, under a memory limit.
+
+The literal-target cases explicitly reject loopback, private, link-local,
+shared-address, multicast, reserved, and IPv4-mapped IPv6 spellings before the
+single instrumented wallet-call site. `localhost.localdomain` and names under
+`.localhost` are rejected like `localhost`. Each named IPv6 form that embeds an
+IPv4 address (IPv4-translated, IPv4-compatible, NAT64, 6to4, Teredo's server
+and inverted client, and ISATAP's `0:5efe` and `200:5efe` interface identifiers
+after any prefix, as well as IPv4-mapped) is rejected when the address it
+carries is non-public, and the local-use NAT64 prefix always is; the reference
+evaluator unwraps each form by explicit prefix or identifier rather than
+through the host language's address tables, and an IPv4-mapped public address
+passes. The ISATAP cases sit under a public prefix, so only the carried address
+rejects them. Treating the host network's own NAT64 prefixes (RFC 7050 or local
+configuration) like `64:ff9b::/96` is an adapter obligation that a URL-only
+corpus cannot exercise.
+A host whose last label is a number is classified as an IPv4 literal, as the WHATWG IPv4 parser does, so shorthand,
+single-number, hexadecimal, octal, and trailing-dot spellings reach the verdict
+of their dotted form, and a numeric host that is not a valid IPv4 literal is
+rejected. Every literal-target case refreshes the received-object hashes and
+pins `expectedReason: non-public-request-target`, so an evaluator without the
+address-class gate reaches `pass` and fails it.
+
+The `request-url-*` cases pin XN-2's URL syntax: the signed URL contains only
+printable ASCII, no `\`, and no `%` in the host, and an internationalized host
+is signed in A-label form. Any other spelling is `error` with
+`expectedReason: rail-ref-shape` before any request, whatever host a given
+parser would derive from it. The error cases are spellings that a WHATWG or
+UTS-46 parser resolves to loopback, metadata, or `localhost` although a simpler
+parser sees a DNS name: a default-ignorable code point after the host, raw or
+percent-encoded; a `\` that ends a WHATWG `https` authority; a percent-encoded
+or full-width `localhost`; a percent-encoded IPv4 host; and an IDN U-label.
+Further error cases cover the rest of the rule. Userinfo or a fragment is
+malformed even when empty (`https://@…`, `https://:@…`, a trailing `#`). So
+is a port that is not decimal or exceeds 65535, and an `xn--` label that is not
+an RFC 5890 A-label (`xn--`, `xn--localhost-` in either letter case, or one
+longer than 63 octets).
+A label whose `idna` conversion fails in any way, including the bare
+`ValueError` that `idna` 3.6 raises on a ZWNJ between Tangut ideographs, is
+`error` too, never an exception. The whole-URL halves are pinned too: a `\`, a non-ASCII code point, or U+007F
+in the path is `error`.
+An A-label host, percent-encoding in the path, and an explicit port pass. Each
+error case refreshes the received-object hashes, so an evaluator without the
+syntax rule (and with the address gate open) reaches `pass`. The unit suite also
+sweeps seven default-ignorable code points, raw and percent-encoded, over four
+non-public hosts.
+
+Retry cases carry retained reconciliation
+identity over job, phase, complete requirement, and authorization identity,
+and execute with zero additional wallet calls even when a caller asks to
+reauthorize or one retained binding is changed. The authorization identity is
+the authorization payer, so it compares as an XN-5 address: a retained EIP-55
+spelling reconciles with the same payer in upper-case hex, and identical
+spellings that are not `0x` plus 40 hexadecimal digits are `error` with reason
+`address-form`. Once the retained identity is this session's, a retry takes the
+payment disposition from the same ledger reconciliation as `execute` after its
+wallet call: unavailable ledger data is `indeterminate`
+(`independent-settlement-unavailable`), an exact finalized settlement `pass`, a
+cancelled authorization `fail` (`terminal-non-settlement`), and an event that
+contradicts the authorization `fail` (`ledger-event`). Changing only the
+ledger's availability changes the result. A stored record is no part of the
+retained identity: as in `execute`, it is checked only after the ledger has
+decided, and its defect is the reason beside the ledger's verdict. Over a
+settled ledger, a record whose signature does not verify is `pass` with
+`signature`, one with two references or none `evidence-ref-count`, one naming
+another transaction and event `ledger-event`, one naming another transaction
+under its own event key `native-event-key`, one whose transaction has 63
+hexadecimal digits `settlement-transaction-form`, and one whose receipt hash
+does not recompute `payment-receipt-hash`; over an unavailable ledger such a
+record stays `indeterminate`. The retained transaction is the response's, kept
+verbatim, and is compared with the reconciled one in the XN-7 adapter form, so
+a retained spelling that differs only by prefix and case is no defect, while
+one with no adapter form or naming another transaction is `pass` with
+`response-transaction`. After a lost response no transaction is known and no
+evidence exists: a retained `settlementTransaction` that is absent or `null`
+still reconciles. A signed term the retry cannot derive is `error`
+(`reconciliation-terms`), which unit tests pin. A retry first runs the same
+definition and reference gates as `execute` (`retry-definition-*`,
+`retry-static-arm-ref`), and the retained state names the session's local
+facilitator, so a switched or unrecorded one is `fail` (`routing-switch`).
+The runtime carries each request's header fields: the paid request adds only
+`PAYMENT-SIGNATURE` (`paid-request-headers` otherwise), and neither carries
+`Cookie`, `Authorization` or `Proxy-Authorization` (`ambient-credential`).
+That header's value is upstream's version 2 `PaymentPayload` under DACS-4
+§9.5.7.1: `accepted` is the matched requirement, and the EIP-3009
+authorization names the payer, `payTo`, the exact amount, the retained
+`validBefore` and the SB-3 nonce. A value that is not base64, an empty or
+version-only object, or a malformed envelope or to-be-signed authorization
+is `fail` (`paid-request-payload`, `permanent`) before any wallet call
+(`paid-request-payload-*`). Missing or malformed EIP-712 signatures are
+observed after the wallet call: the handler records `paid-request-payload`
+as its own `permanent` protocol fault, and the ledger alone decides the
+payment. An exact finalized settlement is `pass` with success evidence;
+unavailable ledger data or an unsettled authorization stays `indeterminate`.
+The `paid-request-signature-short-*` cases also pin pending and cancelled
+authorizations. Two passing cases put the
+matched requirement second, matched only with its payTo compared as an XN-5
+value or its `extra` compared without the Solana hints. A verifier judges the
+stored record, not the `PAYMENT-SIGNATURE` value
+(`verify-evidence-ignores-paid-request-payload`), but the paid request's other
+gates still apply to it (`verify-evidence-judges-paid-request-headers`). The
+corpus checks the EIP-712 signature's form only; the token contract and
+facilitator verify it.
+The `*-record-*-not-string-*` cases pin both hash members as strings before
+hexadecimal validation. A re-signed number, null, list or object is a verifier
+`error` (`evidence-hash-shape`); execute and retry rebuild the unanchored record
+on ledger success and keep an unavailable ledger pending.
+The Solana payload is checked for form only too: a non-empty base64
+`transaction`, whose transfer, fee payer and memo the corpus does not decode.
+The retained `validBefore` is a safe integer of seconds, so a decimal string,
+2⁵³ or a boolean is `error` (`retry-eip3009-retained-valid-before-*`). An
+EIP-155 `execute` without one is `error` (`authorization-valid-before`) with no
+wallet call, since a later reconciliation could not prove the expiry
+(`execute-retained-valid-before-*`, the response-loss path included).
+DNS answer validation, rebinding, redirect connections, timeouts, and
+response-size enforcement remain adapter-level obligations because a URL-only
+corpus cannot execute a network stack.
+
+`settlementTransaction` names the transaction that the ledger reconciliation
+establishes. With a sound response it keeps that response's spelling verbatim,
+and it is compared with the canonical event key under the EIP-155 adapter rule.
+The authenticated ledger transaction is compared in the same collapsed form, so
+its spelling need not match the response's. The base fixtures carry the
+upstream `0x` lower-case spelling in both; unprefixed, mixed-case, and `0X`
+upper-case responses over that ledger pass, and so does a `0x` response over an
+unprefixed ledger transaction. 63 hexadecimal digits or a second `0x` prefix in
+the recorded `settlementTransaction` is the verifier's `error` with reason
+`settlement-transaction-form` (`evidence-transaction-*`). The same 63 digits in
+the response `transaction` alone are the response defect
+`response-transaction`: `pass` over the base ledger and `indeterminate` without
+one. The two `noncanonical-native-event-key*` cases change only the record's
+DACS-produced `settlementEvent`, keep the ledger's key and the response
+unchanged, and stay `error`. The key is signed evidence, so the verifier checks
+it before the ledger is read: with the ledger unavailable or not final the
+record is still `error`.
+
+The reconciled event is identified by the ledger's own `transaction` and
+`settlementEvent` before it can be `pass`, in `execute` and `retry` alike and
+whatever the response or a stored record says. A missing one is
+`indeterminate` (`ledger-coordinate-missing`). A transaction that is `null`,
+has 63 hexadecimal digits, or carries a second `0x` prefix is `error`
+(`ledger-transaction-form`), and so is a key that is garbled, spells its hash
+with `0x`, or names another transaction or chain (`ledger-event-key`). The
+`ledger-*`, `response-lost-no-evidence-ledger-*` and
+`retry-response-lost-ledger-*` cases apply each change over a full success,
+and with no response or evidence on `execute` and on `retry`. A ledger naming
+neither coordinate resolves no event, and the authorization's state decides.
+
+After the wallet call only the ledger reconciliation of the authorization
+identity decides (XN-11), and no success record has to exist first. A
+settlement response that is lost, not received under the version's header (a
+header value that is not a string included), reports `success: false`, or
+names another network, payer or transaction is a response defect, the seller's
+protocol fault. Over the base ledger, an exact finalized settlement, such a
+case is `pass` and its `expectedReason` names the recorded defect
+(`response-header`, `response-not-success`, `response-network`,
+`response-payer`, `response-transaction`). Each has a `-no-settlement` twin
+without ledger data, which stays `indeterminate`; the response alone never
+makes the session fail. With the response lost and no evidence at all, the
+matching ledger is `pass` (`response-header`), an unavailable ledger
+`indeterminate`, an authorization the ledger proves expired unused `fail`
+(`terminal-non-settlement`), and one still unused `indeterminate`
+(`authorization-unsettled`). A ledger naming neither a `transaction` nor a
+`settlementEvent` reports no event for the identity. Then a `nonceState` of
+`cancelled` is a proven terminal non-settlement, and so is `unused` at a
+finalized block whose `finalizedBlockTimestamp` is at least the retained
+`validBefore` (`retry-eip3009-expiry-block-*`: one second before is pending,
+equal and after are `fail`). An unavailable timestamp, an unretained
+`validBefore` or a non-final block stays pending, and a malformed timestamp or
+an unknown nonce state is `error`. No local clock is consulted. A resolved
+contradiction comes only from the event that the identity resolves to: a
+response naming another transaction is `fail` when that event moves another
+amount and `indeterminate` when no event is resolved. The receipt hash commits
+to the response as received, and to JSON `null` when no version-selected object
+decodes.
+
+`verify-evidence` cases give the XN-7/XN-8 verifier's verdict on a stored
+success record and never reach the wallet-call site. They apply the same gates
+as `execute`. Then come the record's own checks, which need no ledger data,
+then the ledger reconciliation, and last the record's transaction and event key
+against the reconciled event. Each of these keeps its `fail` or `error`: stored
+hashes that do not recompute, a record that respells a sound response's
+transaction, and a reference-shape, version, binding, finality-profile or
+event-key defect. So do an invalid record signature and a record naming another
+transaction than the ledger's. A record over a response that was never received
+commits to JSON `null` and verifies (`pass` with `response-header`). In
+`execute` and `retry` the same record never decides: an unanchored one is
+rejected and rebuilt from the reconciled event, and its defect is at most the
+reason beside the ledger's verdict. A record with `runtime.storedRecordAnchored`
+is already at the write-once PC-2 address, so it is never rebuilt over: one
+that does not verify is the same `pass` with its defect as the reason and no
+built record (manual recovery, `*-anchored-record-defect-manual-recovery`), and
+the unit suite replays every `execute` and `retry` case against a write-once
+store. The record's own `evidenceVersion` (`error`), `outcome`, `phase` and
+`jobId` (`fail`, `evidence-record-binding`) and `paymentAmount` (`fail` or
+`error`, `evidence-payment-amount`) are checked first
+(`verify-evidence-record-*`). A response changed after the record was
+built is `pass` with reason `payment-receipt-hash`, and so is a stored
+challenge hash that does not recompute, with `payment-required-hash`. A sound
+response beside a record naming another transaction is `pass` with
+`ledger-event`: the record is the defect, not the response. A record with a
+malformed event key is `indeterminate` while the ledger is unavailable. The
+unit suite checks that removing the stored record or the response from any
+`execute` case that reaches the wallet call never changes its verdict, nor
+does removing the record, the retained response or the retained transaction
+from any `retry` case. Each `verify-evidence` record run as `execute` or as
+`retry` gets the same verdict with and without it.
+
+Received x402 objects pass CORE CF-5 raw JSON admission over their exact bytes.
+A settlement response with `NaN`, `1e400`, a lone surrogate, or a repeated
+`success` member does not decode: it is the response defect `response-json`,
+so over the base ledger the case is `pass` and its `-no-settlement` twin
+`indeterminate`. A challenge may be carried as raw bytes in
+`http.paymentRequiredRaw` instead of the `paymentRequired` object; the same
+four refusals, a repeated `amount` among them, are `error` with reason
+`payment-required-json` before authorization, as is a challenge received in
+both forms, and a well-formed raw challenge passes.
+
+Address cases follow XN-5: on an EIP-155 network, `payTo`, the payout binding
+and the runtime payee, the paying-key claim address, the derived and
+authorization payer, the response `payer`, the selection `asset` (against the
+adapter's metadata, the challenge and the ledger), and the ledger payer and
+payee compare as 20-byte values. A lettered asset (EIP-55's third example)
+passes in EIP-55 case in the signed selection, the metadata or the challenge,
+and an upper-case ledger asset passes; one that is not `0x` plus 40
+hexadecimal digits is `error` (`address-form`), before authorization
+everywhere but in the ledger. Letter case is ignored and any EIP-55 checksum is
+accepted. No member of `extra` compares as an address: a challenge
+`extra.name` in another letter case is `fail` (`challenge-match`). The pinned
+EIP-155 definition has no `extra.verifyingContract`, so its four cases (with
+EIP-55's fourth example) now pin that: a spelling that differs from the signed
+one is `fail` (`challenge-match`), and an agreeing one is `fail`
+(`unclassified-extra-member`). An EIP-55 checksummed `payTo` against a lower-case binding, a
+mixed-case `payTo` whose checksum is wrong, an upper-case ledger `payTo`, and
+a mixed-case response `payer` pass. So do the two earlier gates: an EIP-55
+paying-key claim against the lower-case derived payer, an EIP-55 runtime payer
+against the lower-case claim and derived payer, and an EIP-55 runtime payee
+against a lower-case binding. A different address in mixed case is still
+`fail` (`challenge-match`). A value that is not `0x` plus 40 hexadecimal digits
+is `error` with reason `address-form`, before authorization for `payTo`, the
+payout binding, the runtime payer and the runtime payee, even when the value it
+is compared with is well formed. In the response such a `payer` is a response
+defect instead: the settled case is `pass` with reason `response-payer`. The
+lettered seller address is EIP-55's own first example, so its checksum spelling
+can be checked against the EIP. Solana addresses compare exactly: one changed
+letter case is `fail` in the challenge `payTo` (`challenge-match`), the ledger
+payer and `payTo` (`ledger-event`), and the retained authorization identity on
+retry (`reconciliation-binding`), and a recorded `response-payer` defect in the
+response `payer`. The all-digit Solana seller has no
+letter to change, so the `payTo` cases use a letter-bearing seller whose
+unchanged spelling passes.
+
+SB-3 cases follow XN-9: the EIP-155 `exact` binding authorizes only through
+EIP-3009, so the job binding is mandatory whatever form the ledger event
+shows. Upstream's Permit2 witness cannot carry the job binding, so upstream's
+Permit2 example is `fail` (`unsupported-transfer-method`) before signing. The ledger's `sessionBinding` uses the `sb3-binding-required`
+set's closed evidence model (`{"state": …}`), its state list, and its classifier
+(`scripts/sb3_binding.py`). A mismatch is `fail`, and `absent` and each
+`unavailable-*` state (RPC, pruned history, signature authority,
+reorganisation) are `indeterminate`. A missing or non-object value, an unknown
+state (a bare `unavailable` included), the `malformed` state, and an extra
+member are `error`, all with reason `sb3`. The unit suite runs every
+required-binding evidence value of that set through this evaluator. An earlier plain ERC-20
+transfer of the same amount from the buyer to the seller, cited as the
+settlement, stays `indeterminate`. Solana's `exact` binding declares no job
+binding, so its `sessionBinding` is not consulted.
+
+An unpaid request answered with 200 or 404 is `fail` (`not-payment-required`).
+No answer, a 500, 503, 504, 408, or 429 is `indeterminate` with reason
+`unpaid-request-transient`: nothing was authorized, so the request is retried
+and no party is at fault.
+
+The runtime trace names three requests: the one the handler derives from the
+agreement (`effectiveMethod`, `effectiveUrl`, `requestBodyBase64`) and the
+unpaid and paid requests as sent (`unpaidMethod`, `unpaidUrl`,
+`unpaidBodyBase64`, and the same three `paid…` fields). Each method and URL
+must be the exact signed `request.method` and `request.url`, and the three
+bodies must be the same bytes. Otherwise the case is `fail` before
+authorization, with reason `effective-request-method`, `effective-request` or
+`effective-request-body`. `request-method-substitution` runs the whole exchange
+under another method. Each of the nine fields also has a case that changes it
+alone: `unsigned-runtime-{method,url,body}-override` for the derived request,
+and `{unpaid,paid}-request-{method,url,body}-substitution` for the two sent.
+
+XN-6 classification comes from the received challenge, never from a list beside
+it. The reference evaluator's exact adapters define the members of the DACS-4
+§9.5.7.1 `dacs-x402-exact:v1` table: on EIP-155 `assetTransferMethod`,
+`paymentFlow`, `name` and `version`, and on Solana `assetTransferMethod`,
+`paymentFlow`, `feePayer`, `memo`, `recentBlockhash` and
+`lastValidBlockHeight`. They also define the v2 `payment-identifier`
+extension. The EIP-712 domain's verifying contract and the Solana mint are the
+`asset`, so neither is an `extra` member. The base fixtures carry upstream's
+EIP-3009 example (`assetTransferMethod: "eip3009"`, `name`, `version`), a
+Solana `extra` naming only `feePayer`, and upstream's optional
+`payment-identifier` advertisement (`{info: {required: false}, schema}`).
+Cases cover `name` and `version` without the method, an explicit
+`paymentFlow: "authorization"`, `memo` (256 UTF-8 bytes included), and
+upstream's Solana `PaymentRequirements` example, whose fresh `recentBlockhash`
+and `lastValidBlockHeight` hints the signed selection omits, all `pass`;
+malformed hints also pass, since XN-4 ignores them. Each value rule rejects
+before signing: a missing, empty or non-string EIP-3009 `name` or `version`, a
+missing or non-32-byte `feePayer`, and a memo over 256 UTF-8 bytes
+(`extra-member-value`); another `paymentFlow` (`unsupported-payment-flow`); a
+required `payment-identifier` (`unsupported-action-extension`) and any other
+advertisement shape, the earlier flat `{required}` one and `null` included
+(`extension-value`). An `extra.mint`, and one adapter's member under the
+other, are `fail` (`unclassified-extra-member`); a Solana
+`assetTransferMethod` is `unsupported-transfer-method`. The v0.8 EIP-155
+binding authorizes only through EIP-3009 (XN-9), so upstream's Permit2 and
+ERC-7710 examples are `fail` (`unsupported-transfer-method`) before
+authorization. Any other member of the matched `extra` or of `extensions` is
+unclassified and `fail`, even when it is signed and received and the local
+capability lists it (`unclassified-extra-member`, `unclassified-extension`).
+The required form of `payment-identifier` is `fail`
+(`unsupported-action-extension`) whatever the local capability lists. The
+optional form is descriptive and needs no local capability, so a capability
+that lists no extension still pays
+(`optional-payment-identifier-needs-no-capability`). Its `schema` is one of the
+two pinned upstream forms, and its `info` satisfies it, or it is `fail`
+(`extension-value`). One form is the example in `payment_identifier.md`. The
+other is the schema the pinned reference SDKs emit, which adds the `id`
+pattern (`payment-identifier-sdk-schema*`). Either way an `id` has 16 to 128
+alphanumerics, hyphens or underscores
+(`payment-identifier-info-id-outside-character-set`).
+The vectors carry no `http.actionBearingExtensions` list.
+`descriptive-extension-omitted-from-claim` adds one that omits the received
+member and still passes, and the unit suite checks that adding any such list
+leaves every result unchanged.
+
+Every `pass` case pins `expectedReason`. A runner treats a present `null` as
+"no recorded defect", so booking a sound response as the seller's fault fails
+`response-without-payer`, `response-settlement-pending` and
+`verify-evidence-response-without-payer`. A `pass` with a recorded defect names
+that defect instead.
+
+A legacy continuation, and a legacy replay presented with the response, apply
+X402-1..X402-4. The response is the version's successful `SettlementResponse`
+with `transaction` and `network` (`legacy-response`), its recomputed receipt
+hash equals the stored one (`legacy-receipt-hash`), and it names the recorded
+`settlementTxHash` and `chainId` (`legacy-receipt-transaction`,
+`legacy-receipt-network`). A v2 network maps as `eip155:{chainId}`. A v1
+network maps through the registered v1 mapping, the supported-network table of
+the pinned v1 specification (`x402-foundation/x402@22a7677f`,
+`specs/x402-specification-v1.md` §11.1): `base-sepolia` 84532, `base` 8453,
+`avalanche-fuji` 43113 and `avalanche` 43114. Any other v1 network maps to no
+chain. The `legacy-v1-*` cases carry the `x402-receipt-hash` corpus's v1
+`pass` receipt. `new-session` refuses a `disabled` or `failed` definition
+under RAV-R2 (`rail-availability`), and one whose `availability` is not a
+`RailAvailability` value is `error` (`definition`). The production-only
+`mocked` arm needs the operator's mode, which the corpus does not model.
+
+The `fee-rate-amount` operation pins DACS-4 FR-2 for `x402:protocol`. Its
+`feeDerivation` is `{rateBps, amount}`, and `amount` must equal
+`price.amount × rateBps ÷ 10000` rounded half-up at the signed selection's
+`assetDecimals`. The adapter's metadata must establish that precision for the
+selected asset on the selected network, as in `execute` (`asset-metadata`
+otherwise). The `fee-rate-*` cases cover 6 and 18 decimals, the exact-half
+boundary, a half-even result, and rounding at another precision (`fail`,
+`fee-amount`). They also cover a tampered agreement signature (`signature`), a
+malformed or other-revision definition (`definition`, `rail-version`), and
+metadata for another asset or network.
+
+Every evaluator check has a case that reaches it alone with its
+`expectedReason` pinned, and the challenge substitutions refresh the received
+hashes, so an evaluator that skips a comparison reaches `pass`. Among them are
+the ledger asset, network, scheme, decimals and transaction; the evidence
+`httpResource`, `settlementNetwork` and `x402Version`; the PC-5 currency; the
+runtime payee; each agreement party exactly once; the buyer bundle's hash pin,
+session nonce, presenter and signatures; the request body against the signed
+`bodyHash`; each request's method, URL and body in the runtime trace; the
+challenge `x402Version`; omitted versus empty extensions in both directions;
+the classification of each received `extra` and extension member; and the
+legacy in-flight-only continuation. The retry's derivation of the signed terms
+is pinned by unit tests. Each value check of the definition (`railId`,
+`railType`, `phaseHandler`, `resolution`, and a `railVersion` of 0) has a
+re-signed `execute-definition-*` case that adds no member, so the member-set
+check cannot reject it first (`error`, `definition`). The selection has a
+`maxTimeoutSeconds` of 0, `paymentRequiredExtensions` as an array beside an
+array `extensions`, an `x402Version` of 1 or 3, an empty host, a `railVersion`
+of 0 or `"1"`, a numeric method, and an empty `scheme`, `asset` or `currency`
+(`error`, `rail-ref-shape`). So are a ref with no `parameters`, static
+parameters, or no `selection` (`static-arm-ref-*`), and an unknown member of the
+ref, `parameters`, `request` or `selection` (`closed-shape-*`). An agreement signature whose last base64url
+character sets unused bits decodes to the same bytes and is still `fail`
+(`signature`, CORE SIG-6). Every operation verifies the artifact signatures:
+definition validation, listing admission, a new session, legacy replay and
+continuation, and retry each have a broken-signature case (`fail`,
+`signature`). A sound record over unavailable ledger data is `indeterminate`
+for a verifier. A reference whose `railId` is `x402:default` and a selection
+`currency` that is a number are `error` (`rail-ref-shape`); a price of `1.250`
+is not CD-1 and is `fail` (`exact-amount`). A settlement response whose JSON is
+an array is a response defect (`pass`, `response-header`). A Listing that
+offers no `x402:protocol` is admitted under any commitment phase. Six
+re-signed buyer bundles each break one presentation rule: an unknown
+`bundleVersion` or presentation `kind`, a presenter that is not a claim, a
+duplicated envelope, an envelope for no claim (`fail`, `signature`), and a
+paying claim outside the `cci-xm` scheme (`fail`, `payer-control`). A stored
+record that is not an object is rebuilt over a settled ledger (`pass`,
+`signature`). A selection `extra` that is an array, beside the same array in
+the challenge, and a signed request URL that is not a string are `error`
+(`rail-ref-shape`). A Listing without a `pipeline`, with a null
+`acceptedRails`, or with a pipeline step that is not an object fails DACS-1
+schema conformance and is `rejected` (`fail`, `listing-shape`).
+
+The definition applied is the revision the signed reference pins (XN-1). A
+re-signed definition at `railVersion` 2 under a reference pinning 1, and the
+reverse, are `fail` (`rail-version`) before authorization, and a verifier
+gives the same result. The definition and reference both at 2 pass.
+
+Negative cases reject global provider or asset policy, a
+`consumerFinalityProfile` on the closed protocol arm (RD-7), first-`railId` lookup,
+challenge substitution, redirects, incomplete `extra` or `extensions`, a
+facilitator acknowledgement without authenticated settlement, conflicting
+native event identity, `upto` and `batch-settlement` schemes (refused before
+authorization with no wallet call, since v0.8 binds neither), and use of the
+legacy `x402:default` rail for a new session—even by pinning its historical
+live revision. Legacy string-version evidence remains represented only for
+replay or an already-pinned continuation; negotiated evidence carries numeric
+`x402Version` and is never rewritten into the old shape.
+
+`admit-listing` cases add a signed pipeline to the Listing and apply XN-2's
+listing-time agreement-type rule: an `x402:protocol` offer, either for a
+concrete `pay-x402` phase or as a `pay-alternative` member, is admitted with
+`commit-payee-bound-agreement` and rejected with
+`commit-identity-bound-payee-agreement` or `commit-selection-bound-agreement`.
+APR-1 states the rule for an alternative slot and DACS-1 LRR-4 points to it;
+the rejection needs no registry, so it precedes registry-dependent checks.
+A signed `pay-alternative` slot whose `parameters` is absent or not an object,
+or whose `alternatives` is absent or not an array of at least two objects, is a
+malformed Listing. APR-1 returns `rejected`, which these cases score as `fail`
+with reason `listing-shape`, before the offered set is built; DACS-1's
+`ListingValidationDisposition` has no `error`.
+These cases check only that rule; registry resolution under DACS-1 LRR-2..LRR-6
+and APR-2 is covered by the listing-resolution and alternative-payment sets.
+
+#### Vector schema
+
+`fixtures.v2` is the complete signed control. Each
+`vectors[]` entry names one base and carries ordered `add`, `remove`, or
+`replace` operations whose `path` is an array of object-member names and
+zero-based array indexes. Deep-copy the base and apply those operations to
+materialize the case. Any artifact mutation includes its deterministic updated
+signature in the patch, so a runner verifies the committed bytes and MUST NOT
+re-sign during materialization. An `execute` case whose reason a DACS-4 §9.5.7
+`x402:protocol` failure-mode row names also carries `expectedErrorClass`, the
+PC-4 class the handler reports. Unsupported capability and an unsupported or
+undefined challenge member are `permanent`, never `counterparty`.
+
+Run the independent reference evaluator and signature checks with:
+
+```sh
+python3 -m unittest tests.test_x402_negotiated_protocol_vectors -v
+```
+
+Regenerate the deterministic file with
+`python3 scripts/generate_x402_negotiated_protocol_vectors.py --write`; CI uses
+the same generator with `--check`.
 
 ### `listing-preserve-unknown-v0.1.json` — CORE §B.7 SIG-3/SIG-5 + §11.1.2 + DPA-1
 

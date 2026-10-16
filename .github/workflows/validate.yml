@@ -98,6 +98,9 @@ jobs:
       - name: Verify rail-availability vectors are deterministic
         run: python3 scripts/generate_rail_availability_selection_vectors.py --check
 
+      - name: Verify negotiated x402 vectors are deterministic
+        run: python3 scripts/generate_x402_negotiated_protocol_vectors.py --check
+
       - name: Verify domain-claim GCR vectors are deterministic
         run: python3 scripts/generate_domain_gcr_vectors.py --check
 

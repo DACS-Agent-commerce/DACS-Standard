@@ -126,8 +126,10 @@ AGREEMENT_DOMAINS = {
 STRONG_ARTIFACTS = {"identityBoundAgreement", "identityBoundPayeeAgreement"}
 PAYEE_ARTIFACTS = {"payeeBoundAgreement", "identityBoundPayeeAgreement"}
 RAIL_REF = {"railId": "demos-native:DEM", "railVersion": 1}
+# XN-10: no new or replacement session may use x402:default, so the prior
+# job's static x402 alternative carries a test railId of its own.
 X402_RAIL_REF = {
-    "railId": "x402:default",
+    "railId": "x402:replacement-test",
     "railVersion": 1,
     "parameters": {"resource": "https://seller.example/pay/390"},
 }

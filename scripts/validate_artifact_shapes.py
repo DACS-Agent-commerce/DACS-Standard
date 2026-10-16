@@ -105,6 +105,14 @@ _CHAIN_TX_REF_ARMS: dict[str, tuple[set[str], set[str]]] = {
         },
         set(),
     ),
+    "x402-protocol": (
+        {
+            "kind", "httpResource", "paymentRequiredHash",
+            "paymentReceiptHash", "x402Version", "settlementNetwork",
+            "settlementTransaction", "settlementEvent",
+        },
+        set(),
+    ),
     "htlc-lock": ({"kind", "chainId", "contractAddress", "lockTxHash"}, set()),
     "htlc-reveal": ({"kind", "chainId", "contractAddress", "revealTxHash"}, set()),
     "htlc-claim": ({"kind", "chainId", "contractAddress", "claimTxHash"}, set()),
@@ -249,13 +257,16 @@ def check_chain_tx_ref(value, ctx: str, errors: list[str], path: str) -> None:
 
     int_fields = {
         "chainId", "blockNumber", "sourceChainId", "destChainId",
-        "recoveryDeadline", "logIndex", "instructionIndex",
+        "recoveryDeadline", "logIndex", "instructionIndex", "x402Version",
     }
     for field in required | optional:
         if field not in value or field in {"kind", "receiptAttestation", "receiptTransactionRef"}:
             continue
         expected = int if field in int_fields else str
+        # bool is an int subclass in Python, but JSON true/false is not a number.
         if not isinstance(value[field], expected) or (
+            expected is int and isinstance(value[field], bool)
+        ) or (
             expected is str and not value[field]
         ):
             errors.append(

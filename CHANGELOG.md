@@ -13,6 +13,323 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — negotiated x402 rail (DACS-1 v0.8 / DACS-3 v0.6 / DACS-4 v0.8 candidate)
+
+- **Provider-neutral negotiated x402 rail** (DACS-3 §8.5.2; DACS-4 §9.3,
+  §9.4.3, §9.5.1, §9.5.7 XN-1..XN-11, §9.5.8; #274) — replaces the
+  unresolvable new-session use of seller-specific `x402:default` with a
+  discriminated `x402:protocol` definition that fixes protocol behaviour but
+  carries no provider, facilitator, resource URL, asset, network, scheme
+  allowlist, wallet, RPC, or credentials. The exact request and selected
+  requirement are covered by complete-reference JCS equality from the signed
+  Listing into a payee-bound Agreement; local implementations separately
+  declare `(x402Version, scheme, network)` capability. Before authorization the
+  handler obtains and matches one version-shaped challenge over method, URL,
+  body, version, scheme, CAIP-2 network, asset/decimals, exact amount, signed
+  payout destination, timeout, `extra`, and the complete top-level extensions
+  object, with redirects and post-signature parameter merging prohibited. New
+  `x402-protocol` evidence uses numeric `x402Version`, commits to both complete
+  PaymentRequired and settlement-response objects, carries a native
+  adapter-canonical event identifier, and can report success only after
+  independent asset/authorization/transfer/finality verification. `exact` is
+  the defined v0.8 scheme binding; other schemes remain protocol-valid but
+  cannot claim DACS success without their own binding profile. A receipt or
+  signed acknowledgement alone is diagnostic, never successful settlement.
+  The steward publishes `x402:default` disabled/deprecated for new sessions;
+  its static definition, string `protocolVersion`, and signed evidence bytes
+  remain unchanged for already-pinned continuation and historical replay.
+  Adds deterministic executable vectors for definition discrimination,
+  selection ambiguity, every pre-authorization substitution surface the
+  reference evaluator checks,
+  bounded public-fetch literal classes (including legacy numeric IPv4 host
+  spellings), version 2 hashing/version boundaries, local
+  capability, exact decimal conversion, party binding, independent-assurance
+  downgrade, cross-rail event identity, legacy replay, and retained-state retry
+  safety. The executable harness now places one instrumented wallet-call site
+  after every pre-authorization gate and proves that rejected inputs and every
+  reconciliation retry make zero authorization calls. The paid request's
+  `PAYMENT-SIGNATURE` value is upstream's version 2 `PaymentPayload` of the
+  authorization, checked against the matched requirement, the retained
+  `validBefore` and the SB-3 nonce. An EIP-155 handler authorizes only once it
+  retains that `validBefore` as a safe integer and validates the composed
+  envelope and to-be-signed fields. Post-signing payload defects are recorded
+  as handler faults while ledger reconciliation alone determines the payment
+  disposition. Solana reconciliation retains the exact signed message and
+  client signatures, verifies the resolved full transaction and sponsor
+  transaction ID, and keeps an unresolved identity pending after response loss.
+  A resolved transaction of another sponsor or payer also stays pending. The
+  payer signs a Solana message only when it is exactly the payment: one
+  `TransferChecked` of the asset's token program between the derived associated
+  token accounts for exactly the signed amount, one Memo, bounded compute
+  budget, and no other instruction, lookup table or signer.
+  Re-signed record hashes of a non-string type are verifier
+  errors and do not replace the handler's ledger disposition. The optional
+  `payment-identifier` advertisement is descriptive and carries one of the two
+  pinned schemas: the `payment_identifier.md` example, or the one upstream's
+  reference SDKs emit with the `id` pattern. Legacy continuation applies the
+  full X402-1..X402-4 receipt checks, with v1 networks mapped through the
+  pinned v1 supported-network table, and x402 FR-2 cases pin half-up rounding
+  at `selection.assetDecimals` under the same signature, definition and asset
+  metadata gates as execute. Every clean `pass` vector pins
+  `expectedReason: null`.
+  This addition is part of the existing unreleased coordinated candidate
+  (DACS-3 v0.6 / DACS-4 v0.8); it does not create another module-version bump.
+- **Listing-time agreement type for `x402:protocol`** (DACS-1 §6.3.4 LRR-4/LRR-5;
+  DACS-3 §8.5.2; DACS-4 §9.5.7 XN-2, §9.9.1 APR-1) — a new listing-admission
+  rule for DACS-1 listing readers: a Listing that offers an `x402:protocol`
+  reference, directly or as a `pay-alternative` member, must use
+  `commit-payee-bound-agreement`. A Listing pairing it with the identity-bound
+  payee or sealed-selection commitment phase is rejected at listing admission
+  instead of being admitted and never committing. The rejection needs no
+  registry and is returned before registry-dependent checks; APR-1 states it
+  for an alternative slot and DACS-1 LRR-4 points to it. LRR-5 names it and the
+  APR-1 malformations as `rejected` even when registry authority cannot be
+  authenticated. This addition is part of the unreleased DACS-1 v0.8
+  candidate. Widening the rail to all three payout-bearing agreement types is
+  left to a later compatible extension.
+- **Negotiated x402 rail scope and upstream alignment** (DACS-4 §9.4.3 RD-7,
+  §9.5.1 PC-5, §9.5.7 XN-2..XN-11 and new §9.5.7.1, §9.5.8 SB-1/SB-3) —
+  `x402:protocol` is stated to be optional and non-gating: it is a conformance
+  requirement only for a profile that claims it, while XN-10's refusal of new
+  `x402:default` sessions still binds every v0.8 orchestrator. RD-7 notes that
+  no x402 payment from a new v0.8 session feeds a DACS-5 current-use
+  derivation. The rail now binds x402 version 2 only; a version 1 selection is
+  malformed. The challenge is read from the `PAYMENT-REQUIRED` header, never
+  the 402 body. The paid request adds only `PAYMENT-SIGNATURE`, and neither
+  request carries `Cookie`, `Authorization` or `Proxy-Authorization`. The ref,
+  parameters, request and selection are closed shapes. Permit2 is refused
+  before signing, because upstream's Permit2 witness cannot carry the SB-3 job
+  binding. The new §9.5.7.1 `dacs-x402-exact:v1` profile pins the upstream
+  sources and states the member value rules. It covers the EIP-3009 domain,
+  `paymentFlow`, the Solana `feePayer` and `memo`, Solana construction hints
+  that XN-4 does not compare, and the upstream `payment-identifier`
+  advertisement, of which only the optional form is supported. It also closes
+  the Solana CAIP-2 cluster table. XN-5 binds the selection currency to the
+  adapter's metadata currency for the asset. A verifier checks the stored
+  record's own `evidenceVersion`, `outcome`, `phase`, `jobId` and
+  `paymentAmount`. An absent response `payer` and a `settlement_pending`
+  response naming its transaction are sound. An EIP-3009 expiry is proven only
+  by a finalized block timestamp at or after the retained `validBefore`. A
+  retry runs the same definition and reference gates as the first attempt and
+  cannot switch the retained facilitator. An anchored stored record is never
+  overwritten: one that does not verify puts the phase in manual recovery. The
+  failure-mode list is split into negotiated and frozen legacy lists, and a
+  legacy session still needs its complete successful response. SB-1 event-key
+  integers are bounded and Solana signatures must decode to 64 bytes. The
+  paying claim must name the selected network. Execute cases that a
+  failure-mode row names pin their `errorClass`. The negotiated corpus grows to
+  526 vectors.
+- **Amount ceiling and decimals bound** (DACS-4 §9.3, §9.5.7 XN-2/XN-5) —
+  `selection.assetDecimals` is bounded to 0..255 (`uint8`) and checked before
+  any power of ten. XN-5's overflow rejection is measured against the
+  binding's native amount type: 2²⁵⁶−1 for EIP-155 `exact` (EIP-3009 `value`
+  and ERC-20 amounts are `uint256`), 2⁶⁴−1 for Solana `exact` (SPL Token `u64`),
+  or a narrower authorization-form bound.
+- **Response transaction comparison** (DACS-4 §9.5.7 XN-7, XN-11; §9.5.8 SB-1) —
+  `settlementTransaction` names the transaction that the ledger reconciliation
+  establishes, and keeps a sound settlement response's `transaction` spelling
+  verbatim. The EIP-155 adapter compares it with `settlementEvent`
+  after the SB-1 collapse (at most one `0x`/`0X`, any hex case, exactly 32
+  bytes), and with the authenticated ledger transaction in the same collapsed
+  form; a `settlementTransaction` with no such form is `error`. The upstream
+  `0x` spelling therefore verifies, while DACS-produced event keys stay
+  strictly canonical.
+  On retry, XN-11 compares a known retained `settlementTransaction`, kept
+  verbatim, with the reconciled transaction in the same adapter form. The
+  retained value is the response's, so one with no such form or naming another
+  transaction is a recorded response defect, never `error` or `fail`. After a
+  lost response the retained value is absent or `null`, no signed evidence
+  exists, and the identity reconciles without it.
+- **EVM address comparison** (DACS-4 §9.5.7 XN-5, XN-11) — on an EIP-155
+  network, `payTo`, the PB-1 payout binding and
+  `PaymentPhaseInput.payee.payeeAddress`, the `payingKey` address component,
+  the derived payer and the authorization payer, the response `payer`, the
+  selection `asset` (against the adapter's asset metadata, the challenge, and
+  the authenticated event), and the authenticated event's payer and payee
+  compare as 20-byte values: `0x` plus 40
+  hexadecimal digits, letter case ignored. An adapter must accept such an
+  address whatever its EIP-55 checksum, so a checksummed upstream address
+  matches a lower-case binding. Any other spelling is a malformed coordinate and yields `error`,
+  even when the value it is compared with is well formed; in the response
+  `payer` it is a response defect instead (below). XN-11 reconciliation
+  compares an address in the authorization identity the same way, so a
+  malformed one is `error` even when the retained and session spellings are
+  identical. Other networks, including Solana's case-sensitive base58, compare
+  these addresses exactly.
+- **Payment disposition after authorization** (DACS-4 §9.5.7 XN-5, XN-7,
+  XN-8, XN-11) — once the wallet call may have been made, the payment
+  disposition comes only from reconciling the retained authorization identity
+  against authenticated ledger data, and no success evidence record has to
+  exist first. Unavailable, unreadable or non-final ledger data is
+  `indeterminate`. The event the identity resolves to must first be identified
+  by its transaction and `settlementEvent`: a missing one is `indeterminate`,
+  and a transaction with no XN-7 adapter form, or a key that is not
+  adapter-canonical or does not name that transaction on the selected network,
+  is `error`. An exact finalized settlement is success, and the evidence is
+  then built or rebuilt from the retained challenge and response and that
+  event's validated transaction and key. A finalized event that the identity
+  resolves to and that contradicts the authorization is `fail`, and so is a
+  terminal non-settlement the scheme profile proves from finalized ledger data
+  (for EIP-3009 a cancelled nonce, or one still unused at a finalized block
+  whose timestamp is at least `validBefore`). Otherwise the session stays
+  reconciliation-pending. A settlement response that is lost, not received
+  under the version's header, reports `success: false`, or names another
+  network, payer or transaction is a response defect, recorded as the seller's
+  protocol fault; a transaction that only the response names is never a ledger
+  contradiction. A stored record that does not verify (a stale receipt or
+  challenge hash, an invalid signature, another reference count, or another or
+  a malformed transaction) never ends the payment phase: an unanchored one is
+  rebuilt, and an anchored one is never overwritten. A retry takes its disposition from the same reconciliation: the stored
+  record is no part of its retained identity, and is checked only after the
+  ledger has decided, so its defect is at most the recorded reason. The
+  receipt hash commits to the response as received,
+  or to JSON `null` when no version-selected object decodes. The vectors gain a
+  `verify-evidence` operation that keeps the XN-7/XN-8 verifier's verdict on a
+  stored record apart from the handler's payment disposition.
+- **SB-3 job binding on the negotiated rail** (DACS-4 §9.5.7 XN-9, §9.5.8
+  SB-3) — the v0.8 EIP-155 `exact` binding authorizes only through EIP-3009,
+  so the SB-3 job binding is always mandatory there. A verifier takes
+  that policy from the pinned definition and the signed selection, never from
+  the observed ledger event, and resolves it under SB-3's four branches with
+  the `sb3-binding-required` set's closed `{"state"}` model, state list and
+  classifier: a mismatch is `fail`; `absent` and every `unavailable-*` state
+  (RPC, pruned history, signature authority, reorganisation) are
+  `indeterminate`; and malformed binding evidence, an unknown state or an extra
+  member is `error`. An earlier plain transfer of the same amount therefore
+  cannot stand in for the bound authorization.
+- **Unbound schemes end before authorization** (DACS-4 §9.5.7 XN-3, XN-9) —
+  every locally supported scheme without a DACS success binding, `upto` and
+  `batch-settlement` alike, is a pre-authorization `fail` / permanent handler
+  result: no wallet call is made and the phase ends there. `batch-settlement`
+  no longer stays `indeterminate` with no end state.
+- **Transient answers to the unpaid request** (DACS-4 §9.5.7 XN-4) — no answer,
+  a 5xx, 408, or 429 to the unpaid request is transient: nothing was
+  authorized, the result is `indeterminate`, and the request may be retried
+  with no party at fault. Only a definite non-payment answer (2xx, 3xx, or
+  another 4xx) rejects before authorization.
+- **No new session on `x402:default` in other vector sets** (DACS-4 §9.5.7
+  XN-10) — the alternative-payment set and the identity-bound replacement
+  scenario selected `x402:default` for new and replacement sessions, which
+  XN-10 forbids; their static x402 alternative now carries its own test
+  `railId` (`x402:alternative-test`, `x402:replacement-test`), as the
+  rail-availability set already does. Verdicts are unchanged.
+- **Every evaluator check pinned by a vector** (DACS-4 §9.5.7 XN-1..XN-11) —
+  each check of the reference evaluator that a vector can reach now has one
+  that reaches it alone, with its result reason pinned; pre-authorization challenge
+  substitutions carry evidence that would otherwise pass, so skipping a
+  comparison changes the verdict, not only the reason. The cases cover,
+  among others, the ledger asset, network, scheme, decimals and
+  transaction; the evidence `httpResource`, `settlementNetwork` and
+  `x402Version`; a non-success response; the PC-5 currency; payee identity;
+  buyer and seller each exactly once; the buyer-bundle hash pin and session
+  nonce; request body bytes against the signed `bodyHash`; the challenge
+  `x402Version`; omitted versus empty extensions in both directions; artifact
+  signatures; and
+  the legacy in-flight-only continuation. Removing any single check turns at
+  least one vector or test red. Unit tests alone pin four kinds of check:
+  the two paying-key algorithm checks, which the bundle presentation check
+  already enforces; an object-form challenge outside the CF-5 profile, which
+  JSON vectors cannot carry; the embedded-IPv4 unwrapping, whose vectors
+  CPython 3.12's own address tables also refuse; and the retry's derivation of
+  the signed terms, which a signed agreement that passed the execute gates
+  never fails. Vectors with no expected reason do not pin the absence of a
+  recorded defect, so unit tests pin `pass` with no reason where that matters.
+- **Signed request-URL syntax** (DACS-4 §9.5.7 XN-2) — the signed
+  `x402:protocol` request URL must contain only printable ASCII (U+0021 through
+  U+007E) and no `\`, its host must not contain `%`, and an internationalized
+  host must be signed in A-label form. Userinfo and a fragment are refused even
+  when empty, a non-empty port must be decimal and at most 65535, and every
+  host label that begins with `xn--` in any letter case must be an RFC 5890
+  A-label. Any other spelling is
+  malformed and yields `error` before any request. This removes spellings that
+  URL parsers resolve to different hosts: UTS-46 maps or drops non-ASCII code
+  points, and WHATWG strips tab, LF and CR, ends an `https` authority at `\`,
+  and percent-decodes the host.
+  The DACS-1 §6.3.6 per-connection checks still apply to every admitted URL.
+- **Localhost names and embedded IPv4 addresses** (DACS-4 §9.5.7 XN-2) —
+  `localhost.localdomain` and every name under `.localhost` are never public,
+  like `localhost`. An IPv6 address that embeds an IPv4 address is not public
+  when an address it carries is not: IPv4-mapped, IPv4-translated,
+  IPv4-compatible, NAT64
+  `64:ff9b::/96`, 6to4, Teredo (server and inverted client), and ISATAP's
+  `0:5efe` and `200:5efe` interface identifiers after any prefix, which is
+  judged as an address too. Each NAT64 prefix the host's own network uses
+  (RFC 7050 or local configuration) is treated like `64:ff9b::/96`. The
+  local-use NAT64 prefix `64:ff9b:1::/48` is never public. The reference
+  evaluator unwraps each form by explicit prefix or identifier instead of
+  relying on the host language's address tables, which differ between
+  releases.
+- **Malformed event key before the ledger read** (DACS-4 §9.5.7 XN-8) — a
+  malformed coordinate in the signed evidence, such as a `settlementEvent`
+  that is not adapter-canonical, needs no ledger data, so the verifier's
+  verdict on that record is `error` even while that data is unavailable or not
+  final, not `indeterminate` until the ledger answers. The handler's payment
+  disposition still comes from the ledger.
+- **Current use of a negotiated x402 payment** (DACS-4 §9.4.3 RD-7) — an
+  `X402ProtocolRailDefinition` has no `consumerFinalityProfile`, so a job paid
+  through `x402:protocol` cannot be represented by the finality-bound bundle
+  that DACS-5 CUR-4 requires, and under CUR-2 a current-use request that
+  includes that job emits no derivation. RD-7 now says so.
+- **Raw JSON admission of received x402 objects** (DACS-4 §9.5.7 XN-7; CORE
+  §B.2 CF-5) — the challenge and the settlement response are admitted from
+  their exact received bytes, so `NaN`, a number outside the profile, a lone
+  surrogate, or a duplicate member is refused instead of raising an exception
+  or being read last-wins (`{"success":false,"success":true}` no longer reads
+  as success). A refused challenge is `error` before authorization; a refused
+  response does not decode, which is a response defect, so the ledger still
+  decides. Vectors may carry the challenge as raw bytes
+  (`http.paymentRequiredRaw`), but not in both forms.
+- **Request trace** (DACS-4 §9.5.7 XN-6) — the unpaid and the paid request
+  must each use the signed `request.method` and `request.url` exactly, and
+  carry the same body bytes. The vectors' runtime trace now names the method,
+  URL and body of the request derived from the agreement and of the unpaid and
+  paid requests as sent, and the reference evaluator checks each one before
+  authorization.
+- **Challenge-member classification** (DACS-4 §9.5.7 XN-6) — the handler
+  classifies every member of the matched requirement's `extra` and of
+  `PaymentRequired.extensions` itself, from the selected adapter's
+  definitions. A member the adapter does not define is unclassified and
+  rejected before signing, and a list of action-bearing members supplied
+  beside the challenge is not a classification. The vectors therefore no
+  longer carry `http.actionBearingExtensions`, and
+  `unsupported-action-bearing-extension` keeps its result on the received
+  `payment-identifier` alone.
+- **Upstream `extra` members** (DACS-4 §9.5.7 XN-4..XN-6, XN-9) — the exact
+  adapters' member tables are those of the pinned upstream scheme definitions
+  (`x402-foundation/x402@230e6a9a`, `scheme_exact_evm.md` and
+  `scheme_exact_svm.md`), now stated normatively in DACS-4 §9.5.7.1.
+  `extra.verifyingContract` and `extra.mint` are not members, since the token
+  contract and the mint are the `asset`, so XN-4 and XN-5 no longer compare a
+  `verifyingContract` as an address. The fixtures carry upstream's EIP-3009,
+  Permit2, ERC-7710 and Solana `PaymentRequirements` examples. A transfer
+  method other than EIP-3009 (also when absent) rejects before signing, as
+  XN-9 states.
+- **Pinned definition revision** (DACS-4 §9.4.3 XN-1) — the definition a
+  handler or verifier applies must be the revision whose `railVersion` equals
+  the selected reference's; another revision, even validly signed and well
+  formed, is rejected before the unpaid request or before a record is judged.
+- **Single-check vectors** (DACS-4 XN-1, XN-2, XN-4; DACS-1 LR-2; CORE SIG-2,
+  SIG-6) — one case for each MUST-backed check that no vector reached alone:
+  the definition's `railId`, `railType`, `phaseHandler`, `resolution` and
+  `railVersion` values, a zero `maxTimeoutSeconds`, an array
+  `paymentRequiredExtensions`, a non-canonical
+  agreement signature encoding, a broken signature on every operation, a
+  verifier over unavailable ledger data, a legacy `railId` in the reference, a
+  numeric selection `currency`, a non-CD-1 price, an array settlement response,
+  a Listing without an `x402:protocol` offer, each buyer-bundle presentation
+  rule, a stored record that is not an object, an array selection `extra`, a
+  signed request URL that is not a string, and a Listing without a
+  `pipeline`, with a null `acceptedRails`, or with a step that is not an
+  object.
+- **Verifier scope, upstream pins and open witnesses** (DACS-4 §9.5.7 XN-6,
+  XN-10, §9.5.7.1, §9.4.3 RD-7) — a verifier skips only the
+  `PAYMENT-SIGNATURE` value and still applies the paid request's other gates.
+  §9.5.7.1 and the corpus's `upstream` block name the three SDK schema files,
+  and the block also names the v1 specification that X402-3's network table
+  comes from. The conformance plan lists the witnesses that this corpus cannot
+  give and that other suites still owe: DACS-1 §6.3.6 per-connection resolution
+  and bounds, XN-10 registry publication, and the RD-7 current-use consequence.
+
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
 - **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened

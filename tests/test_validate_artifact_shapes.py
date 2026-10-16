@@ -344,6 +344,30 @@ class ArtifactShapeTests(unittest.TestCase):
             v.check_chain_tx_ref(malformed, "ctx", errors, "txRef")
             self.assertTrue(any(missing in error for error in errors))
 
+    def test_integer_fields_refuse_booleans(self):
+        """JSON true/false is not a number, although Python's bool subclasses int."""
+        v = load_validator()
+        data = json.loads(v.REFERENCE_SHAPE_VECTOR.read_text(encoding="utf-8"))
+        checked = set()
+        for case in data["vectors"]:
+            if case["type"] != "ChainTxRef" or case["expected"] != "pass":
+                continue
+            for field, value in case["value"].items():
+                if type(value) is not int:
+                    continue
+                checked.add(field)
+                for flag in (True, False):
+                    with self.subTest(case=case["name"], field=field, value=flag):
+                        malformed = copy.deepcopy(case["value"])
+                        malformed[field] = flag
+                        errors = []
+                        v.check_chain_tx_ref(malformed, "ctx", errors, "txRef")
+                        self.assertIn(f"`txRef.{field}` MUST be a number", " ".join(errors))
+        self.assertTrue({"x402Version", "chainId", "logIndex"}.issubset(checked), checked)
+        names = {case["name"]: case for case in data["vectors"]}
+        self.assertIs(names["txref-x402-protocol-boolean-version"]["value"]["x402Version"], True)
+        self.assertEqual(names["txref-x402-protocol-boolean-version"]["expected"], "fail")
+
     def test_reference_shape_set_is_complete_and_hash_pinned(self):
         v = load_validator()
         data = json.loads(v.REFERENCE_SHAPE_VECTOR.read_text(encoding="utf-8"))

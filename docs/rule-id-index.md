@@ -55,7 +55,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | RA-* | Recipe-family authoring and resolution | §7.4.3 | §14.2 |
 | RAV-* | Recipe availability values and consumers | §7.4.5 | §14.2 |
 | RAV-R* | Rail availability values and orchestrators | §9.4.4 | §14.4 |
-| RD-* | Rail definition authoring and finality-profile requirements | §9.4.3 | §14.4 |
+| RD-* | Payment-rail definition authoring and resolution, including finality-profile requirements | §9.4.3 | §14.4 |
 | RFQ-* | RFQ negotiation turns | §8.4.2 | §14.3 |
 | RB-* | Listing-revocation marker binding, retained discovery, and fail-closed resolution | §6.3.4 | §14.1 |
 | RSC-* | Current listing-revocation state head, append-only completeness proofs, and new-session admission | §6.3.4 | §14.1 |
@@ -74,7 +74,8 @@ This non-normative index helps implementers locate labelled conformance rules in
 | VP-R* | VerifyResult retry semantics | §7.6.1 | §14.2 |
 | VPC-* | Vet phase contract | §7.8 | §14.2 |
 | WN-* | Advisory verification warnings | §7.7 | §14.2 |
-| X402-* | x402 settlement-response selection, canonical receipt hashing, and evidence consistency | §9.5.7 | §14.4 |
+| X402-* | Legacy-static x402 settlement-response selection, canonical receipt hashing, and evidence consistency | §9.5.7 | §14.4 |
+| XN-* | Negotiated provider-neutral x402 definition, signed selection, execution gate, independent evidence, compatibility, and retry safety | §9.5.7 | §14.4 |
 
 ## How to use this index
 

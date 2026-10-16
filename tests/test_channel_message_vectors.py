@@ -9,6 +9,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import threading
 
 import unittest
@@ -341,26 +342,67 @@ class HistoricalAuditState(_VerifierOwnedChannelState):
     """Independent validation cursor with no live-publication authority."""
 
 
-class RetainedChannelRegistry:
-    """Trusted in-memory registry retained across issuer facade reconstruction.
+class DurableChannelIdStore:
+    """Fixture CH-6 persistence: used channel identifiers survive a restart.
 
-    Production implementations must supply transactional persistence covering
-    their replay horizon and restarts. This reference models one process only.
+    An identifier is synced and atomically renamed into the store before the
+    registry admits it, so a crash cannot lose an identifier already in use.
+    """
+
+    def __init__(self, path):
+        self._path = Path(path)
+
+    def load(self):
+        if not self._path.exists():
+            return []
+        channel_ids = json.loads(self._path.read_text(encoding="utf-8"))
+        if (
+            not isinstance(channel_ids, list)
+            or any(not isinstance(item, str) or not item for item in channel_ids)
+            or len(channel_ids) != len(set(channel_ids))
+        ):
+            raise ValueError("malformed persisted channel identifiers")
+        return channel_ids
+
+    def record(self, channel_id):
+        channel_ids = self.load()
+        if channel_id in channel_ids:
+            raise ReusedChannelIdError("channel identifier was already used")
+        pending = self._path.with_name(self._path.name + ".pending")
+        with open(pending, "w", encoding="utf-8") as handle:
+            json.dump(channel_ids + [channel_id], handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(pending, self._path)
+
+
+class RetainedChannelRegistry:
+    """Trusted registry retained across issuer facade reconstruction.
+
+    Without a ``store`` it models one process only. CH-6 across restarts
+    needs a store covering the replay horizon (``ch6_live_issuer``).
     Live and audit registries must be distinct.
     """
 
-    def __init__(self, used_channel_ids=()):
+    def __init__(self, used_channel_ids=(), *, store=None):
         if not isinstance(used_channel_ids, (list, tuple)) or any(
             not isinstance(item, str) or not item for item in used_channel_ids
         ):
             raise ValueError("invalid trusted used-channel identifiers")
         if len(used_channel_ids) != len(set(used_channel_ids)):
             raise ValueError("duplicate trusted used-channel identifier")
+        if store is not None and not isinstance(store, DurableChannelIdStore):
+            raise TypeError("a durable channel identifier store is required")
         self._lock = threading.RLock()
-        self._used_channel_ids = set(used_channel_ids)
+        self._store = store
+        self._used_channel_ids = set(used_channel_ids) | set(store.load() if store else ())
         self._issued_states = {}
 
         self._state_type = None
+
+    @property
+    def persistent(self):
+        return self._store is not None
 
 
 class _VerifierStateIssuer:
@@ -403,6 +445,8 @@ class _VerifierStateIssuer:
                 channel_id,
                 initial_sequence,
             )
+            if self._registry._store is not None:
+                self._registry._store.record(channel_id)
             self._used_channel_ids.add(channel_id)
             self._issued_states[channel_id] = state
             return state
@@ -900,6 +944,14 @@ def trusted_live_issuer(registry, session_id):
     )
 
 
+def ch6_live_issuer(registry, session_id):
+    """An adapter claiming CH-6 support requires a persistent registry."""
+
+    if not isinstance(registry, RetainedChannelRegistry) or not registry.persistent:
+        raise TypeError("CH-6 support requires a persistent channel identifier registry")
+    return trusted_live_issuer(registry, session_id)
+
+
 class ChannelMessageVectorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1281,6 +1333,43 @@ class ChannelMessageVectorTests(unittest.TestCase):
         self.assertEqual("timeout", state.terminal_status)
         with self.assertRaisesRegex(ValueError, "must be distinct"):
             HistoricalAuditStateIssuer(registry)
+
+    def test_ch6_refuses_a_persisted_channel_id_after_restart(self):
+        reused = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "canonical-reused-session-channel"
+        )
+        message = reused["message"]
+        channel_id = message["channelId"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "used-channel-ids.json"
+            first = ch6_live_issuer(
+                RetainedChannelRegistry(store=DurableChannelIdStore(path)), channel_id
+            )
+            state = first.issue(channel_id)
+            self.assertEqual("pass", evaluate(message, "current-read", AUTHORITY, state))
+
+            # Restart: every in-memory registry, issuer and state is gone;
+            # only the durable store remains.
+            del first, state
+            restarted = ch6_live_issuer(
+                RetainedChannelRegistry(store=DurableChannelIdStore(path)), channel_id
+            )
+            self.assertIn(channel_id, restarted.used_channel_ids)
+            with self.assertRaises(ReusedChannelIdError):
+                restarted.issue(channel_id)
+
+            # An in-memory registry after the same restart reopens the
+            # channel and accepts the earlier signed message again ...
+            ephemeral = trusted_live_issuer(RetainedChannelRegistry(), channel_id)
+            self.assertEqual(
+                "pass",
+                evaluate(message, "current-read", AUTHORITY, ephemeral.issue(channel_id)),
+            )
+        # ... so neither it nor a missing registry can back a CH-6 claim.
+        for registry in (None, RetainedChannelRegistry([channel_id])):
+            with self.subTest(registry=registry), self.assertRaises(TypeError):
+                ch6_live_issuer(registry, channel_id)
 
     def test_historical_import_uses_an_independent_audit_cursor(self):
         by_name = {item["name"]: item for item in self.legacy["vectors"]}

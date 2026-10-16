@@ -1843,9 +1843,9 @@ def build_rejection_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-provider-context-malformed", "error", "the provider context lacks its providerRef", changed("provider-receipt", lambda v: v["context"].pop("providerRef"))),
         case("fv-provider-evidence-two-references", "error", "the signed provider evidence carries two AP2 references", changed("provider-receipt", lambda v: (v["evidence"]["paymentTxRefs"].append(copy.deepcopy(v["evidence"]["paymentTxRefs"][0])), factory.resign_evidence(v["evidence"])))),
         case("fv-provider-reference-not-ap2", "error", "the signed provider evidence carries an EVM event reference", changed("provider-receipt", lambda v: (v["evidence"].__setitem__("paymentTxRefs", [factory.transaction_ref("block-depth", "provider-as-evm")]), factory.resign_evidence(v["evidence"])))),
-        case("fv-provider-reference-x402-not-ap2", "error", "the signed provider evidence carries a well-formed x402 event reference that names the supported protocolVersion; only the AP2 reference kind decides it", changed("provider-receipt", lambda v: (v["evidence"].__setitem__("paymentTxRefs", [{
+        case("fv-provider-reference-x402-not-ap2", "error", "the signed provider evidence carries a well-formed x402 event reference (X402-1 version 1); the AP2 reference-kind check rejects it, and the AP2 protocolVersion check would too", changed("provider-receipt", lambda v: (v["evidence"].__setitem__("paymentTxRefs", [{
             "kind": "x402-event", "httpResource": "https://payments.example/x402", "paymentReceiptHash": "ab" * 32,
-            "settlementTxHash": factory.tx_id("provider-as-x402"), "chainId": 1, "logIndex": 0, "protocolVersion": AP2_PROTOCOL_VERSION,
+            "settlementTxHash": factory.tx_id("provider-as-x402"), "chainId": 1, "logIndex": 0, "protocolVersion": "1",
         }]), factory.resign_evidence(v["evidence"])))),
     ])
 
@@ -2016,12 +2016,38 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
         factory.resign_evidence(value["evidence"], key_name="orchestrator-unconfigured")
 
     unconfigured_session = changed("block-depth", unconfigured_orchestrator)
+    unconfigured_authority = {"sessionAuthorityByJob": {unconfigured_session["evidence"]["jobId"]: {"phaseOrchestrator": CLAIMS["orchestrator-unconfigured"]}}}
     vectors.append(case(
         "fv-trusted-party-key-for-orchestrator-absent", "indeterminate",
         "the authenticated phase orchestrator genuinely signs the evidence, but the trusted party key map holds no key for it",
-        unconfigured_session,
-        trusted_overrides={"sessionAuthorityByJob": {unconfigured_session["evidence"]["jobId"]: {"phaseOrchestrator": CLAIMS["orchestrator-unconfigured"]}}},
+        unconfigured_session, trusted_overrides=unconfigured_authority,
     ))
+
+    # FV-10: an absent key in one stage is deferred, so a later signature
+    # checked against an available key still decides the verdict. Both
+    # signatures are outside the hashes they sign, so nothing else changes.
+    def unconfigured_and(mutation):
+        value = copy.deepcopy(unconfigured_session)
+        mutation(value)
+        return value
+
+    def buyer_signs_with_seller_value(value):
+        signatures = value["agreement"]["signatures"]
+        signatures[0]["value"] = signatures[1]["value"]
+
+    vectors.extend([
+        case(
+            "fv-trusted-party-key-for-orchestrator-absent-agreement-signature-invalid", "fail",
+            "the trusted party key map holds no key for the phase orchestrator, and the buyer's agreement signature, checked against the buyer's available key, does not verify",
+            unconfigured_and(buyer_signs_with_seller_value), trusted_overrides=unconfigured_authority,
+        ),
+        case(
+            "fv-trusted-party-key-for-orchestrator-absent-rail-signature-invalid", "fail",
+            "the trusted party key map holds no key for the phase orchestrator, and the rail signature, checked against the steward's available key, does not verify",
+            unconfigured_and(lambda v: v["rail"]["signature"].__setitem__("value", v["agreement"]["signatures"][1]["value"])),
+            trusted_overrides=unconfigured_authority,
+        ),
+    ])
 
     def pin_authorities(value, pinned, signers):
         value["rail"]["consumerFinalityProfile"]["settlement"]["observation"]["authorityRefs"] = list(pinned)
@@ -2034,6 +2060,20 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
         "fv-trusted-observation-authority-key-absent", "indeterminate",
         "the signed profile pins rpc-d and rpc-d genuinely attests the head, but the trusted observation authority key map holds no key for it; the quorum is incomplete",
         changed("block-depth", lambda v: pin_authorities(v, ("rpc-a", "rpc-b", "rpc-d"), ("rpc-a", "rpc-d"))),
+    ))
+
+    def keyless_noncanonical(value):
+        pin_authorities(value, ("rpc-a", "rpc-b", "rpc-d"), ("rpc-a", "rpc-b", "rpc-d"))
+        attestations = value["context"]["observation"]["authorityEvidence"]["attestations"]
+        assert attestations[2]["authorityRef"] == "rpc-d"
+        attestations[2]["value"] = "==not base64url=="
+
+    # FV-3: a presented signature skipped for lack of a key still gets the
+    # keyed path's encoding check, so the verdict does not depend on the key.
+    vectors.append(case(
+        "fv-trusted-observation-authority-key-absent-attestation-noncanonical", "fail",
+        "rpc-a and rpc-b meet the threshold with available keys, and pinned rpc-d, whose key the verifier lacks, presents a value that is not canonical Base64URL",
+        changed("block-depth", keyless_noncanonical),
     ))
 
     def unconfigured_provider(value):

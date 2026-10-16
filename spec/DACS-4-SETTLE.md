@@ -2070,9 +2070,16 @@ well-formed map that lacks the key of a signer the authenticated session or
 signed profile names (the phase orchestrator, a session party, a pinned
 observation authority, or the profile provider); such a signer cannot count
 toward a quorum. A signature is `fail` only when checked against an available
-key, and every signature with an available key is checked before an absent key
-is reported (FV-10). A rail signer absent from a non-empty steward key map is
-not a trusted steward and is `fail`.
+key. An absent key does not end evaluation: across the evidence, Agreement,
+rail and context stages, within one observation, and across a composite
+model's arms and their relations, every signature with an available key and
+every deterministic check still runs, and any `error` or
+`fail` they establish is the result; the absent key is reported as
+`indeterminate` only when none does (FV-10). A presented signature value whose
+key is absent still gets the encoding check a keyed verification applies first,
+so a malformed value is `fail` whether or not the verifier holds the key
+(FV-3). A rail signer absent from a non-empty steward key map is not a trusted
+steward and is `fail`.
 
 - **(FV-1) Exact rail authority.** A consumer MUST classify the record by
   `finalityBoundEvidenceVersion` before finality action, resolve

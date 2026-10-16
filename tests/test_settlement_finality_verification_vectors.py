@@ -170,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(246, self.data["count"])
+        self.assertEqual(249, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -307,7 +307,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ('hash_value(inclusion_header) != inclusion["id"]\n        or ', "", 2, "pass", [
                 "fv-inclusion-header-bytes-substitution", "fv-ap2-sr3-inclusion-header-bytes-substitution",
             ]),
-            ('return "indeterminate", "SR-3 authenticated head observation is stale"', "pass", 1, "pass", [
+            ('return deferred or ("indeterminate", "SR-3 authenticated head observation is stale")', "pass", 1, "pass", [
                 "fv-ap2-sr3-native-head-stale-provider-fresh",
             ]),
             ('return "fail", "SR-3 authenticated head observation is from the future"', "pass", 1, "pass", [
@@ -352,9 +352,12 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ('return _result("error", "unsupported AP2 protocolVersion")', "pass", 1, "pass", [
                 "fv-ap2-protocol-version-unsupported", "fv-ap2-sr3-protocol-version-unsupported",
             ]),
-            # The reference-kind guard alone decides a well-formed x402
-            # reference that names the supported protocolVersion.
-            ('return _result("error", "malformed signed AP2 reference")', "pass", 1, None, [
+            # A well-formed x402 reference (X402-1 version "1") fails both the
+            # AP2 reference-kind and AP2 protocolVersion guards; removing both
+            # changes the verdict.
+            ('return _result("error", "malformed signed AP2 reference")\n'
+             '    if ref.get("protocolVersion") not in AP2_PROTOCOL_VERSIONS:\n'
+             '        return _result("error", "unsupported AP2 protocolVersion")', "pass", 1, None, [
                 "fv-provider-reference-x402-not-ap2",
             ]),
             # FV-6: a trusted authority the signed profile does not pin.
@@ -363,14 +366,25 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ]),
             # FV entry: an absent key for a signer trusted authority names is
             # missing authority; treating it as a bad signature gives fail.
-            ('return "indeterminate", "trusted key for the authenticated phase orchestrator unavailable", None', "pass", 1, "fail", [
+            ('key_state = "indeterminate", "trusted key for the authenticated phase orchestrator unavailable"', "pass", 1, "fail", [
                 "fv-trusted-party-key-for-orchestrator-absent",
             ]),
-            ("        if authority_ref not in keys:\n            continue\n", "", 1, "fail", [
+            ('if authority_ref not in keys:\n            valid_value = _signature_encoding(attestation.get("value"))', "if False:\n            pass", 1, "fail", [
                 "fv-trusted-observation-authority-key-absent",
             ]),
-            ('return _result("indeterminate", "trusted key for the profile provider unavailable")', "pass", 1, "fail", [
+            ('key_state = "indeterminate", "trusted key for the profile provider unavailable"', "pass", 1, "fail", [
                 "fv-trusted-provider-key-absent",
+            ]),
+            # FV-10: without deferral the earlier absent key hides the later
+            # signature checked against an available key.
+            ('return decision == "indeterminate" and reason.startswith("trusted ")', "return False", 1, "indeterminate", [
+                "fv-trusted-party-key-for-orchestrator-absent-agreement-signature-invalid",
+                "fv-trusted-party-key-for-orchestrator-absent-rail-signature-invalid",
+            ]),
+            # FV-3: skipping a keyless attestation without its encoding check
+            # admits the malformed value.
+            ('valid_value = _signature_encoding(attestation.get("value"))', "valid_value = True", 1, "pass", [
+                "fv-trusted-observation-authority-key-absent-attestation-noncanonical",
             ]),
         ]
         for old, new, count, mutant_decision, names in guards:
@@ -412,7 +426,31 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             self.assertEqual(buyer, signature["party"])
             signature["value"] = value["agreement"]["signatures"][1]["value"]
 
+        def bad_bft_signature(value):
+            signatures = value["context"]["observation"]["finalityCertificate"]["signatures"]
+            signatures[0]["value"] = signatures[1]["value"]
+
+        def junk_attestation(value):
+            value["context"]["observation"]["authorityEvidence"]["attestations"][0]["value"] = "==not base64url=="
+
+        def junk_rail_signature(value):
+            value["rail"]["signature"]["value"] = "==not base64url=="
+
+        bft = self.cases["fv-bft-final-canonical-success"]
         rows = [
+            # FV-10 deferral inside one observation: absent authority keys do
+            # not hide a BFT signature checked against the validator set.
+            (bft, "observationAuthorityKeys", {}, None, "indeterminate"),
+            (bft, "observationAuthorityKeys", {}, bad_bft_signature, "fail"),
+            # Composite arms that only lack keys still run the cross-arm
+            # relation checks before the absent key is reported.
+            (self.cases["fv-htlc-keccak256-hashlock-is-sha3-256"], "observationAuthorityKeys", {}, None, "fail"),
+            (self.cases["fv-tank-coordinator-relation-mismatch"], "observationAuthorityKeys", {}, None, "fail"),
+            (self.cases["fv-liquidity-tank-canonical-success"], "observationAuthorityKeys", {}, None, "indeterminate"),
+            # FV-3: a value skipped for lack of a key still gets the encoding
+            # check, so an empty map does not admit it.
+            (depth, "observationAuthorityKeys", {}, junk_attestation, "fail"),
+            (depth, "stewardKeys", {}, junk_rail_signature, "fail"),
             (depth, "partyKeys", {}, None, "indeterminate"),
             (depth, "partyKeys", {"did:demos:outsider": party[buyer]}, None, "indeterminate"),
             (depth, "partyKeys", {orchestrator: party[orchestrator]}, None, "indeterminate"),

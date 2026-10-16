@@ -425,6 +425,18 @@ def listing_phase(
     return "pass", "verified", pipeline[phase_indexes[0]]["kind"]
 
 
+def string_phase_kinds(pipeline: list) -> bool:
+    """Every object step names its kind with a string before set membership.
+
+    A wrong-typed kind is malformed input, never a skipped non-sealed step and
+    never an unhashable-key exception.
+    """
+    return all(
+        not isinstance(step, dict) or isinstance(step.get("kind"), str)
+        for step in pipeline
+    )
+
+
 def sealed_deadline_gate(context: dict) -> tuple[str, str | None]:
     """SE-1 new-session gate for sealed-envelope demand and procurement.
 
@@ -440,7 +452,7 @@ def sealed_deadline_gate(context: dict) -> tuple[str, str | None]:
     if not isinstance(listing, dict):
         return "error", "malformed-input"
     pipeline = listing.get("pipeline")
-    if not isinstance(pipeline, list):
+    if not isinstance(pipeline, list) or not string_phase_kinds(pipeline):
         return "error", "malformed-input"
     sealed_steps = [
         step for step in pipeline
@@ -491,7 +503,7 @@ def sealed_auction_mode_gate(context: dict) -> tuple[str, str | None]:
     if not isinstance(listing, dict):
         return "error", "malformed-input"
     pipeline = listing.get("pipeline")
-    if not isinstance(pipeline, list):
+    if not isinstance(pipeline, list) or not string_phase_kinds(pipeline):
         return "error", "malformed-input"
     for step in pipeline:
         if not isinstance(step, dict):
@@ -521,7 +533,7 @@ def sealed_session_profile_gate(context: dict) -> tuple[str, str | None]:
     """SAC-1/PS-2 new-session structural gate, independent of the producer."""
     listing = context.get("listing")
     pipeline = listing.get("pipeline") if isinstance(listing, dict) else None
-    if not isinstance(pipeline, list):
+    if not isinstance(pipeline, list) or not string_phase_kinds(pipeline):
         return "error", "malformed-input"
     sealed = [
         (index, step) for index, step in enumerate(pipeline)
@@ -1017,7 +1029,7 @@ def sealed_envelope_phase_kind(context: dict) -> tuple[str, str | None]:
     if not isinstance(listing, dict):
         return "error", None
     pipeline = listing.get("pipeline")
-    if not isinstance(pipeline, list):
+    if not isinstance(pipeline, list) or not string_phase_kinds(pipeline):
         return "error", None
     for step in pipeline:
         if isinstance(step, dict) and step.get("kind") in {
@@ -4205,6 +4217,25 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             generator.NOW + 200_000
         )
         self.assertEqual(sealed_deadline_gate(context), ("fail", "sealed-deadline-too-soon"))
+
+    def test_sealed_helpers_refuse_wrong_typed_phase_kinds(self):
+        context = copy.deepcopy(self.data["scenarios"]["selectionBoundDemand"])
+        gates = (sealed_session_profile_gate, sealed_auction_mode_gate, sealed_deadline_gate)
+        for gate in gates:
+            self.assertEqual(gate(context), ("pass", None))
+        self.assertEqual(
+            sealed_envelope_phase_kind(context),
+            ("pass", "negotiate-sealed-envelope-complete"),
+        )
+        for index in (0, 1):
+            for kind in ({}, {"kind": "negotiate-sealed-envelope"}, [],
+                         ["negotiate-sealed-envelope"], None, 0, 1.5, True, False):
+                with self.subTest(step=index, kind=kind):
+                    changed = copy.deepcopy(context)
+                    changed["listing"]["pipeline"][index]["kind"] = kind
+                    for gate in gates:
+                        self.assertEqual(gate(changed), ("error", "malformed-input"))
+                    self.assertEqual(sealed_envelope_phase_kind(changed), ("error", None))
 
     def test_deadline_gate_missing_or_malformed_trusted_start_refuses(self):
         context = copy.deepcopy(self.data["scenarios"]["selectionBoundDemand"])

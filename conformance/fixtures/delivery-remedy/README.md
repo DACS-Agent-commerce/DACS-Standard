@@ -102,7 +102,11 @@ under DRAA-4. Both summaries are retained, neither is selected, and DRC-15 is
 not evaluated from either copy, including when their finality times fall on
 opposite sides of the terminal transaction. Receiving the exact same receipt
 twice still describes one write. A consumer with one receipt needs no proof
-that no other write exists.
+that no other write exists. The verifier's ledger retains every
+authenticated summary bound to its logical address, so two writes carried by
+different lifecycles, in one batch or in successive calls, are the same
+equivocation: no lifecycle whose terminal evidence references that address
+then passes, and a `pass` already issued for it is revised to `indeterminate`.
 
 The protocol verifier requires the finality records embedded in signed funding
 and terminal artifacts to use the exact DACS-4 `SettlementFinalityRecord`

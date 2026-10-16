@@ -906,6 +906,86 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                     self.assertEqual(candidate, before)
                     self.assertEqual(list(ledger.terminals()), [])
 
+    def _single_write_copy(self, name, copy_index):
+        """P13 with the resolver qualifying only copy ``copy_index`` of the ``name`` write."""
+        value = self._vector("sr2-single-write-two-producers")
+        value["resolverEvidence"]["qualifiedArtifactWrites"][name] = [
+            generator.qualified_artifact_write(value, name, copy_index)
+        ]
+        generator.resign_resolver(value)
+        return value
+
+    def test_sr2_writes_from_different_lifecycles_are_one_equivocation(self):
+        """DRAA-4 / CORE §5.1: two qualifying writes are known however they arrive, and never forgotten."""
+        conflict = ("indeterminate", "DRAA-4")
+        shipped = self._vector("sr2-single-write-two-producers")
+        for name in ("funding", "decision"):
+            first, second = self._single_write_copy(name, 0), self._single_write_copy(name, 1)
+            both = self._vector(f"sr2-identical-{name}-writes")
+            with self.subTest(artifact=name):
+                self.assertEqual(first, shipped)
+                self.assertEqual(finding(second), ("pass", "DRV-7"))
+                # One batch, in either order.
+                for batch in ([first, second], [second, first]):
+                    observed = evaluate_lifecycles([copy.deepcopy(item) for item in batch], DecisionLedger())
+                    self.assertEqual([verdict(item) for item in observed], [conflict, conflict])
+                # Successive calls: the second write withholds both and
+                # revises the pass already issued.
+                ledger = DecisionLedger()
+                issued = evaluate_protocol(copy.deepcopy(first), ledger)
+                self.assertEqual(verdict(issued), ("pass", "DRV-7"))
+                later = evaluate_protocol(copy.deepcopy(second), ledger)
+                self.assertEqual(verdict(later), conflict)
+                self.assertEqual(self._revised(first, issued, later), conflict)
+                # Every later lifecycle at that address stays withheld, with
+                # its own summary or without one, and nothing is revised again.
+                for retry in (
+                    first, second, both, self._vector("sr2-single-write-resolved-again"),
+                    self._vector("sr2-repeated-receipt-same-write"), self._fixture("release"),
+                ):
+                    observed = evaluate_protocol(copy.deepcopy(retry), ledger)
+                    self.assertEqual(verdict(observed), conflict)
+                    self.assertNotIn("revises", observed)
+                self.assertEqual([verdict(ledger.issued(item)) for item in ledger.terminals()], [conflict])
+                # The conflict first: retained although it records no terminal.
+                ledger = DecisionLedger()
+                self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(both), ledger)), conflict)
+                self.assertEqual(list(ledger.terminals()), [])
+                for retry in (first, second):
+                    self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(retry), ledger)), conflict)
+                # An explicit later conflict revises the earlier pass.
+                ledger = DecisionLedger()
+                issued = evaluate_protocol(copy.deepcopy(first), ledger)
+                later = evaluate_protocol(copy.deepcopy(both), ledger)
+                self.assertEqual(verdict(later), conflict)
+                self.assertEqual(self._revised(first, issued, later), conflict)
+                # A summary the pinned resolver did not sign, or one bound to
+                # another logical address, is not retained.
+                forged = copy.deepcopy(second)
+                forged["resolverEvidence"]["qualifiedArtifactWrites"][name][0]["nonce"] = "99"
+                elsewhere = copy.deepcopy(second)
+                elsewhere["resolverEvidence"]["qualifiedArtifactWrites"][name][0]["logicalAddress"] += "-other"
+                generator.resign_resolver(elsewhere)
+                for rejected, outcome in ((forged, ("fail", "DRV-1")), (elsewhere, ("fail", "DRV-6"))):
+                    ledger = DecisionLedger()
+                    self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(rejected), ledger)), outcome)
+                    self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(first), ledger)), ("pass", "DRV-7"))
+        # The exact same write from several lifecycles is one write.
+        repeats = [
+            self._vector(item) for item in (
+                "sr2-single-write-two-producers", "sr2-single-write-resolved-again",
+                "sr2-repeated-receipt-same-write",
+            )
+        ]
+        for order in (repeats, repeats[::-1]):
+            observed = evaluate_lifecycles([copy.deepcopy(item) for item in order], DecisionLedger())
+            self.assertEqual([verdict(item) for item in observed], [("pass", "DRV-7")] * 3)
+            ledger = DecisionLedger()
+            for item in order:
+                observed = evaluate_protocol(copy.deepcopy(item), ledger)
+                self.assertEqual(verdict(observed), ("pass", "DRV-7"))
+                self.assertNotIn("revises", observed)
+
     def test_every_negative_fails_only_at_its_intended_guard(self):
         self.assertEqual(generator.negative_isolation_problems(self.vector_pack), [])
         self.assertLessEqual(set(generator.FOLLOW_ON_FINDINGS), set(self.vectors))
@@ -2484,10 +2564,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         ])
         original = verifier._lifecycle_check
         try:
-            def raising(value):
+            def raising(value, ledger=None):
                 if value.get("raise"):
                     raise KeyError("unread member")
-                return original(value)
+                return original(value, ledger)
             verifier._lifecycle_check = raising
             batch = evaluate_lifecycles([self._fixture("release"), {"raise": True}], DecisionLedger())
         finally:
@@ -2543,10 +2623,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         # A RecursionError that no bound decides is contained per lifecycle.
         original = verifier._lifecycle_check
         try:
-            def raising(value):
+            def raising(value, ledger=None):
                 if value.get("recurse"):
                     raise RecursionError("maximum recursion depth exceeded")
-                return original(value)
+                return original(value, ledger)
             verifier._lifecycle_check = raising
             batch = evaluate_lifecycles([{"recurse": True}, self._fixture("release")], DecisionLedger())
         finally:

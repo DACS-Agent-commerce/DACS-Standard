@@ -12,14 +12,21 @@ MAP = ROOT / "docs" / "fp-dem-current-rules.md"
 PIN = "df7bc202ebdc179a59d61a8221072f33f482b933"
 MODULES = ("CORE.md", "DACS-1-IDENTIFY.md", "DACS-2-VET.md", "DACS-3-NEGOTIATE.md",
            "DACS-4-SETTLE.md", "DACS-5-VERIFY.md", "CONFORMANCE-PLAN.md")
-# Other rails, alternative payment, other negotiation patterns, metered pricing,
-# private negotiation channels and attested-payload delivery are outside FP-DEM.
-EXCLUDED = {"AP2", "APR", "DPA", "HTLC", "MTR", "RFQ", "SAC", "SE", "X402", "CH"}
+# Other rails, alternative payment, other negotiation patterns, private
+# negotiation channels and attested-payload delivery are outside FP-DEM.
+EXCLUDED = {"AP2", "APR", "DPA", "HTLC", "RFQ", "SAC", "SE", "X402", "CH"}
+# Split families are excluded rule by rule: DV-5 and DV-6 govern
+# deliver-entitlement credentials (§9.6.2), not deliver-storage-program.
+EXCLUDED_RULES = {"DV-5", "DV-6"}
 RULE = r"[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)?-?\d+"
 
 
 def rule_family(rule):
     return re.sub(r"\d+$", "", rule).rstrip("-")
+
+
+def excluded(rule):
+    return rule_family(rule) in EXCLUDED or rule in EXCLUDED_RULES
 
 
 def definition_sections(sources):
@@ -56,7 +63,7 @@ def definition_sections(sources):
             if name == "DACS-2-VET.md" and line.startswith("| ("):
                 labels = re.findall(rf"\(({RULE})\)", line)[:1]
             for rule in labels:
-                if rule_family(rule) not in EXCLUDED:
+                if not excluded(rule):
                     result[rule].add(section)
     return dict(result)
 
@@ -96,8 +103,14 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
                 self.assertNotIn(rule, actual, f"duplicate rule {rule}")
                 actual[rule] = refs
         self.assertEqual(actual, self.definitions)
-        self.assertEqual(actual["DV-5"], {"9.6.2"})
-        self.assertEqual(actual["DV-6"], {"9.6.2"})
+        # MTR-5 rejects an unrecognized pricing kind for every agreement; MTR-1..4
+        # apply when PS-3 runs fixed-price over a metered listing.
+        for rule in ("MTR-1", "MTR-2", "MTR-3", "MTR-4", "MTR-5"):
+            self.assertEqual(actual[rule], {"8.5.2"})
+        self.assertIn("MTR-5 applies to every agreement", self.text)
+        self.assertNotIn("DV-5", actual)
+        self.assertNotIn("DV-6", actual)
+        self.assertEqual(actual["DV-1"], {"9.6.1"})
         self.assertEqual(actual["PDE-8"], {"9.7.0", "10.4.3"})
         self.assertEqual(actual["CD-1"], {"B.2"})
         # Refunds and corrections are conditional within FP-DEM, not excluded rails.
@@ -114,8 +127,10 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         labels = module.defined_rule_ids("\n".join(self.sources.values()))
-        expected = {rule for rule in labels if rule_family(rule) not in EXCLUDED}
+        expected = {rule for rule in labels if not excluded(rule)}
         self.assertNotIn("AMEND", EXCLUDED)
+        self.assertNotIn("MTR", EXCLUDED)
+        self.assertTrue(EXCLUDED_RULES <= labels)
         self.assertTrue({"AMEND-1", "AMEND-2", "AMEND-3", "AMEND-4"} <= expected)
         self.assertEqual(set(self.definitions), expected)
 
@@ -133,6 +148,22 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
                 self.assertRegex(number, r"^#\d+(, #\d+)*$")
                 self.assertRegex(kind, r"^(issue|PR|draft PR)(, (issue|PR|draft PR))*$")
                 self.assertTrue(what)
+
+    def test_gaps_cover_cross_profile_changes_vector_gaps_and_upstream_blockers(self):
+        rows = {number: (kind, sections) for number, kind, sections, _what in
+                table_rows(self.text, "## Known gaps")}
+        # Open PR #336 changes §9.4.3, PC-1 and AMEND-1 for every profile.
+        self.assertEqual(rows["#336, #320"], ("PR, issue", "§9.4.3, §9.5.1, §9.7.1, §10.4.3"))
+        self.assertEqual(rows["#341"], ("draft PR", "§6.3.4"))
+        self.assertEqual(rows["#99"][1], "§10.4.2, §10.4.3, §11.2.1")
+        gaps = self.text.split("## Known gaps", 1)[1]
+        untracked = gaps.split("No open issue tracks these vector gaps yet:", 1)[1].split("\n\n", 2)[1]
+        for text in ("§8.4.1", "auto-accept", "PS-1", "PS-2"):
+            self.assertIn(text, untracked)
+        upstream = gaps.split("also depend on two open upstream issues", 1)[1]
+        for text in ("DACS-Agent-commerce/dacs-sdk#284", "kynesyslabs/node#994"):
+            self.assertIn(text, upstream)
+        self.assertIn("other\nthan the pull request adding this map", gaps)
 
     def test_readme_and_historical_readiness_page_link_the_map(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

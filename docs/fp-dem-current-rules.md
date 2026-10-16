@@ -30,12 +30,14 @@ Rules sharing a section occupy one row; split families have separate rows.
 The "Covers" wording follows the [rule-ID index](rule-id-index.md).
 
 Conditional rules remain conditional: the Vet methods, registry anchoring,
-private delivery, credential handover, refunds and corrections, fee disclosure,
-reputation modes and implementation reporting below apply only where their
-source sections say so.
+private delivery, refunds and corrections, fee disclosure, reputation modes
+and implementation reporting below apply only where their source sections say
+so. PS-3 lets `negotiate-fixed-price` run over a metered listing, so MTR-1..MTR-4
+apply when the listing is metered; MTR-5 applies to every agreement.
 This map does not select those options. Other payment rails, alternative
-payment selection, other negotiation patterns, metered pricing, private
-negotiation channels and attested-payload delivery are outside this shape.
+payment selection, other negotiation patterns, private negotiation channels,
+attested-payload delivery and the `deliver-entitlement` credential rules
+(DV-5, DV-6 in §9.6.2) are outside this shape.
 
 | Stage | Section | Rule IDs | Covers |
 |-------|---------|----------|--------|
@@ -69,9 +71,10 @@ negotiation channels and attested-payload delivery are outside this shape.
 | Vet (if present) | §7.4.5 | RAV-1, RAV-2, RAV-3, RAV-4, RAV-5, RAV-6, RAV-7 | Recipe availability values and consumers |
 | Vet (if present) | §7.6.1 | VP-C1, VP-C2, VP-C3 | VerifyResult caching semantics |
 | Vet (if present) | §7.6.1 | VP-R1, VP-R2, VP-R3, VP-R4 | VerifyResult retry semantics |
-| Vet (if present) | §7.7 | WN-1, WN-2, WN-3, WN-4, WN-5, WN-6 | Verification warnings |
+| Vet (if present) | §7.7 | WN-1, WN-2, WN-3, WN-4, WN-5, WN-6 | Advisory verification warnings |
 | Vet (if present) | §7.7.1 | CRQ-1, CRQ-2, CRQ-3, CRQ-4 | ClaimRequirement candidate qualification before aggregation |
 | Vet (if present) | §7.8.1 | VPC-1, VPC-2, VPC-3, VPC-4, VPC-5 | Vet phase contract |
+| Negotiate | §8.5.2 | MTR-1, MTR-2, MTR-3, MTR-4, MTR-5 | Metered pricing (per-unit total recompute + unrecognized-kind fail-closed) |
 | Negotiate | §8.5.3 | FS-1, FS-2, FS-3, FS-4, FS-5 | FeeSchedule disclosure on agreement artifacts |
 | Negotiate | §8.6 | CA-1, CA-2, CA-3, CA-4, CA-5, CA-6, CA-7, CA-8, CA-9, CA-10 | Agreement commitment phase validation |
 | Negotiate | §8.8 | PS-1, PS-2, PS-3 | Negotiation pattern selection |
@@ -82,7 +85,6 @@ negotiation channels and attested-payload delivery are outside this shape.
 | Settle | §9.5.1 | PC-1, PC-2, PC-3, PC-4, PC-5, PC-6, PC-7 | Payment phase common contract |
 | Settle | §9.5.8 | SB-1, SB-2, SB-3 | Session-bound settlement evidence (full PC-2 address binding, signed event identity, deterministic projection, legacy replay, tx↔session binding, anti-double-count) |
 | Settle | §9.6.1 | DV-1, DV-2, DV-3, DV-4 | Deliverable access / privacy (private delivery, credential handover) |
-| Settle | §9.6.2 | DV-5, DV-6 | Deliverable access / privacy (private delivery, credential handover) |
 | Settle | §9.7.0 | FP-1, FP-2, FP-3, FP-4 | Final settlement data and transitive evidence/bundle propagation |
 | Settle | §9.7.0 | FRC-1, FRC-2, FRC-3, FRC-4, FRC-5, FRC-6, FRC-7, FRC-8, FRC-9, FRC-10, FRC-11 | Verifier-issued multi-authority finality resolution, retained conflict union, replay, and composite gating |
 | Settle | §9.7.0 | FV-1, FV-2, FV-3, FV-4, FV-5, FV-6, FV-7, FV-8, FV-9, FV-10 | Consumer-verifiable canonical settlement finality |
@@ -112,14 +114,16 @@ negotiation channels and attested-payload delivery are outside this shape.
 ## Known gaps
 
 Open issues, and open pull requests whose base is `next`, that affect the
-rows above, including related optional design work. All 34 open items were
-enumerated on 2026-10-16; the list has no issue-number cutoff. Open pull
+rows above, including related optional design work. All 34 open items other
+than the pull request adding this map were enumerated on 2026-10-16; the list
+has no issue-number cutoff. Open pull
 requests were checked for a `next` base. The disposition of #330 below was
 checked against the pinned specification and its open issue on the same date.
 
 | Number | Kind | Section | What is open |
 |--------|------|---------|--------------|
 | #419 | issue | §6.3.1, §6.3.2 | `presentedBy` control for `did:demos:agent` claims |
+| #341 | draft PR | §6.3.4 | A negotiated x402 rail candidate that also makes DACS-1 LRR-5 name the pre-registry rejections, so LRR-4 and LRR-5 agree when the registry is unavailable |
 | #425 | issue | §6.3.4 | A pure logical-to-native mapping for Demos Listing versions, and absence and current-value policies |
 | #408 | issue | §6.3.4 | A full verifier-owned Listing admission evaluator in the conformance reference |
 | #430 | draft PR | §6.3.4 | Listing-admission script fixes for wrong-typed pipeline kinds and required capabilities, related to #408 |
@@ -127,11 +131,31 @@ checked against the pinned specification and its open issue on the same date.
 | #331 | issue | §7.8.1 | Authenticated provenance for the counterparty requirement in VPC-2 |
 | #383 | issue | §7.4, §7.7.1, §7.12 | Same-claim multi-method quorum and trust-domain independence; current alternatives remain OR choices |
 | #292 | issue | §8.6, §10.4 | A proposed batched deal-close commitment preserving per-party evidence and the existing gates before effects |
+| #336, #320 | PR, issue | §9.4.3, §9.5.1, §9.7.1, §10.4.3 | A candidate Atomic DACS Work profile (RFC #320). For every profile it also changes rail resolution (§9.4.3), PC-1 arm selection (§9.5.1) and the AMEND-1 discriminator and signature-domain check (§9.7.1); it adds Atomic handling at SEB-3 |
 | #410 | issue | §9.5.1 | PB-* cases that no committed vector exercises yet |
 | #426 | draft PR | §9.7.0 and others | Vectors for FV-1..FV-10 guards and other recently merged rules, with some clarifications |
 | #374 | issue | §10.5 | Binding reputation derivations to a complete per-claim session set |
 | #356, #371 | issue, draft PR | — | A pre-normative delivery-or-remedy profile; its first binding is an EVM escrow rail, not `pay-dem` |
-| #99 | issue | §8.7, §10.10 | An optional DACS-X dispute-output interface and deterministic fixture contract |
+| #99 | issue | §10.4.2, §10.4.3, §11.2.1 | An optional DACS-X dispute-output interface and deterministic fixture contract over the bundle divergence walk |
+
+No open issue tracks these vector gaps yet:
+
+- no committed vector exercises the §8.4.1 procedure or its auto-accept
+  requirements: an expired commitment, a live instance signature over the
+  actual `agreementHash` rather than a placeholder or pre-issued one, and the
+  buyer's check of the commitment before relying on auto-accept;
+- no committed vector exercises PS-1 or PS-2; the only PS-2 check is a
+  sealed-envelope pairing gate in the identity-bundle hash-binding reference
+  test, which does not reach a fixed-price pipeline.
+
+`pay-dem` `bft-final` finality (§9.5.9, §9.7.0) and the `demos-native:DEM`
+registry entry (§9.4.3) also depend on two open upstream issues that §9.5.9
+reaches through #382:
+
+- DACS-Agent-commerce/dacs-sdk#284: pin the Demos mainnet trust bootstrap
+  before funded live use;
+- kynesyslabs/node#994: publish an authoritative Demos mainnet trust
+  descriptor and live DEM registry entry.
 
 Related conformance work remains open in #270: a neutral suite shared across
 implementations. It concerns evidence for the rules above rather than a new

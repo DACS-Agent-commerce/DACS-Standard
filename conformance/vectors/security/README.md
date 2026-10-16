@@ -66,6 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; §9.5.1 PC-4/PC-7; §9.7.0 FV-5 | 46 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -1242,6 +1243,44 @@ Regenerate and execute with:
 python3 scripts/generate_sb2_collision_authority_vectors.py --write
 python3 scripts/generate_sb2_collision_authority_vectors.py --check
 python3 -m unittest tests.test_sb2_collision_authority_vectors -v
+```
+
+### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
+
+46 candidate vectors pin native-DEM settlement on execution, not inclusion.
+The node's status index may label a transaction `included` while its
+transaction record is `failed`, so the index is never decisive. A
+`classify-execution` case passes only for a record whose hash, nonce, sender,
+recipient and OS amount equal the retained signed transfer, whose block
+equals the inclusion observation, and whose status is exactly `confirmed`. A
+record bound the same way with status `failed` is a durable `permanent`
+failure without `settlementFinality`. Missing, unavailable, pending, aliased,
+case-variant, mismatched, missing-member, float-typed or boolean-typed
+records stay `indeterminate` and authorize no delivery or settlement
+accounting.
+
+`resume-phase` cases reuse a valid retained failure proof without a node
+read, refuse to reuse a corrupted one, and recover a confirmed transfer by
+re-reading the retained hash. `broadcast-gate` cases allow only the first
+broadcast after complete, durable DEM-1 retention and refuse a second or
+replacement broadcast. `admit-evidence` cases apply DEM-7 for consumers,
+including the payee before delivery. An authenticated contradiction is `fail`
+under FV-5, while an unauthenticated mismatched read stays `indeterminate`.
+A consumer `pass` only satisfies this gate; FV, SB and PB checks still apply.
+
+Each vector's `guards` lists exactly the oracle checks whose removal changes
+its result. The test asserts that list for every vector and that every guard
+is named at least once. The fixture vocabulary is abstract: it pins the Demos
+record and status-index semantics, not a node RPC wire format. The consumer
+path through the FV reference is
+`settlement-finality-verification.json#fv-bft-final-included-execution-failed`.
+
+Regenerate and execute with:
+
+```sh
+python3 scripts/generate_pay_dem_execution_vectors.py --write
+python3 scripts/generate_pay_dem_execution_vectors.py --check
+python3 -m unittest tests.test_pay_dem_execution_vectors -v
 ```
 
 ### `commitment-anchor-authority-v0.3.json` — §8.6 CA-6/CA-7

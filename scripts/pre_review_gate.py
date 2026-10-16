@@ -698,6 +698,14 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_phase_bound_delivery_vectors.py",
         "test": "PhaseBoundDeliveryVectorTests.test_credential_field_vectors_reject_delivery_signature_bypass",
     },
+    "pay-dem-execution-inclusion-only-witness": {
+        "file": "tests/test_pay_dem_execution_vectors.py",
+        "test": "PayDemExecutionVectorTests.test_inclusion_only_implementation_is_rejected",
+    },
+    "pay-dem-execution-guard-removal-witness": {
+        "file": "tests/test_pay_dem_execution_vectors.py",
+        "test": "PayDemExecutionVectorTests.test_every_vector_fails_when_each_named_guard_is_removed",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

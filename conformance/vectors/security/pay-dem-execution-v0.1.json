@@ -1,0 +1,2001 @@
+{
+  "set": "pay-dem-execution-v0.1",
+  "spec": "DACS-4 §9.5.9 DEM-1..DEM-7; §9.5.1 PC-4/PC-7; §9.7.0 FV-5",
+  "tier": "candidate",
+  "description": "Inclusion does not prove execution. Only a record bound to the retained hash, nonce, block, sender, recipient and OS amount with status confirmed succeeds; a bound failed record is a permanent failure; anything else stays indeterminate without a second broadcast.",
+  "fixtureVocabulary": {
+    "statusIndex": "node status-index label for the retained hash; never decisive",
+    "inclusionObservation": "block identified for the retained hash, or null",
+    "recordRead": "transaction-record read: found, not-found or unavailable",
+    "guards": "checks whose removal makes this vector fail"
+  },
+  "count": 46,
+  "hash": "9d786748e30271f0ed9fe90ce6e07347c8d30fa0c9d1e17dc52043a96961fc09",
+  "vectors": [
+    {
+      "name": "included-confirmed",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "pass",
+      "want": {
+        "executionState": "executed",
+        "handlerResult": "ok",
+        "evidence": "success-bft-final",
+        "nextAction": "anchor-success-evidence",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": true,
+        "settlementAccounting": true,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3",
+      "guards": [
+        "success-branch"
+      ],
+      "note": "A bound confirmed record is the only success; evidence and delivery follow."
+    },
+    {
+      "name": "included-failed",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "failed"
+          }
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "executionState": "failed",
+        "handlerResult": "permanent",
+        "evidence": "failure-without-settlement-finality",
+        "nextAction": "terminal-failure",
+        "terminalFailureProofRetained": true,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-4/DEM-6",
+      "guards": [
+        "failure-is-permanent",
+        "failure-proof-retained",
+        "no-replacement",
+        "success-requires-record"
+      ],
+      "note": "Included is not executed: a bound failed record is a durable permanent failure with no replacement."
+    },
+    {
+      "name": "included-pending",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "pending"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5",
+      "guards": [
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "Included with a pending record is unresolved and authorizes nothing."
+    },
+    {
+      "name": "included-record-not-found",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "not-found"
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5/DEM-6",
+      "guards": [
+        "no-rebroadcast",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "Included but no record for the retained hash: execution is unknown and nothing is resent."
+    },
+    {
+      "name": "included-record-unavailable",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "unavailable"
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5",
+      "guards": [
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "An unreachable node leaves execution unknown; no success, failure or delivery."
+    },
+    {
+      "name": "included-alias",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "included"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3",
+      "guards": [
+        "success-requires-exact-confirmed",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A record status copied from the index label is not an execution result."
+    },
+    {
+      "name": "finalized-alias",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "finalized"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3",
+      "guards": [
+        "success-requires-exact-confirmed",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "Finality vocabulary is not the executed record status."
+    },
+    {
+      "name": "success-alias",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "success"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3",
+      "guards": [
+        "success-requires-exact-confirmed",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "Only the exact Demos record status confirmed establishes execution."
+    },
+    {
+      "name": "confirmed-case-variant",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "Confirmed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3",
+      "guards": [
+        "success-requires-exact-confirmed",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "Status comparison is exact; a case variant is unknown."
+    },
+    {
+      "name": "confirmed-wrong-hash",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "935a9f844685c90ba8c634c2a00bb43b4d55fa4bcb73704cdd4c6b83c7b3fab9",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-hash",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A confirmed record for another hash says nothing about the retained transfer."
+    },
+    {
+      "name": "confirmed-wrong-nonce",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 10,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-nonce",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A record whose nonce differs from the signed nonce is unbound."
+    },
+    {
+      "name": "confirmed-wrong-block",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 43,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-block",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A record in a different block from the inclusion observation is unbound."
+    },
+    {
+      "name": "confirmed-wrong-sender",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x77fa9fef6c0a6a3b0d39f72578f9355752b6d47bdaa7a345d6bf43cef871f51b",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-sender",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A record debiting another sender is unbound."
+    },
+    {
+      "name": "confirmed-wrong-recipient",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x77fa9fef6c0a6a3b0d39f72578f9355752b6d47bdaa7a345d6bf43cef871f51b",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-recipient",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A record paying another recipient is unbound."
+    },
+    {
+      "name": "confirmed-wrong-amount",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000001",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-amount",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A record for a different OS amount is unbound."
+    },
+    {
+      "name": "confirmed-missing-nonce",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-nonce",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A record missing its nonce is unbound."
+    },
+    {
+      "name": "confirmed-float-nonce",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9.0,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-exact-type",
+        "bind-nonce",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "Binding compares exact JSON types: 9.0 is not the signed integer nonce 9."
+    },
+    {
+      "name": "confirmed-boolean-nonce",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 1,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": true,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-exact-type",
+        "bind-nonce",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "Binding compares exact JSON types: true is not the signed nonce 1."
+    },
+    {
+      "name": "confirmed-without-inclusion-observation",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "pending",
+        "inclusionObservation": null,
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-block",
+        "bind-requires-inclusion"
+      ],
+      "note": "Without an inclusion observation the record's block cannot be bound."
+    },
+    {
+      "name": "failed-wrong-nonce",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 10,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "failed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-nonce",
+        "failure-requires-binding",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A failed record with another nonce does not prove this transfer failed."
+    },
+    {
+      "name": "failed-missing-nonce",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "failed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-nonce",
+        "failure-requires-binding",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A failed record missing its nonce does not prove this transfer failed."
+    },
+    {
+      "name": "failed-wrong-block",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 43,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "failed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-block",
+        "failure-requires-binding",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A failed record in another block conflicts with the inclusion observation."
+    },
+    {
+      "name": "failed-wrong-amount",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000001",
+            "status": "failed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-amount",
+        "failure-requires-binding",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A failed record for another amount does not prove this transfer failed."
+    },
+    {
+      "name": "failed-wrong-hash",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "935a9f844685c90ba8c634c2a00bb43b4d55fa4bcb73704cdd4c6b83c7b3fab9",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "failed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-hash",
+        "failure-requires-binding",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A failed record for another hash does not prove this transfer failed."
+    },
+    {
+      "name": "failed-without-inclusion-observation",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "not-found",
+        "inclusionObservation": null,
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "failed"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-block",
+        "bind-requires-inclusion",
+        "failure-requires-binding"
+      ],
+      "note": "A failed record without an inclusion observation is not a bound failure."
+    },
+    {
+      "name": "transfer-unknown-not-rebroadcast",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "not-found",
+        "inclusionObservation": null,
+        "recordRead": {
+          "state": "not-found"
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-6",
+      "guards": [
+        "no-rebroadcast"
+      ],
+      "note": "Neither index nor record knows the hash; the handler still only re-reads."
+    },
+    {
+      "name": "resume-reuses-failure-proof",
+      "operation": "resume-phase",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "retainedFailureProof": {
+          "classification": "permanent",
+          "inclusionBlock": 42,
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "failed"
+          }
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "unavailable"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "executionState": "failed",
+        "handlerResult": "permanent",
+        "evidence": "failure-without-settlement-finality",
+        "nextAction": "terminal-failure",
+        "terminalFailureProofRetained": true,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-4/DEM-6",
+      "guards": [
+        "failure-proof-retained",
+        "no-replacement",
+        "resume-reuses-failure-proof"
+      ],
+      "note": "A resume after a proven failure reuses it even while the node is unreachable."
+    },
+    {
+      "name": "resume-corrupted-failure-proof",
+      "operation": "resume-phase",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "retainedFailureProof": {
+          "classification": "permanent",
+          "inclusionBlock": 42,
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 10,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "failed"
+          }
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "not-found"
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-4/DEM-6",
+      "guards": [
+        "bind-nonce",
+        "no-rebroadcast",
+        "resume-validates-failure-proof",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A retained proof whose nonce no longer binds is not reused; re-read only."
+    },
+    {
+      "name": "resume-without-proof-not-found",
+      "operation": "resume-phase",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "retainedFailureProof": null,
+        "statusIndex": "not-found",
+        "inclusionObservation": null,
+        "recordRead": {
+          "state": "not-found"
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "executionState": "indeterminate",
+        "handlerResult": "unresolved",
+        "evidence": "none",
+        "nextAction": "re-read-retained-hash",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-6",
+      "guards": [
+        "no-rebroadcast"
+      ],
+      "note": "A crash after a possible broadcast resumes by re-reading, never resending."
+    },
+    {
+      "name": "resume-without-proof-confirmed",
+      "operation": "resume-phase",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "retainedFailureProof": null,
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "pass",
+      "want": {
+        "executionState": "executed",
+        "handlerResult": "ok",
+        "evidence": "success-bft-final",
+        "nextAction": "anchor-success-evidence",
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": true,
+        "settlementAccounting": true,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3/DEM-6",
+      "guards": [
+        "success-branch"
+      ],
+      "note": "Re-reading the retained hash finds the executed transfer; no second payment."
+    },
+    {
+      "name": "first-broadcast-after-durable-retention",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "pass",
+      "want": {
+        "broadcastPermitted": true
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "first-broadcast-allowed"
+      ],
+      "note": "The single broadcast is allowed once all five values are durably retained."
+    },
+    {
+      "name": "broadcast-before-durable-retention",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "retentionDurable": false,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "broadcast-requires-durable-retention"
+      ],
+      "note": "Volatile retention cannot support recovery, so the broadcast is refused."
+    },
+    {
+      "name": "broadcast-with-incomplete-retention",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "error",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "broadcast-requires-complete-retention"
+      ],
+      "note": "A retained transfer without its signed nonce is structurally incomplete."
+    },
+    {
+      "name": "second-broadcast-refused",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "retentionDurable": true,
+        "broadcastState": "maybe-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-6",
+      "guards": [
+        "no-rebroadcast"
+      ],
+      "note": "The same signed bytes are not sent again once they may have been broadcast."
+    },
+    {
+      "name": "replacement-broadcast-refused",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "retainedTransfer": {
+          "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+          "nonce": 9,
+          "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "retentionDurable": true,
+        "broadcastState": "maybe-broadcast",
+        "request": "broadcast-replacement"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-6",
+      "guards": [
+        "no-replacement"
+      ],
+      "note": "A replacement transfer is never sent for the same job phase."
+    },
+    {
+      "name": "consumer-confirmed-admitted",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "payer": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "payee": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          }
+        }
+      },
+      "expected": "pass",
+      "want": {
+        "admitted": true,
+        "deliveryAuthorized": true
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-admits-confirmed"
+      ],
+      "note": "A bound confirmed record satisfies DEM-7; other checks still apply."
+    },
+    {
+      "name": "consumer-included-only-refused",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "payer": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "payee": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "not-found"
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "admitted": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "An included label without a record is not admitted as payment."
+    },
+    {
+      "name": "consumer-pending-refused",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "payer": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "payee": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "pending"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "admitted": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "A pending record is not admitted as payment."
+    },
+    {
+      "name": "consumer-unavailable-refused",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "payer": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "payee": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "unavailable"
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "admitted": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "An unreachable node supplies no execution result."
+    },
+    {
+      "name": "consumer-finalized-alias-refused",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "payer": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "payee": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "finalized"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "admitted": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-requires-confirmed-record",
+        "success-requires-exact-confirmed"
+      ],
+      "note": "Only the exact confirmed status is admitted."
+    },
+    {
+      "name": "consumer-failed-fails",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "payer": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "payee": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "failed"
+          }
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "admitted": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-failed-refutes",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "A bound failed record refutes the success evidence."
+    },
+    {
+      "name": "consumer-wrong-payee-unauthenticated",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "payer": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "payee": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x77fa9fef6c0a6a3b0d39f72578f9355752b6d47bdaa7a345d6bf43cef871f51b",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          },
+          "authenticated": false
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "admitted": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-binding",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "An unauthenticated read that pays another payee does not satisfy DEM-7."
+    },
+    {
+      "name": "consumer-wrong-block-unauthenticated",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "payer": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "payee": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 43,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          },
+          "authenticated": false
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "admitted": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-binding",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "An unauthenticated read in another block does not satisfy DEM-7."
+    },
+    {
+      "name": "consumer-wrong-payer-unauthenticated",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "payer": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "payee": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x77fa9fef6c0a6a3b0d39f72578f9355752b6d47bdaa7a345d6bf43cef871f51b",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          },
+          "authenticated": false
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "admitted": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-binding",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "An unauthenticated read from another payer does not satisfy DEM-7."
+    },
+    {
+      "name": "consumer-wrong-amount-authenticated",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "payer": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "payee": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amountOs": "1500000001",
+            "status": "confirmed"
+          },
+          "authenticated": true
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "admitted": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-authenticated-contradiction-fails",
+        "consumer-binding",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "Under FV-5 an authenticated record for another amount is fail."
+    },
+    {
+      "name": "consumer-wrong-payee-authenticated",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "payer": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+          "payee": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "record": {
+            "txHash": "affa1e82fa1eb2e4a2a87d43ade304da2c5e2a1cf397daedb9907e0ba4985964",
+            "nonce": 9,
+            "blockNumber": 42,
+            "sender": "0x0df2c8f350f26882a65e449f1a19e05ff0172a02af4b522cc7e332eac3714498",
+            "recipient": "0x77fa9fef6c0a6a3b0d39f72578f9355752b6d47bdaa7a345d6bf43cef871f51b",
+            "amountOs": "1500000000",
+            "status": "confirmed"
+          },
+          "authenticated": true
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "admitted": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-authenticated-contradiction-fails",
+        "consumer-binding",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "Under FV-5 an authenticated record paying another payee is fail."
+    }
+  ]
+}

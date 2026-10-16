@@ -44,7 +44,9 @@ any of these differ:
   When the Standard's vectors canonicalize and the vendored ones do not,
   the vectors differ and the set is drifted. The same holds when the
   Standard's vectors hash under the verified declared encoding and the
-  vendored ones cannot be encoded with it;
+  vendored ones cannot be encoded with it. Each encoding is tried on its
+  own, so a lone surrogate, which only the UTF-8 encodings refuse, still
+  hashes under an ASCII one;
 - ``count``: the vendored ``count`` differs from the Standard's, or from the
   vendored ``vectors`` length;
 - ``hash``: the vendored declared ``hash`` differs from the Standard's;
@@ -81,7 +83,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate_conformance_vectors import canonical_json  # noqa: E402
-from validate_security_vectors import canonical_encodings  # noqa: E402
+from validate_security_vectors import CANONICAL_ENCODINGS, canonical_encoding  # noqa: E402
 
 VECTORS_DIR = "conformance/vectors"
 REQUIRED_MEMBERS = {"set": str, "spec": str, "count": int, "hash": str, "vectors": list}
@@ -153,15 +155,16 @@ def parse_set(data: Any, label: str) -> VectorSet | None:
         hash_error = str(exc)
     encoded_hashes = {}
     if content_hash is None:
-        try:
-            encoded_hashes = {
-                encoding: hashlib.sha256(raw).hexdigest()
-                for encoding, raw in canonical_encodings(data["vectors"]).items()
-            }
-        except RecursionError as exc:
-            raise BadInput(f"{label}: vectors are too deeply nested to hash") from exc
-        except (TypeError, ValueError, UnicodeError):
-            pass
+        # Each encoding is tried on its own, so a value one encoding refuses
+        # (a lone surrogate in UTF-8) leaves the others usable.
+        for encoding in CANONICAL_ENCODINGS:
+            try:
+                encoded_hashes[encoding] = hashlib.sha256(
+                    canonical_encoding(data["vectors"], encoding)).hexdigest()
+            except RecursionError as exc:
+                raise BadInput(f"{label}: vectors are too deeply nested to hash") from exc
+            except (TypeError, ValueError):
+                pass
     return VectorSet(
         name=data["set"],
         path=label,
@@ -316,7 +319,7 @@ def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
             for side, vector_set in (("standard", standard), ("vendored", vendored)):
                 try:
                     hashes[side] = vector_set.encoded_hashes.get(encoding) or hashlib.sha256(
-                        canonical_encodings(vector_set.vectors)[encoding]).hexdigest()
+                        canonical_encoding(vector_set.vectors, encoding)).hexdigest()
                 except RecursionError as exc:
                     raise BadInput(f"set {standard.name!r}: vectors are too deeply nested to hash") from exc
                 except (TypeError, ValueError) as exc:

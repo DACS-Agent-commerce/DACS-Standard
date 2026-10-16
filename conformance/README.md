@@ -94,7 +94,9 @@ vendored copy under that encoding even if its own declared hash is stale or
 edited. Those changes report drift with exit 1. When the Standard's vectors
 canonicalize and the vendored vectors do not, the vectors differ and the set
 is reported as drifted. The same applies when the vendored vectors cannot be
-encoded with the Standard's verified declared encoding.
+encoded with the Standard's verified declared encoding. Each encoding is tried
+on its own, so a lone surrogate, which only the UTF-8 encodings refuse, still
+hashes under an ASCII encoding.
 
 Both modes also compare type-strict parsed values: Unicode normalization,
 `1.0` versus `1`, and float zero-sign changes are drift. Numbers use Python's

@@ -310,19 +310,60 @@ class VendoredVectorDriftTests(unittest.TestCase):
     def test_fallback_unencodable_vendored_copy_is_drift(self):
         # As in canonical mode, the Standard's vectors hash under the verified
         # encoding, so a vendored value that encoding refuses is a known difference.
+        # Only the UTF-8 encodings refuse a lone surrogate.
         name = "wide-int-v0.1"
-        data = make_set(name, [{"input": BIG}])
+        ascii_encoding, utf8_encoding = "compact insertion-order (ascii)", "compact insertion-order (utf-8)"
+        for encoding, vectors in ((ascii_encoding, [{"input": BIG}]),
+                                  (utf8_encoding, [{"input": BIG, "name": "é"}])):
+            with self.subTest(encoding=encoding):
+                data = make_set(name, vectors)
+                data["hash"] = hashlib.sha256(CHECKER.canonical_encoding(vectors, encoding)).hexdigest()
+                write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
+                edited = [dict(vectors[0], name="\ud800")]
+                write_json(self.vendored_set(name), dict(data, vectors=edited))
+                code, report = self.run_checker()
+                result = self.result_for(report, name)
+                self.assertEqual((code, result["status"], result["changes"]), (1, "drifted", ["vectors"]))
+                self.assertEqual(result["comparison"], "declared-encoding-sha256+parsed-json")
+                self.assertEqual(result["hashEncoding"], encoding)
+                self.assertEqual(result["comparisonHash"]["standard"], data["hash"])
+                self.assertFalse(report["uncheckable"])
+                self.assertIn(f"DRIFTED  {name}", CHECKER.render_text(report))
+                if encoding == ascii_encoding:
+                    vendored_hash = hashlib.sha256(CHECKER.canonical_encoding(edited, encoding)).hexdigest()
+                    self.assertEqual(result["comparisonHash"]["vendored"], vendored_hash)
+                    self.assertNotEqual(vendored_hash, data["hash"])
+                    self.assertNotIn("cannot be hashed", result["comparisonNote"])
+                else:
+                    self.assertIsNone(result["comparisonHash"]["vendored"])
+                    self.assertIn(f"vendored: cannot be hashed using {encoding} (", result["comparisonNote"])
+
+    def test_fallback_encodings_are_the_validator_compact_forms(self):
+        vectors = [{"b": "é", "a": BIG}]
+        expected = {
+            "compact insertion-order (ascii)": b'[{"b":"\\u00e9","a":9007199254740992}]',
+            "compact insertion-order (utf-8)": '[{"b":"é","a":9007199254740992}]'.encode("utf-8"),
+            "compact sorted-keys (ascii)": b'[{"a":9007199254740992,"b":"\\u00e9"}]',
+            "compact sorted-keys (utf-8)": '[{"a":9007199254740992,"b":"é"}]'.encode("utf-8"),
+        }
+        encoded = {encoding: CHECKER.canonical_encoding(vectors, encoding) for encoding in CHECKER.CANONICAL_ENCODINGS}
+        self.assertEqual(encoded, expected)
+        self.assertEqual(sys.modules["validate_security_vectors"].canonical_encodings(vectors), expected)
+
+    def test_fallback_standard_lone_surrogate_keeps_its_ascii_encoding(self):
+        # A UTF-8 refusal does not hide the ASCII encoding that verifies the declared hash.
+        name = "wide-int-v0.1"
+        encoding = "compact insertion-order (ascii)"
+        vectors = [{"input": BIG, "name": "\ud800"}]
+        data = make_set(name, vectors)
+        self.assertEqual(data["hash"], hashlib.sha256(CHECKER.canonical_encoding(vectors, encoding)).hexdigest())
         write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
         write_json(self.vendored_set(name), data)
-        self.edit_vendored(name, lambda value: value["vectors"][0].update(name="\ud800"))
         code, report = self.run_checker()
         result = self.result_for(report, name)
-        self.assertEqual((code, result["status"], result["changes"]), (1, "drifted", ["vectors"]))
-        self.assertEqual(result["comparison"], "declared-encoding-sha256+parsed-json")
-        self.assertEqual(result["comparisonHash"], {"standard": data["hash"], "vendored": None})
-        self.assertIn("vendored: cannot be hashed using", result["comparisonNote"])
+        self.assertEqual((code, result["status"], result["hashEncoding"]), (0, "match", encoding))
+        self.assertEqual(result["comparisonHash"], {"standard": data["hash"], "vendored": data["hash"]})
         self.assertFalse(report["uncheckable"])
-        self.assertIn(f"DRIFTED  {name}", CHECKER.render_text(report))
 
     def test_neither_hash_available_is_uncheckable(self):
         name = "wide-int-v0.1"
@@ -536,7 +577,7 @@ class RepositoryVectorSetTests(unittest.TestCase):
             if result["contentHash"]["standard"] is None:
                 self.assertEqual(result["comparison"], "declared-encoding-sha256+parsed-json")
                 source = json.loads((ROOT / "conformance" / "vectors" / result["standardPath"]).read_text())
-                digest = hashlib.sha256(CHECKER.canonical_encodings(source["vectors"])[result["hashEncoding"]]).hexdigest()
+                digest = hashlib.sha256(CHECKER.canonical_encoding(source["vectors"], result["hashEncoding"])).hexdigest()
                 self.assertEqual(digest, source["hash"])
                 self.assertEqual(result["comparisonHash"]["standard"], digest)
             else:

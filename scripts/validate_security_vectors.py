@@ -57,18 +57,25 @@ CURRENT_SB2_SET = "sb2-collision-authority-v0.8"
 SB1_EVENT_IDENTITY_SET = "settlement-event-identity-v0.6"
 
 
+# The accepted canonical encodings, as their json.dumps (sort_keys, ensure_ascii).
+CANONICAL_ENCODINGS = {
+    "compact insertion-order (ascii)": (False, True),
+    "compact insertion-order (utf-8)": (False, False),
+    "compact sorted-keys (ascii)": (True, True),
+    "compact sorted-keys (utf-8)": (True, False),
+}
+
+
+def canonical_encoding(vectors: list, encoding: str) -> bytes:
+    """The vectors array under one accepted canonical encoding (see docstring)."""
+    sort_keys, ensure_ascii = CANONICAL_ENCODINGS[encoding]
+    return json.dumps(
+        vectors, separators=(",", ":"), sort_keys=sort_keys, ensure_ascii=ensure_ascii).encode("utf-8")
+
+
 def canonical_encodings(vectors: list) -> dict[str, bytes]:
     """The accepted canonical encodings of the vectors array (see docstring)."""
-    return {
-        "compact insertion-order (ascii)": json.dumps(
-            vectors, separators=(",", ":"), ensure_ascii=True).encode(),
-        "compact insertion-order (utf-8)": json.dumps(
-            vectors, separators=(",", ":"), ensure_ascii=False).encode("utf-8"),
-        "compact sorted-keys (ascii)": json.dumps(
-            vectors, separators=(",", ":"), sort_keys=True, ensure_ascii=True).encode(),
-        "compact sorted-keys (utf-8)": json.dumps(
-            vectors, separators=(",", ":"), sort_keys=True, ensure_ascii=False).encode("utf-8"),
-    }
+    return {encoding: canonical_encoding(vectors, encoding) for encoding in CANONICAL_ENCODINGS}
 
 
 def validate_set(path: str) -> tuple[list[str], int]:

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 import re
+import unicodedata
 
 if __package__:
     from .jcs import canonicalize as jcs_canonicalize
@@ -82,7 +83,8 @@ _TERMS_ENUMS = {
         "none", "encrypted-anchored-recommended", "encrypted-anchored-required",
     }),
 }
-# DACS-1 §6.3.4 "max N chars" bounds, counted in Unicode code points.
+# DACS-1 §6.3.4 "max N chars" bounds, counted in code points of the CF-1 (NFC)
+# form that is hashed and signed.
 _MAX_DISPLAY_NAME = 200
 _MAX_TITLE = 200
 _MAX_DESCRIPTION = 2000
@@ -191,6 +193,11 @@ def validate_listing_window(listing, now):
 
 def _is_nonempty_string(value):
     return isinstance(value, str) and bool(value)
+
+
+def _chars(value):
+    """Length of a string value in its CF-1 (NFC) signed form."""
+    return len(unicodedata.normalize("NFC", value))
 
 
 def _valid_attestation_ref(value):
@@ -456,7 +463,7 @@ def validate_listing_shape(listing, *, now=None, supported=None):
         not isinstance(seller, dict)
         or not isinstance(seller.get("identity"), dict)
         or not _is_nonempty_string(seller.get("displayName"))
-        or len(seller["displayName"]) > _MAX_DISPLAY_NAME
+        or _chars(seller["displayName"]) > _MAX_DISPLAY_NAME
         or ("publicEndpoint" in seller and not _is_nonempty_string(seller["publicEndpoint"]))
     ):
         return False, "invalid seller", artifact_type, domain
@@ -465,13 +472,13 @@ def validate_listing_shape(listing, *, now=None, supported=None):
     if (
         not isinstance(offering, dict)
         or not _is_nonempty_string(offering.get("title"))
-        or len(offering["title"]) > _MAX_TITLE
+        or _chars(offering["title"]) > _MAX_TITLE
         or not isinstance(offering.get("description"), str)
-        or len(offering["description"]) > _MAX_DESCRIPTION
+        or _chars(offering["description"]) > _MAX_DESCRIPTION
         or not _is_nonempty_string(offering.get("category"))
         or not isinstance(offering.get("tags"), list)
         or len(offering["tags"]) > _MAX_TAGS
-        or any(not isinstance(tag, str) or len(tag) > _MAX_TAG for tag in offering["tags"])
+        or any(not isinstance(tag, str) or _chars(tag) > _MAX_TAG for tag in offering["tags"])
         or not _valid_deliverable(offering.get("deliverable"))
     ):
         return False, "invalid offering", artifact_type, domain

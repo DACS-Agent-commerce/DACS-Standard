@@ -15,6 +15,7 @@ import json
 import re
 import subprocess
 import sys
+import unicodedata
 import unittest
 from pathlib import Path
 
@@ -638,10 +639,24 @@ class ListingShapeBoundsTests(unittest.TestCase):
                 self.assert_publishable(listing)
                 listing[section][field] += "a"
                 self.assert_shape_failure(listing, reason)
+            with self.subTest(field=field, form="NFD"):
+                # Bounds count the CF-1 (NFC) form that is hashed and signed, so
+                # a decomposed spelling of the same signed content is in bounds.
+                listing = _legacy_listing()
+                listing[section][field] = unicodedata.normalize("NFD", "\u1ec7" * limit)
+                self.assertEqual(len(listing[section][field]), 3 * limit)
+                self.assert_publishable(listing)
+                listing[section][field] += unicodedata.normalize("NFD", "\u1ec7")
+                self.assert_shape_failure(listing, reason)
         listing = _legacy_listing()
         listing["offering"]["tags"] = ["t" * 32] * 16
         self.assert_publishable(listing)
-        for tags in (["t" * 32] * 17, ["t" * 33], ["ok", "t" * 33]):
+        listing["offering"]["tags"] = [unicodedata.normalize("NFD", "\u1ec7" * 32)] * 16
+        self.assert_publishable(listing)
+        for tags in (
+            ["t" * 32] * 17, ["t" * 33], ["ok", "t" * 33],
+            [unicodedata.normalize("NFD", "\u1ec7" * 33)],
+        ):
             with self.subTest(tags=len(tags), longest=max(map(len, tags))):
                 listing = _legacy_listing()
                 listing["offering"]["tags"] = tags

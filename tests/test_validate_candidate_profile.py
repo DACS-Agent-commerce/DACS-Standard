@@ -346,6 +346,26 @@ class CandidateProfileValidationTests(unittest.TestCase):
         text += "\n| SR-99 | Candidate-only capability | Unregistered | DACS-4 |\n"
         self.assert_structural(text, "reference to substrate capability SR-99 that spec/ does not define")
 
+    def test_inline_code_substrate_capability_is_rejected(self):
+        text = mutate(self.text, "job reference through SR-2.", "job reference through `SR-99`.")
+        self.assert_structural(text, "reference to substrate capability SR-99 that spec/ does not define")
+
+    def test_example_capability_row_in_spec_does_not_define_a_capability(self):
+        spec_text = self.validator.specsource.spec_text(ROOT) + (
+            "\n```text\n| SR-99 | invalid example |\n```\n\n| SR-98 | unrelated table |\n"
+        )
+        capability_errors = [
+            e for e in self.validator.validate_text(self.text, spec_text) if "substrate capability" in e
+        ]
+        self.assertEqual(capability_errors, [])
+        text = mutate(self.text, "job reference through SR-2.", "job reference through SR-99 and `SR-98`.")
+        errors = self.validator.validate_text(text, spec_text)
+        for capability in ("SR-98", "SR-99"):
+            self.assertTrue(
+                any(f"reference to substrate capability {capability} that spec/ does not define" in e for e in errors),
+                errors,
+            )
+
     def test_m08_domain_version_mismatch(self):
         self.assert_structural(
             mutate(self.text, '  escrowDecisionVersion: "1"', '  escrowDecisionVersion: "2"'),

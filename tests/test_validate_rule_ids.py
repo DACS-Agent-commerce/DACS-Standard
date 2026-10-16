@@ -69,6 +69,7 @@ class RuleIdValidationTests(unittest.TestCase):
             (root / "spec").mkdir()
             (root / "spec" / "CORE.md").write_text(
                 "# Core\n\n"
+                "## 5. Substrate capabilities\n\n"
                 "| ID | Capability | Description | Used by |\n"
                 "| --- | --- | --- | --- |\n"
                 "| SR-1 | Identity | Optional aggregation | DACS-1 |\n"
@@ -83,6 +84,42 @@ class RuleIdValidationTests(unittest.TestCase):
             module.write_text("Uses SR-99 (SR-99), which is absent from CORE's table.\n", encoding="utf-8")
             self.assertEqual(validator.validate_repo(root), [
                 "spec/SPECIFICATION.md: referenced substrate capability SR-99 is not defined"
+            ])
+
+    def test_repository_capabilities_are_the_core_section_5_rows(self):
+        validator = load_validator()
+        spec_text = validator.specsource.spec_text(ROOT)
+        self.assertEqual(validator.defined_capability_ids(spec_text), {"SR-1", "SR-2", "SR-3", "SR-4", "SR-5"})
+
+    def test_capability_rows_outside_the_core_section_5_table_define_nothing(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "spec").mkdir()
+            (root / "spec" / "CORE.md").write_text(
+                "# Core\n\n"
+                "| SR-91 | Row before the section |\n\n"
+                "## 5. Substrate capabilities\n\n"
+                "```text\n"
+                "| SR-92 | Fenced example |\n"
+                "```\n\n"
+                "| ID | Capability | Description | Used by |\n"
+                "| --- | --- | --- | --- |\n"
+                "| SR-1 | Identity | Optional aggregation | DACS-1 |\n\n"
+                "| SR-93 | Later table in the section |\n\n"
+                "### 5.1 Write lifecycle\n\n"
+                "| SR-94 | Subsection row |\n",
+                encoding="utf-8",
+            )
+            (root / "spec" / "DACS-4-SETTLE.md").write_text(
+                "# Settle\n\n"
+                "## 5. Substrate capabilities\n\n"
+                "| SR-95 | Second section with the same heading |\n\n"
+                "Uses SR-1, SR-91, SR-92, SR-93, SR-94 and SR-95.\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(load_validator().validate_repo(root), [
+                f"spec/SPECIFICATION.md: referenced substrate capability SR-{n} is not defined"
+                for n in range(91, 96)
             ])
 
     def test_missing_capability_table_does_not_silently_accept_a_reference(self):

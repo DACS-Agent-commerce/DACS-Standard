@@ -1043,6 +1043,39 @@ The format used per release:
   registered. Adds 22 deterministic disposition vectors covering all required
   issue cases and the explicitly weaker authenticated no-binding rail posture.
 
+### Fixed — DACS-4 v0.8 `pay-dem` execution outcome
+
+- **Inclusion no longer settles a native-DEM payment** (§9.5.9 DEM-1..DEM-7;
+  §9.5.1 PC-7; §9.7 `bft-final`; §9.7.0 FV-5; Demos mapping §A.2) —
+  `pay-dem` previously returned success once the transaction reached
+  `included`. The Demos status index can label a transaction `included` while
+  its transaction record is `failed`, so a failed transfer could count as
+  payment. A handler now durably retains the signed hash, nonce, sender,
+  recipient and OS amount before its only broadcast (DEM-1). It returns
+  `ok: true` only for a record bound to those values and the inclusion block
+  whose status is exactly `confirmed` (DEM-2, DEM-3). A bound `failed` record
+  is a durable `permanent` failure without `settlementFinality` (DEM-4).
+  Missing, unavailable, pending, aliased or unbound records stay
+  `indeterminate` and authorize no delivery or settlement accounting (DEM-5).
+  Recovery and resume only re-read the retained hash; they never rebroadcast
+  or send a replacement transfer (DEM-6). Consumers, including the payee
+  before delivery, and FV-5 require the same confirmed binding (DEM-7).
+- **Vectors** — adds the generated 46-case `pay-dem-execution-v0.1` set
+  covering handler classification, resume, the first-broadcast gate and
+  consumer admission. Each vector lists the oracle guards whose removal
+  changes its result. Adds `fv-bft-final-included-execution-failed` to
+  `settlement-finality-verification` (87 cases): a BFT-final inclusion whose
+  authenticated execution record failed is `fail`.
+- **Migration** — a `pay-dem` handler or consumer that treated `included` as
+  settled must read the bound transaction record before returning success,
+  delivering or counting payment, and must stop rebroadcasting or replacing a
+  transfer whose execution is unresolved. Existing `pay-dem` evidence bytes
+  are unchanged and are not relabelled; re-verification under DEM-7 returns
+  `fail` for a bound failed record and `indeterminate` without a bound
+  confirmed record. No artifact shape, signature domain, rail definition or
+  registry entry changes. This correction is part of the unreleased DACS-4
+  v0.8 candidate and allocates no new version.
+
 ### Fixed — DACS-X conformance provenance
 
 - **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9

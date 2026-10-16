@@ -1365,7 +1365,7 @@ Any other `extra` member is unclassified (XN-6). A Solana `memo` binds through t
 The only top-level extension defined is `payment-identifier`:
 
 - Its advertisement MUST be exactly `{info, schema}`, or it rejects before signing.
-- `schema` MUST equal one of two pinned schemas under JCS. One is the example of the pinned `payment_identifier.md`. The other is the schema the pinned reference SDKs emit, which adds `"pattern": "^[a-zA-Z0-9_-]+$"` to `id` (`typescript/packages/extensions/src/payment-identifier/schema.ts` and its Python and Go twins).
+- `schema` MUST equal one of two pinned schemas under JCS. One is the example of the pinned `payment_identifier.md`. The other is the schema the pinned reference SDKs emit, which adds `"pattern": "^[a-zA-Z0-9_-]+$"` to `id`. Those SDK files, at the same commit, are `typescript/packages/extensions/src/payment-identifier/schema.ts`, `python/x402/extensions/payment_identifier/schema.py`, and `go/extensions/paymentidentifier/schema.go`.
 - `info` MUST satisfy the schema: `required` is a boolean. An `id`, when present, is a string of 16 to 128 characters, each an ASCII letter, digit, hyphen, or underscore, as `payment_identifier.md` states.
 - With `required: false` the extension is descriptive. It needs no local capability, and the paid request carries no identifier.
 - v0.8 defines no payment identifier, so `required: true` is an unsupported action that MUST reject before signing.

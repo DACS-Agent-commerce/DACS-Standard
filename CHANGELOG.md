@@ -309,6 +309,14 @@ The format used per release:
   signed request URL that is not a string, and a Listing without a
   `pipeline`, with a null `acceptedRails`, or with a step that is not an
   object.
+- **Verifier scope, upstream pins and open witnesses** (DACS-4 §9.5.7 XN-6,
+  XN-10, §9.5.7.1, §9.4.3 RD-7) — a verifier skips only the
+  `PAYMENT-SIGNATURE` value and still applies the paid request's other gates.
+  §9.5.7.1 and the corpus's `upstream` block name the three SDK schema files,
+  and the block also names the v1 specification that X402-3's network table
+  comes from. The conformance plan lists the witnesses that this corpus cannot
+  give and that other suites still owe: DACS-1 §6.3.6 per-connection resolution
+  and bounds, XN-10 registry publication, and the RD-7 current-use consequence.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

@@ -3967,8 +3967,14 @@ def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, respons
              paid_payload(lambda payload: (payload.pop("resource"), payload.pop("extensions"))),
              refresh=True)
     add_case(vectors, "verify-evidence-ignores-paid-request-payload", "pass", "XN-8",
-             "a verifier judges the stored record, not the paid request the handler sent",
+             "a verifier judges the stored record, not the PAYMENT-SIGNATURE value the "
+             "handler sent",
              paid_value("garbage"), refresh=True, operation="verify-evidence")
+    add_case(vectors, "verify-evidence-judges-paid-request-headers", "fail", "XN-2/XN-6",
+             "a verifier still applies the paid request's other gates: an ambient credential "
+             "on it fails",
+             lambda v: v["runtime"]["paidHeaders"].update({"Cookie": "session=1"}),
+             operation="verify-evidence", reason="ambient-credential")
     # XN-4/XN-6: `accepted` is the matched requirement even when it is not the
     # first, matched with its addresses compared as XN-5 values and its
     # `extra` without the Solana hints.
@@ -4178,6 +4184,18 @@ def build() -> dict:
             "exactEvmScheme": "specs/schemes/exact/scheme_exact_evm.md",
             "exactSvmScheme": "specs/schemes/exact/scheme_exact_svm.md",
             "paymentIdentifierExtension": "specs/extensions/payment_identifier.md",
+            # The second pinned `payment-identifier` schema (§9.5.7.1).
+            "paymentIdentifierSdkSchemas": [
+                "typescript/packages/extensions/src/payment-identifier/schema.ts",
+                "python/x402/extensions/payment_identifier/schema.py",
+                "go/extensions/paymentidentifier/schema.go",
+            ],
+            # X402-3's v1 network table is §11.1 of the v1 specification, pinned
+            # at the x402-receipt-hash corpus's own upstream commit.
+            "v1Protocol": {
+                "commit": "22a7677f829584073638d2e5b9898e1f19089b61",
+                "path": "specs/x402-specification-v1.md",
+            },
         },
         "bindingProfile": "dacs-x402-exact:v1 (DACS-4 §9.5.7.1)",
         "fixtureModel": {

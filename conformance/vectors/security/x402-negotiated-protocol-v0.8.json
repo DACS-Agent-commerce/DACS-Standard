@@ -9,7 +9,16 @@
     "v2HttpTransport": "specs/transports-v2/http.md",
     "exactEvmScheme": "specs/schemes/exact/scheme_exact_evm.md",
     "exactSvmScheme": "specs/schemes/exact/scheme_exact_svm.md",
-    "paymentIdentifierExtension": "specs/extensions/payment_identifier.md"
+    "paymentIdentifierExtension": "specs/extensions/payment_identifier.md",
+    "paymentIdentifierSdkSchemas": [
+      "typescript/packages/extensions/src/payment-identifier/schema.ts",
+      "python/x402/extensions/payment_identifier/schema.py",
+      "go/extensions/paymentidentifier/schema.go"
+    ],
+    "v1Protocol": {
+      "commit": "22a7677f829584073638d2e5b9898e1f19089b61",
+      "path": "specs/x402-specification-v1.md"
+    }
   },
   "bindingProfile": "dacs-x402-exact:v1 (DACS-4 §9.5.7.1)",
   "fixtureModel": {
@@ -453,8 +462,8 @@
       }
     }
   },
-  "count": 615,
-  "hash": "e2d37020137aab0acc442c36a9736aadce5190033dde8396c25ff6ccf11a7143",
+  "count": 616,
+  "hash": "5ab6ec89c309cd4a6cc05b75abff4995828ea3cb671cf0c534c5769030c16b9d",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -61505,7 +61514,7 @@
       "expected": "pass",
       "rule": "XN-8",
       "operation": "verify-evidence",
-      "note": "a verifier judges the stored record, not the paid request the handler sent",
+      "note": "a verifier judges the stored record, not the PAYMENT-SIGNATURE value the handler sent",
       "base": "v2",
       "patch": [
         {
@@ -61527,6 +61536,34 @@
         }
       ],
       "expectedReason": null
+    },
+    {
+      "name": "verify-evidence-judges-paid-request-headers",
+      "expected": "fail",
+      "rule": "XN-2/XN-6",
+      "operation": "verify-evidence",
+      "note": "a verifier still applies the paid request's other gates: an ambient credential on it fails",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "paidHeaders",
+            "Cookie"
+          ],
+          "value": "session=1"
+        }
+      ],
+      "expectedReason": "ambient-credential"
     },
     {
       "name": "paid-request-payload-accepted-second-checksummed-payto",

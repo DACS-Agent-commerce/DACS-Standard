@@ -1818,7 +1818,8 @@ def evaluate(v, effects=None):
 
     # `execute` runs the handler; `verify-evidence` is a verifier judging a
     # stored success record (XN-7/XN-8) and never authorizes. Both apply the
-    # same gates, and a stored record is judged apart from the payment.
+    # same gates, except that only `execute` judges the `PAYMENT-SIGNATURE`
+    # value, and a stored record is judged apart from the payment.
     if operation not in {"execute", "verify-evidence"}:
         return "error", "operation"
     # The stored record's own signature is judged in check_record.
@@ -2018,7 +2019,8 @@ def evaluate(v, effects=None):
     payer = adapter_address(network, runtime["payer"]["paymentAddress"])
     # XN-6: the paid request sends that authorization for the matched
     # requirement; a PAYMENT-SIGNATURE without it is not the paid request.
-    # A verifier judges the stored record, not the request, so it skips this.
+    # A verifier judges the stored record, not the `PAYMENT-SIGNATURE` value, so
+    # it skips this; the paid request's other gates above still apply to it.
     if operation == "execute" and payment_payload_defect(v, required, matches[0], network, payer, pay_to):
         return "fail", "paid-request-payload"
     # A response defect is the seller's protocol fault: it is returned as the
@@ -2768,7 +2770,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # Every stored-record verdict a verifier gives leaves the payment to the
         # ledger, after the wallet call and on retry alike.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
-        self.assertEqual(len(records), 41)
+        self.assertEqual(len(records), 42)
         for vector in records:
             for operation in ("execute", "retry"):
                 with self.subTest(record=vector["name"], operation=operation):
@@ -4109,6 +4111,45 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 self.assertIsNone(legacy_receipt_defect(header, ref))
         self.assertEqual(X402_V1_NETWORK_CHAIN_IDS, {
             "base-sepolia": 84532, "base": 8453, "avalanche-fuji": 43113, "avalanche": 43114})
+
+    def test_upstream_block_names_every_mirrored_source(self):
+        """§9.5.7.1 and X402-3: the corpus pins the SDK schema files and the v1 table's source.
+
+        The second `payment-identifier` schema comes from the SDK files, and
+        X402-3's v1 table from the v1 specification at the receipt-hash pin.
+        """
+        spec = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")
+        upstream = self.data["upstream"]
+        self.assertEqual(upstream["paymentIdentifierSdkSchemas"], [
+            "typescript/packages/extensions/src/payment-identifier/schema.ts",
+            "python/x402/extensions/payment_identifier/schema.py",
+            "go/extensions/paymentidentifier/schema.go",
+        ])
+        for path in upstream["paymentIdentifierSdkSchemas"]:
+            with self.subTest(path=path):
+                self.assertIn(f"`{path}`", spec)
+        receipts = json.loads((ROOT / "conformance/vectors/security/x402-receipt-hash-v0.1.json").read_text(
+            encoding="utf-8"))
+        v1 = upstream["v1Protocol"]
+        self.assertEqual(f"{upstream['repository']}@{v1['commit']}", receipts["source"])
+        self.assertEqual(v1["path"], "specs/x402-specification-v1.md")
+        self.assertIn(f"at `{receipts['source']}` (`{v1['path']}` §11.1)", spec)
+
+    def test_plan_lists_the_witnesses_this_corpus_cannot_give(self):
+        """The plan names each MUST this corpus cannot witness and the suite that owes it."""
+        plan = (ROOT / "spec/CONFORMANCE-PLAN.md").read_text(encoding="utf-8")
+        row = next(line for line in plan.splitlines()
+                   if line.startswith("| XN-2 / XN-10 / RD-7 witnesses owed outside the x402 corpus"))
+        self.assertTrue(row.endswith("| none yet (open) |"))
+        for owed in ("DACS-1 §6.3.6 checks on each connection", "DNS rebinding",
+                     "decoded-response-size bounds", "owed by an adapter suite",
+                     "XN-10 superseding disabled `x402:default` revision",
+                     "owed by the registry-resolution and RAV corpora",
+                     "RD-7 consequence", "owed by the DACS-5 current-use corpus"):
+            with self.subTest(owed=owed):
+                self.assertIn(owed, row)
+        self.assertIn("definition-with-consumer-finality-profile", self.by_name)
+        self.assertTrue(any(name.startswith("bounded-fetch-") for name in self.by_name))
 
     def test_generator_cli_check_exits_nonzero_on_a_stale_file(self):
         """CI runs the generator's CLI: `--check` against a stale file exits 1.

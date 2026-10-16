@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2 | 615 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2 | 616 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1121,9 +1121,11 @@ version-only object, or any other payload is `fail` (`paid-request-payload`)
 after the one wallet call (`paid-request-payload-*`). Two passing cases put the
 matched requirement second, matched only with its payTo compared as an XN-5
 value or its `extra` compared without the Solana hints. A verifier judges the
-stored record, not the paid request
-(`verify-evidence-ignores-paid-request-payload`). The corpus checks the
-EIP-712 signature's form only; the token contract and facilitator verify it.
+stored record, not the `PAYMENT-SIGNATURE` value
+(`verify-evidence-ignores-paid-request-payload`), but the paid request's other
+gates still apply to it (`verify-evidence-judges-paid-request-headers`). The
+corpus checks the EIP-712 signature's form only; the token contract and
+facilitator verify it.
 The Solana payload is checked for form only too: a non-empty base64
 `transaction`, whose transfer, fee payer and memo the corpus does not decode.
 The retained `validBefore` is a safe integer of seconds, so a decimal string,

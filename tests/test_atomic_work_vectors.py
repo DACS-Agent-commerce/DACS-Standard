@@ -123,7 +123,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 510)
+        self.assertEqual(vector_count, 525)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -1813,6 +1813,13 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
     PASS = ("pass", "predicate accepted")
     # (function, raised reason, ((vector, exact result without the guard), ...))
     GUARDS = (
+        ("verify_receipt", "Purchase Work does not carry exactly one signed payment slot", (
+            ("aw-receipt-multiple-signed-slot-operations", PASS),
+        )),
+        ("verify_receipt", "retry receipt is not bound to complete prior rolled-back state", (
+            ("aw-receipt-retry-prior-failure-commitment-differs", PASS),
+            ("aw-receipt-retry-prior-digest-differs", PASS),
+        )),
         ("validate_intent", "duplicate operationId", (
             ("aw-operation-id-duplicate", PASS),
         )),
@@ -2234,11 +2241,11 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
         with mock.patch.object(ref, "_verified_authority_context", wrong):
             self.assertEqual(self._evaluate(past_bound), self.PASS)
             self.assertEqual(self._evaluate(at_anchor), expired)
-        # Wrong wiring: the composed Listing re-check is not given that time.
-        real = ref.evaluate_profile
-        with mock.patch.object(ref, "evaluate_profile", lambda data, **_: real(data)):
-            self.assertEqual(self._evaluate(at_anchor), expired)
-            self.assertEqual(self._evaluate(past_bound)[0], "fail")
+        # Composed admission passes the independently verified clock. The
+        # focused surface also derives it when called without that keyword.
+        with mock.patch.object(ref, "evaluate_profile", wraps=ref.evaluate_profile) as profile:
+            self.assertEqual(self._evaluate(at_anchor), self.PASS)
+            self.assertEqual(profile.call_args.kwargs["committed_at"], 1_800_000_000_000)
 
     def test_v1_four_role_roster_is_enforced_by_schema_and_reference(self):
         # AW-10: with the intent schema bypassed the reference still rejects
@@ -2374,6 +2381,25 @@ class AtomicGateNegativePathTests(unittest.TestCase):
             data["vectors"][first_pass].update(expected="fail", caseClass="rejection")
 
         cases = (
+            ("set must equal filename stem", lambda d: d.update(set="other"), True),
+            ("spec declaration differs", lambda d: d.update(spec="other"), True),
+            ("vectors is not an array", lambda d: d.update(vectors={}), True),
+            ("vector is not an object", lambda d: d["vectors"].__setitem__(0, None), True),
+            ("publicKeys/seeds test provenance missing", lambda d: d.pop("seeds"), True),
+            ("name missing", lambda d: d["vectors"][0].pop("name"), True),
+            ("ruleRefs must be a non-empty array", lambda d: d["vectors"][0].update(ruleRefs=[]), True),
+            ("ruleRefs must be a non-empty array", lambda d: d["vectors"][0].update(ruleRefs="AWB-1"), True),
+            ("duplicate ruleRef", lambda d: d["vectors"][0].update(ruleRefs=["AWB-1", "AWB-1"]), True),
+            ("invalid ruleRef", lambda d: d["vectors"][0].update(ruleRefs=["unknown"]), True),
+            ("unknown expected verdict", lambda d: d["vectors"][0].update(expected="unknown"), True),
+            ("boundary marker must be boolean true", lambda d: d["vectors"][0].update(boundary=False), True),
+            ("duplicate boundaryRuleRef", lambda d: d["vectors"][boundary].update(boundaryRuleRefs=["AWB-2", "AWB-2"]), True),
+            ("invalid boundaryRuleRef", lambda d: d["vectors"][boundary].update(boundaryRuleRefs=["AWB-999"]), True),
+            ("is not in ruleRefs", lambda d: d["vectors"][boundary].update(ruleRefs=["AWB-1"], boundaryRuleRefs=["AWB-2"]), True),
+            ("has no applicable Atomic v0.1 boundary", lambda d: d["vectors"][boundary].update(ruleRefs=["AWB-1"], boundaryRuleRefs=["AWB-1"]), True),
+            ("boundaryRuleRefs requires boundary: true", lambda d: (d["vectors"][first_pass].pop("boundary", None), d["vectors"][first_pass].update(boundaryRuleRefs=["AWB-1"])), True),
+            ("reason missing", lambda d: d["vectors"][0].pop("reason"), True),
+            ("input is not an object", lambda d: d["vectors"][0].update(input=None), True),
             ("expected fail, evaluator returned pass", flip_verdict, True),
             ("duplicate name", lambda d: d["vectors"][1].update(name=d["vectors"][0]["name"]), True),
             ("does not match verdict class", lambda d: d["vectors"][0].update(caseClass="malformed"), True),
@@ -2402,6 +2428,33 @@ class AtomicGateNegativePathTests(unittest.TestCase):
                 mock.patch.object(validator, "validate_set", lambda path: ([], set(validator.EXPECTED_RULES), 0)):
             errors, _, _ = validator.validate_all()
         self.assertIn("applicable N polarity coverage missing: AWB-8", errors)
+
+    def test_validator_rejects_missing_and_extra_sets(self):
+        with self._tampered_root(lambda d: None) as path:
+            path.unlink()
+            extra = path.with_name("atomic-work-unregistered.json")
+            extra.write_text("{}")
+            with mock.patch.object(validator, "validate_set", return_value=([], set(validator.EXPECTED_RULES), 0)):
+                errors, _, _ = validator.validate_all()
+        self.assertTrue(any("required set missing" in error for error in errors), errors)
+        self.assertTrue(any("unregistered Atomic Work set" in error for error in errors), errors)
+
+    def test_validator_cli_exits_nonzero_on_an_invalid_corpus(self):
+        with self._tampered_root(lambda d: d.update(spec="wrong")) as path:
+            scripts = path.parents[3] / "scripts"
+            scripts.mkdir()
+            (scripts / "validate_atomic_work_vectors.py").write_text(
+                (ROOT / "scripts/validate_atomic_work_vectors.py").read_text()
+            )
+            for name in ("atomic_work_reference.py", "generate_atomic_work_vectors.py", "jcs.py"):
+                (scripts / name).symlink_to(ROOT / "scripts" / name)
+            result = subprocess.run(
+                [sys.executable, str(scripts / "validate_atomic_work_vectors.py")],
+                capture_output=True, text=True,
+            )
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("spec declaration differs", result.stderr)
+        self.assertIn("validation FAILED", result.stderr)
 
     def test_generator_refuses_uncovered_or_conflicting_polarity(self):
         # Only the audit set is built, so most applicable cells are uncovered;

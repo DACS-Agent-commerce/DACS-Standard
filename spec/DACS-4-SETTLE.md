@@ -456,11 +456,20 @@ The closed v0.x set at this revision. Each is a PhaseType from chapter 6’s clo
 
 Every pay-* phase handler MUST:
 
-**(PC-1)** accept the applicable closed input arm below: an ordinary handler
-accepts `PaymentPhaseInput`, while the Atomic Work binding accepts
-`AtomicPaymentPhaseInputV1`. A handler MUST select the arm before interpreting
-fields and MUST NOT coerce either arm into the other by adding or dropping
-members.
+**(PC-1)** A pay-* handler MUST select its input arm from the authenticated
+phase binding before it reads any input member. The Atomic Work binding applies
+exactly to the `pay-dem` operation of a capability-gated CORE §5.2
+`dacs-purchase-v1` Work; every other pay-* invocation uses the ordinary binding.
+The ordinary binding accepts `PaymentPhaseInput` (or
+`IdentityBoundPaymentPhaseInput` where §9.5.1 requires it); the Atomic binding
+accepts only `AtomicPaymentPhaseInputV1`. The members present in an input MUST
+NOT select or change the binding. An ordinary handler MUST reject an input that
+lacks `sessionContext` or carries `atomicSessionContext`. Other unknown members
+remain subject to CORE SIG-5. An Atomic handler MUST reject an input that carries
+`sessionContext` or any member outside `AtomicPaymentPhaseInputV1`. No handler
+may add, drop or rename a member to make an input fit its arm. A PC-1 rejection
+is `rejected` before any rail call and maps to `ok: false` with
+`errorClass: "permanent"`.
 
 **(PC-2)** produce the applicable settlement-evidence record anchored via SR-2 at `dacs4:payment:{jobId}:{railId}:{phaseIndex}[:resolved]` (or substrate equivalent). Segment rules:
 
@@ -2629,10 +2638,20 @@ SettlementAmendment is anchored via SR-2 at dacs4:amendment:{jobId}:{evidenceHas
 
 > **Note (non-normative).** Without these constraints a refund could anchor against a non-existent or failure-outcome record, or over-refund, feeding DACS-5 reputation records it cannot trust.
 
-- (AMEND-1) `amendsEvidenceRef` MUST resolve to an anchored, supported
-  `SettlementEvidence` or `AtomicSettlementEvidenceV1` whose `jobId` equals
-  the amendment’s `jobId`. The target discriminator and target signature
-  domain MUST be verified before amendment semantics are applied.
+- (AMEND-1) An amendment consumer MUST resolve `amendsEvidenceRef` to its
+  anchored artifact and recompute the AttestationRef content hash before reading
+  any target member. It MUST select the target arm from exactly one recognized
+  evidence discriminator: `evidenceVersion` selects `SettlementEvidence` under
+  `dacs-evidence:v1:`, and `atomicEvidenceVersion` selects
+  `AtomicSettlementEvidenceV1` under `dacs-atomic-evidence:v1:`. The target
+  signature MUST verify under that arm's domain. Each of the following violates
+  AMEND-1 and is handled under AMEND-4: no recognized discriminator or more than
+  one, an unsupported version, a signature valid only under another domain, a
+  `jobId` other than the amendment's, or a non-pay-* `phase`. For an Atomic target
+  the `{evidenceHash}` address segment is its `atomic_evidence_hash`. A target
+  that is unavailable, unanchored or not yet finalized leaves the amendment
+  `indeterminate`: it is neither included as a valid unwind nor recorded as a
+  violation until the target resolves.
 - (AMEND-2) a `refund` or `partial-refund` MUST reference an evidence record whose `outcome == "success"`. A settlement-atomicity failure (no funds moved) is unwound on the rail’s refund path (e.g. the HTLC timelock-refund per §9.5.4), NEVER via a refund amendment. A `correction` MUST NOT carry `refundAmount`.
 - (AMEND-3) the sum of `refundAmount` across all amendments referencing a single evidence record MUST NOT exceed that record’s `paymentAmount`, compared currency-matched per the PriceTerm. v0.1 REQUIRES refunds in the settled currency. A `refundAmount.currency` differing from the amended evidence's `paymentAmount.currency` makes the AMEND-3 bound non-evaluable and MUST be flagged per AMEND-4; cross-currency refunds are out of scope for v0.1 — a roadmap candidate.
 - (AMEND-4) bundle assembly MUST reject — or, where a complete audit trail is preferred, flag — any amendment violating AMEND-1..AMEND-3 rather than silently including it. A flagged amendment MUST NOT be treated as a valid unwind by DACS-5 reputation derivation.

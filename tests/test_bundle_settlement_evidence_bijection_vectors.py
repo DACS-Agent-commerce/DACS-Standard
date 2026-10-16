@@ -681,6 +681,26 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                     vector["expected"], verdict_for_disposition[actual_disposition]
                 )
 
+    def test_atomic_shape_cases_have_exact_passing_member_admission(self):
+        evidence_hash = R.settlement_evidence_hash
+        authorities = {
+            name: authority for name, authority in self.data["executionAuthorities"].items()
+            if name.startswith("atomic-shape-")
+        }
+        self.assertEqual(len(authorities), 27)
+        for name, authority in authorities.items():
+            with self.subTest(case=name):
+                bad_members = []
+                for key, resolution in authority["referenceValidationByCanonicalRef"].items():
+                    record = resolution["record"]
+                    admission = authority["atomicEvidenceAdmissionByCanonicalRef"][key]
+                    self.assertEqual(admission["disposition"], "pass")
+                    self.assertEqual(admission["evidenceHash"], evidence_hash(record))
+                    self.assertEqual(json.loads(key)["contentHash"], evidence_hash(record))
+                    if not R._atomic_settlement_evidence_shape_valid(record):
+                        bad_members.append(record)
+                self.assertEqual(len(bad_members), 1)
+
     def test_atomic_member_admission_guard_is_load_bearing(self):
         # Wrong implementation: a present admission map that lacks this
         # member's entry falls through to the malformed-admission rejection.

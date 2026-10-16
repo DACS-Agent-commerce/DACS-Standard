@@ -1435,6 +1435,22 @@ The format used per release:
   member. It now returns `indeterminate`, as the attempts and role-anchor
   surfaces already did; a presented set that lacks a required role still
   fails.
+- **Payment input and amendment target reference** — authenticated phase binding
+  selects PC-1's arm before input interpretation; ordinary handlers reject the
+  Atomic session member while retaining CORE SIG-5 for other unknown members.
+  PC-1 rejection is permanent and precedes rail calls. AMEND-1 resolves and
+  hash-checks the finalized target, selects its exclusive supported discriminator
+  and signature domain, and checks the job and payment phase. Pending targets
+  remain indeterminate; AMEND-4 continues to allow rejection or flagging.
+  A separate deterministic fixture and non-normative reference pin these choices.
+- **Focused Atomic profile time and candidate fixtures** — the focused sequential
+  profile verifies the commitment AnchorReceipt and reads its consensus time for
+  Listing checks. Unsupported revocation-state reference versions remain
+  indeterminate at current-profile admission. Adds 15 Atomic vectors (510 → 525)
+  for focused clock boundaries, receipt slot cardinality/retry binding and paying-key
+  repeat claims, plus 27 SEB member-shape cases with exact passing AWS admissions.
+  The earlier Atomic vectors retain their bytes. The candidate capability remains
+  closed under CONFORMANCE-PLAN §14.8.
 - **Predicate-pinning Atomic vectors** — 155 vectors (355 → 510) start from a
   committed vector or generator fixture and re-derive every signature, hash,
   root, commitment, address and publication, so that only one predicate is

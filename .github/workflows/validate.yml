@@ -198,6 +198,9 @@ jobs:
       - name: Verify reference-bearing fixtures are deterministic
         run: python3 scripts/generate_artifact_reference_fixtures.py --check
 
+      - name: Verify payment-input and amendment target fixtures are deterministic
+        run: python3 scripts/generate_settlement_contract_vectors.py --check
+
       - name: Verify signed SEB authority vectors are deterministic
         run: python3 scripts/generate_bundle_settlement_evidence_vectors.py --check
 

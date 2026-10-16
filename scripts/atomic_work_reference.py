@@ -2456,6 +2456,8 @@ def _verify_current_profile_admission(
     state_ref = listing.get("revocationState")
     if not isinstance(state_ref, dict):
         raise Invalid("current Atomic Listing lacks its RSC state-line reference")
+    if state_ref.get("revocationStateRefVersion") != "1":
+        raise Unknown("unsupported revocation state reference version")
     expected = {
         "profile": _CURRENT_PROFILE_TUPLE,
         "workId": work_id(source_intent),
@@ -3063,12 +3065,25 @@ def evaluate_profile(data: dict[str, Any], *, committed_at: int | None = None) -
         timestamp = atomic_receipt["blockRef"]["timestamp"]
         if not isinstance(timestamp, int):
             raise Invalid("consensus block timestamp unavailable")
-        # DACS-3 §8.5.2 checks 5 and 6 read committedAt. Composed admission
-        # passes the time it verified: the commitment AnchorReceipt's under
-        # the sequential gate, not this later Work receipt's.
+        # The focused entry point must derive the same authenticated clock
+        # as composed admission; a caller-supplied timestamp is not authority.
+        if committed_at is None:
+            committed_at = timestamp
+            if intent["gateMode"] == "sequential":
+                anchor = data.get("commitmentReceipt")
+                if not isinstance(anchor, dict):
+                    raise Unknown("sequential gate requires a finalized commitment AnchorReceipt")
+                capability = data["capability"]  # verified by verify_receipt
+                _verify_finality_commitment(
+                    commitment, anchor, data["publicKeys"],
+                    network_authority=claim_key(capability["networkAuthority"]),
+                    network_id=intent["networkId"],
+                    proof_profile=data["expectedProofProfile"],
+                    validator_set_id=capability["validatorSetId"],
+                )
+                committed_at = anchor["blockRef"]["timestamp"]
         _verify_agreement_listing(
-            intent["operations"][2]["payload"]["artifact"], listing,
-            timestamp if committed_at is None else committed_at,
+            intent["operations"][2]["payload"]["artifact"], listing, committed_at,
         )
     else:
         purchase_receipt = intent["operations"][0].get("payload", {}).get("receipt")

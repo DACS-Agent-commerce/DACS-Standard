@@ -4499,6 +4499,36 @@ def predicate_pin_vectors(
         vector("aw-anchor-projection-receipt-version-unsupported", ["AW-66"], "projection", projection_anchor_version_two, "fail", "A projected AnchorReceipt with receiptVersion 2 is not the CORE §5.1 AnchorReceipt the verified Work receipt projects."),
     ]
 
+    # Focused receipt cardinality and retry bindings use one consistent receipt.
+    multiple_slot_intent = purchase_intent()
+    extra_slot = copy.deepcopy(multiple_slot_intent["operations"][4])
+    extra_slot["operationId"] = "payment-slot-extra"
+    multiple_slot_intent["operations"].append(extra_slot)
+    multiple_slot = base("aw-receipt-complete-and-final")
+    multiple_slot.update(intent=multiple_slot_intent, receipt=final_receipt(multiple_slot_intent))
+    no_slot_intent = purchase_intent()
+    no_slot_intent["operations"][4].update(
+        kind="assert-artifact", payload={"artifact": no_slot_intent["operations"][2]["payload"]["artifact"]},
+    )
+    no_slot = base("aw-receipt-complete-and-final")
+    no_slot_receipt = copy.deepcopy(no_slot["receipt"])
+    no_slot_receipt["workId"] = ref.work_id(no_slot_intent)
+    no_slot_receipt["paymentSlot"]["after"]["workId"] = ref.work_id(no_slot_intent)
+    no_slot_receipt["operationResults"] = operation_results(no_slot_intent)
+    no_slot.update(intent=no_slot_intent, receipt=rebind_receipt_finality(recompute_root(no_slot_receipt)))
+    execution += [
+        vector("aw-receipt-multiple-signed-slot-operations", ["AW-46", "AW-50"], "receipt", multiple_slot, "fail", "A consistently finalized Purchase receipt with two signed slot operations is rejected."),
+        vector("aw-receipt-no-signed-slot-operation", ["AW-46", "AW-50"], "receipt", no_slot, "fail", "A consistently finalized Purchase receipt with no signed slot operation is rejected."),
+    ]
+    for field, suffix in (("failureReceiptCommitment", "failure-commitment"), ("conflictDigest", "digest")):
+        retry_receipt = base("aws-retry-committed-receipt-generation")
+        retry_receipt["receipt"]["paymentSlot"]["before"][field] = "6d" * 32
+        retry_receipt["receipt"] = rebind_receipt_finality(retry_receipt["receipt"])
+        execution.append(vector(
+            "aw-receipt-retry-prior-" + suffix + "-differs", ["AW-46", "AW-50"], "receipt", retry_receipt,
+            "fail", "The finalized receipt's complete rolled-back prior state must bind the retry intent's failure commitment and conflict digest.",
+        ))
+
     # ---- Purchase and Completion admission ------------------------------------
     def listing_edit(edit, role: str = "seller"):
         return ("listing_fixture", resigned_builder(resign_listing_as(role), edit))
@@ -4744,6 +4774,48 @@ def predicate_pin_vectors(
         vector("awp-composed-payer-bundle-version-2", ["AWP-7"], "purchase-admission", composed_variant((("identity_bundle", payer_bundle_version_two),)), "fail", "A re-presented payer IdentityBundle with an unsupported bundleVersion is not payer authority."),
         vector("awp-composed-pc1-ordinary-arm-not-coerced", ["AWP-20"], "purchase-admission", composed_variant(edit=lambda v: ordinary_arm(v["authority"]["paymentPhaseInput"])), "fail", "DACS-4 PC-1: whole-profile admission does not rename an ordinary PaymentPhaseInput into the Atomic arm."),
     ]
+
+    def focused_sequential(anchor_time: int, not_after: int | None = None):
+        value = sequential_anchor_variant(anchor_time, not_after)
+        authority = value["authority"]
+        return {
+            **value,
+            "atomicReceipt": value["receipt"], "listing": authority["listing"],
+            "authenticatedOrchestrator": CLAIMS["orchestrator"],
+            "commitmentReceipt": authority["commitmentReceipt"],
+        }
+
+    purchase_completion += [
+        vector("awp-profile-sequential-deadline-at-bound", ["AWP-7", "AWP-8"], "profile", focused_sequential(1_800_000_000_000), "pass", "The focused sequential profile uses the finalized commitment time at the deadline bound.", boundary_rules=["AWP-8"]),
+        vector("awp-profile-sequential-deadline-past-bound", ["AWP-7", "AWP-8"], "profile", focused_sequential(1_799_999_999_999), "fail", "Moving only the finalized commitment time one millisecond earlier exceeds the deadline bound.", boundary_rules=["AWP-8"]),
+        vector("awp-profile-sequential-listing-at-expiry", ["AWP-7", "AWP-8"], "profile", focused_sequential(1_800_000_000_000, 1_800_000_000_000), "pass", "The Listing is valid at the finalized commitment time although expired by the later Work receipt.", boundary_rules=["AWP-8"]),
+        vector("awp-profile-sequential-listing-past-expiry", ["AWP-7", "AWP-8"], "profile", focused_sequential(1_800_000_000_000, 1_799_999_999_999), "fail", "The Listing expired one millisecond before the finalized commitment.", boundary_rules=["AWP-8"]),
+        vector("awp-composed-revocation-ref-version-2", ["AWP-7"], "purchase-admission", composed_variant((listing_edit(lambda l: l["revocationState"].update(revocationStateRefVersion="2")),)), "indeterminate", "An otherwise authenticated current-profile admission cannot interpret revocationStateRefVersion 2."),
+    ]
+
+    missing_anchor = focused_sequential(1_800_000_000_000)
+    missing_anchor.pop("commitmentReceipt")
+    invalid_anchor = focused_sequential(1_800_000_000_000)
+    invalid_anchor["commitmentReceipt"]["contentHash"] = "00" * 32
+    purchase_completion += [
+        vector("awp-profile-sequential-anchor-unavailable", ["AWP-6"], "profile", missing_anchor, "indeterminate", "A focused sequential profile needs its independently finalized commitment AnchorReceipt."),
+        vector("awp-profile-sequential-anchor-content-mismatch", ["AWP-6"], "profile", invalid_anchor, "fail", "An AnchorReceipt for another commitment cannot set committedAt."),
+    ]
+
+    for completing in (False, True):
+        for distinct in (False, True):
+            scope = "completion" if completing else "purchase"
+            repeat = "distinct" if distinct else "identical"
+            record = {"ref": CLAIMS["payer"], "metadata": {
+                "nativeAccount": "dem-test-other" if distinct else "dem-test-payer",
+            }}
+            purchase_completion.append(vector(
+                f"awp-{scope}-paying-key-repeat-{repeat}", ["AWP-4", "AWP-7"],
+                "completion-admission" if completing else "purchase-admission",
+                presenter_variant_admission("session", "buyer", [record], completion=completing),
+                "indeterminate" if distinct else "pass",
+                "Identical paying-key claims collapse; canonical-distinct matches cannot establish a unique authenticated payer account.",
+            ))
 
     # ---- settlement and slot -------------------------------------------------
     final_bound = base("aws-final-work-receipt-bound")

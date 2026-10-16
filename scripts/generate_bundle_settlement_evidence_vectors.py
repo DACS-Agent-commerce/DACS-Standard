@@ -463,6 +463,38 @@ def _atomic_anchor_receipt(ref, phase_key, logical_address):
     }
 
 
+# SEB-3 defense-in-depth shape cases. Each member is re-signed and its exact
+# hash is given a passing AWS admission; the SEB consumer still checks shape.
+ATOMIC_SHAPE_EDITS = {
+    "signature-missing": lambda e: e.pop("signature"),
+    "signature-algorithm": lambda e: e["signature"].update(algorithm="unsupported"),
+    "signature-signer": lambda e: e["signature"].update(signer="invalid"),
+    "signature-value": lambda e: e["signature"].update(value=""),
+    "required-observed-at": lambda e: e.pop("observedAt"),
+    "network-empty": lambda e: e.update(networkId=""),
+    "phase-index-boolean": lambda e: e.update(phaseIndex=True),
+    "operation-ref-kind": lambda e: e["operationRef"].update(kind="demos"),
+    "operation-ref-index": lambda e: e["operationRef"].update(operationIndex=-1),
+    "operation-ref-work-id": lambda e: e["operationRef"].update(workId="short"),
+    "receipt-ref-version": lambda e: e["workReceiptRef"].update(refVersion="2"),
+    "receipt-ref-content-hash": lambda e: e["workReceiptRef"].update(contentHash="short"),
+    "receipt-ref-locator": lambda e: e["workReceiptRef"].update(locator={}),
+    "proof-profile": lambda e: e["operationProof"].update(proofProfile=""),
+    "proof-subject": lambda e: e["operationProof"].update(subject=[]),
+    "proof-value": lambda e: e["operationProof"].update(value=""),
+    "delivery-operation-kind": lambda e: e["operationRef"].update(operationKind="native-dem-transfer"),
+    "delivery-content-hash": lambda e: e.update(deliverableContentHash="short"),
+    "delivery-anchor": lambda e: e.update(deliverableAnchor={"kind": "storage-program"}),
+    "delivery-payment-member": lambda e: e.update(paymentAmount={"amount": "10", "currency": "DEM"}),
+    "pay-operation-kind": lambda e: e["operationRef"].update(operationKind="storage-program-put"),
+    "pay-amount": lambda e: e.pop("paymentAmount"),
+    "pay-finality-model": lambda e: e["settlementFinality"].update(model="provider-receipt"),
+    "pay-finality-time": lambda e: e["settlementFinality"].update(finalityObservedAt=True),
+    "pay-delivery-member": lambda e: e.update(deliverableContentHash="00" * 32),
+    "failure-reason": lambda e: e.update(reason=""),
+    "failure-success-member": lambda e: e.update(paymentAmount={"amount": "10", "currency": "DEM"}),
+}
+
 def make_atomic_authority(variant="pass"):
     """Compose a real passing AWS result into DACS-5 SEB/ST-11 authority."""
     job_id = "01K1DPA0000000000000000000"
@@ -501,8 +533,15 @@ def make_atomic_authority(variant="pass"):
             atomicEvidenceVersion="2"
         ),
     }.get(variant)
+    shape_case = variant.removeprefix("shape-") if variant.startswith("shape-") else None
+    shape_edit = ATOMIC_SHAPE_EDITS.get(shape_case, shape_edit)
     if shape_edit is not None:
-        evidence = evidence_by_key["3:deliver-storage-program"]["evidence"]
+        phase_key = "2:pay-dem" if (shape_case or "").startswith("pay-") else "3:deliver-storage-program"
+        evidence = evidence_by_key[phase_key]["evidence"]
+        if (shape_case or "").startswith("failure-"):
+            evidence.update(outcome="failure", reason="fixture failure")
+            for member in ("deliverableContentHash", "deliverableAnchor", "paymentAmount", "settlementFinality"):
+                evidence.pop(member, None)
         shape_edit(evidence)
         evidence["signature"] = AR.sign_embedded(
             {key: value for key, value in evidence.items() if key != "signature"},
@@ -510,6 +549,8 @@ def make_atomic_authority(variant="pass"):
             A.SEEDS["orchestrator"],
             AR.EVIDENCE_DOMAIN,
         )["signature"]
+        if (shape_case or "").startswith("signature-"):
+            shape_edit(evidence)
 
     phase_summary = [
         {"index": index, "kind": step["kind"], "outcome": "ok"}
@@ -1716,6 +1757,8 @@ def generate(source):
             "unsupported-version"
         ),
     })
+    for shape_case in ATOMIC_SHAPE_EDITS:
+        data["executionAuthorities"]["atomic-shape-" + shape_case] = make_atomic_authority("shape-" + shape_case)
     atomic_vector_specs = (
         (
             "bundle-settlement-bijection-atomic-current-completed-pass",
@@ -1790,6 +1833,14 @@ def generate(source):
             "atomic-unsupported-version", "fail", "rejected",
             "execution-authority",
         ),
+    )
+    atomic_vector_specs += tuple(
+        ("bundle-settlement-bijection-atomic-shape-" + name,
+         "atomic-shape-" + name,
+         "fail" if name.startswith("signature-") else "error",
+         "rejected" if name.startswith("signature-") else "error",
+         "execution-authority" if name.startswith("signature-") else "execution-authority-error")
+        for name in ATOMIC_SHAPE_EDITS
     )
     known_vector_names = {vector["name"] for vector in data["vectors"]}
     for name, authority_name, expected, disposition, reason_code in atomic_vector_specs:

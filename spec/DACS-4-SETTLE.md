@@ -979,9 +979,9 @@ Atomic cross-chain settlement using HTLC contracts on source and destination cha
 - (HTLC-3) buyerSalt MUST NOT be reused across sessions; each jobId uses a freshly-generated salt.
 - (HTLC-4) The payer MUST retain buyerSalt until the destination-side claim reaches finality (loss makes the preimage unrecoverable — a fund-safety requirement, not merely operational).
 - (HTLC-5) **Preimage derivation** MUST use HKDF (RFC 5869, sha256): IKM=buyerSalt, salt=jobId, info=agreementHash. Weaker derivations MUST NOT be used. jobId MUST be globally unique per swap and agreementHash MUST be collision-resistant; both hold in DACS, where jobId is per-session and agreementHash is the sha256 of the canonical agreement.
-- (HTLC-6) **Hashlock** is the chain-native hash of the preimage. Source and destination chains MAY use different hash functions and MUST NOT be required to share one; each MUST be an identifier the §9.14 HTLC row registers (`keccak256` for EVM, `sha256` for Solana/BTC). An unregistered identifier is `error`; another chain's hash (for example blake2b) needs a registry entry first. The preimage is the only cross-chain-shared value; the preimage revealed on the destination is bit-identical to the one producing `hashlock_source`.
+- (HTLC-6) **Hashlock** is the chain-native hash of the preimage. Source and destination chains MAY use different hash functions and MUST NOT be required to share one; each MUST be an identifier the §9.14 HTLC row registers (`keccak256` for EVM, `sha256` for Solana/BTC). An unregistered identifier is `error`; a registered identifier that is not the leg chain's native hash (for example `sha256` on an EVM leg) is `fail`; another chain's hash (for example blake2b) needs a registry entry first. The preimage is the only cross-chain-shared value; the preimage revealed on the destination is bit-identical to the one producing `hashlock_source`.
 - (HTLC-7) **Timelock asymmetry.** Implementations MUST reject a route unless `expiry_source > expiry_dest + source_finality + safety`, evaluated on absolute expiry instants. The margin is sized to **source** finality, not destination latency: the binding constraint is the payee *finalising* its source claim after the reveal. `source_finality` and `safety` are the pinned rail parameters `rail.parameters.sourceFinalitySec` and `rail.parameters.safetyWindowSec`; both are REQUIRED, and `safetyWindowSec` defaults to 600s. The inequality MUST be evaluated against the pinned values, not runtime-estimated latency.
-- (HTLC-8) **Timelock epoch.** Timelocks are durations measured from when each lock is mined. The destination lock MUST NOT be mined before source-lock finality; implementations MUST reject any schedule that could. With this anchoring, the HTLC-7 duration inequality implies the absolute-expiry inequality.
+- (HTLC-8) **Timelock epoch.** Timelocks are durations measured from when each lock is mined. The destination lock MUST NOT be mined before source-lock finality; implementations MUST reject any schedule that could. A verifier evaluates this against the same pinned bound as HTLC-7: a destination lock whose authenticated mined instant is earlier than the source lock's authenticated mined instant plus `sourceFinalitySec` is `fail`, and one mined exactly at that instant satisfies it. This is a schedule check against the pinned bound, not proof of when the source chain finalized. With this anchoring, the HTLC-7 duration inequality implies the absolute-expiry inequality.
 - (HTLC-10) **Free-option disclosure.** The asymmetry guarantees liveness but not freedom from the inherent HTLC free option. The payer MAY decline to reveal after observing market movement, at zero cost, while the payee's destination capital stays locked to the destination timelock. v0.1 does NOT standardise an anti-option mechanism. Listings sensitive to option abuse SHOULD prefer pay-cross-chain-liquidity-tank or require a payer stake.
 
 > **Note (non-normative).**
@@ -1024,7 +1024,7 @@ Substrate-coordinated atomic settlement using pre-funded liquidity primitives. O
 1. Resolve rail; verify `asset.kind == "stablecoin-cross-chain"` and `network.kind == "cross-chain"` with `mechanism: "liquidity-tank"`.
 2. Select `liquidityTankIds` matching `(sourceChainId, destChainId)`; validate the route is in v0.1 scope (intended: ETH Sepolia → Polygon Amoy, USDC, unidirectional) and that the pinned rail `availability` (§9.4.4) admits it. No tank route is available today (DEMOS-MAPPING §A.5).
 3. Call the substrate’s native bridge API. On Demos (`@kynesyslabs/demosdk@4.0.16` (git head `d3620ae24f657ae7442e63e7adaefef7094b22e2`)), construct a `BridgeOperation` conforming to `src/bridge/nativeBridgeTypes.ts` (`demoAddress`, `originChainType`, `originChain`, `destinationChainType`, `destinationChain`, `originAddress`, `destinationAddress`, `amount`, `token`, `txHash`, `status`), have the node's native-bridge RPC compile it, and submit the compiled operation as a `nativeBridge` transaction (`demos.run.bridge.submit(compiled)`). DEMOS-MAPPING §A.5 records the current availability.
-4. The substrate’s validator shard executes lock-on-source and release-on-dest atomically, within the substrate’s consensus epoch. Record the `bridge_id` — the 16-char hash that is the canonical end-to-end tracking handle.
+4. The substrate’s validator shard executes lock-on-source and release-on-dest atomically, within the substrate’s consensus epoch. Record the `bridge_id` — the canonical end-to-end tracking handle. The pinned SDK types it only as a string (`bridgeId: string`); DACS does not assume a length or hash format.
 5. Wait for `BridgeOperation.status` to transition `"empty"` → `"pending"` → `"completed"`.
 6. Construct `SettlementEvidence` with `txRef` of kind `liquidity-tank` including bridgeId + both lock and release tx hashes; anchor via SR-2; return success. If the bridge has reached `completed` but SR-2 is unavailable, return `ok: true` with the bridge txRefs plus a durable idempotent anchor-retry, per PC-7 — never `errorClass: "substrate"`.
 
@@ -1242,7 +1242,7 @@ pipeline `phaseIndex`.
    `dacs4:delivery:{jobId}:{phaseIndex}` via SR-2 and returns success. The
    seller remains the writer of the deliverable payload.
 
-**Soft limit.** DACS applies a 128 KB soft limit to Storage Program payloads, stricter than the 1 MB substrate cap (DEMOS-MAPPING §A.2). Larger payloads MUST use the extended-pointer pattern: the Storage Program at the canonical address contains a pointer record { externalUrl, externalContentHash, segmentRefs[]? }; the actual payload is hosted externally; the externalContentHash binds it. The buyer fetches the pointer, then fetches the payload, then verifies the hash.
+**Soft limit.** DACS applies a 128 KB soft limit to Storage Program payloads, stricter than the 1 MB substrate cap (DEMOS-MAPPING §A.2). The limit is 131,072 bytes, measured over the exact payload bytes the adapter writes (for a JSON value, the UTF-8 bytes of its RFC 8785 canonical form); a payload of exactly 131,072 bytes fits. Larger payloads MUST use the extended-pointer pattern: the Storage Program at the canonical address contains a pointer record { externalUrl, externalContentHash, segmentRefs[]? }; the actual payload is hosted externally; the externalContentHash binds it. The buyer fetches the pointer, then fetches the payload, then verifies the hash.
 
 **Private delivery (`accessModel`).** A `storage-program` deliverable MAY be delivered privately when `deliverable.accessModel` (declared in the agreement, hash-bound per §8.5.2) is non-`public`:
 - `buyer-only` — the Storage Program is written with a `restricted` ACL listing the buyer's address in `allowed`; reads are node-enforced.
@@ -2015,9 +2015,12 @@ the reference authenticates.
 - **(FRC-8) Native projection and disposition.** The registered codec MUST
   project each response to canonical finality meaning before consistency
   comparison. Irrelevant transport differences MUST NOT create an economic
-  conflict. `FinalityObservationResponseVersion1` and both of its `response`
+  conflict. Authentication evidence the binding has verified, such as
+  which sufficient set of authority signatures accompanies a view, is not
+  finality meaning. `FinalityObservationResponseVersion1` and both of its `response`
   arms are closed: a member outside the type, other than the optional
-  `transportMetadata`, makes the response malformed. A later revision adds
+  `transportMetadata`, makes the response malformed, and so does a
+  `transportMetadata` that is not a JSON object. A later revision adds
   members only under a new `finalityObservationResponseVersion`. SIG-5 is
   unaffected: the signature still covers the response as received, and a
   valid signature does not cure the closed-shape refusal. A malformed

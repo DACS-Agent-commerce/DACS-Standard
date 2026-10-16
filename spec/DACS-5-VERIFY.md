@@ -771,7 +771,7 @@ Rules:
 
 > **Note (non-normative).** *Forward note.* A future SDK capability to anchor a StorageProgram at a caller-chosen address — or a Demos-native deterministic derivation hashing only the logical address — would restore the pure-mapping case and let consumers resolve without the published binding, exactly as anticipated for listings in §6.3.4. Until then BB-1..BB-8 govern.
 
-Bundles MUST fit within the DACS storage soft limit (128 KB on Demos Storage Programs, stricter than the 1 MB substrate cap; DEMOS-MAPPING §A.2).
+Bundles MUST fit within the DACS storage soft limit (128 KB on Demos Storage Programs, stricter than the 1 MB substrate cap; DEMOS-MAPPING §A.2). The limit is 131,072 bytes of the bundle's RFC 8785 canonical UTF-8 serialization; a bundle of exactly 131,072 bytes fits.
 
 **Extended-pointer pattern for large sessions.** Sessions with extensive evidence (large transcripts, attestation chains, multi-party verifications, e.g. a sealed-envelope auction with 50 bidders’ commits and reveals) MAY exceed the size cap. In that case the bundle at the canonical address contains a pointer record:
 

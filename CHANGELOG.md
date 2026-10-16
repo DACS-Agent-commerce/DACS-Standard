@@ -243,7 +243,7 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   FRC-9) — FRC-8 now states what the reference already enforced: the
   response type and both arms are closed apart from `transportMetadata`, and
   new members need a new response version (normative clarification; SIG-5
-  hashing is unchanged). `finality-resolution-context-v1` (19 → 43) adds:
+  hashing is unchanged). `finality-resolution-context-v1` (19 → 46) adds:
   - extra members on a signed response and on each response arm (`error`);
   - acquisition records with another nonce, a status other than obtained, or
     a duplicate response hash (`error`), and one naming another responder
@@ -334,6 +334,31 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
 
 ### Conformance coverage and reference alignment
 
+- **HTLC hash and epoch checks** (DACS-4 HTLC-6, HTLC-8). A registered hash
+  identifier that is not the leg chain's native hash (for example `sha256` on
+  an EVM leg) is `fail`; the canonical EVM legs now use `keccak256`. A
+  destination lock mined before the source lock's mined instant plus the
+  pinned `sourceFinalitySec` is `fail`; the HTLC-8 text now states that
+  schedule check (normative clarification). Settlement finality 269 → 274:
+  an EVM leg on `sha256`, destination locks 1s and 1ms before and exactly at
+  the pinned source finality, and a rail without `sourceFinalitySec`.
+- **FRC-8 typed metadata and projection.** A signed `transportMetadata` that
+  is not a JSON object is malformed (`error`), and which sufficient set of
+  authority signatures accompanies a verified view is not finality meaning,
+  so two observers with different sufficient sets agree (`pass`).
+  `finality-resolution-context-v1` 43 → 46.
+- **Storage soft limit** (DACS-4 §9.6.1, DACS-5 §10.4.2). The 128 KB limit is
+  131,072 bytes of the exact payload, or of a JSON value's RFC 8785 UTF-8
+  form; exactly 131,072 bytes fits (clarification). A producer packaging
+  reference and boundary tests pin it.
+- **CH-6 across restarts.** A test reopens a durable channel-id registry
+  after a restart and requires refusal; an adapter claiming CH-6 with no
+  registry or an in-memory one is refused.
+- **Demos mapping corrections.** Storage Program addresses are derived from
+  deployer, name, nonce and salt (truncated to 40 hex), not content; the
+  pinned node does not yet reject stale or skipped nonces; the builders'
+  guide lists the SDK's native CCI contexts; CORE pins SEC 1 version 2.0;
+  the tank `bridge_id` no longer claims a 16-character hash format.
 - Finality fixtures now cover combined staleness, missing authority and
   deterministic signature or relation failures (249 → 269 cases). The reference
   retains uncertainty while checking available certificate, event and provider

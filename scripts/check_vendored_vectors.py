@@ -42,7 +42,9 @@ any of these differ:
   under a validator-accepted encoding. The Standard's verified encoding can
   also hash a vendored copy whose own declared hash is stale or edited.
   When the Standard's vectors canonicalize and the vendored ones do not,
-  the vectors differ and the set is drifted;
+  the vectors differ and the set is drifted. The same holds when the
+  Standard's vectors hash under the verified declared encoding and the
+  vendored ones cannot be encoded with it;
 - ``count``: the vendored ``count`` differs from the Standard's, or from the
   vendored ``vectors`` length;
 - ``hash``: the vendored declared ``hash`` differs from the Standard's;
@@ -309,17 +311,22 @@ def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
         if not uncheckable:
             comparison = "declared-encoding-sha256+parsed-json"
             encoding = standard.declared_encodings[0]
-            try:
-                hashes = {
-                    side: vector_set.encoded_hashes.get(encoding) or hashlib.sha256(
-                        canonical_encodings(vector_set.vectors)[encoding]).hexdigest()
-                    for side, vector_set in (("standard", standard), ("vendored", vendored))
-                }
-            except RecursionError as exc:
-                raise BadInput(f"set {standard.name!r}: vectors are too deeply nested to hash") from exc
-            except (TypeError, ValueError) as exc:
-                raise BadInput(f"set {standard.name!r}: vectors cannot be hashed using {encoding}: {exc}") from exc
             note = f"canonical_json unavailable ({note}); compared using {encoding}"
+            hashes = {}
+            for side, vector_set in (("standard", standard), ("vendored", vendored)):
+                try:
+                    hashes[side] = vector_set.encoded_hashes.get(encoding) or hashlib.sha256(
+                        canonical_encodings(vector_set.vectors)[encoding]).hexdigest()
+                except RecursionError as exc:
+                    raise BadInput(f"set {standard.name!r}: vectors are too deeply nested to hash") from exc
+                except (TypeError, ValueError) as exc:
+                    if side == "standard":
+                        raise BadInput(
+                            f"set {standard.name!r}: vectors cannot be hashed using {encoding}: {exc}") from exc
+                    # The Standard's vectors hash under this encoding and the
+                    # vendored ones do not, so the vectors differ.
+                    hashes[side] = None
+                    note += f"; vendored: cannot be hashed using {encoding} ({exc}), so the vectors differ"
         else:
             comparison = "uncheckable"
             note = f"no canonical or verified declared-encoding hash ({note})"

@@ -93,7 +93,8 @@ When the Standard supplies the verified encoding, the checker hashes the
 vendored copy under that encoding even if its own declared hash is stale or
 edited. Those changes report drift with exit 1. When the Standard's vectors
 canonicalize and the vendored vectors do not, the vectors differ and the set
-is reported as drifted.
+is reported as drifted. The same applies when the vendored vectors cannot be
+encoded with the Standard's verified declared encoding.
 
 Both modes also compare type-strict parsed values: Unicode normalization,
 `1.0` versus `1`, and float zero-sign changes are drift. Numbers use Python's

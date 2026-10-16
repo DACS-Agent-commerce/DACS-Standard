@@ -307,15 +307,22 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(result["comparisonHash"]["standard"], data["hash"])
         self.assertEqual(report["summary"]["uncheckable"], 0)
 
-    def test_fallback_unencodable_vendored_copy_is_bad_input(self):
+    def test_fallback_unencodable_vendored_copy_is_drift(self):
+        # As in canonical mode, the Standard's vectors hash under the verified
+        # encoding, so a vendored value that encoding refuses is a known difference.
         name = "wide-int-v0.1"
         data = make_set(name, [{"input": BIG}])
         write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
         write_json(self.vendored_set(name), data)
         self.edit_vendored(name, lambda value: value["vectors"][0].update(name="\ud800"))
         code, report = self.run_checker()
-        self.assertEqual(code, 2)
-        self.assertIn("cannot be hashed", report["error"])
+        result = self.result_for(report, name)
+        self.assertEqual((code, result["status"], result["changes"]), (1, "drifted", ["vectors"]))
+        self.assertEqual(result["comparison"], "declared-encoding-sha256+parsed-json")
+        self.assertEqual(result["comparisonHash"], {"standard": data["hash"], "vendored": None})
+        self.assertIn("vendored: cannot be hashed using", result["comparisonNote"])
+        self.assertFalse(report["uncheckable"])
+        self.assertIn(f"DRIFTED  {name}", CHECKER.render_text(report))
 
     def test_neither_hash_available_is_uncheckable(self):
         name = "wide-int-v0.1"

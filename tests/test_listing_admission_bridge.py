@@ -528,6 +528,28 @@ def _wrong_typed(known: str) -> tuple:
     )
 
 
+_VALID_RULE_LOCATIONS = (
+    "https://rules.example/select", "stor-rule", "storage-program:rule-1",
+    "../rules/select?version=1#rule", "/rules/select", "//rules.example/select",
+    "?rule=1", "#rule", "./foo:bar", "mailto:rules@example.test",
+    "https://rules.example/rule%20one?x=%2f#part%AA",
+    "https://user:password@rules.example:443/rule",
+    "https://[2001:db8::1]:443/rule", "https://[::ffff:192.0.2.1]/rule",
+    "https://[v1.a:b]/rule", "https://[VF.x]/rule",
+)
+_INVALID_RULE_LOCATIONS = (
+    "", "bad%GG", "bad%", "bad%0", "foo|bar", "foo\\bar", "foo{bar}",
+    "\u200b", "\u202e", "\ufeff", "é", "rules/\u0085", "rules/\x00",
+    " https://rules.example/select", "https://rules.example/ law",
+    "https://rules.example/law\n", "https://rules.example/\tselect",
+    "1bad:rule", "https://rules.example/rule[1]", "https://rules.example/?x=[1]",
+    "https://rules.example/#part[1]", "https://rules.example/#part#two",
+    "https://rules.example:port/rule", "https://a@b@rules.example/rule",
+    "https://[bad]/rule", "https://[2001:db8::1/rule", "https://[192.0.2.1]/rule",
+    "https://[1:2:3]/rule", "https://[vG.x]/rule", "https://[v1.]/rule",
+)
+
+
 class ListingShapeWrongTypeTests(unittest.TestCase):
     """Wrong-typed or unsupported closed-union members are shape failures, never exceptions."""
 
@@ -691,6 +713,32 @@ class ListingShapeBoundsTests(unittest.TestCase):
                     listing["terms"][field] = value
                     self.assert_shape_failure(listing, "invalid terms")
 
+    def test_conflict_rule_ref_has_a_valid_uri_reference(self):
+        for location in _VALID_RULE_LOCATIONS:
+            with self.subTest(location=location):
+                listing = _legacy_listing()
+                listing["terms"]["conflictOfLawsRule"] = "rule-ref:" + location
+                self.assert_publishable(listing)
+        for location in _INVALID_RULE_LOCATIONS:
+            with self.subTest(location=location):
+                listing = _legacy_listing()
+                listing["terms"]["conflictOfLawsRule"] = "rule-ref:" + location
+                self.assert_shape_failure(listing, "invalid terms")
+
+    def test_terms_is_a_required_object(self):
+        listing = _legacy_listing()
+        listing["terms"] = {}
+        self.assert_publishable(listing)
+        del listing["terms"]
+        self.assert_shape_failure(listing, "invalid terms")
+        for name, value in _wrong_typed("none") + (("string", "none"), ("empty string", "")):
+            if isinstance(value, dict):
+                continue
+            with self.subTest(terms=name):
+                listing = _legacy_listing()
+                listing["terms"] = value
+                self.assert_shape_failure(listing, "invalid terms")
+
     def test_optional_terms_members_have_their_declared_types(self):
         not_numbers = ("60", "soon", None, True, False, [], [60], {})
         cases = {
@@ -775,21 +823,25 @@ class ListingShapeBoundsTests(unittest.TestCase):
             ]
             return listing
 
-        for rule in (
-            "lowest-price", "rule-ref:" + "12" * 32 + ":https://rules.example/select",
-            "rule-ref:" + "14" * 32 + ":stor-rule",
-        ):
+        valid = ("lowest-price", "highest-price", "first-acceptable") + tuple(
+            "rule-ref:" + "ab" * 32 + ":" + location for location in _VALID_RULE_LOCATIONS
+        ) + ("rule-ref:" + "14" * 32 + ":stor-rule",)
+        for rule in valid:
             with self.subTest(rule=rule):
-                self.assertEqual(
-                    listing_artifact.validate_listing_shape(auction(rule))[:2], (True, None),
-                )
-        for rule in ("rule-ref:", "rule-ref: ", "rule-ref:" + "12" * 32 + ": https://x",
-                     "rule-ref:https://rules.example/\tselect", "rule-ref"):
+                self.assert_publishable(auction(rule))
+        invalid = (
+            "rule-ref", "rule-ref:", "rule-ref: ", "rule-ref:foo",
+            "rule-ref:zz:stor-rule", "rule-ref:https://rules.example/select",
+            "rule-ref:" + "ab" * 32, "rule-ref:" + "ab" * 32 + ":",
+        ) + tuple(
+            "rule-ref:" + digest + ":stor-rule"
+            for digest in ("", "ab" * 31, "ab" * 33, "AB" * 32, "gg" * 32)
+        ) + tuple(
+            "rule-ref:" + "ab" * 32 + ":" + location for location in _INVALID_RULE_LOCATIONS
+        )
+        for rule in invalid:
             with self.subTest(rule=rule):
-                self.assertEqual(
-                    listing_artifact.validate_listing_shape(auction(rule)),
-                    (False, "invalid pricing", "Listing", "dacs-listing:v1:"),
-                )
+                self.assert_shape_failure(auction(rule), "invalid pricing")
 
     def test_signature_algorithm_is_closed(self):
         for algorithm in ("ed25519", "ecdsa-secp256k1", "sr1-aggregate"):

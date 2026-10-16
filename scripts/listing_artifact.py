@@ -7,6 +7,7 @@ semantics. Unknown extension members are retained in the signed/hash input.
 
 from __future__ import annotations
 
+import ipaddress
 import math
 import re
 import unicodedata
@@ -70,8 +71,25 @@ COMPLETE_SEALED_NEGOTIATIONS = frozenset({
 _LISTING_ID = re.compile(r"[A-Za-z0-9._~-]{1,128}\Z")
 _HASH = re.compile(r"[0-9a-f]{64}\Z")
 _AMOUNT = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
-# "rule-ref:" names its rule with a non-empty, whitespace- and control-free reference.
-_RULE_REF = re.compile(r"rule-ref:[^\s\x00-\x1f\x7f-\x9f]+\Z")
+# RFC 3986 URI-reference components. Relative storage identifiers are allowed;
+# percent escapes are checked without decoding or normalizing the signed value.
+_URI_UNRESERVED = r"A-Za-z0-9._~\-"
+_URI_SUB_DELIMS = r"!$&'()*+,;="
+_URI_PCT = r"%[0-9A-Fa-f]{2}"
+_URI_PCHAR = rf"(?:[{_URI_UNRESERVED}{_URI_SUB_DELIMS}:@]|{_URI_PCT})"
+_URI_PATH = re.compile(rf"(?:{_URI_PCHAR}|/)*\Z")
+_URI_QUERY_FRAGMENT = re.compile(rf"(?:{_URI_PCHAR}|[/?])*\Z")
+_URI_REFERENCE = re.compile(
+    r"(?:(?P<scheme>[A-Za-z][A-Za-z0-9+.-]*):)?"
+    r"(?://(?P<authority>[^/?#]*))?"
+    r"(?P<path>[^?#]*)(?:\?(?P<query>[^#]*))?(?:#(?P<fragment>[^#]*))?\Z"
+)
+_URI_AUTHORITY = re.compile(
+    rf"(?:(?:[{_URI_UNRESERVED}{_URI_SUB_DELIMS}:]|{_URI_PCT})*@)?"
+    rf"(?:(?:[{_URI_UNRESERVED}{_URI_SUB_DELIMS}]|{_URI_PCT})*|"
+    r"\[(?P<literal>[^\[\]]+)\])(?::[0-9]*)?\Z"
+)
+_URI_IP_FUTURE = re.compile(rf"[vV][0-9A-Fa-f]+\.[{_URI_UNRESERVED}{_URI_SUB_DELIMS}:]+\Z")
 _SELECTION_RULES = frozenset({"lowest-price", "highest-price", "first-acceptable"})
 _CAPABILITIES = frozenset({"SR-1", "SR-2", "SR-3", "SR-4", "SR-5"})
 _SIGNATURE_ALGORITHMS = frozenset({"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
@@ -239,6 +257,50 @@ def _valid_price(value):
     )
 
 
+def _valid_rule_uri(value):
+    """A nonempty RFC 3986 URI-reference, including relative storage names."""
+    if not isinstance(value, str) or not value:
+        return False
+    match = _URI_REFERENCE.fullmatch(value)
+    if match is None or _URI_PATH.fullmatch(match["path"]) is None:
+        return False
+    if any(
+        part is not None and _URI_QUERY_FRAGMENT.fullmatch(part) is None
+        for part in (match["query"], match["fragment"])
+    ):
+        return False
+    if match["authority"] is None:
+        # A relative path's first segment cannot contain a colon (path-noscheme).
+        return bool(match["scheme"]) or ":" not in match["path"].split("/", 1)[0]
+    authority = _URI_AUTHORITY.fullmatch(match["authority"])
+    if authority is None:
+        return False
+    literal = authority["literal"]
+    if literal is not None and _URI_IP_FUTURE.fullmatch(literal) is None:
+        if re.fullmatch(r"[0-9A-Fa-f:.]+", literal) is None:
+            return False
+        try:
+            ipaddress.IPv6Address(literal)
+        except ValueError:
+            return False
+    return True
+
+
+def _valid_rule_ref(value):
+    return (
+        isinstance(value, str) and value.startswith("rule-ref:")
+        and _valid_rule_uri(value[len("rule-ref:"):])
+    )
+
+
+def _valid_auction_rule_ref(value):
+    """DACS-3 §8.4.3: the hash, rather than the location, binds the rule."""
+    if not isinstance(value, str) or not value.startswith("rule-ref:"):
+        return False
+    digest, separator, location = value[len("rule-ref:"):].partition(":")
+    return bool(separator) and _HASH.fullmatch(digest) is not None and _valid_rule_uri(location)
+
+
 def _valid_pricing(value):
     if not isinstance(value, dict):
         return False
@@ -257,7 +319,7 @@ def _valid_pricing(value):
         selection = value.get("selectionRule")
         return (
             _is_nonempty_string(selection)
-            and (selection in _SELECTION_RULES or _RULE_REF.fullmatch(selection) is not None)
+            and (selection in _SELECTION_RULES or _valid_auction_rule_ref(selection))
             and ("reservePrice" not in value or _valid_price(value["reservePrice"]))
         )
     if kind == "metered":
@@ -308,7 +370,7 @@ def _valid_terms(value):
             isinstance(value[field], str)
             and (
                 value[field] in allowed
-                or field == "conflictOfLawsRule" and _RULE_REF.fullmatch(value[field]) is not None
+                or field == "conflictOfLawsRule" and _valid_rule_ref(value[field])
             )
         )
         for field, allowed in _TERMS_ENUMS.items()

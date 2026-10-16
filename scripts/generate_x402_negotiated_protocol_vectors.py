@@ -14,7 +14,15 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from jcs import canonicalize as jcs_canonicalize
 from raw_json_profile import loads as admit_raw_json
-from solana_authorization import authorization_identity as solana_identity
+from solana_authorization import (
+    COMPUTE_BUDGET_PROGRAM,
+    MEMO_PROGRAM,
+    TRANSFER_CHECKED,
+    associated_token_account,
+    authorization_identity as solana_identity,
+    base58,
+    public_key_bytes,
+)
 from evm_crypto import (
     deterministic_ecdsa_sha256,
     evm_address,
@@ -154,17 +162,6 @@ def flip_first(signature: str) -> str:
     return ("A" if signature[0] != "A" else "B") + signature[1:]
 
 
-def base58(raw: bytes) -> str:
-    alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-    number = int.from_bytes(raw, "big")
-    encoded = ""
-    while number:
-        number, remainder = divmod(number, 58)
-        encoded = alphabet[remainder] + encoded
-    zeroes = len(raw) - len(raw.lstrip(b"\x00"))
-    return "1" * zeroes + (encoded or "1")
-
-
 def solana_payment_key() -> Ed25519PrivateKey:
     return Ed25519PrivateKey.from_private_bytes(SOLANA_BUYER_SEED)
 
@@ -187,34 +184,140 @@ SOLANA_SPONSOR_PUBLIC = SOLANA_SPONSOR_KEY.public_key().public_bytes(
 SOLANA_FEE_PAYER = base58(SOLANA_SPONSOR_PUBLIC)
 
 
-def solana_transactions(blockhash=b"DACS #274 Solana blockhash"):
-    """Wire-valid v0 fixtures: sponsor + client, TransferChecked, no lookups.
+SOLANA_TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+SOLANA_TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+SOLANA_AMOUNT = 1250000  # the base price, 1.25 USDC, at 6 decimals
+# Upstream's client puts a random nonce in the Memo instruction when `extra`
+# names no memo; the fixtures use a fixed one.
+SOLANA_MEMO_NONCE = hashlib.sha256(b"DACS #274 Solana memo nonce").hexdigest()[:32]
+# Another key, for substituted sponsors, payers, destinations and authorities.
+SOLANA_OTHER_KEY = Ed25519PrivateKey.from_private_bytes(hashlib.sha256(b"DACS #274 Solana other key").digest())
+SOLANA_OTHER = base58(SOLANA_OTHER_KEY.public_key().public_bytes(
+    encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw))
 
-    These offline fixture keys and synthetic accounts never hold real funds.
-    The ledger fixture supplies the independently verified execution outcome.
+
+def compact_u16(number: int) -> bytes:
+    encoded = b""
+    while number >= 128:
+        encoded += bytes([number & 127 | 128])
+        number >>= 7
+    return encoded + bytes([number])
+
+
+def solana_payment_instructions(*, amount=SOLANA_AMOUNT, pay_to=SOLANA_SELLER, memo=None, payer=None,
+                                mint=SOLANA_ASSET, token_program=SOLANA_TOKEN_PROGRAM, decimals=6):
+    """§9.5.7.1: the instructions of one payment, each (program, [(account, writable)], data)."""
+    payer = payer or SOLANA_BUYER
+    return [
+        (COMPUTE_BUDGET_PROGRAM, [], b"\x02" + (20_000).to_bytes(4, "little")),
+        (COMPUTE_BUDGET_PROGRAM, [], b"\x03" + (1).to_bytes(8, "little")),
+        (token_program, [(associated_token_account(payer, mint, token_program), True), (mint, False),
+                         (associated_token_account(pay_to, mint, token_program), True), (payer, False)],
+         bytes([TRANSFER_CHECKED]) + amount.to_bytes(8, "little") + bytes([decimals])),
+        (MEMO_PROGRAM, [], (SOLANA_MEMO_NONCE if memo is None else memo).encode("utf-8")),
+    ]
+
+
+def solana_transactions(blockhash=b"DACS #274 Solana blockhash", *, edit=None, extra_signers=(),
+                        sponsor_key=None, payer_key=None, lookups=(), **terms):
+    """Wire-valid v0 fixtures of one payment: (partial, full, transaction ID).
+
+    The message is compiled from `solana_payment_instructions(**terms)`, which
+    `edit` may replace. Accounts follow the wire order: signers (the sponsor
+    first), then writable, then read-only. These offline fixture keys and
+    synthetic accounts never hold real funds. The ledger fixture supplies the
+    independently verified execution outcome.
     """
-    def key_bytes(value):
-        number = 0
-        for char in value:
-            number = number * 58 + "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz".index(char)
-        return number.to_bytes(32, "big")
+    def public(private):
+        return base58(private.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw))
 
-    keys = [SOLANA_SPONSOR_PUBLIC, solana_public_key_bytes(),
-            hashlib.sha256(b"source token account").digest(),
-            hashlib.sha256(b"destination token account").digest(),
-            key_bytes(SOLANA_ASSET), key_bytes("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")]
-    data = b"\x0c" + (1250000).to_bytes(8, "little") + b"\x06"
-    instruction = bytes([5, 4, 2, 4, 3, 1, len(data)]) + data
-    message = (bytes([128, 2, 1, 2, len(keys)]) + b"".join(keys)
-               + hashlib.sha256(blockhash).digest() + b"\x01" + instruction + b"\x00")
-    client = solana_payment_key().sign(message)
-    sponsor = SOLANA_SPONSOR_KEY.sign(message)
-    partial = base64.b64encode(b"\x02" + bytes(64) + client + message).decode("ascii")
-    full = base64.b64encode(b"\x02" + sponsor + client + message).decode("ascii")
-    return partial, full, base58(sponsor)
+    signing = [sponsor_key or SOLANA_SPONSOR_KEY, payer_key or solana_payment_key(), *extra_signers]
+    signers = [public(private) for private in signing]
+    terms.setdefault("payer", signers[1])
+    instructions = solana_payment_instructions(**terms)
+    instructions = edit(instructions) if edit else instructions
+    order, writable = list(signers), {signers[0]}
+    for program, accounts, _ in instructions:
+        for account, is_writable in accounts:
+            writable |= {account} if is_writable else set()
+            order += [] if account in order else [account]
+        order += [] if program in order else [program]
+    keys = sorted(order, key=lambda name: (name not in signers, name not in writable, order.index(name)))
+    message = (bytes([128, len(signers), sum(name not in writable for name in signers),
+                      sum(name not in writable for name in keys[len(signers):])])
+               + compact_u16(len(keys)) + b"".join(public_key_bytes(name) for name in keys)
+               + hashlib.sha256(blockhash).digest() + compact_u16(len(instructions)))
+    for program, accounts, data in instructions:
+        message += (bytes([keys.index(program)]) + compact_u16(len(accounts))
+                    + bytes(keys.index(account) for account, _ in accounts)
+                    + compact_u16(len(data)) + data)
+    message += compact_u16(len(lookups)) + b"".join(
+        public_key_bytes(table) + compact_u16(len(loaded)) + bytes(loaded) + compact_u16(0)
+        for table, loaded in lookups)
+    signatures = [private.sign(message) for private in signing]
+    partial = base64.b64encode(compact_u16(len(signing)) + bytes(64) + b"".join(signatures[1:])
+                               + message).decode("ascii")
+    full = base64.b64encode(compact_u16(len(signing)) + b"".join(signatures) + message).decode("ascii")
+    return partial, full, base58(signatures[0])
 
 
 SOLANA_PAYMENT_TRANSACTION, SOLANA_FINAL_TRANSACTION, SOLANA_TX = solana_transactions()
+
+
+def rebind_solana_authorization(value: dict) -> None:
+    """§9.5.7.1: a Solana case signs a message encoding its own signed terms.
+
+    The base fixture encodes the base terms. A case that changes the amount,
+    payout address, memo or token program gets a transaction for its terms, and
+    its other copies of the base transaction follow. A case that sets its own
+    transaction, or whose terms have no transaction, keeps what it has.
+    """
+    try:
+        terms = value["agreement"]["terms"]
+        selection = terms["rail"]["parameters"]["selection"]
+        if (not selection["network"].startswith("solana:")
+                or value["runtime"].get("solanaAuthorization") != SOLANA_PAYMENT_TRANSACTION
+                or selection["extra"].get("feePayer") != SOLANA_FEE_PAYER):
+            return
+        whole, _, fraction = terms["price"]["amount"].partition(".")
+        memo = selection["extra"].get("memo")
+        partial, full, transaction = solana_transactions(
+            amount=int(whole + fraction) * 10 ** (selection["assetDecimals"] - len(fraction)),
+            pay_to=terms["payoutBindings"][0]["payeeAddress"],
+            memo=memo if isinstance(memo, str) else None,
+            token_program=value["capability"]["assetMetadata"]["tokenProgram"],
+            decimals=selection["assetDecimals"])
+    except (AttributeError, KeyError, OverflowError, TypeError, ValueError):
+        return
+    if transaction == SOLANA_TX:
+        return
+    old = solana_identity(SOLANA_PAYMENT_TRANSACTION, SOLANA_BUYER, SOLANA_FEE_PAYER)[0]
+    new = solana_identity(partial, SOLANA_BUYER, SOLANA_FEE_PAYER)[0]
+    pairs = ((SOLANA_FINAL_TRANSACTION, full), (SOLANA_PAYMENT_TRANSACTION, partial),
+             (SOLANA_TX, transaction), (old["messageHash"], new["messageHash"]),
+             (old["clientSignatures"][0]["signature"], new["clientSignatures"][0]["signature"]))
+
+    def replaced(node):
+        if isinstance(node, dict):
+            return {name: replaced(item) for name, item in node.items()}
+        if isinstance(node, list):
+            return [replaced(item) for item in node]
+        if isinstance(node, str):
+            for before, after in pairs:
+                node = node.replace(before, after)
+        return node
+
+    for part in ("runtime", "ledger", "evidence"):
+        if part in value:
+            value[part] = replaced(value[part])
+    response = received_response(value)
+    if response is not None and replaced(response) != response:
+        refs = value.get("evidence", {}).get("paymentTxRefs", [])
+        consistent = bool(refs) and refs[0].get("paymentReceiptHash") == digest(response)
+        value["http"]["responseHeader"] = encoded_header(replaced(response), 2)
+        if consistent:
+            refs[0]["paymentReceiptHash"] = digest(received_response(value))
 
 
 def public_key(role: str) -> str:
@@ -787,6 +890,7 @@ def add_case(vectors: list, name: str, expected: str, rule: str, note: str,
     sent = value["runtime"]["paidHeaders"]["PAYMENT-SIGNATURE"]
     if mutate:
         mutate(value)
+    rebind_solana_authorization(value)
     # XN-6: the paid payload follows the case's challenge and authorization,
     # unless the case itself changes the header's value. A case whose signed
     # material has no payload form keeps the base one; it fails before then.
@@ -910,6 +1014,7 @@ def build_vectors() -> list[dict]:
             "asset": SOLANA_ASSET,
             "decimals": 6,
             "currency": "USDC",
+            "tokenProgram": SOLANA_TOKEN_PROGRAM,
         }
         v["runtime"]["solanaAuthorization"] = SOLANA_PAYMENT_TRANSACTION
         v["runtime"]["reconciliationState"] = {
@@ -3563,6 +3668,7 @@ def build_vectors() -> list[dict]:
                  operation="admit-listing", reason="listing-shape")
 
     add_solana_identity_cases(vectors, solana_exact)
+    add_solana_instruction_cases(vectors, solana_exact)
     add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, response_lost,
                            listing_pipeline(fixed_price, "commit-payee-bound-agreement"),
                            listing_pipeline(fixed_price, "commit-identity-bound-payee-agreement"))
@@ -3702,6 +3808,130 @@ def add_solana_identity_cases(vectors, solana_exact):
              "the ledger coordinate must equal the authenticated full transaction's sponsor signature",
              mismatched_coordinate, refresh=True, authorization_submitted=True,
              reason="authorization-identity-mismatch")
+
+
+def add_solana_instruction_cases(vectors, solana_exact):
+    """§9.5.7.1/XN-6: the payer signs only a message that is exactly the payment.
+
+    Each message below is the retained message and the paid payload alike, and
+    each is refused before the wallet signs it.
+    """
+    source = associated_token_account(SOLANA_BUYER, SOLANA_ASSET, SOLANA_TOKEN_PROGRAM)
+    token, system = SOLANA_TOKEN_PROGRAM, "1" * 32
+    unknown = base58(hashlib.sha256(b"DACS #274 unknown Solana program").digest())
+    table = base58(hashlib.sha256(b"DACS #274 Solana lookup table").digest())
+    memo_extra = {"feePayer": SOLANA_FEE_PAYER, "memo": "dacs-274"}
+
+    def added(instruction):
+        return lambda instructions: instructions[:3] + [instruction] + instructions[3:]
+
+    def replaced(index, instruction):
+        return lambda instructions: instructions[:index] + [instruction] + instructions[index + 1:]
+
+    def transfer_accounts(index, account):
+        def edit(instructions):
+            program, accounts, data = instructions[2]
+            accounts = accounts[:index] + [(account, accounts[index][1])] + accounts[index + 1:]
+            return replaced(2, (program, accounts, data))(instructions)
+        return edit
+
+    for name, note, extra, options in (
+        ("amount-plus-one", "a transfer of one more atomic unit than the signed amount", None,
+         {"amount": SOLANA_AMOUNT + 1}),
+        ("amount-minus-one", "a transfer of one atomic unit less than the signed amount", None,
+         {"amount": SOLANA_AMOUNT - 1}),
+        ("amount-tenfold", "an overpayment, which upstream tolerates but the signed terms do not", None,
+         {"amount": SOLANA_AMOUNT * 10}),
+        ("other-mint", "a transfer of another mint", None, {"mint": SOLANA_OTHER}),
+        ("other-destination", "a transfer to another owner's associated token account", None,
+         {"pay_to": LETTERED_SOLANA_SELLER}),
+        ("destination-not-associated", "a transfer to the payTo wallet itself, not its associated "
+         "token account", None, {"edit": transfer_accounts(2, SOLANA_SELLER)}),
+        ("source-not-associated", "a transfer from another token account of the payer", None,
+         {"edit": transfer_accounts(0, SOLANA_OTHER)}),
+        ("authority-not-payer", "a transfer whose authority is not the payer", None,
+         {"edit": transfer_accounts(3, SOLANA_OTHER)}),
+        ("other-token-program", "a Token-2022 transfer of a mint the adapter's metadata assigns to "
+         "SPL Token", None, {"token_program": SOLANA_TOKEN_2022_PROGRAM}),
+        ("wrong-decimals", "a TransferChecked naming other decimals", None, {"decimals": 9}),
+        ("extra-approve", "an added Approve of the payer's token account to another delegate", None,
+         {"edit": added((token, [(source, True), (SOLANA_OTHER, False), (SOLANA_BUYER, False)],
+                         b"\x04" + SOLANA_AMOUNT.to_bytes(8, "little")))}),
+        ("extra-set-authority", "an added SetAuthority handing the payer's token account to another "
+         "owner", None, {"edit": added((token, [(source, True), (SOLANA_BUYER, False)],
+                                        b"\x06\x02\x01" + public_key_bytes(SOLANA_OTHER)))}),
+        ("extra-close-account", "an added CloseAccount of the payer's token account", None,
+         {"edit": added((token, [(source, True), (SOLANA_OTHER, True), (SOLANA_BUYER, False)], b"\x09"))}),
+        ("extra-system-transfer", "an added System transfer of the payer's lamports", None,
+         {"edit": added((system, [(SOLANA_BUYER, True), (SOLANA_OTHER, True)],
+                         (2).to_bytes(4, "little") + (10**6).to_bytes(8, "little")))}),
+        ("extra-unknown-program", "an added instruction of a program the profile does not name", None,
+         {"edit": added((unknown, [], b"x"))}),
+        ("second-transfer", "a second TransferChecked", None,
+         {"edit": lambda instructions: instructions[:3] + instructions[2:]}),
+        ("memo-missing", "no Memo instruction, which upstream's client always adds", None,
+         {"edit": lambda instructions: instructions[:3]}),
+        ("memo-second", "a second Memo instruction", None,
+         {"edit": lambda instructions: instructions + instructions[3:]}),
+        ("memo-not-nonce", "without extra.memo the Memo carries upstream's hex nonce of at least "
+         "16 bytes", None, {"memo": "not a hex nonce"}),
+        ("memo-with-signer", "a Memo instruction that also names a signer account", None,
+         {"edit": replaced(3, (MEMO_PROGRAM, [(SOLANA_BUYER, False)], SOLANA_MEMO_NONCE.encode()))}),
+        ("extra-memo-other", "a Memo instruction whose data is not the signed extra.memo", memo_extra,
+         {"memo": "dacs-275"}),
+        ("extra-memo-missing", "no Memo instruction although extra.memo names one", memo_extra,
+         {"memo": "dacs-274", "edit": lambda instructions: instructions[:3]}),
+        ("compute-heap-frame", "a compute-budget instruction other than the unit limit and price", None,
+         {"edit": added((COMPUTE_BUDGET_PROGRAM, [], b"\x01" + (32768).to_bytes(4, "little")))}),
+        ("compute-limit-above-bound", "a compute-unit limit above the pinned 400,000", None,
+         {"edit": replaced(0, (COMPUTE_BUDGET_PROGRAM, [], b"\x02" + (400_001).to_bytes(4, "little")))}),
+        ("compute-price-above-bound", "a compute-unit price above the pinned 5 lamports per unit", None,
+         {"edit": replaced(1, (COMPUTE_BUDGET_PROGRAM, [], b"\x03" + (5_000_001).to_bytes(8, "little")))}),
+        ("lookup-table", "an address lookup table, which hides the accounts it loads", None,
+         {"lookups": [(table, [0])]}),
+        ("extra-signer", "a third required signer besides the sponsor and the payer", None,
+         {"extra_signers": [SOLANA_OTHER_KEY]}),
+    ):
+        def signed_message(v, extra=extra, options=options):
+            solana_exact(v, extra=copy.deepcopy(extra))
+            partial = solana_transactions(**options)[0]
+            v["runtime"]["solanaAuthorization"] = partial
+            v["runtime"]["reconciliationState"]["authorizationIdentity"] = solana_identity(
+                partial, SOLANA_BUYER, SOLANA_FEE_PAYER)[0]
+        add_case(vectors, f"solana-signed-message-{name}", "fail", "XN-6/§9.5.7.1",
+                 f"{note}: the payer signs only a message that is exactly the signed payment",
+                 signed_message, refresh=True, reason="paid-request-payload")
+
+    def token_2022(v):
+        solana_exact(v)
+        v["capability"]["assetMetadata"]["tokenProgram"] = SOLANA_TOKEN_2022_PROGRAM
+    add_case(vectors, "solana-token-2022-exact-success", "pass", "XN-5/§9.5.7.1",
+             "a mint the adapter's metadata assigns to Token-2022 is paid by a Token-2022 TransferChecked",
+             token_2022, refresh=True)
+    for name, value in (("absent", None), ("unknown", SOLANA_OTHER), ("array", [SOLANA_TOKEN_PROGRAM])):
+        def metadata_program(v, value=value):
+            solana_exact(v)
+            if value is None:
+                v["capability"]["assetMetadata"].pop("tokenProgram")
+            else:
+                v["capability"]["assetMetadata"]["tokenProgram"] = value
+        add_case(vectors, f"solana-asset-metadata-token-program-{name}", "fail", "XN-5/§9.5.7.1",
+                 "the Solana adapter's trusted metadata names the token program that owns the mint",
+                 metadata_program, refresh=True, reason="asset-metadata")
+
+    # XN-11: a validly signed resolved transaction of other signers is another
+    # transaction, so the original authorization stays pending.
+    for operation in ("execute", "retry", "verify-evidence"):
+        for who in ("sponsor", "payer"):
+            def other_signer(v, who=who):
+                solana_exact(v)
+                _, full, transaction = solana_transactions(**{f"{who}_key": SOLANA_OTHER_KEY})
+                v["ledger"].update({"transaction": transaction, "transactionBase64": full,
+                                     "settlementEvent": f"solana:devnet:{transaction}:4"})
+            add_case(vectors, f"{operation}-solana-resolved-other-{who}", "indeterminate", "XN-8/XN-11",
+                     f"a validly signed finalized transaction of another {who} does not resolve this "
+                     "authorization", other_signer, operation=operation, refresh=True,
+                     authorization_submitted=True, reason="authorization-identity-mismatch")
 
 
 def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, response_lost,

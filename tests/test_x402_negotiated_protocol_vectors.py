@@ -23,6 +23,7 @@ from scripts.evm_crypto import evm_address
 from scripts.jcs import canonicalize as jcs_canonicalize
 from scripts.raw_json_profile import RawJsonProfileError, loads as admit_raw_json
 from scripts.sb3_binding import binding_branch
+from scripts.solana_authorization import TOKEN_PROGRAMS, SignerMismatch, payment_instruction_defect
 from scripts.solana_authorization import authorization_identity as solana_identity
 
 
@@ -1245,6 +1246,15 @@ def payment_payload_defect(v, required, matched, network, payer, pay_to, *, befo
                 return True
             identity, _ = solana_identity(transaction, payer, matched["extra"]["feePayer"],
                                           before_signing=before_signing)
+            # §9.5.7.1: the message is exactly this payment, before the payer
+            # signs it and again before the signed transaction can be sent.
+            if payment_instruction_defect(
+                    transaction, payer=payer, fee_payer=matched["extra"]["feePayer"], pay_to=pay_to,
+                    mint=matched["asset"], amount=int(matched["amount"]),
+                    decimals=v["agreement"]["terms"]["rail"]["parameters"]["selection"]["assetDecimals"],
+                    token_program=v["capability"]["assetMetadata"].get("tokenProgram"),
+                    memo=matched["extra"].get("memo")) is not None:
+                return True
             retained = retained_solana_identity(v)
             if before_signing:
                 return retained is None or identity["messageHash"] != retained["messageHash"]
@@ -1430,6 +1440,10 @@ def reconcile_settlement(ledger, selection, amount, payer, pay_to, valid_before=
         try:
             resolved, transaction_id = solana_identity(
                 ledger["transactionBase64"], payer, selection["extra"]["feePayer"], finalized=True)
+        except SignerMismatch:
+            # A validly signed transaction of other signers is a different
+            # transaction, not a malformed one: the original stays pending.
+            return "indeterminate", "authorization-identity-mismatch", None
         except (KeyError, TypeError, ValueError):
             return "error", "ledger-authorization-form", None
         if transaction_id != transaction or resolved != authorization_identity:
@@ -1937,12 +1951,17 @@ def evaluate(v, effects=None):
         # XN-9: other schemes, batch-settlement included, are protocol-valid but
         # have no v0.8 DACS success binding, so they end here, unauthorized.
         return "fail", "x402-capability-unsupported"
+    chain = selection["network"].split(":", 1)[-1]
     if selection["network"].split(":", 1)[0] not in ATOMIC_AMOUNT_MAX or (
         selection["network"].startswith("solana:")
         and selection["network"] not in SOLANA_NETWORK_CLUSTERS
+    ) or (
+        selection["network"].startswith("eip155:")
+        and not (re.fullmatch(r"[1-9][0-9]{0,15}", chain) and int(chain) <= SAFE_INT)
     ):
-        # §9.5.7.1: `dacs-x402-exact:v1` binds only EIP-155 and the three
-        # mapped Solana clusters; no local claim adds a network it cannot key.
+        # §9.5.7.1: `dacs-x402-exact:v1` binds only EIP-155 chain IDs with an
+        # SB-1 key form and the three mapped Solana clusters; no local claim
+        # adds a network it cannot key.
         return "fail", "x402-capability-unsupported"
 
     request = ref["parameters"]["request"]
@@ -2006,6 +2025,9 @@ def evaluate(v, effects=None):
         metadata.get("network") != selection["network"]
         or metadata_asset != asset
         or metadata.get("decimals") != selection["assetDecimals"]
+        # §9.5.7.1: a Solana adapter names the token program owning the mint.
+        or network.startswith("solana:") and not (
+            isinstance(metadata.get("tokenProgram"), str) and metadata["tokenProgram"] in TOKEN_PROGRAMS)
     ):
         return "fail", "asset-metadata"
     # XN-5: the adapter's trusted metadata names the currency the asset
@@ -2314,7 +2336,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         self.assertEqual(by_reason["challenge-match"], {"counterparty"})
         self.assertEqual(by_reason["unpaid-request-transient"], {"transient"})
         self.assertEqual(by_reason["paid-request-payload"], {"permanent"})
-        self.assertEqual(pinned, 127)
+        self.assertEqual(pinned, 154)
 
     def test_resolution_inputs_are_inside_real_agreement_signatures(self):
         original = self.by_name["protocol-v2-exact-success"]
@@ -2631,6 +2653,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "retry-solana-substituted-transaction",
             "retry-solana-identity-lookup-unavailable",
             "retry-solana-response-lost-unsettled",
+            "retry-solana-resolved-other-sponsor",
+            "retry-solana-resolved-other-payer",
         )
         names += tuple(f"retry-record-{member}-not-string-{shape}"
                        for member in ("paymentRequiredHash", "paymentReceiptHash")
@@ -2846,7 +2870,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # Every stored-record verdict a verifier gives leaves the payment to the
         # ledger, after the wallet call and on retry alike.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
-        self.assertEqual(len(records), 52)
+        self.assertEqual(len(records), 54)
         for vector in records:
             for operation in ("execute", "retry"):
                 with self.subTest(record=vector["name"], operation=operation):
@@ -3299,6 +3323,93 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                     self.assertEqual(effects.get("walletAuthorizationCalls", 0), int(operation == "execute"))
                     self.assertNotIn("builtEvidence", effects)
 
+    def solana_message_defect(self, vector):
+        selection = vector["agreement"]["terms"]["rail"]["parameters"]["selection"]
+        return payment_instruction_defect(
+            vector["runtime"]["solanaAuthorization"], payer=vector["runtime"]["payer"]["paymentAddress"],
+            fee_payer=selection["extra"]["feePayer"],
+            pay_to=vector["agreement"]["terms"]["payoutBindings"][0]["payeeAddress"],
+            mint=selection["asset"], amount=int(selection_amount(vector["agreement"]["terms"]["price"], selection)),
+            decimals=selection["assetDecimals"],
+            token_program=vector["capability"]["assetMetadata"]["tokenProgram"],
+            memo=selection["extra"].get("memo"))
+
+    def test_solana_payer_signs_only_the_exact_payment_message(self):
+        """§9.5.7.1/XN-6: each deviation from the signed payment is refused before signing.
+
+        The reason names the first deviation the instruction check finds. With
+        that check removed, the same message reaches the wallet, as an
+        overpayment or a granted account authority did before.
+        """
+        global payment_instruction_defect
+        wanted = {
+            **dict.fromkeys(("amount-plus-one", "amount-minus-one", "amount-tenfold", "other-mint",
+                             "other-destination", "destination-not-associated", "source-not-associated",
+                             "authority-not-payer", "wrong-decimals"), "transfer"),
+            **dict.fromkeys(("other-token-program", "extra-approve", "extra-set-authority",
+                             "extra-close-account", "extra-system-transfer", "extra-unknown-program"),
+                            "instruction"),
+            "second-transfer": "transfer-count",
+            **dict.fromkeys(("memo-missing", "memo-second", "memo-not-nonce", "memo-with-signer",
+                             "extra-memo-other", "extra-memo-missing"), "memo"),
+            **dict.fromkeys(("compute-heap-frame", "compute-limit-above-bound", "compute-price-above-bound"),
+                            "compute-budget"),
+            "lookup-table": "lookup-table",
+            "extra-signer": "signers",
+        }
+        names = sorted(name for name in self.by_name if name.startswith("solana-signed-message-"))
+        self.assertEqual(names, sorted(f"solana-signed-message-{suffix}" for suffix in wanted))
+        for suffix, reason in wanted.items():
+            vector = self.by_name[f"solana-signed-message-{suffix}"]
+            with self.subTest(vector=suffix):
+                self.assertEqual(self.solana_message_defect(vector), reason)
+                effects = {}
+                self.assertEqual(evaluate(copy.deepcopy(vector), effects), ("fail", "paid-request-payload"))
+                self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+        check = payment_instruction_defect
+        payment_instruction_defect = lambda *_args, **_kwargs: None  # noqa: E731
+        try:
+            for suffix in wanted:
+                with self.subTest(vector=suffix, mutant="instruction check removed"):
+                    effects = {}
+                    evaluate(copy.deepcopy(self.by_name[f"solana-signed-message-{suffix}"]), effects)
+                    self.assertEqual(effects.get("walletAuthorizationCalls", 0), 1)
+        finally:
+            payment_instruction_defect = check
+
+    def test_every_solana_fixture_signs_its_own_terms(self):
+        """§9.5.7.1: a passing Solana vector's message is exactly its own payment.
+
+        This covers the u64-limit amount, the lettered payee, the memos and the
+        Token-2022 mint, not only the base terms.
+        """
+        passing = [vector for vector in self.vectors if vector["expected"] == "pass"
+                   and "solanaAuthorization" in vector["runtime"]]
+        self.assertGreaterEqual(len(passing), 12)
+        for vector in passing:
+            with self.subTest(vector=vector["name"]):
+                self.assertIsNone(self.solana_message_defect(vector))
+        amounts = {vector["name"]: int(selection_amount(
+            vector["agreement"]["terms"]["price"], vector["agreement"]["terms"]["rail"]["parameters"]["selection"]))
+            for vector in passing}
+        self.assertEqual(amounts["solana-exact-amount-at-u64-limit"], 2**64 - 1)
+
+    def test_solana_resolved_transaction_of_other_signers_stays_pending(self):
+        """XN-11: a validly signed different transaction is indeterminate; bad signatures are error."""
+        for operation in ("execute", "retry", "verify-evidence"):
+            for who in ("sponsor", "payer"):
+                vector = self.by_name[f"{operation}-solana-resolved-other-{who}"]
+                with self.subTest(operation=operation, who=who):
+                    effects = {}
+                    self.assertEqual(evaluate(copy.deepcopy(vector), effects),
+                                     ("indeterminate", "authorization-identity-mismatch"))
+                    self.assertNotIn("builtEvidence", effects)
+                    corrupted = copy.deepcopy(vector)
+                    raw = bytearray(base64.b64decode(corrupted["ledger"]["transactionBase64"]))
+                    raw[1] ^= 1
+                    corrupted["ledger"]["transactionBase64"] = base64.b64encode(raw).decode()
+                    self.assertEqual(evaluate(corrupted), ("error", "ledger-authorization-form"))
+
     def test_solana_verifier_uses_disclosed_authorization_not_paid_header(self):
         vector = copy.deepcopy(self.by_name["protocol-v2-solana-exact-success"])
         vector["operation"] = "verify-evidence"
@@ -3394,9 +3505,14 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             f"solana:devnet:{base58(b'\x05' * 64)}:{unsafe}", devnet, base58(b"\x05" * 64)))
 
     def test_unbound_namespace_or_unmapped_cluster_is_unsupported_before_authorization(self):
-        """§9.5.7.1: the binding names EIP-155 and three Solana clusters, whatever is claimed."""
+        """§9.5.7.1: the binding names EIP-155 and three Solana clusters, whatever is claimed.
+
+        An EIP-155 reference with no SB-1 `evm:` key form (zero, a leading
+        zero, or above 2^53-1) is unsupported too, before the wallet signs.
+        """
         base = self.by_name["protocol-v2-exact-success"]
-        for network in ("cosmos:cosmoshub-4", "solana:8E9rvCKLFQia2Y35HXjjpWzj8weVo44K"):
+        for network in ("cosmos:cosmoshub-4", "solana:8E9rvCKLFQia2Y35HXjjpWzj8weVo44K",
+                        "eip155:0", "eip155:08453", f"eip155:{SAFE_INT + 1}"):
             with self.subTest(network=network), mock.patch(
                     f"{__name__}.verify_artifact_signatures", return_value=True), mock.patch(
                     f"{__name__}.buyer_payment_control", return_value=True), mock.patch(
@@ -3671,7 +3787,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         """Member classification precedes the independent authorization checks.
 
         Most classified members are rejected only by this gate. A malformed
-        Solana sponsor also fails the independent transaction-identity gate.
+        Solana sponsor also fails the independent transaction-identity gate,
+        and a memo that is not a string the independent instruction gate.
         """
         global challenge_member_defect
         reasons = {
@@ -3688,11 +3805,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             for name in names:
                 with self.subTest(vector=name, mutant="member check removed"):
                     # The transaction identity check independently requires a
-                    # real sponsor key; removing classification cannot make a
-                    # missing or malformed Solana fee payer usable.
+                    # real sponsor key, and the instruction check a Memo whose
+                    # data is the memo; removing classification cannot make a
+                    # malformed Solana fee payer or memo usable.
                     redundant = name in {
                         "solana-extra-fee-payer-absent", "solana-extra-fee-payer-object",
                         "solana-extra-fee-payer-not-base58", "solana-extra-fee-payer-short",
+                        "solana-extra-memo-object",
                     }
                     want = ("fail", "paid-request-payload") if redundant else ("pass", None)
                     self.assertEqual(evaluate(copy.deepcopy(self.by_name[name])), want)

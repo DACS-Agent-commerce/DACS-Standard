@@ -57,6 +57,11 @@ The format used per release:
   disposition. Solana reconciliation retains the exact signed message and
   client signatures, verifies the resolved full transaction and sponsor
   transaction ID, and keeps an unresolved identity pending after response loss.
+  A resolved transaction of another sponsor or payer also stays pending. The
+  payer signs a Solana message only when it is exactly the payment: one
+  `TransferChecked` of the asset's token program between the derived associated
+  token accounts for exactly the signed amount, one Memo, bounded compute
+  budget, and no other instruction, lookup table or signer.
   Re-signed record hashes of a non-string type are verifier
   errors and do not replace the handler's ledger disposition. The optional
   `payment-identifier` advertisement is descriptive and carries one of the two

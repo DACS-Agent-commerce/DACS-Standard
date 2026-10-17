@@ -13,6 +13,9 @@ import sys
 import tempfile
 import unittest
 
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -40,6 +43,7 @@ GUARDS = frozenset({
     "retained-recipient-is-payee",
     "retained-amount-is-phase-amount",
     "signed-transfer-matches-retention",
+    "signed-transaction-authentic",
     "no-cross-phase-reuse",
     # DEM-2 and the DEMOS-MAPPING §A.2 native-send record profile
     "node-profile-pinned",
@@ -57,6 +61,7 @@ GUARDS = frozenset({
     "bind-requires-inclusion",
     # DEM-3
     "success-branch",
+    "success-authorizes-no-delivery",
     "success-requires-record",
     "success-requires-exact-confirmed",
     # DEM-4
@@ -93,8 +98,8 @@ HANDLER_WANT = {
         "ok": True, "errorClass": None, "executionState": "executed",
         "evidence": "success-bft-final", "nextAction": "anchor-success-evidence",
         "onPauseExpiry": None, "retainedHashKept": True,
-        "terminalFailureProofRetained": False, "deliveryAuthorized": True,
-        "settlementAccounting": True, "broadcastPermitted": False,
+        "terminalFailureProofRetained": False, "deliveryAuthorized": False,
+        "settlementAccounting": False, "broadcastPermitted": False,
         "replacementPermitted": False,
     },
     "fail": {
@@ -119,6 +124,7 @@ SAFE_MAX = 2**53 - 1
 HASH = re.compile(r"[0-9a-f]{64}")
 ADDRESS = re.compile(r"(?:0x)?([0-9a-f]{64})")
 DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)")
+SIGNATURE = re.compile(r"0x[0-9a-f]{128}")
 RETAINED = {"jobId", "phaseIndex", "txHash", "nonce", "sender", "recipient", "amountOs"}
 
 
@@ -214,6 +220,36 @@ def decode(transaction, off, *, executed: bool = True):
     return projection
 
 
+def authentic(transaction) -> bool:
+    """DEMOS-MAPPING §A.2 signed transaction: the demosdk 4.0.16 `hash` is the
+    SHA-256 of `JSON.stringify(content)` and the ed25519 signature by
+    `content.from` covers the UTF-8 hash."""
+    if not isinstance(transaction, dict) or not isinstance(transaction.get("content"), dict):
+        return False
+    serialized = json.dumps(transaction["content"], separators=(",", ":"), ensure_ascii=False)
+    tx_hash = transaction.get("hash")
+    if tx_hash != hashlib.sha256(serialized.encode("utf-8")).hexdigest():
+        return False
+    signature = transaction.get("signature")
+    sender = _address(transaction["content"].get("from"), frozenset())
+    if not (
+        isinstance(signature, dict)
+        and set(signature) == {"type", "data"}
+        and signature["type"] == "ed25519"
+        and isinstance(signature["data"], str)
+        and SIGNATURE.fullmatch(signature["data"])
+        and sender is not None
+    ):
+        return False
+    try:
+        Ed25519PublicKey.from_public_bytes(bytes.fromhex(sender)).verify(
+            bytes.fromhex(signature["data"][2:]), tx_hash.encode("utf-8")
+        )
+    except (InvalidSignature, ValueError):
+        return False
+    return True
+
+
 def bound(projection, transfer, inclusion, off) -> bool:
     """DEM-2: every retained value plus the observed inclusion block."""
     if projection is None:
@@ -252,6 +288,9 @@ def is_confirmed(status, off) -> bool:
 
 def handler_result(expected: str, protocol_input: dict, off) -> tuple[str, dict]:
     want = dict(HANDLER_WANT[expected])
+    if expected == "pass" and "success-authorizes-no-delivery" in off:
+        want["deliveryAuthorized"] = True
+        want["settlementAccounting"] = True
     if expected == "fail":
         if "failure-proof-retained" in off:
             want["terminalFailureProofRetained"] = False
@@ -355,6 +394,10 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
     ):
         if guard not in off and transfer.get(field) != phase[authority]:
             return refused
+    if "signed-transaction-authentic" not in off and not authentic(
+        protocol_input["signedTransaction"]
+    ):
+        return refused
     if "signed-transfer-matches-retention" not in off:
         projection = decode(protocol_input["signedTransaction"], frozenset(), executed=False)
         if projection is None or any(
@@ -595,13 +638,56 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     self.assertFalse(vector["want"]["deliveryAuthorized"])
         delivered = {
             vector["name"] for vector in self.data["vectors"]
-            if vector["want"].get("deliveryAuthorized") and vector["operation"] == "admit-for-delivery"
+            if vector["want"].get("deliveryAuthorized") or vector["want"].get("settlementAccounting")
         }
         self.assertEqual({"delivery-after-all-gates", "delivery-same-tuple-readmitted"}, delivered)
         for name in delivered:
             protocol_input = self.cases[name]["protocolInput"]
             self.assertIs(True, protocol_input["recordRead"]["authenticated"])
             self.assertEqual({"fv": "pass", "sb1": "pass", "pb": "pass"}, protocol_input["otherGates"])
+
+    def test_handler_success_authorizes_no_delivery_or_accounting(self):
+        # DEM-3 success is the payer's result; delivery and settlement
+        # accounting come only from the consumer's composed admission.
+        successes = [
+            vector for vector in self.data["vectors"]
+            if vector["operation"] in {"classify-execution", "resume-phase"} and vector["expected"] == "pass"
+        ]
+        self.assertTrue(successes)
+        for vector in successes:
+            with self.subTest(name=vector["name"]):
+                self.assertTrue(vector["want"]["ok"])
+                self.assertFalse(vector["want"]["deliveryAuthorized"])
+                self.assertFalse(vector["want"]["settlementAccounting"])
+                self.assertIn("success-authorizes-no-delivery", vector["guards"])
+
+    def test_broadcast_requires_an_authentic_signed_transaction(self):
+        control = self.cases["first-broadcast-after-durable-retention"]["protocolInput"]
+        self.assertTrue(authentic(control["signedTransaction"]))
+        self.assertEqual(control["signedTransaction"]["hash"], control["retainedTransfer"]["txHash"])
+        forged = {
+            "broadcast-unsigned-transaction",
+            "broadcast-hash-not-over-content",
+            "broadcast-signed-by-another-key",
+            "broadcast-signature-type-not-ed25519",
+        }
+        for vector in self.data["vectors"]:
+            if vector["operation"] != "broadcast-gate":
+                continue
+            with self.subTest(name=vector["name"]):
+                signed_tx = vector["protocolInput"]["signedTransaction"]
+                self.assertEqual(vector["name"] not in forged, authentic(signed_tx))
+                if vector["name"] in forged:
+                    # Every other DEM-1 value agrees, so only authentication refuses it.
+                    self.assertEqual(["signed-transaction-authentic"], vector["guards"])
+                    self.assertEqual("fail", vector["expected"])
+        # The live node2 records carry demosdk signatures in the same scheme.
+        for name in ("node2-confirmed-record", "node2-included-failed-record"):
+            record = self.cases[name]["protocolInput"]["recordRead"]["record"]
+            sender = bytes.fromhex(record["content"]["from"][2:])
+            Ed25519PublicKey.from_public_bytes(sender).verify(
+                bytes.fromhex(record["signature"]["data"][2:]), record["hash"].encode("utf-8")
+            )
 
     def test_inclusion_only_implementation_is_rejected(self):
         wrong = {
@@ -655,6 +741,12 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("(`pay-evm-erc20`, `pay-solana-spl`, `pay-ap2`, `pay-x402`, `pay-dem`)", spec)
         self.assertNotIn('the tx reached the terminal "included" state', spec)
         self.assertNotIn("differently typed", spec)
+        self.assertIn("by itself it authorizes neither delivery nor settlement accounting", spec)
+        self.assertIn("MUST NOT broadcast a transaction that the profile does not authenticate", spec)
+        self.assertIn("carry its Demos record, decoded under the DEMOS-MAPPING §A.2 native-send", spec)
+        self.assertIn("*Signed transaction.*", demos)
+        self.assertIn("SHA-256 of the UTF-8 `JSON.stringify(content)`", demos)
+        self.assertIn("`nonceEnforcement` fork", demos)
         self.assertIn("DEM-2 and DEM-3", demos)
         self.assertIn("61b8e75aa8db5e408c49e1c3a89db4d673f45578", demos)
         self.assertIn("**Native-send record profile (normative).**", demos)

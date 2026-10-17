@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "conformance/vectors/security/pay-dem-execution-v0.1.json"
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
+
 from jcs import canonicalize  # noqa: E402
 
 _OMIT = object()
@@ -25,15 +27,25 @@ def _hex(label: str) -> str:
     return hashlib.sha256(("pay-dem-execution:v0.1:" + label).encode()).hexdigest()
 
 
+def _signing_key(label: str) -> Ed25519PrivateKey:
+    return Ed25519PrivateKey.from_private_bytes(bytes.fromhex(_hex(label + "-seed")))
+
+
+def _key(private: Ed25519PrivateKey) -> str:
+    return private.public_key().public_bytes_raw().hex()
+
+
 JOB_ID = "01JA2B3C4D5E6F7G8H9JKMNPQR"
 OTHER_JOB_ID = "01JA2B3C4D5E6F7G8H9JKMNPQS"
 PHASE_INDEX = 1
-TX_HASH = _hex("tx")
 OTHER_TX_HASH = _hex("other-tx")
-# DACS-1 Demos keys: 64 lowercase hex digits without `0x`.
-PAYER_KEY = _hex("payer")
+# DACS-1 Demos keys: 64 lowercase hex digits without `0x`. The payer and the
+# other key sign, so they are real Ed25519 public keys.
+PAYER_SIGNER = _signing_key("payer")
+OTHER_SIGNER = _signing_key("other-address")
+PAYER_KEY = _key(PAYER_SIGNER)
 PAYEE_KEY = _hex("payee")
-OTHER_KEY = _hex("other-address")
+OTHER_KEY = _key(OTHER_SIGNER)
 AMOUNT_OS = "1500000000"  # 1.5 DEM at 10^9 OS per DEM
 OTHER_AMOUNT_OS = "1500000001"
 NONCE = 9
@@ -169,8 +181,10 @@ def handler_want(expected: str) -> dict[str, Any]:
         "onPauseExpiry": None if executed or failed else "failed-substrate-without-replacement",
         "retainedHashKept": True,
         "terminalFailureProofRetained": failed,
-        "deliveryAuthorized": executed,
-        "settlementAccounting": executed,
+        # The payer's handler result never authorizes delivery or settlement
+        # accounting; only the consumer's admit-for-delivery composition does.
+        "deliveryAuthorized": False,
+        "settlementAccounting": False,
         "broadcastPermitted": False,
         "replacementPermitted": False,
     }
@@ -260,13 +274,34 @@ def phase(**changes: Any) -> dict[str, Any]:
     )
 
 
-def signed(content: dict[str, Any] | None = None, *, tx_hash: str = TX_HASH) -> dict[str, Any]:
+def content_hash(content: dict[str, Any]) -> str:
+    """demosdk 4.0.16 `sign()`: SHA-256 hex of `JSON.stringify(content)`."""
+    serialized = json.dumps(content, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def signed(
+    content: dict[str, Any] | None = None,
+    *,
+    signer: Ed25519PrivateKey = PAYER_SIGNER,
+    signed_content: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """The signed native transaction as demosdk 4.0.16 builds it: numeric
-    nonce and OS-string amount."""
+    nonce, OS-string amount, `hash` over the serialized content and an
+    Ed25519 signature over the UTF-8 hash. `signed_content` hashes and signs
+    other content than the transaction carries (a forged hash)."""
+    if content is None:
+        content = send_content(nonce=NONCE, amount=AMOUNT_OS)
+    tx_hash = content_hash(content if signed_content is None else signed_content)
     return {
+        "content": content,
         "hash": tx_hash,
-        "content": send_content(nonce=NONCE, amount=AMOUNT_OS) if content is None else content,
+        "signature": {"type": "ed25519", "data": "0x" + signer.sign(tx_hash.encode("utf-8")).hex()},
     }
+
+
+# The hash of the default signed transfer, which every default record cites.
+TX_HASH = signed()["hash"]
 
 
 def gate(
@@ -296,6 +331,22 @@ def gate(
         },
         expected, {"broadcastPermitted": expected == "pass"}, rule, guards, note,
     )
+
+
+def consistent(
+    content: dict[str, Any] | None = None,
+    signer: Ed25519PrivateKey = PAYER_SIGNER,
+    *,
+    signed_content: dict[str, Any] | None = None,
+    **retained_changes: Any,
+) -> dict[str, Any]:
+    """A signed transaction and a retention that cites its hash, so a gate
+    vector differs from the control only in what it names."""
+    transaction = signed(content, signer=signer, signed_content=signed_content)
+    return {
+        "signed_transaction": transaction,
+        "transfer": retained(txHash=transaction["hash"], **retained_changes),
+    }
 
 
 def _admit_input(read: dict[str, Any], status_index: str) -> dict[str, Any]:
@@ -387,28 +438,28 @@ def build_vectors() -> list[dict[str, Any]]:
     return [
         # Handler classification: the bound record decides, never the index.
         classify(
-            "included-confirmed", "pass", "DEM-3", ["success-branch"],
+            "included-confirmed", "pass", "DEM-3", ["success-authorizes-no-delivery", "success-branch"],
             "A bound confirmed record in the node's wire form is the only success.",
             read=found(record("confirmed")),
         ),
         classify(
-            "node2-confirmed-record", "pass", "DEM-2/DEM-3", ["success-branch"],
+            "node2-confirmed-record", "pass", "DEM-2/DEM-3", ["success-authorizes-no-delivery", "success-branch"],
             "A live node2 getTxByHash record (string nonce, numeric amount, 0x parties, unprefixed send argument) binds after projection.",
             read=found(copy.deepcopy(NODE2_CONFIRMED)), transfer=live_confirmed, inclusion=live_confirmed_block,
         ),
         classify(
-            "confirmed-integer-nonce-binds", "pass", "DEM-2/DEM-3", ["success-branch"],
+            "confirmed-integer-nonce-binds", "pass", "DEM-2/DEM-3", ["success-authorizes-no-delivery", "success-branch"],
             "A safe JSON integer nonce projects to the same signed nonce.",
             read=found(record("confirmed", send_content(nonce=NONCE))),
         ),
         classify(
-            "confirmed-large-string-amount-binds", "pass", "DEM-2/DEM-3", ["success-branch"],
+            "confirmed-large-string-amount-binds", "pass", "DEM-2/DEM-3", ["success-authorizes-no-delivery", "success-branch"],
             "Above 2^53 - 1 OS the node serves the amount as a decimal string; it binds by integer value.",
             read=found(record("confirmed", send_content(amount_os=LARGE_AMOUNT_OS))),
             transfer=retained(amountOs=LARGE_AMOUNT_OS),
         ),
         classify(
-            "confirmed-unprefixed-parties-bind", "pass", "DEM-2/DEM-3", ["success-branch"],
+            "confirmed-unprefixed-parties-bind", "pass", "DEM-2/DEM-3", ["success-authorizes-no-delivery", "success-branch"],
             "A party key without the 0x prefix projects to the same DACS-1 key.",
             read=found(record("confirmed", send_content(**{"from": PAYER_KEY, "from_ed25519_address": PAYER_KEY, "to": PAYEE_KEY}))),
         ),
@@ -640,7 +691,7 @@ def build_vectors() -> list[dict[str, Any]]:
             proof=None, read=NOT_FOUND, status_index="unknown", inclusion=None,
         ),
         resume(
-            "resume-without-proof-confirmed", "pass", "DEM-3/DEM-6", ["success-branch"],
+            "resume-without-proof-confirmed", "pass", "DEM-3/DEM-6", ["success-authorizes-no-delivery", "success-branch"],
             "Re-reading the retained hash finds the executed transfer; no second payment.",
             proof=None, read=found(record("confirmed")),
         ),
@@ -697,40 +748,67 @@ def build_vectors() -> list[dict[str, Any]]:
         gate(
             "broadcast-from-another-paying-key", "fail", "DEM-1", ["retained-sender-is-payer"],
             "A transfer signed by a key other than payer.payingKey is refused, even when retained consistently.",
-            transfer=retained(sender=OTHER_KEY),
-            signed_transaction=signed(send_content(sender=OTHER_KEY, nonce=NONCE, amount=AMOUNT_OS)),
+            **consistent(send_content(sender=OTHER_KEY, nonce=NONCE, amount=AMOUNT_OS), OTHER_SIGNER, sender=OTHER_KEY),
         ),
         gate(
             "broadcast-to-another-destination", "fail", "DEM-1", ["retained-recipient-is-payee"],
             "A transfer to a destination other than payee.payeeAddress is refused, even when retained consistently.",
-            transfer=retained(recipient=OTHER_KEY),
-            signed_transaction=signed(send_content(recipient=OTHER_KEY, nonce=NONCE, amount=AMOUNT_OS)),
+            **consistent(send_content(recipient=OTHER_KEY, nonce=NONCE, amount=AMOUNT_OS), recipient=OTHER_KEY),
         ),
         gate(
             "broadcast-of-another-amount", "fail", "DEM-1", ["retained-amount-is-phase-amount"],
             "A transfer of an amount other than the phase amount in OS is refused.",
-            transfer=retained(amountOs=OTHER_AMOUNT_OS),
-            signed_transaction=signed(send_content(amount_os=OTHER_AMOUNT_OS, nonce=NONCE, amount=OTHER_AMOUNT_OS)),
+            **consistent(send_content(amount_os=OTHER_AMOUNT_OS, nonce=NONCE, amount=OTHER_AMOUNT_OS), amountOs=OTHER_AMOUNT_OS),
         ),
         gate(
             "broadcast-signed-nonce-differs", "fail", "DEM-1", ["signed-transfer-matches-retention"],
             "The retained nonce must be the nonce the payer signed.",
-            signed_transaction=signed(send_content(nonce=NONCE + 1, amount=AMOUNT_OS)),
+            **consistent(send_content(nonce=NONCE + 1, amount=AMOUNT_OS)),
         ),
         gate(
             "broadcast-signed-recipient-differs", "fail", "DEM-1", ["signed-transfer-matches-retention"],
             "Signed bytes that pay another destination than the retained recipient are refused.",
-            signed_transaction=signed(send_content(recipient=OTHER_KEY, nonce=NONCE, amount=AMOUNT_OS)),
+            **consistent(send_content(recipient=OTHER_KEY, nonce=NONCE, amount=AMOUNT_OS)),
         ),
         gate(
             "broadcast-signed-amount-differs", "fail", "DEM-1", ["signed-transfer-matches-retention"],
             "Signed bytes for another amount than the retained OS amount are refused.",
-            signed_transaction=signed(send_content(amount_os=OTHER_AMOUNT_OS, nonce=NONCE, amount=OTHER_AMOUNT_OS)),
+            **consistent(send_content(amount_os=OTHER_AMOUNT_OS, nonce=NONCE, amount=OTHER_AMOUNT_OS)),
         ),
         gate(
             "broadcast-signed-hash-differs", "fail", "DEM-1", ["signed-transfer-matches-retention"],
             "The retained hash must be the hash of the signed transaction.",
-            signed_transaction=signed(tx_hash=OTHER_TX_HASH),
+            transfer=retained(txHash=OTHER_TX_HASH),
+        ),
+        gate(
+            "broadcast-signed-pre-fork-amount", "fail", "DEM-1", ["signed-transfer-matches-retention"],
+            "A send signed in the pre-osDenomination form (numeric amount argument) does not decode, so it is never broadcast.",
+            **consistent(send_content(nonce=NONCE, amount=AMOUNT_OS, data=["native", {"nativeOperation": "send", "args": [PAYEE_KEY, int(AMOUNT_OS)]}])),
+        ),
+        gate(
+            "broadcast-signed-uppercase-recipient", "fail", "DEM-1", ["signed-transfer-matches-retention"],
+            "demosdk accepts an upper-case recipient, but it does not decode under the profile, so it is never broadcast.",
+            **consistent(send_content(nonce=NONCE, amount=AMOUNT_OS, to="0x" + PAYEE_KEY.upper(), data=["native", {"nativeOperation": "send", "args": [PAYEE_KEY.upper(), AMOUNT_OS]}])),
+        ),
+        gate(
+            "broadcast-unsigned-transaction", "fail", "DEM-1", ["signed-transaction-authentic"],
+            "A claimed transaction without the payer's signature is not a signed transfer.",
+            signed_transaction=_apply(signed(), {"signature": _OMIT}),
+        ),
+        gate(
+            "broadcast-hash-not-over-content", "fail", "DEM-1", ["signed-transaction-authentic"],
+            "A hash and signature made over other content (here another nonce) do not commit to the content retained.",
+            **consistent(signed_content=send_content(nonce=NONCE + 1, amount=AMOUNT_OS)),
+        ),
+        gate(
+            "broadcast-signed-by-another-key", "fail", "DEM-1", ["signed-transaction-authentic"],
+            "A signature by a key other than content.from does not authenticate the payer's transfer.",
+            **consistent(signer=OTHER_SIGNER),
+        ),
+        gate(
+            "broadcast-signature-type-not-ed25519", "fail", "DEM-1", ["signed-transaction-authentic"],
+            "Only an ed25519 signature by the sender key is verified under the profile.",
+            signed_transaction=_apply(signed(), {"signature": {"type": "falcon", "data": signed()["signature"]["data"]}}),
         ),
         gate(
             "broadcast-hash-retained-for-another-phase", "fail", "DEM-1/DEM-6", ["no-cross-phase-reuse"],

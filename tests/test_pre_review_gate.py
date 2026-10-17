@@ -407,11 +407,51 @@ class PreReviewGateTests(unittest.TestCase):
         )
 
     @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
-    def test_sighup_kills_selected_test_group_and_releases_lock(self):
+    def test_sigterm_during_abnormal_cleanup_is_deferred_until_reaped(self):
         import signal
-        self._assert_signal_kills_selected_test_group_and_releases_lock(
-            signal.SIGHUP
-        )
+        import subprocess
+
+        entry = self.manifest["independentReviewEvidence"][0]
+        for interruption in (subprocess.TimeoutExpired("runner", 1), KeyboardInterrupt()):
+            with self.subTest(interruption=type(interruption).__name__):
+                process = mock.Mock(pid=424242)
+                process.communicate.side_effect = interruption
+                events = []
+
+                def interrupt_cleanup(*_args, **_kwargs):
+                    events.append("killpg")
+                    os.kill(os.getpid(), signal.SIGTERM)
+                    os.kill(os.getpid(), signal.SIGTERM)
+
+                def reap(*_args, **_kwargs):
+                    os.kill(os.getpid(), signal.SIGTERM)
+                    events.append("reaped")
+
+                def terminate(pid, signum):
+                    self.assertEqual(events, ["killpg", "reaped"])
+                    self.assertEqual((pid, signum), (os.getpid(), signal.SIGTERM))
+                    raise SystemExit(143)
+
+                real_kill = os.kill
+
+                def deliver(pid, signum):
+                    if signal.getsignal(signal.SIGTERM) == signal.SIG_DFL:
+                        terminate(pid, signum)
+                    else:
+                        real_kill(pid, signum)
+
+                process.wait.side_effect = reap
+                with mock.patch.object(
+                    self.gate.subprocess, "Popen", return_value=process
+                ), mock.patch.object(
+                    self.gate.os, "killpg", side_effect=interrupt_cleanup
+                ), mock.patch.object(self.gate.os, "kill", side_effect=deliver):
+                    with self.assertRaises(SystemExit) as raised:
+                        self.gate._run_python_evidence([entry], "review evidence")
+                self.assertEqual(raised.exception.code, 143)
+                process.wait.assert_called_once_with(
+                    timeout=self.gate.SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS
+                )
 
     def _assert_timeout_releases_descendant_lock(self, parent_tail: str):
         import fcntl

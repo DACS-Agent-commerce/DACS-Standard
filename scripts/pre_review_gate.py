@@ -1388,10 +1388,6 @@ class _SelectedTestSignal(BaseException):
         self.signum = signum
 
 
-def _raise_selected_test_signal(signum: int, _frame) -> None:
-    raise _SelectedTestSignal(signum)
-
-
 def _run_python_evidence(entries: list[dict], label: str) -> int:
     python_path = os.pathsep.join((str(ROOT), str(ROOT / "tests")))
     for entry in entries:
@@ -1412,11 +1408,19 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
         )
         previous_handlers = {}
         process = None
+        pending_signal = None
+
+        def handle_sigterm(signum, _frame):
+            nonlocal pending_signal
+            pending_signal = signum
+            if sys.exc_info()[0] is None:
+                raise _SelectedTestSignal(signum)
+
         try:
             if os.name == "posix":
-                for signum in (signal.SIGTERM, signal.SIGHUP):
+                for signum in (signal.SIGTERM,):
                     previous_handlers[signum] = signal.signal(
-                        signum, _raise_selected_test_signal
+                        signum, handle_sigterm
                     )
             process = subprocess.Popen(
                 command,
@@ -1432,31 +1436,24 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
                 input=nonce + "\n",
                 timeout=SELECTED_TEST_TIMEOUT_SECONDS,
             )
-        except subprocess.TimeoutExpired:
-            cleanup_issue = _terminate_selected_test_process(process)
-            message = (
-                f"{entry['id']}: {failure_kind} timed out after "
-                f"{SELECTED_TEST_TIMEOUT_SECONDS:g} seconds"
-            )
-            if cleanup_issue:
-                message += f"; {cleanup_issue}"
-            raise GateError(message) from None
         except BaseException as exc:
-            # start_new_session isolates the selected runner from terminal
-            # signals sent to this gate. Preserve subprocess.run-style cleanup
-            # by terminating the isolated group before propagating interrupts.
             cleanup_issue = (
                 _terminate_selected_test_process(process)
                 if process is not None else None
             )
+            if pending_signal is not None:
+                signal.signal(pending_signal, signal.SIG_DFL)
+                os.kill(os.getpid(), pending_signal)
+            if isinstance(exc, subprocess.TimeoutExpired):
+                message = (
+                    f"{entry['id']}: {failure_kind} timed out after "
+                    f"{SELECTED_TEST_TIMEOUT_SECONDS:g} seconds"
+                )
+                if cleanup_issue:
+                    message += f"; {cleanup_issue}"
+                raise GateError(message) from None
             if cleanup_issue and hasattr(exc, "add_note"):
                 exc.add_note(f"selected test cleanup: {cleanup_issue}")
-            if isinstance(exc, _SelectedTestSignal):
-                for signum, previous_handler in previous_handlers.items():
-                    signal.signal(signum, previous_handler)
-                previous_handlers.clear()
-                signal.signal(exc.signum, signal.SIG_DFL)
-                os.kill(os.getpid(), exc.signum)
             raise
         finally:
             for signum, previous_handler in previous_handlers.items():

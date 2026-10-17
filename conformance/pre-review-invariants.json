@@ -942,12 +942,12 @@
       "test": "PhaseBoundDeliveryVectorTests.test_credential_field_vectors_reject_delivery_signature_bypass"
     },
     {
-      "id": "pay-dem-execution-inclusion-only-witness",
+      "id": "pr432-pay-dem-inclusion-only-witness",
       "file": "tests/test_pay_dem_execution_vectors.py",
       "test": "PayDemExecutionVectorTests.test_inclusion_only_implementation_is_rejected"
     },
     {
-      "id": "pay-dem-execution-guard-removal-witness",
+      "id": "pr432-pay-dem-guard-removal-witness",
       "file": "tests/test_pay_dem_execution_vectors.py",
       "test": "PayDemExecutionVectorTests.test_every_vector_fails_when_each_named_guard_is_removed"
     }

@@ -12,8 +12,10 @@ import base64
 import copy
 import hashlib
 import json
+import re
 import subprocess
 import sys
+import unicodedata
 import unittest
 from pathlib import Path
 
@@ -227,6 +229,19 @@ class AdmitListingLegacyTests(unittest.TestCase):
             native_binding=_native_binding(),
         )
         self.assertEqual(verdict, "indeterminate")
+
+    def test_wrong_typed_boundary_is_unsupported(self):
+        for boundary in ({}, [], ["new-session"], None, 1, True, False):
+            with self.subTest(boundary=boundary):
+                self.assertEqual(
+                    listing_admission.admit_listing(
+                        self.listing,
+                        inclusion_key=self.key,
+                        session_boundary=boundary,
+                        native_binding=_native_binding(),
+                    ),
+                    ("indeterminate", "listing admission session boundary is unsupported", None),
+                )
 
     def test_native_cap_failure_is_rejected(self):
         verdict, reason, record = listing_admission.admit_listing(
@@ -495,6 +510,617 @@ class CurrentSealedPhaseShapeTests(unittest.TestCase):
                 listing = self.listing()
                 listing["pipeline"][1]["parameters"]["candidateSetBinding"]["definitionRef"] = invalid_ref
                 self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+
+    def historical_listing(self, rule="lowest-price", reveal_window=60):
+        listing = _legacy_listing()
+        listing["pricing"] = {"kind": "auction", "selectionRule": rule}
+        listing["pipeline"][1] = {
+            "kind": "negotiate-sealed-envelope",
+            "parameters": {
+                "commitDeadline": 200_000,
+                "revealWindow": reveal_window,
+                "selectionRule": rule,
+            },
+        }
+        listing["pipeline"][2] = {"kind": "commit-agreement"}
+        return listing
+
+    def test_auction_pricing_rule_must_equal_the_signed_phase_rule(self):
+        # DACS-3 §8.4.3: the phase rule is authoritative; PricingSpec's MUST equal it.
+        for procurement in (False, True):
+            for phase_rule, pricing_rule in (
+                ("lowest-price", "highest-price"), ("highest-price", "lowest-price"),
+            ):
+                with self.subTest(procurement=procurement, phase=phase_rule):
+                    listing = self.listing(procurement=procurement)
+                    listing["pipeline"][1]["parameters"]["selectionRule"] = phase_rule
+                    listing["pricing"]["selectionRule"] = phase_rule
+                    self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+                    listing["pricing"]["selectionRule"] = pricing_rule
+                    self.assertEqual(
+                        listing_artifact.validate_listing_shape(listing)[:2],
+                        (False, "invalid or unsupported pipeline"),
+                    )
+        rule_ref = "rule-ref:" + "ab" * 32 + ":stor-rule"
+        other_ref = "rule-ref:" + "cd" * 32 + ":stor-rule"
+        for phase_rule, pricing_rule in (
+            (rule_ref, "first-acceptable"), ("first-acceptable", rule_ref), (rule_ref, other_ref),
+        ):
+            with self.subTest(phase=phase_rule, pricing=pricing_rule):
+                listing = self.historical_listing(phase_rule)
+                self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+                listing["pricing"]["selectionRule"] = pricing_rule
+                self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+
+    def test_signed_listing_with_disagreeing_rules_is_rejected_at_admission(self):
+        key = _public_hex(_seller_private())
+        for base in (self.listing(), self.historical_listing()):
+            for pricing_rule, shape_valid in (("lowest-price", True), ("highest-price", False)):
+                listing = copy.deepcopy(base)
+                listing["pricing"]["selectionRule"] = pricing_rule
+                listing["signature"] = _sign(
+                    listing, listing_artifact.LISTING_DOMAINS[listing_artifact.LEGACY_LISTING],
+                    _seller_private(),
+                )
+                with self.subTest(negotiation=listing["pipeline"][1]["kind"], pricing=pricing_rule):
+                    verdict, reason, record = listing_admission.admit_listing(
+                        listing, inclusion_key=key, session_boundary="new-session",
+                        native_binding=_native_binding(),
+                    )
+                    self.assertIsNone(record)
+                    if shape_valid:
+                        self.assertNotEqual(reason, "listing shape is invalid")
+                    else:
+                        self.assertEqual((verdict, reason), ("rejected", "listing shape is invalid"))
+
+    def test_sealed_reveal_window_is_at_least_sixty_seconds(self):
+        for reveal_window, valid in ((59, False), (59.5, False), (60, True), (61, True)):
+            with self.subTest(reveal_window=reveal_window):
+                listing = self.historical_listing(reveal_window=reveal_window)
+                self.assertIs(listing_artifact.validate_listing_shape(listing)[0], valid)
+                listing = self.listing()
+                listing["pipeline"][1]["parameters"]["revealWindow"] = reveal_window
+                self.assertIs(listing_artifact.validate_listing_shape(listing)[0], valid)
+
+    def test_rfq_requires_at_least_two_turns(self):
+        for max_turns, valid in ((0, False), (1, False), (1.5, False), (2, True), (3, True)):
+            with self.subTest(max_turns=max_turns):
+                listing = _legacy_listing()
+                listing["pricing"] = {
+                    "kind": "negotiable",
+                    "bandCenter": {"amount": "1", "currency": "DEM"},
+                    "minPct": 0,
+                    "maxPct": 10,
+                }
+                listing["pipeline"][1] = {
+                    "kind": "negotiate-rfq",
+                    "parameters": {"maxTurns": max_turns, "timeoutSec": 30},
+                }
+                self.assertIs(listing_artifact.validate_listing_shape(listing)[0], valid)
+
+    def test_negotiation_pattern_must_match_the_pricing_kind(self):
+        # DACS-3 PS-3: an incompatible PricingSpec makes the pipeline invalid.
+        fixed = {"kind": "fixed", "price": {"amount": "1", "currency": "DEM"}}
+        auction = {"kind": "auction", "selectionRule": "lowest-price"}
+        listing = _legacy_listing()
+        self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+        listing["pricing"] = auction
+        self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+        listing = self.historical_listing()
+        self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+        listing["pricing"] = fixed
+        self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+        listing = self.listing()
+        listing["pricing"] = fixed
+        self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+        # A stray selectionRule equal to the phase rule satisfies the rule-equality
+        # clause, so only the sealed-negotiation arm of PS-3 can refuse these.
+        for pricing in (
+            {**fixed, "selectionRule": "lowest-price"},
+            {
+                "kind": "metered", "unitPrice": {"amount": "1", "currency": "DEM"},
+                "unit": "call", "selectionRule": "lowest-price",
+            },
+        ):
+            for name, listing in (
+                ("historical", self.historical_listing()), ("complete", self.listing()),
+            ):
+                with self.subTest(sealed=name, pricing=pricing["kind"]):
+                    self.assertEqual(
+                        listing["pipeline"][1]["parameters"]["selectionRule"],
+                        pricing["selectionRule"],
+                    )
+                    listing["pricing"] = pricing
+                    self.assertEqual(
+                        listing_artifact.validate_listing_shape(listing)[:2],
+                        (False, "invalid or unsupported pipeline"),
+                    )
+        for pricing in (fixed, auction):
+            with self.subTest(rfq_pricing=pricing["kind"]):
+                listing = _legacy_listing()
+                listing["pricing"] = pricing
+                listing["pipeline"][1] = {
+                    "kind": "negotiate-rfq",
+                    "parameters": {"maxTurns": 2, "timeoutSec": 30},
+                }
+                self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+
+
+def _wrong_typed(known: str) -> tuple:
+    """Every non-string JSON type, including containers that hold a known member."""
+    return (
+        ("object", {}),
+        ("object holding a known member", {known: known}),
+        ("array", []),
+        ("array holding a known member", [known]),
+        ("null", None),
+        ("integer", 1),
+        ("negative integer", -1),
+        ("float", 1.5),
+        ("boolean", True),
+        ("boolean false", False),
+    )
+
+
+_VALID_RULE_LOCATIONS = (
+    "https://rules.example/select", "stor-rule", "storage-program:rule-1",
+    "../rules/select?version=1#rule", "/rules/select", "//rules.example/select",
+    "?rule=1", "#rule", "./foo:bar", "mailto:rules@example.test",
+    "https://rules.example/rule%20one?x=%2f#part%AA",
+    "https://user:password@rules.example:443/rule",
+    "https://[2001:db8::1]:443/rule", "https://[::ffff:192.0.2.1]/rule",
+    "https://[v1.a:b]/rule", "https://[VF.x]/rule",
+    # A scheme whose first path segment holds a colon.
+    "urn:dacs:rule:1",
+)
+_INVALID_RULE_LOCATIONS = (
+    "", "bad%GG", "bad%", "bad%0", "foo|bar", "foo\\bar", "foo{bar}",
+    "\u200b", "\u202e", "\ufeff", "é", "rules/\u0085", "rules/\x00",
+    " https://rules.example/select", "https://rules.example/ law",
+    "https://rules.example/law\n", "https://rules.example/\tselect",
+    "1bad:rule", "https://rules.example/rule[1]", "https://rules.example/?x=[1]",
+    "https://rules.example/#part[1]", "https://rules.example/#part#two",
+    "https://rules.example:port/rule", "https://a@b@rules.example/rule",
+    "https://[bad]/rule", "https://[2001:db8::1/rule", "https://[192.0.2.1]/rule",
+    "https://[1:2:3]/rule", "https://[vG.x]/rule", "https://[v1.]/rule",
+    # RFC 6874 zone IDs are not RFC 3986 IP literals.
+    "https://[fe80::1%25eth0]/rule",
+)
+
+
+class ListingShapeWrongTypeTests(unittest.TestCase):
+    """Wrong-typed or unsupported closed-union members are shape failures, never exceptions."""
+
+    def assert_shape_failure(self, listing, reason):
+        self.assertEqual(
+            listing_artifact.validate_listing_shape(listing),
+            (False, reason, "Listing", "dacs-listing:v1:"),
+        )
+        self.assertEqual(
+            listing_admission.admit_listing(
+                listing,
+                inclusion_key=_public_hex(_seller_private()),
+                session_boundary="new-session",
+                native_binding=_native_binding(),
+            ),
+            ("rejected", "listing shape is invalid", None),
+        )
+        self.assertEqual(
+            listing_artifact.prepare_listing_publication(
+                listing,
+                _native_binding(),
+                substrate=CONFORMANCE_SUBSTRATE,
+                finality_profile=CONFORMANCE_FINALITY,
+            ),
+            ("fail", None),
+        )
+
+    def test_fixture_listing_is_shape_valid(self):
+        self.assertTrue(listing_artifact.validate_listing_shape(_legacy_listing())[0])
+
+    def test_wrong_typed_pipeline_kind_is_a_shape_failure(self):
+        for index in (0, -1):
+            for name, value in _wrong_typed("vet-credentials"):
+                with self.subTest(step=index, kind=name):
+                    listing = _legacy_listing()
+                    listing["pipeline"][index]["kind"] = value
+                    self.assert_shape_failure(listing, "invalid or unsupported pipeline")
+
+    def test_wrong_typed_capability_item_is_a_shape_failure(self):
+        listing = _legacy_listing()
+        listing["requiredCapabilities"] = ["SR-1"]
+        self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+        for name, value in _wrong_typed("SR-1"):
+            for items in ([value], ["SR-1", value]):
+                with self.subTest(capability=name, preceded_by_valid=len(items) > 1):
+                    listing = _legacy_listing()
+                    listing["requiredCapabilities"] = items
+                    self.assert_shape_failure(listing, "invalid requiredCapabilities")
+
+    def test_unsupported_pipeline_kind_string_is_a_shape_failure(self):
+        for index in (0, -1):
+            for kind in ("negotiate-future-mode", "Vet-Credentials", "vet-credentials ", ""):
+                with self.subTest(step=index, kind=kind):
+                    listing = _legacy_listing()
+                    listing["pipeline"][index]["kind"] = kind
+                    self.assert_shape_failure(listing, "invalid or unsupported pipeline")
+
+    def test_unsupported_capability_string_is_a_shape_failure(self):
+        for value in ("SR-6", "sr-1", "SR-1 ", ""):
+            for items in ([value], ["SR-1", value]):
+                with self.subTest(capability=value, preceded_by_valid=len(items) > 1):
+                    listing = _legacy_listing()
+                    listing["requiredCapabilities"] = items
+                    self.assert_shape_failure(listing, "invalid requiredCapabilities")
+
+    def test_supported_argument_must_be_a_collection_holding_the_type(self):
+        listing = _legacy_listing()
+        for supported in (None, {"Listing"}, frozenset({"Listing"}), ["Listing"], ("Listing",)):
+            with self.subTest(supported=supported):
+                self.assertTrue(
+                    listing_artifact.validate_listing_shape(listing, supported=supported)[0]
+                )
+        for supported in (5, True, "xxListingxx", "Listing", {"Listing": True}, [], set()):
+            with self.subTest(supported=supported):
+                self.assertEqual(
+                    listing_artifact.validate_listing_shape(listing, supported=supported),
+                    (False, "listing type is unsupported by this consumer", None, None),
+                )
+
+
+class ListingShapeBoundsTests(unittest.TestCase):
+    """DACS-1 §6.3.4 length bounds and closed ListingTerms/signature unions."""
+
+    assert_shape_failure = ListingShapeWrongTypeTests.assert_shape_failure
+
+    def assert_publishable(self, listing):
+        self.assertEqual(listing_artifact.validate_listing_shape(listing)[:2], (True, None))
+        self.assertEqual(
+            listing_artifact.prepare_listing_publication(
+                listing,
+                _native_binding(),
+                substrate=CONFORMANCE_SUBSTRATE,
+                finality_profile=CONFORMANCE_FINALITY,
+            )[0],
+            "pass",
+        )
+
+    def test_string_and_tag_bounds(self):
+        cases = (
+            ("seller", "displayName", 200, "invalid seller"),
+            ("offering", "title", 200, "invalid offering"),
+            ("offering", "description", 2000, "invalid offering"),
+        )
+        for section, field, limit, reason in cases:
+            with self.subTest(field=field):
+                listing = _legacy_listing()
+                # Bounds count characters, not UTF-8 octets.
+                listing[section][field] = "é" * limit
+                self.assert_publishable(listing)
+                listing[section][field] += "a"
+                self.assert_shape_failure(listing, reason)
+            with self.subTest(field=field, form="NFD"):
+                # Bounds count the CF-1 (NFC) form that is hashed and signed, so
+                # a decomposed spelling of the same signed content is in bounds.
+                listing = _legacy_listing()
+                listing[section][field] = unicodedata.normalize("NFD", "ệ" * limit)
+                self.assertEqual(len(listing[section][field]), 3 * limit)
+                self.assert_publishable(listing)
+                listing[section][field] += unicodedata.normalize("NFD", "ệ")
+                self.assert_shape_failure(listing, reason)
+        listing = _legacy_listing()
+        listing["offering"]["tags"] = ["t" * 32] * 16
+        self.assert_publishable(listing)
+        listing["offering"]["tags"] = [unicodedata.normalize("NFD", "ệ" * 32)] * 16
+        self.assert_publishable(listing)
+        for tags in (
+            ["t" * 32] * 17, ["t" * 33], ["ok", "t" * 33],
+            [unicodedata.normalize("NFD", "ệ" * 33)],
+        ):
+            with self.subTest(tags=len(tags), longest=max(map(len, tags))):
+                listing = _legacy_listing()
+                listing["offering"]["tags"] = tags
+                self.assert_shape_failure(listing, "invalid offering")
+
+    def test_closed_terms_unions(self):
+        cases = {
+            "conflictOfLawsRule": (
+                ("buyer-jurisdiction", "seller-jurisdiction", "rule-ref:https://example.test/law"),
+                ("court-of-mars", "Buyer-Jurisdiction", "rule-ref", "", "rule-ref:", "rule-ref: ",
+                 "rule-ref:https://example.test/ law", "rule-ref:https://example.test/law\n",
+                 "rule-ref:\x00"),
+            ),
+            "acceptanceModel": (("auto-accept",), ("manual", "Auto-Accept", "")),
+            "cancellationPolicy": (
+                ("none", "pre-commit", "with-fee"), ("free", "Pre-Commit", ""),
+            ),
+            "transcriptDisclosurePolicy": (
+                ("none", "encrypted-anchored-recommended", "encrypted-anchored-required"),
+                ("public", "encrypted-anchored", ""),
+            ),
+        }
+        for field, (valid, invalid) in cases.items():
+            for value in valid:
+                with self.subTest(field=field, value=value):
+                    listing = _legacy_listing()
+                    listing["terms"][field] = value
+                    self.assert_publishable(listing)
+            for value in invalid + tuple(value for _, value in _wrong_typed(valid[0])):
+                with self.subTest(field=field, value=value):
+                    listing = _legacy_listing()
+                    listing["terms"][field] = value
+                    self.assert_shape_failure(listing, "invalid terms")
+
+    def test_conflict_rule_ref_has_a_valid_uri_reference(self):
+        for location in _VALID_RULE_LOCATIONS:
+            with self.subTest(location=location):
+                listing = _legacy_listing()
+                listing["terms"]["conflictOfLawsRule"] = "rule-ref:" + location
+                self.assert_publishable(listing)
+        for location in _INVALID_RULE_LOCATIONS:
+            with self.subTest(location=location):
+                listing = _legacy_listing()
+                listing["terms"]["conflictOfLawsRule"] = "rule-ref:" + location
+                self.assert_shape_failure(listing, "invalid terms")
+
+    def test_terms_is_a_required_object(self):
+        listing = _legacy_listing()
+        listing["terms"] = {}
+        self.assert_publishable(listing)
+        del listing["terms"]
+        self.assert_shape_failure(listing, "invalid terms")
+        for name, value in _wrong_typed("none") + (("string", "none"), ("empty string", "")):
+            if isinstance(value, dict):
+                continue
+            with self.subTest(terms=name):
+                listing = _legacy_listing()
+                listing["terms"] = value
+                self.assert_shape_failure(listing, "invalid terms")
+
+    def test_optional_terms_members_have_their_declared_types(self):
+        not_numbers = ("60", "soon", None, True, False, [], [60], {})
+        cases = {
+            "termsOfServiceUrl": (
+                ("https://example.test/tos",),
+                tuple(value for _, value in _wrong_typed("https://example.test/tos")) + (9,),
+            ),
+            "termsOfServiceHash": (
+                ("ab" * 32,), tuple(value for _, value in _wrong_typed("ab" * 32)),
+            ),
+            "jurisdictions": (
+                ([], ["DE"], ["US", "DE"]),
+                ("DE", "US", [5], ["DE", None], [["DE"]], {"DE": "DE"}, None, 1, True),
+            ),
+            "deadlineSecAfterCommit": ((0, 60, 1.5), not_numbers),
+            "retentionYears": ((1, 7), not_numbers + ("1",)),
+        }
+        for field, (valid, invalid) in cases.items():
+            for value in valid:
+                with self.subTest(field=field, value=value):
+                    listing = _legacy_listing()
+                    listing["terms"][field] = value
+                    self.assert_publishable(listing)
+            for value in invalid:
+                with self.subTest(field=field, value=value):
+                    listing = _legacy_listing()
+                    listing["terms"][field] = value
+                    self.assert_shape_failure(listing, "invalid terms")
+
+    def test_optional_offering_and_deliverable_members_have_their_declared_types(self):
+        url = "https://example.test/more"
+        method = {"kind": "tlsnotary", "endpoint": "https://example.test/notary"}
+        not_numbers = ("big", "1024", None, True, False, [], {})
+        not_objects = ("tlsnotary", [], [method], None, 1, True)
+        deliverables = {
+            "storage-program": {"kind": "storage-program"},
+            "attested-payload": {"kind": "attested-payload", "payloadFormat": "application/json"},
+            "external": {"kind": "external", "description": "consulting hours"},
+        }
+        cases = (
+            ("offering", "extendedDescriptionUrl", (url,),
+             tuple(value for _, value in _wrong_typed(url))),
+            ("offering", "extendedDescriptionHash", ("ab" * 32,),
+             tuple(value for _, value in _wrong_typed("ab" * 32))),
+            ("storage-program", "schemaUrl", (url,),
+             tuple(value for _, value in _wrong_typed(url))),
+            ("storage-program", "expectedSizeBytes", (0, 1024), not_numbers),
+            ("attested-payload", "expectedSizeBytes", (0, 1024), not_numbers),
+            ("attested-payload", "verificationMethod", (method,), not_objects),
+            ("external", "verificationMethod", (method,), not_objects),
+        )
+        for target, field, valid, invalid in cases:
+            # Pair each value with its outcome: False == 0, so membership would lie.
+            for value, publishable in [(value, True) for value in valid] + [
+                (value, False) for value in invalid
+            ]:
+                with self.subTest(target=target, field=field, value=value):
+                    listing = _legacy_listing()
+                    if target == "offering":
+                        member = listing["offering"]
+                    else:
+                        member = copy.deepcopy(deliverables[target])
+                        listing["offering"]["deliverable"] = member
+                    member[field] = value
+                    if publishable:
+                        self.assert_publishable(listing)
+                    else:
+                        self.assert_shape_failure(listing, "invalid offering")
+
+    def test_auction_rule_ref_names_a_rule(self):
+        def auction(rule):
+            listing = _legacy_listing()
+            listing["pricing"] = {"kind": "auction", "selectionRule": rule}
+            listing["pipeline"] = [
+                {"kind": "vet-credentials"},
+                {"kind": "negotiate-sealed-envelope", "parameters": {
+                    "commitDeadline": 200_000, "revealWindow": 60, "selectionRule": rule,
+                }},
+                {"kind": "commit-agreement"},
+                {"kind": "pay-dem", "parameters": {"rail": "demos-native:DEM"}},
+                {"kind": "deliver-storage-program"},
+            ]
+            return listing
+
+        valid = ("lowest-price", "highest-price", "first-acceptable") + tuple(
+            "rule-ref:" + "ab" * 32 + ":" + location for location in _VALID_RULE_LOCATIONS
+        ) + ("rule-ref:" + "14" * 32 + ":stor-rule",)
+        for rule in valid:
+            with self.subTest(rule=rule):
+                self.assert_publishable(auction(rule))
+        invalid = (
+            "rule-ref", "rule-ref:", "rule-ref: ", "rule-ref:foo",
+            "rule-ref:zz:stor-rule", "rule-ref:https://rules.example/select",
+            "rule-ref:" + "ab" * 32, "rule-ref:" + "ab" * 32 + ":",
+        ) + tuple(
+            "rule-ref:" + digest + ":stor-rule"
+            for digest in ("", "ab" * 31, "ab" * 33, "AB" * 32, "gg" * 32)
+        ) + tuple(
+            "rule-ref:" + "ab" * 32 + ":" + location for location in _INVALID_RULE_LOCATIONS
+        )
+        for rule in invalid:
+            with self.subTest(rule=rule):
+                self.assert_shape_failure(auction(rule), "invalid pricing")
+
+    def test_signature_algorithm_is_closed(self):
+        for algorithm in ("ed25519", "ecdsa-secp256k1", "sr1-aggregate"):
+            with self.subTest(algorithm=algorithm):
+                listing = _legacy_listing()
+                listing["signature"]["algorithm"] = algorithm
+                self.assert_publishable(listing)
+        for algorithm in ("rsa", "Ed25519", "ed25519 ", "") + tuple(
+            value for _, value in _wrong_typed("ed25519")
+        ):
+            with self.subTest(algorithm=algorithm):
+                listing = _legacy_listing()
+                listing["signature"]["algorithm"] = algorithm
+                self.assert_shape_failure(listing, "invalid listing signature shape")
+
+    def test_storage_program_access_model_is_closed(self):
+        for access_model in ("public", "buyer-only", "encrypt-to-buyer"):
+            with self.subTest(access_model=access_model):
+                listing = _legacy_listing()
+                listing["offering"]["deliverable"] = {
+                    "kind": "storage-program", "accessModel": access_model,
+                }
+                self.assert_publishable(listing)
+        for access_model in ("everyone", "Public", "") + tuple(
+            value for _, value in _wrong_typed("public")
+        ):
+            with self.subTest(access_model=access_model):
+                listing = _legacy_listing()
+                listing["offering"]["deliverable"] = {
+                    "kind": "storage-program", "accessModel": access_model,
+                }
+                self.assert_shape_failure(listing, "invalid offering")
+
+    def test_rail_version_is_a_positive_safe_integer(self):
+        # DACS-4 RD-3: a RailDefinition version is a positive JSON safe integer,
+        # so any other PaymentRailRef.railVersion can never resolve.
+        for value in (1, 1.0, 2, 2**53 - 1):
+            with self.subTest(rail_version=value):
+                listing = _legacy_listing()
+                listing["acceptedRails"][0]["railVersion"] = value
+                self.assert_publishable(listing)
+        for value in ("1", {}, [1], None, True, False, 0, -1, 1.5, 0.5):
+            with self.subTest(rail_version=value):
+                listing = _legacy_listing()
+                listing["acceptedRails"][0]["railVersion"] = value
+                self.assert_shape_failure(listing, "invalid acceptedRails")
+
+    def test_payment_rail_ref_parameters_is_an_object(self):
+        listing = _legacy_listing()
+        listing["acceptedRails"][0]["parameters"] = {"network": "fixture"}
+        self.assert_publishable(listing)
+        for value in (None, [], "not-an-object", True, 1):
+            with self.subTest(parameters=value):
+                listing = _legacy_listing()
+                listing["acceptedRails"][0]["parameters"] = value
+                self.assert_shape_failure(listing, "invalid acceptedRails")
+
+    def test_alternative_rail_refs_have_the_payment_rail_ref_shape(self):
+        listing = _legacy_listing()
+        refs = [{"railId": "demos-native:DEM", "railVersion": 1}, {"railId": "x402:USDC"}]
+        listing["pipeline"][3] = {"kind": "pay-alternative", "parameters": {"alternatives": refs}}
+        self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+        for member, value in (
+            ("railVersion", "1"), ("railVersion", None), ("railVersion", True),
+            ("railVersion", 0), ("railVersion", -1), ("railVersion", 1.5),
+            ("parameters", None), ("parameters", []), ("parameters", "x"),
+        ):
+            with self.subTest(member=member, value=value):
+                changed = copy.deepcopy(listing)
+                changed["pipeline"][3]["parameters"]["alternatives"][1][member] = value
+                self.assert_shape_failure(changed, "invalid or unsupported pipeline")
+
+    def test_present_optional_arrays_are_arrays(self):
+        # An explicit null is a present, wrong-typed member, not an absent one.
+        listing = _legacy_listing()
+        listing["pipeline"] = [
+            step for step in listing["pipeline"] if not step["kind"].startswith("pay-")
+        ]
+        self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
+        for field, reason in (
+            ("requiredCapabilities", "invalid requiredCapabilities"),
+            ("acceptedRails", "invalid acceptedRails"),
+        ):
+            for value in (None, {}, "SR-1"):
+                with self.subTest(field=field, value=value):
+                    changed = copy.deepcopy(listing)
+                    changed[field] = value
+                    self.assert_shape_failure(changed, reason)
+
+
+def _spec_union(text: str, anchor: str, field: str | None = None) -> set:
+    """Quoted members of a spec union: a ``type X =`` block or one field after ``anchor``."""
+    start = text.index(anchor) + len(anchor)
+    if field is None:
+        lines = []
+        for line in text[start:].splitlines()[1:]:
+            if not line.strip().startswith(("|", "//")):
+                break
+            lines.append(line.split("//")[0] if line.strip().startswith("|") else "")
+        return set(re.findall(r'"([^"]*)"', "\n".join(lines)))
+    match = re.compile(rf'\b{field}\??: ((?:"[^"]*"\s*\|?\s*)+)').search(text, start)
+    return set(re.findall(r'"([^"]*)"', match.group(1)))
+
+
+class ListingSpecTableTests(unittest.TestCase):
+    """The module's mirrored closed sets equal the Standard's type definitions."""
+
+    def test_mirrored_tables_match_the_standard(self):
+        dacs1 = (ROOT / "spec/DACS-1-IDENTIFY.md").read_text(encoding="utf-8")
+        dacs4 = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")
+        self.assertEqual(_spec_union(dacs1, "type PhaseType ="), set(listing_artifact.KNOWN_PHASES))
+        self.assertEqual(
+            _spec_union(dacs1, "type SubstrateRequirement ="),
+            set(listing_artifact._CAPABILITIES),
+        )
+        self.assertEqual(
+            _spec_union(dacs1, "type ListingSignature = {", "algorithm"),
+            set(listing_artifact._SIGNATURE_ALGORITHMS),
+        )
+        for field, allowed in listing_artifact._TERMS_ENUMS.items():
+            with self.subTest(field=field):
+                expected = set(allowed) | (
+                    {"rule-ref:<uri>"} if field == "conflictOfLawsRule" else set()
+                )
+                self.assertEqual(_spec_union(dacs1, "type ListingTerms = {", field), expected)
+        self.assertEqual(
+            _spec_union(dacs4, "type DeliverableSpec =", "accessModel"),
+            set(listing_artifact._ACCESS_MODELS),
+        )
+        for field, limit in (
+            ("displayName", listing_artifact._MAX_DISPLAY_NAME),
+            ("title", listing_artifact._MAX_TITLE),
+            ("description", listing_artifact._MAX_DESCRIPTION),
+        ):
+            with self.subTest(field=field):
+                self.assertRegex(dacs1, rf"\n\s+{field}: string\s+// max {limit} chars\n")
+        self.assertRegex(
+            dacs1,
+            rf"\n\s+tags: string\[\]\s+// max {listing_artifact._MAX_TAGS} tags, "
+            rf"max {listing_artifact._MAX_TAG} chars each\n",
+        )
 
 
 class RetainedAdmissionTests(unittest.TestCase):

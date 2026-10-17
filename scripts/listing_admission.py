@@ -153,7 +153,7 @@ def admit_listing(
     """
     if not isinstance(listing, dict):
         return "rejected", "listing is not an object", None
-    if session_boundary not in SESSION_BOUNDARIES:
+    if not isinstance(session_boundary, str) or session_boundary not in SESSION_BOUNDARIES:
         return "indeterminate", "listing admission session boundary is unsupported", None
     try:
         listing_type, domain = listing_artifact.classify_listing_artifact(listing)

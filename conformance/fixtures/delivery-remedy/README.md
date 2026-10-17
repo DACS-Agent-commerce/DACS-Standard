@@ -117,14 +117,23 @@ copy keeps that finding, and so does a terminal that the replay comparison
 fails (DRD-8, DRL-4, DRT-4, DRT-16). Every other such lifecycle is
 `indeterminate` under DRAA-4. A verdict already issued is revised to
 `indeterminate` only when it was `pass`, `indeterminate`, or a finding that
-rested on a sole copy, such as DRD-11. Without a decision write summary,
-the resolver's decision anchor orders the decision. That anchor rests on the
-one write known at the decision address, so its DRD-11 stands beside
-another address's equivocation but becomes DRAA-4 once two writes are known
-at the decision address. A lifecycle whose finding rests on a copy that can
-still be selected records no terminal; its terminal is recorded when the
-finding becomes DRAA-4. The DRW-4 bound on the terminal side of the DRC-15
-sums reads no copy and stays `error`.
+rested on a sole copy, such as DRD-11, and a finding on a copy only by two
+writes at that copy's own address. Equivocation is per logical address
+(CORE §5.1): two funding writes leave the one decision write selectable, so
+its checks still run, and two decision writes leave a sole funding copy's
+DRV-6 standing. The decision anchor, whether the one carried decision copy
+or, without a decision write summary, the resolver's own anchor, rests on
+the one write known at the decision address. Its DRV-6 or DRD-11 stands
+beside another address's equivocation and becomes DRAA-4 once two writes are
+known at the decision address; its DRC-15 gives way to another address's
+DRAA-4. A lifecycle whose finding rests on a copy that can still be selected
+records no terminal; its terminal is recorded once two writes are known at
+the address of every such copy, whatever its verdict then is. Until then
+that terminal still takes part in its own replay comparison, so its replay
+`fail` decides first, and while its findings on copies are all uncertainty
+(DRC-15, DRD-10), a conflict with it is `indeterminate` for the other
+terminal, never `pass` or `fail`. The DRW-4 bound on the terminal side of
+the DRC-15 sums reads no copy and stays `error`.
 
 The protocol verifier requires the finality records embedded in signed funding
 and terminal artifacts to use the exact DACS-4 `SettlementFinalityRecord`
@@ -346,8 +355,13 @@ Replay state belongs to the verifier. Callers pass a `DecisionLedger` to
 check before the replay comparison records its terminal: native job, terminal
 event and its authenticated position, decision, and attested history. So
 does a lifecycle that is `indeterminate` under DRAA-4 and fails no check that
-reads no copy; one whose finding rests on a selectable copy records its
-terminal once that finding becomes DRAA-4.
+reads no copy, unless a finding rests on a copy still selectable at another
+address; one whose finding rests on a selectable copy records its terminal
+once two writes are known at that copy's address. Until then its terminal is
+compared but not recorded: its own replay `fail` decides first, and while its
+findings on copies are all uncertainty (DRC-15, DRD-10), a conflict that
+would `fail` the other terminal is `indeterminate` instead, because that
+terminal may not have been authorized.
 Verifying the same terminal again is idempotent, and it reproduces one
 terminal evidence hash: a second, distinct evidence record for that terminal
 is `fail` for both (DRT-16). Two different terminals
@@ -382,8 +396,8 @@ content hash instead. A revision never upgrades a verdict: `pass` can become
 `indeterminate` or `fail`, and `indeterminate` can become `fail`. The one
 exception is DRAA-4 above: a second qualifying write revises a `fail` to
 `indeterminate` only when that `fail` rested on the sole write known at an
-address, such as DRD-11 or the per-copy DRV-6; the lifecycle's terminal is
-then recorded. A later arrival that conflicts
+address, such as DRD-11 or the per-copy DRV-6, and the second write is at
+that address; the lifecycle's terminal is then recorded. A later arrival that conflicts
 with a passing terminal never passes, so two conflicting terminals never both
 pass in one ledger. The verdicts issued, with their revisions applied, are
 the verdicts of evaluating everything seen so far as one set, whatever the

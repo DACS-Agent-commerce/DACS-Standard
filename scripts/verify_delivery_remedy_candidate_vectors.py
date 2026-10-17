@@ -1094,14 +1094,23 @@ def terminal_precedes(prior: TerminalRecord, current: TerminalRecord) -> bool | 
     return prior.position < current.position
 
 
+def _terminal_order(item: TerminalRecord) -> tuple[Any, ...]:
+    """Canonical position order, so a verdict does not depend on arrival order."""
+    return (
+        item.position is None, item.position or (), repr(item[:3]), repr(item.attested), item.evidence or "",
+    )
+
+
 class HeldFinding(NamedTuple):
     """A revisable finding the ledger holds for one lifecycle (see `LifecycleCheck`).
 
-    Two qualifying writes known at one of ``addresses`` replace ``finding``
-    with DRAA-4.  ``terminal`` is the lifecycle's recorded terminal, or None.
-    ``pending`` is the terminal to record, with ``written`` as the addresses
-    its evidence references, once the verdict is DRAA-4 and two writes are
-    known at each address in ``blocker``.
+    ``copies`` pairs each finding that rests on a sole write copy with the
+    logical address of that copy: it stands while one write is known
+    there.  ``addresses`` are the logical addresses the terminal evidence
+    references; two qualifying writes known at one of them replace
+    ``finding`` with DRAA-4 (see `_held_verdict`).  ``terminal`` is the
+    lifecycle's recorded terminal, or None.  ``pending`` is the terminal to
+    record, at ``addresses``, once no finding in ``copies`` stands.
     """
 
     addresses: frozenset[str]
@@ -1109,8 +1118,7 @@ class HeldFinding(NamedTuple):
     finding: dict[str, str]
     verdict: dict[str, str]
     pending: TerminalRecord | None = None
-    written: frozenset[str] = frozenset()
-    blocker: frozenset[str] = frozenset()
+    copies: tuple[tuple[str, dict[str, str]], ...] = ()
 
 
 class DecisionLedger:
@@ -1122,7 +1130,9 @@ class DecisionLedger:
     qualifying write copy, and whose finding, if any, rests on no copy that
     can still be selected, whatever the replay comparison decides; a
     lifecycle whose finding rests on such a copy has its terminal recorded
-    once a second write makes the copy unselectable.  It
+    once a second write at that copy's address makes it unselectable, and
+    until then, while every such finding is uncertainty, lists it as
+    undecided.  It
     lists them in canonical position order, so a verdict depends on the
     evidence seen and not on its arrival order.  It also keeps the verdict it
     last issued for each recorded terminal, so that a later evaluation can
@@ -1146,10 +1156,7 @@ class DecisionLedger:
         self._held: dict[str, HeldFinding] = {}
 
     def terminals(self) -> tuple[TerminalRecord, ...]:
-        return tuple(sorted(self._terminals, key=lambda item: (
-            item.position is None, item.position or (), repr(item[:3]), repr(item.attested),
-            item.evidence or "",
-        )))
+        return tuple(sorted(self._terminals, key=_terminal_order))
 
     def record(self, terminal: TerminalRecord, addresses: frozenset[str] = frozenset()) -> None:
         if terminal not in self._terminals:
@@ -1178,6 +1185,23 @@ class DecisionLedger:
 
     def held(self) -> tuple[tuple[str, HeldFinding], ...]:
         return tuple((lifecycle, self._held[lifecycle]) for lifecycle in sorted(self._held))
+
+    def standing(self, entry: HeldFinding) -> list[dict[str, str]]:
+        """The findings in ``entry.copies`` that still stand: one write is known at the copy's address."""
+        return [finding for address, finding in entry.copies if not self.equivocated_at(frozenset({address}))]
+
+    def undecided(self) -> tuple[TerminalRecord, ...]:
+        """The pending terminals whose standing findings are all uncertainty.
+
+        Whether such a terminal was authorized is unknown, so a conflict with
+        it is `indeterminate` (see `_terminal_replay_check`).  A pending
+        terminal with a standing `error` or `fail` takes no part.
+        """
+        return tuple(sorted({
+            entry.pending for _, entry in self.held()
+            if entry.pending is not None and (standing := self.standing(entry))
+            and all(finding["result"] == "indeterminate" for finding in standing)
+        }, key=_terminal_order))
 
     def issued(self, terminal: TerminalRecord) -> dict[str, str] | None:
         """The verdict last issued for the lifecycle that recorded ``terminal``."""
@@ -2280,22 +2304,37 @@ def _artifact_write_check(value: dict[str, Any]) -> dict[str, str] | None:
     return None
 
 
-def _write_selection_check(
-    value: dict[str, Any], ledger: DecisionLedger | None = None, select: bool = True
-) -> dict[str, str] | None:
-    """DRAA-4: with two qualifying writes known, retain both and select neither, before DRC-15.
+def _copy_check(value: dict[str, Any], name: str) -> dict[str, str] | None:
+    """The sole qualifying ``name`` write binds the referenced artifact and, for the decision, is the decision anchor."""
+    receipt = value["resolverEvidence"]["qualifiedArtifactWrites"][name][0]
+    if receipt["contentHash"] != _write_reference(value["artifacts"]["terminal"], name)["contentHash"]:
+        return result("fail", "DRV-6", "qualified write does not bind the referenced artifact")
+    if name == "decision" and value["resolverEvidence"]["decisionAnchor"] != {
+        "substrate": "demos",
+        "finalizedBlockTimestampSec": receipt["finalizedBlockTimestampSec"],
+    }:
+        return result("fail", "DRV-6", "decision ordering does not use the sole qualifying write")
+    return None
 
+
+def _write_selection_check(
+    value: dict[str, Any], ledger: DecisionLedger | None = None
+) -> tuple[frozenset[str], list[tuple[str, dict[str, str]]]]:
+    """DRAA-4 per logical address: retain two qualifying writes and select neither, before DRC-15.
+
+    Returns the addresses with two writes known, and each finding on a
+    carried copy selected at another address, paired with that address.
     The writes known at an address are this lifecycle's own and every write
     ``ledger`` retained from any input, so two writes carried by different
     lifecycles, in one batch or in successive calls, are the same
-    equivocation as two carried by one.  Only with one write known is it
-    selected and checked against the reference and the decision anchor.
-    With ``select`` off nothing here is decided (see `_checked_lifecycle`).
+    equivocation as two carried by one.  Only with one write known at its
+    address is a copy selected and checked against the reference and the
+    decision anchor; two writes at another address leave that check
+    standing (CORE §5.1 is per logical address).
     """
-    if not select:
-        return None
     terminal = value["artifacts"]["terminal"]
     writes = value["resolverEvidence"].get("qualifiedArtifactWrites", {})
+    equivocated = set()
     for address in sorted(_write_addresses(terminal)):
         # The write identity includes native address, transaction, writer and
         # nonce, not just contentHash. Unequal immutable snapshots also cannot
@@ -2306,19 +2345,27 @@ def _write_selection_check(
             if receipt["logicalAddress"] == address
         )
         if len(known) > 1:
-            return _equivocation()
-    resolver = value["resolverEvidence"]
+            equivocated.add(address)
+    copies = []
     for name, receipts in writes.items():
-        reference = _write_reference(terminal, name)
-        receipt = receipts[0]
-        if receipt["contentHash"] != reference["contentHash"]:
-            return result("fail", "DRV-6", "qualified write does not bind the referenced artifact")
-        if name == "decision" and resolver["decisionAnchor"] != {
-            "substrate": "demos",
-            "finalizedBlockTimestampSec": receipt["finalizedBlockTimestampSec"],
-        }:
-            return result("fail", "DRV-6", "decision ordering does not use the sole qualifying write")
-    return None
+        address = receipts[0]["logicalAddress"]
+        issue = None if address in equivocated else _copy_check(value, name)
+        if issue:
+            copies.append((address, issue))
+    return frozenset(equivocated), copies
+
+
+def _copy_verdict(findings: list[dict[str, str]], equivocated: bool) -> dict[str, str] | None:
+    """The finding from ``findings`` on copies still selectable, beside DRAA-4 when ``equivocated``.
+
+    An `error` or `fail` on a selectable copy comes before another
+    address's DRAA-4 (candidate §9, FV-10), and DRAA-4 before uncertainty.
+    """
+    return (
+        next((finding for finding in findings if finding["result"] in ("error", "fail")), None)
+        or (_equivocation() if equivocated else None)
+        or next(iter(findings), None)
+    )
 
 
 def _transaction_valid(item: Any) -> bool:
@@ -3431,26 +3478,25 @@ def _decision_ordering_stage(value: dict[str, Any], select: bool = True) -> dict
     return _decision_ordering_check(value, observed["blockTimestampSec"])
 
 
-def _resolver_ordered_address(value: dict[str, Any], ledger: DecisionLedger | None) -> str | None:
-    """The decision address whose resolver anchor DRC-15 reads with no copy carried, or None.
+def _decision_ordering_copy(
+    value: dict[str, Any], equivocated: frozenset[str], copies: list[tuple[str, dict[str, str]]],
+) -> tuple[str, dict[str, str]] | None:
+    """DRC-15 on the one write at the decision address, paired with that address, or None.
 
-    A lifecycle that carries no decision write orders the decision on the
-    pinned resolver's own anchor.  That selects no copy, but rests on the
-    one qualifying write at the decision address: once two writes are known
-    there, neither is selected and DRC-15 is not evaluated (DRAA-4, I8), so
-    this is None then too.
+    The decision anchor is the one carried decision copy, once it is
+    selected and matches the anchor, or with none carried the pinned
+    resolver's own anchor; either rests on the one qualifying write at the
+    decision address.  With two writes known there neither is selected and
+    DRC-15 is not evaluated (DRAA-4, I8); a finding on the copy itself
+    leaves nothing to order.
     """
-    if value["artifacts"].get("decision") is None or "decision" in value["resolverEvidence"].get(
-        "qualifiedArtifactWrites", {}
-    ):
+    if value["artifacts"].get("decision") is None:
         return None
-    reference = _write_reference(value["artifacts"]["terminal"], "decision")
-    if not attestation_ref_shape_valid(reference):
+    address = _write_reference(value["artifacts"]["terminal"], "decision")["anchor"]["locator"]
+    if address in equivocated or any(at == address for at, _ in copies):
         return None
-    address = reference["anchor"]["locator"]
-    if ledger is not None and ledger.equivocated_at(frozenset({address})):
-        return None
-    return address
+    issue = _decision_ordering_stage(value)
+    return (address, issue) if issue else None
 
 
 def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
@@ -3747,14 +3793,17 @@ def _terminal_replay_check(
     cannot order it, or when the later terminal's attested history omits the
     earlier one: the resolver's records then contradict each other.  One
     event claimed by two native jobs is ambiguous whichever came first.
-    The finding depends only on ``current`` and the ledger's terminals.
+    A conflict that would `fail` against a terminal the ledger lists as
+    undecided, whose decision ordering rests on a copy still selectable, is
+    `indeterminate`: that terminal may not have been authorized.  The
+    finding depends only on ``current`` and the ledger's terminals.
     """
     for prior in current.attested:
         conflict = terminal_conflict(TerminalRecord(*prior), current)
         if conflict:
             return result("fail", *conflict)
     undecided = []
-    for other in ledger.terminals():
+    for other, decided in (*((item, True) for item in ledger.terminals()), *((item, False) for item in ledger.undecided())):
         conflict = terminal_conflict(other, current)
         if conflict is None:
             continue
@@ -3765,6 +3814,8 @@ def _terminal_replay_check(
             undecided.append((conflict[0], "authenticated event positions cannot order this terminal against a conflicting terminal"))
         elif not precedes and current[:3] not in other.attested:
             undecided.append((conflict[0], "a later conflicting terminal's attested history omits this terminal"))
+        elif precedes and not decided:
+            undecided.append((conflict[0], "a conflicting terminal's decision ordering rests on a write copy that is still selectable"))
         elif precedes:
             return result("fail", *conflict)
     if undecided:
@@ -3772,18 +3823,16 @@ def _terminal_replay_check(
     return None
 
 
-def _protocol_stages(
-    value: dict[str, Any], ledger: DecisionLedger | None = None, select: bool = True,
-) -> tuple[tuple[str, Callable[[], dict[str, str] | None]], ...]:
-    """Return the section 9 checks in order; the first finding is the result.
+def _protocol_stages(value: dict[str, Any]) -> tuple[tuple[str, Callable[[], dict[str, str] | None]], ...]:
+    """Return the section 9 checks that select no write copy, in order; the first finding is the result.
 
     A later gate is added as one more named stage at its place in this order;
     it reads the same authenticated inputs and needs no change to other stages.
-    The replay comparison follows these stages, in `evaluate_lifecycles`.
-    Only the write-selection stage reads ``ledger``, and no stage writes it.
-    ``select`` off removes the checks that select one qualifying write copy:
-    the write-selection stage, and decision ordering (DRC-15) apart from
-    its terminal-side DRW-4 bound.
+    The checks that select one qualifying write copy follow the stage they
+    are named after, per logical address (see `_checked_lifecycle`): write
+    selection, and decision ordering (DRC-15) beyond its terminal-side
+    DRW-4 bound.  The replay comparison follows these stages, in
+    `evaluate_lifecycles`.  No stage reads or writes the ledger.
     """
     return (
         ("artifact-shape", lambda: _artifact_shape_check(value["artifacts"])),
@@ -3796,7 +3845,6 @@ def _protocol_stages(
         ("references", lambda: _reference_check(value)),
         ("resolver-evidence", lambda: _resolver_evidence_check(value)),
         ("artifact-writes", lambda: _artifact_write_check(value)),
-        ("write-selection", lambda: _write_selection_check(value, ledger, select)),
         ("finding", lambda: _finding_check(value)),
         ("evaluation", lambda: _evaluation_check(value)),
         ("canonical-records", lambda: _canonical_record_check(value)),
@@ -3805,39 +3853,36 @@ def _protocol_stages(
         ("missing-records", lambda: _missing_record_check(value)),
         ("reproduction-inputs", lambda: _reproduction_input_check(value)),
         ("native-and-terminal", lambda: _native_and_terminal_check(value)),
-        ("decision-ordering", lambda: _decision_ordering_stage(value, select)),
+        ("decision-ordering", lambda: _decision_ordering_stage(value, select=False)),
         ("native-event-semantics", lambda: _native_event_semantics_check(value)),
         ("subject-evidence", lambda: _subject_evidence_check(value)),
     )
-
-
-# The stages whose finding can rest on one selected qualifying write copy.
-SELECTING_STAGES = ("write-selection", "decision-ordering")
 
 
 class LifecycleCheck(NamedTuple):
     """One lifecycle's checks before the replay comparison.
 
     ``issue`` is the finding, or None.  ``revisable`` is true when the issue
-    rests on a selected write copy, or is uncertainty decided at or after the
-    write-selection stage: two qualifying writes known later, at one of
-    ``addresses`` (None: every address the terminal references), decide
-    DRAA-4 instead.  A deterministic `error` or `fail` is never revisable.
-    ``records`` is true when every check that does not select a write copy
-    passed and no finding rests on a copy that can still be selected: the
+    rests on a selected write copy, or is uncertainty decided at or after
+    write selection: two qualifying writes known later decide DRAA-4
+    instead, at the address of the copy it rests on, or for other
+    uncertainty at any address the terminal references.  A deterministic
+    `error` or `fail` from a check that selects no copy is never revisable.
+    ``copies`` pairs each finding on a copy that can still be selected with
+    the logical address of that copy.  ``records`` is true when every check
+    that does not select a write copy passed and ``copies`` is empty: the
     issue is None or DRAA-4.  The lifecycle's terminal then takes part in
     the replay comparison.  ``pending`` is true when every such check passed
-    but the issue rests on a copy that can still be selected: the terminal
-    is recorded once the issue is revised to DRAA-4 and two writes are known
-    at ``blocker`` too, when it names an address.
+    but ``copies`` is not empty: the terminal is compared but not recorded,
+    and is recorded once two writes are known at the address of every copy
+    in ``copies``.
     """
 
     issue: dict[str, str] | None
     revisable: bool = False
     records: bool = False
     pending: bool = False
-    addresses: frozenset[str] | None = None
-    blocker: str | None = None
+    copies: tuple[tuple[str, dict[str, str]], ...] = ()
 
 
 def _input_check(value: Any) -> dict[str, str] | None:
@@ -3883,51 +3928,43 @@ def _checked_lifecycle(value: Any, ledger: DecisionLedger | None = None) -> Life
     The finding depends on ``value`` and on the qualifying writes ``ledger``
     retained.  An `error` or `fail` from a check that selects no write copy
     is decided first, wherever its stage (candidate §9, FV-10): no later
-    write changes it, so it is not revisable.  When the first finding comes
-    from a check that selects a copy, the remaining checks run with
-    selection off; one of them replaces it only with an `error` or `fail`
-    (including the malformed-input `error` of a check that raises), and
-    otherwise they only decide whether the terminal is recorded.
+    write changes it, so it is not revisable (this includes the
+    malformed-input `error` of a check that raises).
 
-    Decision ordering on the resolver's own anchor (no decision write
-    carried, one or none known) rests on the decision address alone: its
-    `error` or `fail` replaces a write-selection finding and is revised
-    only by two writes there, and its uncertainty keeps the terminal
-    unrecorded until two writes are known there.
+    The checks that select a copy run per logical address: write selection
+    after the `artifact-writes` stage, and decision ordering on the one
+    write at the decision address (the carried copy, or with none carried
+    the pinned resolver's own anchor) after the terminal-side DRW-4 bound.
+    Each finding rests on its copy's address alone, so DRAA-4 at another
+    address leaves it standing (CORE §5.1): their first `error` or `fail`
+    is the finding, then DRAA-4, then their uncertainty (`_copy_verdict`).
+    Later uncertainty from a check that selects no copy is the finding
+    only when they give none, and keeps the terminal unrecorded.
     """
     issue = _input_check(value)
     if issue:
         return LifecycleCheck(issue)
     revisable = False
-    decided: dict[str, str] | None = None
-    addresses: frozenset[str] | None = None
-    blocker: str | None = None
-    unselected = dict(_protocol_stages(value, ledger, select=False))
-    for name, stage in _protocol_stages(value, ledger):
-        revisable = revisable or name == "write-selection"
-        if decided is not None:
-            fixed = unselected[name]()
-        else:
-            issue = stage()
-            fixed = unselected[name]() if issue and name in SELECTING_STAGES else issue
-        address = _resolver_ordered_address(value, ledger) if name == "decision-ordering" and not fixed else None
-        if address is not None:
-            ordered = stage() if decided is not None else issue
-            if ordered and ordered["result"] in ("error", "fail"):
-                decided, addresses = ordered, frozenset({address})
-            elif ordered:
-                decided, blocker = decided or ordered, address
-        elif decided is None and issue and not fixed:
-            decided = issue
-        if not fixed:
-            continue
-        if fixed["result"] in ("error", "fail"):
-            return LifecycleCheck(fixed)
-        # Uncertainty after a finding that rests on a copy keeps that finding.
-        return LifecycleCheck(decided or issue, revisable, addresses=addresses)
-    if decided is None or (decided["rule"] == "DRAA-4" and blocker is None):
-        return LifecycleCheck(decided, revisable, records=True)
-    return LifecycleCheck(decided, revisable, pending=True, addresses=addresses, blocker=blocker)
+    equivocated: frozenset[str] = frozenset()
+    copies: list[tuple[str, dict[str, str]]] = []
+    for name, stage in _protocol_stages(value):
+        issue = stage()
+        if issue and issue["result"] in ("error", "fail"):
+            return LifecycleCheck(issue)
+        if issue:
+            return LifecycleCheck(
+                _copy_verdict([finding for _, finding in copies], bool(equivocated)) or issue,
+                revisable, copies=tuple(copies),
+            )
+        if name == "artifact-writes":
+            revisable = True
+            equivocated, copies = _write_selection_check(value, ledger)
+        elif name == "decision-ordering":
+            ordered = _decision_ordering_copy(value, equivocated, copies)
+            if ordered:
+                copies.append(ordered)
+    issue = _copy_verdict([finding for _, finding in copies], bool(equivocated))
+    return LifecycleCheck(issue, revisable, records=not copies, pending=bool(copies), copies=tuple(copies))
 
 
 def _lifecycle_check(value: Any, ledger: DecisionLedger | None = None) -> dict[str, str] | None:
@@ -3968,23 +4005,23 @@ def _settled_verdict(terminal: TerminalRecord, ledger: DecisionLedger) -> dict[s
     )
 
 
-def _held_verdict(
-    finding: dict[str, str], addresses: frozenset[str], terminal: TerminalRecord | None,
-    ledger: DecisionLedger,
-) -> dict[str, str]:
-    """The verdict for a revisable ``finding`` (see `LifecycleCheck`), against everything ``ledger`` holds.
+def _held_verdict(entry: HeldFinding, ledger: DecisionLedger) -> dict[str, str]:
+    """The verdict for a revisable finding (see `HeldFinding`), against everything ``ledger`` holds.
 
-    As in `_settled_verdict`, a recorded terminal's replay `fail` decides
-    first, and two qualifying writes at one of ``addresses`` then replace
-    the finding with DRAA-4.
+    As in `_settled_verdict`, the replay `fail` of the lifecycle's terminal,
+    recorded or pending, decides first.  Then a finding on a copy still
+    selectable at its own address decides if it is an `error` or `fail`;
+    then two qualifying writes at an address the terminal references give
+    DRAA-4; then the remaining uncertainty.
     """
+    terminal = entry.terminal or entry.pending
     replay = _terminal_replay_check(terminal, ledger) if terminal is not None else None
     if replay and replay["result"] == "fail":
         return replay
-    return _equivocation() if ledger.equivocated_at(addresses) else finding
+    return _copy_verdict(ledger.standing(entry), ledger.equivocated_at(entry.addresses)) or entry.finding
 
 
-def _revise_issued(ledger: DecisionLedger) -> list[dict[str, Any]]:
+def _revise_issued(ledger: DecisionLedger, fresh: frozenset[str] = frozenset()) -> list[dict[str, Any]]:
     """Re-judge every verdict issued earlier against the terminals and writes now known.
 
     A terminal or write recorded later can contradict a verdict already
@@ -3994,20 +4031,20 @@ def _revise_issued(ledger: DecisionLedger) -> list[dict[str, Any]]:
     replaced in the ledger and returned as a revision, including one for a
     terminal evaluated again in this call: an earlier verdict may have been
     issued to another lifecycle with the same terminal.  A held verdict
-    (see `LifecycleCheck`) is judged again by `_held_verdict`: DRAA-4 once
-    two writes are known at an address its finding rests on, or the
-    replay `fail` of its recorded terminal; that revision names the
-    lifecycle's content hash.  A held finding revised to DRAA-4 records its
-    pending terminal, and every verdict is judged again until no terminal
-    is added; each revision then gives the verdict issued before this call
-    as `previous`.  Recording a terminal or a write only adds
-    conflicts, so a revision never upgrades a verdict, except that DRAA-4
-    replaces a `pass`, an uncertainty, or a finding that rested on a write
-    copy it makes unselectable.  A deterministic `error` or `fail` is never
-    revised to DRAA-4.
+    (see `HeldFinding`) is judged again by `_held_verdict`, and its
+    revision names the lifecycle's content hash; ``fresh`` names the
+    lifecycles first held in this call, which have no earlier verdict.  A
+    held pending terminal is recorded once no finding on a copy stands, and
+    every verdict is judged again until no terminal is added; each revision
+    then gives the verdict issued before this call as `previous`.  Recording
+    a terminal or a write only adds conflicts, and an undecided terminal
+    only becomes recorded, so a revision never upgrades a verdict, except
+    that DRAA-4 replaces a `pass`, an uncertainty, or a finding that rested
+    on a write copy it makes unselectable.  A deterministic `error` or
+    `fail` is never revised to DRAA-4.
     """
     issued = [(terminal, ledger.issued(terminal)) for terminal in ledger.terminals()]
-    held = [(lifecycle, entry.verdict) for lifecycle, entry in ledger.held()]
+    held = [(lifecycle, entry.verdict) for lifecycle, entry in ledger.held() if lifecycle not in fresh]
     added = True
     while added:
         added = False
@@ -4015,13 +4052,10 @@ def _revise_issued(ledger: DecisionLedger) -> list[dict[str, Any]]:
             if ledger.issued(terminal) is not None:
                 ledger.issue(terminal, _settled_verdict(terminal, ledger))
         for lifecycle, entry in ledger.held():
-            revised = _held_verdict(entry.finding, entry.addresses, entry.terminal, ledger)
-            if entry.pending is not None and revised["rule"] == "DRAA-4" and all(
-                ledger.equivocated_at(frozenset({address})) for address in entry.blocker
-            ):
-                ledger.record(entry.pending, entry.written)
+            if entry.pending is not None and not ledger.standing(entry):
+                ledger.record(entry.pending, entry.addresses)
                 entry, added = entry._replace(terminal=entry.pending, pending=None), True
-            ledger.hold(lifecycle, entry._replace(verdict=revised))
+            ledger.hold(lifecycle, entry._replace(verdict=_held_verdict(entry, ledger)))
     revisions = []
     for terminal, previous in issued:
         if previous is not None and ledger.issued(terminal) != previous:
@@ -4038,9 +4072,12 @@ def evaluate_lifecycles(values: list[Any], ledger: DecisionLedger) -> list[dict[
 
     Every lifecycle that passes the checks before the replay comparison that
     do not select a write copy first records its terminal in ``ledger``,
-    whatever that comparison will decide.  Each is then compared with every
-    terminal the ledger holds, so the verdicts do not depend on the order of
-    ``values``.  Verifying the same terminal again is idempotent.
+    whatever that comparison will decide, unless a finding on a copy that
+    can still be selected keeps it pending (see `HeldFinding`); a pending
+    terminal whose findings are all uncertainty is listed as undecided.
+    Each is then compared with every terminal the ledger holds, so the
+    verdicts do not depend on the order of ``values``.  Verifying the same
+    terminal again is idempotent.
 
     A verdict holds for the evidence evaluated so far.  When this call changes
     a verdict the ledger issued in an earlier call, every result it returns
@@ -4074,22 +4111,32 @@ def evaluate_lifecycles(values: list[Any], ledger: DecisionLedger) -> list[dict[
     for value, check, terminal in zip(values, checks, terminals):
         if check.records:
             ledger.record(terminal, _write_addresses(value["artifacts"]["terminal"]))
-    revisions = _revise_issued(ledger)
+    # Every held finding, and so every undecided terminal, of this call is in
+    # the ledger before any verdict is judged.  A lifecycle held earlier
+    # keeps its entry: its findings are the same, less those now unselectable.
+    keys = [
+        content_hash(value) if check.issue is not None and check.revisable and (
+            terminal is not None or check.issue["rule"] != "DRAA-4"
+        ) else None
+        for value, check, terminal in zip(values, checks, terminals)
+    ]
+    known, fresh = dict(ledger.held()), set()
+    for value, check, terminal, key in zip(values, checks, terminals, keys):
+        if key is not None and key not in known and key not in fresh:
+            ledger.hold(key, HeldFinding(
+                _write_addresses(value["artifacts"]["terminal"]), terminal if check.records else None,
+                check.issue, check.issue, terminal if check.pending else None, check.copies,
+            ))
+            fresh.add(key)
+    revisions = _revise_issued(ledger, frozenset(fresh))
+    held = dict(ledger.held())
     verdicts: list[dict[str, Any]] = []
-    for value, check, terminal in zip(values, checks, terminals):
+    for value, check, terminal, key in zip(values, checks, terminals, keys):
         if check.issue is None:
             verdict = _settled_verdict(terminal, ledger)
             ledger.issue(terminal, verdict)
-        elif check.revisable and (terminal is not None or check.issue["rule"] != "DRAA-4"):
-            written = _write_addresses(value["artifacts"]["terminal"])
-            entry = HeldFinding(
-                written if check.addresses is None else check.addresses,
-                terminal if check.records else None, check.issue, check.issue,
-                terminal if check.pending else None, written,
-                frozenset() if check.blocker is None else frozenset({check.blocker}),
-            )
-            verdict = _held_verdict(entry.finding, entry.addresses, entry.terminal, ledger)
-            ledger.hold(content_hash(value), entry._replace(verdict=verdict))
+        elif key is not None:
+            verdict = dict(held[key].verdict)
         else:
             verdict = check.issue
         verdicts.append({**verdict, "revises": revisions} if revisions else verdict)

@@ -905,22 +905,39 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 self.assertGreater(summaries[1]["finalizedBlockTimestampSec"], terminal_sec)
             # Neither receipt order nor a resolver-selected early/late anchor
             # can authorize choosing a copy and evaluating DRC-15 from it.
+            # Two funding writes leave the sole decision write selectable:
+            # DRC-15 is evaluated from it (CORE §5.1 is per logical address).
+            sole = value["resolverEvidence"]["qualifiedArtifactWrites"]["decision"]
             for ordered in (summaries, list(reversed(summaries))):
-                for selected in summaries:
+                for selected in summaries if name == "decision" else sole:
                     candidate = copy.deepcopy(value)
                     candidate["resolverEvidence"]["qualifiedArtifactWrites"][name] = ordered
                     candidate["resolverEvidence"]["decisionAnchor"]["finalizedBlockTimestampSec"] = selected["finalizedBlockTimestampSec"]
                     generator.resign_resolver(candidate)
                     before = copy.deepcopy(candidate)
                     ledger = DecisionLedger()
-                    with unittest.mock.patch.object(verifier, "_decision_ordering_check", side_effect=AssertionError("equivocation must stop before DRC-15")):
+                    with unittest.mock.patch.object(
+                        verifier, "_decision_ordering_check",
+                        side_effect=AssertionError("equivocation must stop before DRC-15") if name == "decision" else verifier._decision_ordering_check,
+                    ) as ordering:
                         self.assertEqual(verdict(evaluate_protocol(candidate, ledger)), ("indeterminate", "DRAA-4"))
+                    self.assertEqual(ordering.called, name == "funding")
                     self.assertEqual(candidate, before)
                     # Its terminal takes part in the replay comparison, as
                     # when the two writes arrive in separate lifecycles; its
                     # verdict is held by lifecycle, not issued for the terminal.
                     self.assertEqual(list(ledger.terminals()), [verifier._terminal_record(value)])
                     self.assertIsNone(ledger.issued(verifier._terminal_record(value)))
+            if name == "funding":
+                # An anchor that is not the sole decision write fails there,
+                # beside the funding equivocation, and records no terminal.
+                for selected in summaries:
+                    candidate = copy.deepcopy(value)
+                    candidate["resolverEvidence"]["decisionAnchor"]["finalizedBlockTimestampSec"] = selected["finalizedBlockTimestampSec"] + 1
+                    generator.resign_resolver(candidate)
+                    ledger = DecisionLedger()
+                    self.assertEqual(verdict(evaluate_protocol(candidate, ledger)), ("fail", "DRV-6"))
+                    self.assertEqual(ledger.terminals(), ())
 
     def _single_write_copy(self, name, copy_index):
         """P13 with the resolver qualifying only copy ``copy_index`` of the ``name`` write."""
@@ -1275,7 +1292,12 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             values = {"late": late, "second": second, "early": early, "carrier": carrier}
             with self.subTest(own=own):
                 self.assertEqual(finding(late), own)
-                alone = {"late": own, "second": ("pass", "DRV-7")}
+                # Beside a terminal whose ordering is uncertain, the second
+                # use of its decision is neither a replay nor a first use.
+                alone = {
+                    "late": own,
+                    "second": ("indeterminate", "DRD-8") if own[0] == "indeterminate" else ("pass", "DRV-7"),
+                }
                 for order in (("late", "second"), ("second", "late")):
                     ledger = DecisionLedger()
                     observed = evaluate_lifecycles([copy.deepcopy(values[item]) for item in order], ledger)
@@ -1298,6 +1320,123 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                             self.assertEqual(dict(zip(order, map(verdict, observed))), joint)
                             self.assertEqual(self._streamed(values, order), joint)
                             self.assertIn(verifier._terminal_record(copy.deepcopy(late)), ledger.terminals())
+
+    def _failing_carrier(self, name, copy_index):
+        """A lifecycle carrying only copy ``copy_index`` of the ``name`` write that fails DRE-1 before the write checks."""
+        value = self._vector("sr2-single-write-two-producers")
+        value["resolverEvidence"]["qualifiedArtifactWrites"] = {
+            name: [generator.qualified_artifact_write(value, name, copy_index)]
+        }
+        generator.resign_resolver(value)
+        value["artifacts"]["evaluation"]["signature"]["value"] = value["artifacts"]["decision"]["signature"]["value"]
+        return value
+
+    def test_a_finding_on_a_copy_stands_beside_another_address_equivocation(self):
+        """CORE §5.1, FV-10: two writes at one address leave a sole copy's finding at another standing, and its terminal unrecorded."""
+        release = self._fixture("release")
+        terminal = generator.block_time(generator.TERMINAL_BLOCKS["release"])
+        widened = (release["artifacts"]["railDefinition"]["parameters"]["maxCrossSubstrateSkewMs"] + 1000) // 1000
+        resolver_late = copy.deepcopy(release)
+        resolver_late["resolverEvidence"]["decisionAnchor"]["finalizedBlockTimestampSec"] = terminal + widened + 1
+        generator.resign_resolver(resolver_late)
+        unbound_funding = self._vector("sr2-single-write-two-producers")
+        unbound_funding["resolverEvidence"]["qualifiedArtifactWrites"]["funding"][0]["contentHash"] = "ab" * 32
+        generator.resign_resolver(unbound_funding)
+        second = self._fixture("release-second-terminal-transaction")
+        carriers = {f"{name}-{index}": self._failing_carrier(name, index) for name in ("funding", "decision") for index in (0, 1)}
+        for carrier in carriers.values():
+            self.assertEqual(finding(carrier), ("fail", "DRE-1"))
+        for label, late, own, other in (
+            ("carried late copy", self._late_decision_copy(), ("fail", "DRD-11"), "funding"),
+            ("carried unanchored copy", self._late_decision_copy(anchored=False), ("fail", "DRV-6"), "funding"),
+            ("carried copy in skew window", self._decision_copy_in_skew_window(), ("indeterminate", "DRC-15"), "funding"),
+            ("resolver anchor late", resolver_late, ("fail", "DRD-11"), "funding"),
+            ("unbound funding copy", unbound_funding, ("fail", "DRV-6"), "decision"),
+        ):
+            values = {"late": late, "second": second, **{f"{other}-{index}": carriers[f"{other}-{index}"] for index in (0, 1)}}
+            # The copy's own `fail` stands; its uncertainty gives way to
+            # DRAA-4 but still keeps the terminal out of replay state.
+            joint = {
+                "late": own if own[0] == "fail" else EQUIVOCATION, "second": EQUIVOCATION,
+                f"{other}-0": ("fail", "DRE-1"), f"{other}-1": ("fail", "DRE-1"),
+            }
+            with self.subTest(label=label):
+                self.assertEqual(finding(late), own)
+                for order in itertools.permutations(values):
+                    with self.subTest(order=order):
+                        ledger = DecisionLedger()
+                        observed = evaluate_lifecycles([copy.deepcopy(values[item]) for item in order], ledger)
+                        self.assertEqual(dict(zip(order, map(verdict, observed))), joint)
+                        self.assertNotIn(verifier._terminal_record(copy.deepcopy(late)), ledger.terminals())
+                        self.assertEqual(self._streamed(values, order), joint)
+                # The second write at the other address revises the second
+                # terminal's verdict and the copy's uncertainty, never its `fail`.
+                ledger = DecisionLedger()
+                for item in ("late", "second", f"{other}-0"):
+                    self.assertNotIn("revises", evaluate_protocol(copy.deepcopy(values[item]), ledger))
+                last = evaluate_protocol(copy.deepcopy(values[f"{other}-1"]), ledger)
+                self.assertEqual(
+                    [verdict(revision["previous"]) for revision in last["revises"]],
+                    [("pass", "DRV-7")] if own[0] == "fail" else [("indeterminate", "DRD-8"), own],
+                )
+                self.assertEqual({verdict(revision) for revision in last["revises"]}, {EQUIVOCATION})
+
+    def test_a_pending_terminal_takes_part_in_the_replay_comparison(self):
+        """A terminal whose decision ordering rests on a sole copy still fails replay, and keeps a conflicting terminal undecided."""
+
+        def terminal_sec(value):
+            reference = value["artifacts"]["terminal"]["terminalEventRefs"][0]
+            return next(
+                item["blockTimestampSec"] for item in value["reproductionInputs"]["nativeEventInputs"]
+                if verifier._event_identity(item["eventRef"]) == verifier._event_identity(reference)
+            )
+
+        def ordered_on(value, finalized, carried=True):
+            value = copy.deepcopy(value)
+            if carried:
+                value["resolverEvidence"]["qualifiedArtifactWrites"] = {
+                    "decision": [generator.qualified_artifact_write(value, "decision", 1, finalized)]
+                }
+            value["resolverEvidence"]["decisionAnchor"]["finalizedBlockTimestampSec"] = finalized
+            generator.resign_resolver(value)
+            return value
+
+        # The resolver attests the earlier terminal: no ledger is needed.
+        for name in (
+            "consumed-decision-replay", "resolver-history-shows-terminal-job",
+            "resolver-history-shows-event-settled-another-job",
+        ):
+            shipped = self._vector(name)
+            own = (self.vectors[name]["expected"], self.vectors[name]["expectedRule"])
+            self.assertEqual(own[0], "fail")
+            sec = terminal_sec(shipped)
+            widened = (shipped["artifacts"]["railDefinition"]["parameters"]["maxCrossSubstrateSkewMs"] + 1000) // 1000
+            for label, value, pending in (
+                ("carried copy in skew window", ordered_on(shipped, sec), ("indeterminate", "DRC-15")),
+                ("carried late copy", ordered_on(shipped, sec + widened + 1), ("fail", "DRD-11")),
+                ("resolver anchor in skew window", ordered_on(shipped, sec, carried=False), ("indeterminate", "DRC-15")),
+            ):
+                with self.subTest(vector=name, form=label):
+                    checked = verifier._checked_lifecycle(copy.deepcopy(value), DecisionLedger())
+                    self.assertEqual((verdict(checked.issue), checked.pending), (pending, True))
+                    ledger = DecisionLedger()
+                    self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(value), ledger)), own)
+                    self.assertEqual(ledger.terminals(), ())
+        # A conflict with the ledger: the shipped verdicts of the vector and
+        # its companion stand in every order, batch and stream.
+        for name in ("decision-reused-by-another-terminal-transaction", "second-terminal-for-terminal-job"):
+            shipped = self._vector(name)
+            companions = self.vectors[name]["evaluatedWith"]
+            values = {name: shipped, **{item: self._vector(item) for item in companions}}
+            joint = dict(zip(values, map(verdict, evaluate_lifecycles([copy.deepcopy(item) for item in values.values()], DecisionLedger()))))
+            self.assertEqual(joint[name], (self.vectors[name]["expected"], self.vectors[name]["expectedRule"]))
+            self.assertEqual({joint[item][0] for item in companions}, {"indeterminate"})
+            values[name] = ordered_on(shipped, terminal_sec(shipped))
+            with self.subTest(vector=name):
+                for order in itertools.permutations(values):
+                    observed = evaluate_lifecycles([copy.deepcopy(values[item]) for item in order], DecisionLedger())
+                    self.assertEqual(dict(zip(order, map(verdict, observed))), joint)
+                    self.assertEqual(self._streamed(values, order), joint)
 
     def test_an_unordered_resolver_anchor_records_its_terminal_only_once_unselectable(self):
         """DRC-15 on the resolver's own anchor keeps its terminal out of replay until two decision writes are known."""

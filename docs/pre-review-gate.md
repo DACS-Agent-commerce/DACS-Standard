@@ -1,12 +1,13 @@
 # Offline pre-review gate
 
 Run `python3 scripts/pre_review_gate.py` before requesting review. The gate
-executes the invariant registry in `conformance/pre-review-invariants.json` and
-fails when a required case disappears, a declared matrix loses a cell, a vector
-no longer produces its complete pinned outcome (verdict and consumer effects),
-a control no longer produces its own independently pinned outcome, a negative no
-longer differs from its control, or a named prior-blocker unit regression stops
-executing.
+executes the invariant registry in `conformance/pre-review-invariants.json`.
+It fails when a required case disappears or a declared matrix loses a cell.
+It also fails when a vector no longer produces its complete pinned outcome
+(verdict and consumer effects) or a control no longer produces its own
+independently pinned outcome.
+A negative that no longer differs from its control or a named prior-blocker unit
+regression that stops executing also fails the gate.
 
 Current enforced coverage is deliberately narrow:
 
@@ -40,6 +41,15 @@ token admission (including duplicate member names and non-canonical numeric
 spellings) remains a separate upstream responsibility: externally supplied JSON
 bytes must pass the repository's strict raw-input profile before object-model
 canonicalization.
+
+Selected unit regressions and independent review evidence run in isolated
+processes. On POSIX, SIGTERM cancellation terminates the selected runner's process
+group and reaps the runner before the gate exits from SIGTERM. Repeated SIGTERM
+signals during abnormal cleanup are deferred until cleanup finishes.
+
+Failed selected tests report their test IDs and assertion or error tracebacks
+alongside the numeric summary. Diagnostic output is bounded; oversized details
+carry a truncation marker.
 
 Pre-review checklist:
 

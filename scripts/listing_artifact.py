@@ -257,12 +257,20 @@ def _valid_price(value):
     )
 
 
+def _is_positive_safe_integer(value):
+    return _is_number(value) and value >= 1 and value == int(value)
+
+
 def _valid_payment_rail_ref(value):
-    """PaymentRailRef (DACS-4 §9.2), in acceptedRails and pay-alternative."""
+    """PaymentRailRef (DACS-4 §9.3), in acceptedRails and pay-alternative.
+
+    ``railVersion`` must name a resolvable RailDefinition, whose version is a
+    positive JSON safe integer (RD-3).
+    """
     return (
         isinstance(value, dict)
         and _is_nonempty_string(value.get("railId"))
-        and _optional(value, "railVersion", _is_number)
+        and _optional(value, "railVersion", _is_positive_safe_integer)
         and _optional(value, "parameters", lambda parameters: isinstance(parameters, dict))
     )
 

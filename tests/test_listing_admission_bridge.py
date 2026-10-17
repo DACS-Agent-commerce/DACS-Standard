@@ -613,6 +613,28 @@ class CurrentSealedPhaseShapeTests(unittest.TestCase):
         listing = self.listing()
         listing["pricing"] = fixed
         self.assertFalse(listing_artifact.validate_listing_shape(listing)[0])
+        # A stray selectionRule equal to the phase rule satisfies the rule-equality
+        # clause, so only the sealed-negotiation arm of PS-3 can refuse these.
+        for pricing in (
+            {**fixed, "selectionRule": "lowest-price"},
+            {
+                "kind": "metered", "unitPrice": {"amount": "1", "currency": "DEM"},
+                "unit": "call", "selectionRule": "lowest-price",
+            },
+        ):
+            for name, listing in (
+                ("historical", self.historical_listing()), ("complete", self.listing()),
+            ):
+                with self.subTest(sealed=name, pricing=pricing["kind"]):
+                    self.assertEqual(
+                        listing["pipeline"][1]["parameters"]["selectionRule"],
+                        pricing["selectionRule"],
+                    )
+                    listing["pricing"] = pricing
+                    self.assertEqual(
+                        listing_artifact.validate_listing_shape(listing)[:2],
+                        (False, "invalid or unsupported pipeline"),
+                    )
         for pricing in (fixed, auction):
             with self.subTest(rfq_pricing=pricing["kind"]):
                 listing = _legacy_listing()
@@ -648,6 +670,8 @@ _VALID_RULE_LOCATIONS = (
     "https://user:password@rules.example:443/rule",
     "https://[2001:db8::1]:443/rule", "https://[::ffff:192.0.2.1]/rule",
     "https://[v1.a:b]/rule", "https://[VF.x]/rule",
+    # A scheme whose first path segment holds a colon.
+    "urn:dacs:rule:1",
 )
 _INVALID_RULE_LOCATIONS = (
     "", "bad%GG", "bad%", "bad%0", "foo|bar", "foo\\bar", "foo{bar}",
@@ -659,6 +683,8 @@ _INVALID_RULE_LOCATIONS = (
     "https://rules.example:port/rule", "https://a@b@rules.example/rule",
     "https://[bad]/rule", "https://[2001:db8::1/rule", "https://[192.0.2.1]/rule",
     "https://[1:2:3]/rule", "https://[vG.x]/rule", "https://[v1.]/rule",
+    # RFC 6874 zone IDs are not RFC 3986 IP literals.
+    "https://[fe80::1%25eth0]/rule",
 )
 
 
@@ -987,11 +1013,15 @@ class ListingShapeBoundsTests(unittest.TestCase):
                 }
                 self.assert_shape_failure(listing, "invalid offering")
 
-    def test_rail_version_is_a_number(self):
-        listing = _legacy_listing()
-        listing["acceptedRails"][0]["railVersion"] = 1
-        self.assert_publishable(listing)
-        for value in ("1", {}, [1], None, True, False):
+    def test_rail_version_is_a_positive_safe_integer(self):
+        # DACS-4 RD-3: a RailDefinition version is a positive JSON safe integer,
+        # so any other PaymentRailRef.railVersion can never resolve.
+        for value in (1, 1.0, 2, 2**53 - 1):
+            with self.subTest(rail_version=value):
+                listing = _legacy_listing()
+                listing["acceptedRails"][0]["railVersion"] = value
+                self.assert_publishable(listing)
+        for value in ("1", {}, [1], None, True, False, 0, -1, 1.5, 0.5):
             with self.subTest(rail_version=value):
                 listing = _legacy_listing()
                 listing["acceptedRails"][0]["railVersion"] = value
@@ -1014,6 +1044,7 @@ class ListingShapeBoundsTests(unittest.TestCase):
         self.assertTrue(listing_artifact.validate_listing_shape(listing)[0])
         for member, value in (
             ("railVersion", "1"), ("railVersion", None), ("railVersion", True),
+            ("railVersion", 0), ("railVersion", -1), ("railVersion", 1.5),
             ("parameters", None), ("parameters", []), ("parameters", "x"),
         ):
             with self.subTest(member=member, value=value):

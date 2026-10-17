@@ -34,7 +34,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install validation dependencies
-        run: python3 -m pip install -r requirements-ap2-reference.txt
+        run: python3 -m pip install -r requirements-ap2-reference.txt 'jsonschema==4.25.1' 'referencing==0.37.0' 'rpds-py==2026.9.1'
 
       - name: Official AP2 and crypto import gate (fail-closed)
         run: |
@@ -55,16 +55,22 @@ jobs:
           from ap2.sdk.payment_mandate_chain import PaymentMandateChain
           import cryptography
           import idna
+          import jsonschema
           import jwcrypto
           import pydantic
+          import referencing
+          import rpds
           import sd_jwt
 
           print(
               "ap2", version("ap2"),
               "cryptography", version("cryptography"),
               "idna", version("idna"),
+              "jsonschema", version("jsonschema"),
               "jwcrypto", version("jwcrypto"),
               "pydantic", version("pydantic"),
+              "referencing", version("referencing"),
+              "rpds-py", version("rpds-py"),
               "sd-jwt", version("sd-jwt"),
               MandateClient.__name__,
               CheckoutMandateChain.__name__,
@@ -165,6 +171,15 @@ jobs:
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check
 
+      - name: Verify Atomic Work vectors are deterministic
+        run: python3 scripts/generate_atomic_work_vectors.py --check
+
+      - name: Validate Atomic Work vectors semantically
+        run: python3 scripts/validate_atomic_work_vectors.py
+
+      - name: Validate Atomic Work schemas and representative fixtures
+        run: python3 scripts/validate_atomic_work_schemas.py
+
       - name: Validate domain separators
         run: python3 scripts/validate_domain_separators.py
 
@@ -182,6 +197,9 @@ jobs:
 
       - name: Verify reference-bearing fixtures are deterministic
         run: python3 scripts/generate_artifact_reference_fixtures.py --check
+
+      - name: Verify payment-input and amendment target fixtures are deterministic
+        run: python3 scripts/generate_settlement_contract_vectors.py --check
 
       - name: Verify signed SEB authority vectors are deterministic
         run: python3 scripts/generate_bundle_settlement_evidence_vectors.py --check

@@ -12,6 +12,11 @@ This directory holds the authoritative DACS standard, published as a **Core docu
 | [`DACS-5-VERIFY.md`](./DACS-5-VERIFY.md) | Session record, attestation bundle, reputation derivation (chapter 10). |
 | [`PROFILE.md`](./PROFILE.md) | The v0.1 version set, and how scope is a profile decision. |
 
+Machine-readable schemas for the optional Atomic DACS Work profile are under
+[`schemas/`](./schemas/). They accompany the normative definitions in CORE
+§5.2 and DACS-4 §9.7.3; the Markdown rules remain authoritative when a schema
+cannot express a cross-artifact or proof-verification requirement.
+
 Section numbers are retained across the split (a §9.x reference lives in `DACS-4-SETTLE.md`, etc.); the [document map in CORE](./CORE.md#document-map) gives the §→document index.
 
 **Normative language.** The specification uses the RFC 2119 / RFC 8174 keywords

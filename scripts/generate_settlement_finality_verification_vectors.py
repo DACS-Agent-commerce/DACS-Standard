@@ -19,6 +19,7 @@ try:
         AGREEMENT_DOMAIN,
         BFT_CERTIFICATE_DOMAIN,
         CHAIN_AUTHORITY_DOMAIN,
+        DEMOS_RECORD_PROFILE,
         EVIDENCE_DOMAIN,
         FIXTURE_POLICY,
         LEGACY_EVIDENCE_DOMAIN,
@@ -33,6 +34,7 @@ except ImportError:
         AGREEMENT_DOMAIN,
         BFT_CERTIFICATE_DOMAIN,
         CHAIN_AUTHORITY_DOMAIN,
+        DEMOS_RECORD_PROFILE,
         EVIDENCE_DOMAIN,
         FIXTURE_POLICY,
         LEGACY_EVIDENCE_DOMAIN,
@@ -154,6 +156,7 @@ class FixtureFactory:
                 "sr3Binding": "provider-jws-v1",
                 "settlement": self.chain_profile("bft-final", network="demos:mainnet"),
             },
+            "demosRecordProfile": DEMOS_RECORD_PROFILE,
         }
         self.controls = {}
 
@@ -246,17 +249,23 @@ class FixtureFactory:
         commitment: str | None = None,
         bft_signers=("validator-a", "validator-b"),
         parent_id: str | None = None,
+        record: dict | None = None,
     ) -> dict:
         event_proof = self.merkle_proof(
             "fixture-event-merkle-v1", "eventBytes", event, label + ":event"
         )
+        # A pay-dem transaction carries its Demos execution record (DACS-4
+        # §9.5.9 DEM-7) instead of the fixture codec's "success".
         transaction = {
             "networkId": profile["networkId"],
             "genesisHash": profile["genesisHash"],
             "transactionRef": copy.deepcopy(reference),
             "eventsRoot": event_proof["root"],
-            "status": "success",
         }
+        if record is None:
+            transaction["status"] = "success"
+        else:
+            transaction["record"] = copy.deepcopy(record)
         transaction_proof = self.merkle_proof(
             "fixture-transaction-merkle-v1", "transactionBytes", transaction, label + ":transaction"
         )
@@ -369,6 +378,30 @@ class FixtureFactory:
         if model == "bft-final":
             return {"kind": "demos", "txHash": self.tx_id(label), "blockNumber": 100}
         raise ValueError(model)
+
+    def demos_key(self, role: str) -> str:
+        return self.keys[role].public_key().public_bytes_raw().hex()
+
+    def demos_send_record(self, reference: dict, *, status: str = "confirmed", **content_changes) -> dict:
+        """A `getTxByHash` native-send record in the node's wire form
+        (DEMOS-MAPPING §A.2) for 5 DEM from the buyer to the seller."""
+        payee = self.demos_key("seller")
+        content = {
+            "type": "native",
+            "from": "0x" + self.demos_key("buyer"),
+            "from_ed25519_address": "0x" + self.demos_key("buyer"),
+            "to": "0x" + payee,
+            "amount": 5_000_000_000,
+            "nonce": "7",
+            "data": ["native", {"nativeOperation": "send", "args": [payee, "5000000000"]}],
+        }
+        content.update(content_changes)
+        return {
+            "hash": reference["txHash"],
+            "blockNumber": reference["blockNumber"],
+            "status": status,
+            "content": {key: value for key, value in content.items() if value is not None},
+        }
 
     @staticmethod
     def common_event(reference: dict, session: dict, *, event_type="transfer") -> dict:
@@ -638,6 +671,7 @@ class FixtureFactory:
             observation = self.chain_observation(
                 profile["settlement"], reference, event, model,
                 commitment="finalized" if model == "commitment-level" else None,
+                record=self.demos_send_record(reference) if model == "bft-final" else None,
             )
             payment_refs = [reference]
             context = {"kind": "chain", "observation": observation}
@@ -774,11 +808,14 @@ class FixtureFactory:
         event = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
         mutate(event)
         profile = value["rail"]["consumerFinalityProfile"]
+        record = None
         if value["context"]["kind"] == "chain":
             chain_profile = profile["settlement"]
             ref = value["evidence"]["paymentTxRefs"][0]
             label = "rebuilt:chain"
             commitment = "finalized" if chain_profile["kind"] == "commitment-level" else None
+            if chain_profile["kind"] == "bft-final":
+                record = self.demos_send_record(ref)
         elif value["context"]["kind"] == "htlc":
             arm = path[-1]
             chain_profile = profile["source"] if arm.startswith("source") else profile["destination"]
@@ -792,7 +829,7 @@ class FixtureFactory:
             label = "rebuilt:tank:" + arm
             commitment = None
         rebuilt = self.chain_observation(
-            chain_profile, ref, event, label, commitment=commitment
+            chain_profile, ref, event, label, commitment=commitment, record=record
         )
         target = value["context"]
         for segment in path[:-1]:
@@ -1391,6 +1428,60 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-bft-signature-invalid", "fail", "BFT native proof signature is verified", changed("bft-final", lambda v: v["context"]["observation"]["finalityCertificate"]["signatures"][0].__setitem__("value", "A" * 86))),
         case("fv-bft-quorum-insufficient", "fail", "weighted quorum is recomputed from the pinned validator set", changed("bft-final", lambda v: v["context"]["observation"]["finalityCertificate"].__setitem__("signatures", v["context"]["observation"]["finalityCertificate"]["signatures"][:1]))),
         case("fv-bft-validator-key-substitution", "fail", "unknown validator cannot enter the pinned set", changed("bft-final", lambda v: v["context"]["observation"]["finalityCertificate"]["signatures"][0].__setitem__("validatorId", CLAIMS["orchestrator"]))),
+    ])
+
+    # DACS-4 §9.5.9 DEM-7 under FV-5. Each case re-forges an authentic,
+    # BFT-certified block for the canonical bft-final transfer whose body
+    # carries the Demos native-send record, with exactly one dimension
+    # changed; fv-bft-final-canonical-success is the positive control.
+    def demos_record(*, status="confirmed", event_changes=None, block_number=None,
+                     record_changes=None, without_record=False, **content_changes):
+        value = factory.model_input("bft-final")
+        reference = value["evidence"]["paymentTxRefs"][0]
+        encoded = value["context"]["observation"]["selectedEventProof"]["eventBytes"]
+        event = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+        event.update(event_changes or {})
+        if block_number is not None:
+            reference["blockNumber"] = block_number
+            event["transactionRef"]["blockNumber"] = block_number
+            factory.resign_evidence(value["evidence"])
+        record = factory.demos_send_record(reference, status=status, **content_changes)
+        record.update(record_changes or {})
+        value["context"]["observation"] = factory.chain_observation(
+            value["rail"]["consumerFinalityProfile"]["settlement"],
+            reference, event, "bft-final", record=None if without_record else record,
+        )
+        return value
+
+    other_party = CLAIMS["orchestrator"]
+    other_key = factory.demos_key("orchestrator")
+    payee_key = factory.demos_key("seller")
+
+    def send(recipient, amount_os):
+        return ["native", {"nativeOperation": "send", "args": [recipient, amount_os]}]
+
+    vectors.extend([
+        case("fv-bft-final-included-execution-failed", "fail", "BFT-final inclusion of a Demos transfer whose authenticated record failed is not settlement", demos_record(status="failed")),
+        case("fv-bft-final-execution-pending", "indeterminate", "an authenticated Demos record that is neither confirmed nor failed is not an execution result", demos_record(status="pending")),
+        case("fv-bft-final-execution-included-alias", "indeterminate", "the status-index label included is not a Demos execution result", demos_record(status="included")),
+        case("fv-bft-final-execution-success-alias", "indeterminate", "only the exact Demos record status confirmed is an executed send", demos_record(status="success")),
+        case("fv-bft-final-event-wrong-payee", "fail", "an authentic selected event naming another payee contradicts the phase", demos_record(event_changes={"payee": other_party})),
+        case("fv-bft-final-event-wrong-payer", "fail", "an authentic selected event naming another payer contradicts the phase", demos_record(event_changes={"payer": other_party})),
+        case("fv-bft-final-event-wrong-amount", "fail", "an authentic selected event of another amount contradicts the phase", demos_record(event_changes={"amount": "6"})),
+        case("fv-bft-final-record-wrong-payee", "fail", "an authentic confirmed native send to another Demos key contradicts the phase payee", demos_record(to="0x" + other_key, data=send(other_key, "5000000000"))),
+        case("fv-bft-final-record-wrong-payer", "fail", "an authentic confirmed native send from another Demos key contradicts the phase payer", demos_record(**{"from": "0x" + other_key, "from_ed25519_address": "0x" + other_key})),
+        case("fv-bft-final-record-wrong-amount", "fail", "an authentic confirmed native send of another OS amount contradicts the phase amount", demos_record(amount=6_000_000_000, data=send(payee_key, "6000000000"))),
+        case("fv-bft-final-record-wrong-record-hash", "fail", "the authenticated record must be the signed txHash's record", demos_record(record_changes={"hash": "ee" * 32})),
+        case("fv-bft-final-record-wrong-record-block", "fail", "the authenticated record's blockNumber must be the signed blockNumber", demos_record(record_changes={"blockNumber": 101})),
+        case("fv-bft-final-record-wrong-block", "fail", "the signed Demos blockNumber must be the authenticated inclusion block", demos_record(block_number=101)),
+        case("fv-bft-final-record-wrong-hash", "fail", "a re-signed Demos txHash must match the authenticated transaction", changed("bft-final", lambda v: (v["evidence"]["paymentTxRefs"][0].__setitem__("txHash", "ff" * 32), factory.resign_evidence(v["evidence"])))),
+        case("fv-bft-final-record-missing", "error", "a pay-dem transaction body without its Demos execution record cannot be verified", demos_record(without_record=True)),
+        case("fv-bft-final-record-noncanonical-nonce", "indeterminate", "a nonce with a leading zero does not decode under the native-send record profile", demos_record(nonce="07")),
+        case("fv-bft-final-record-missing-nonce", "indeterminate", "a record without a nonce does not decode under the native-send record profile", demos_record(nonce=None)),
+        case("fv-bft-final-record-send-recipient-mismatch", "indeterminate", "the native send argument must credit the same key as content.to", demos_record(data=send(other_key, "5000000000"))),
+        case("fv-bft-final-record-send-amount-mismatch", "indeterminate", "the native send argument must carry the same OS amount as content.amount", demos_record(data=send(payee_key, "6000000000"))),
+        case("fv-bft-final-record-not-native-send", "indeterminate", "only a native send moves the payment", demos_record(data=["native", {"nativeOperation": "burn", "args": [payee_key, "5000000000"]}])),
+        case("fv-bft-final-record-unpinned-node", "indeterminate", "a verifier that does not pin the profile's execution-record semantics cannot rely on confirmed", factory.model_input("bft-final"), trusted_overrides={"demosRecordProfile": "kynesyslabs/node@ac8f45f02fc9c25082ce9b83595c2e3916b49c5a"}),
     ])
 
     provider_not_captured, provider_override = factory.provider_variant(status="declined")

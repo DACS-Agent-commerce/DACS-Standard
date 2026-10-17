@@ -1,6 +1,7 @@
 {
   "authorityCount": 2,
   "baseTrusted": {
+    "demosRecordProfile": "kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f45578",
     "observationAuthorityKeys": {
       "rpc-a": "wFDFY3pE-oYp__PMzOIwDLNipj2Z2V_FQUUmb0MyRFo",
       "rpc-b": "IBLLkMpg6OXY2vZuInLSIz4EhtVX6MZhQe2JIBd9frc",

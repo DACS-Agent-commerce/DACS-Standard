@@ -167,7 +167,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(86, self.data["count"])
+        self.assertEqual(107, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -205,6 +205,83 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                     case["want"]["finalityClass"], result.get("finalityClass")
                 )
         self.assertEqual({"pass", "fail", "indeterminate", "error"}, set(observed.values()))
+
+    def test_demos_record_cases_bind_every_dem7_dimension(self):
+        # DACS-4 §9.5.9 DEM-7 under FV-5: each case is an authentic
+        # BFT-final block that differs from the passing control in one
+        # execution-record dimension.
+        control = self.cases["fv-bft-final-canonical-success"]
+        self.assertEqual("pass", self.evaluate_case(control)["decision"])
+        contradicts = ("fail", "contradicts the signed reference or phase (DEM-7)")
+        undecodable = ("indeterminate", "does not decode as a native send (DEM-7)")
+        expected = {
+            "fv-bft-final-included-execution-failed": ("fail", "failed execution (DEM-7)"),
+            "fv-bft-final-execution-pending": ("indeterminate", "not an execution result (DEM-7)"),
+            "fv-bft-final-execution-included-alias": ("indeterminate", "not an execution result (DEM-7)"),
+            "fv-bft-final-execution-success-alias": ("indeterminate", "not an execution result (DEM-7)"),
+            "fv-bft-final-event-wrong-payee": ("fail", "authenticated economics"),
+            "fv-bft-final-event-wrong-payer": ("fail", "authenticated economics"),
+            "fv-bft-final-event-wrong-amount": ("fail", "authenticated economics"),
+            "fv-bft-final-record-wrong-payee": contradicts,
+            "fv-bft-final-record-wrong-payer": contradicts,
+            "fv-bft-final-record-wrong-amount": contradicts,
+            "fv-bft-final-record-wrong-record-hash": contradicts,
+            "fv-bft-final-record-wrong-record-block": contradicts,
+            "fv-bft-final-record-wrong-block": ("fail", "authenticated inclusion block (DEM-7)"),
+            "fv-bft-final-record-wrong-hash": ("fail", "differs from signed evidence"),
+            "fv-bft-final-record-missing": ("error", "malformed raw transaction body"),
+            "fv-bft-final-record-noncanonical-nonce": undecodable,
+            "fv-bft-final-record-missing-nonce": undecodable,
+            "fv-bft-final-record-send-recipient-mismatch": undecodable,
+            "fv-bft-final-record-send-amount-mismatch": undecodable,
+            "fv-bft-final-record-not-native-send": undecodable,
+            "fv-bft-final-record-unpinned-node": ("indeterminate", "semantics are not pinned (DEM-7)"),
+        }
+        demos_cases = {
+            name for name in self.cases
+            if name.startswith(("fv-bft-final-record-", "fv-bft-final-execution-", "fv-bft-final-event-"))
+        }
+        self.assertEqual(set(expected) - {"fv-bft-final-included-execution-failed"}, demos_cases)
+        for name, (decision, reason) in expected.items():
+            with self.subTest(case=name):
+                case = self.cases[name]
+                self.assertEqual("bft-final", case["input"]["rail"]["consumerFinalityProfile"]["model"])
+                self.assertNotEqual(
+                    (control["input"], control.get("trustedOverrides")),
+                    (case["input"], case.get("trustedOverrides")),
+                )
+                result = self.evaluate_case(case)
+                self.assertEqual((case["expected"], decision), (result["decision"], result["decision"]))
+                self.assertIn(reason, result["reason"])
+
+    def test_demos_control_passes_only_with_a_bound_native_send_record(self):
+        # The authenticated pay-dem transaction body carries the Demos
+        # native-send record in the node's wire form, and it binds the
+        # signed reference, the parties' Demos keys and 5 DEM in OS.
+        control = self.cases["fv-bft-final-canonical-success"]
+        proof = control["input"]["context"]["observation"]["transactionInclusionProof"]
+        encoded = proof["transactionBytes"]
+        body = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+        self.assertNotIn("status", body)
+        record = body["record"]
+        reference = control["input"]["evidence"]["paymentTxRefs"][0]
+        keys = {
+            claim: base64.urlsafe_b64decode(key + "=" * (-len(key) % 4)).hex()
+            for claim, key in self.trust["partyKeys"].items()
+        }
+        self.assertEqual((reference["txHash"], reference["blockNumber"], "confirmed"),
+                         (record["hash"], record["blockNumber"], record["status"]))
+        content = record["content"]
+        self.assertEqual("0x" + keys["did:demos:buyer"], content["from"])
+        self.assertEqual("0x" + keys["did:demos:seller"], content["to"])
+        self.assertEqual(5_000_000_000, content["amount"])
+        self.assertIsInstance(content["nonce"], str)
+        self.assertEqual(["native", {"nativeOperation": "send", "args": [keys["did:demos:seller"], "5000000000"]}], content["data"])
+        self.assertEqual(
+            "kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f45578", self.trust["demosRecordProfile"]
+        )
+        # Without the record, the same authentic block does not pass.
+        self.assertEqual("error", self.evaluate_case(self.cases["fv-bft-final-record-missing"])["decision"])
 
     def test_every_finality_model_has_a_legitimate_control(self):
         controls = {

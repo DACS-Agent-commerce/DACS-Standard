@@ -147,6 +147,9 @@ jobs:
       - name: Verify SB-2 collision-authority vectors are deterministic
         run: python3 scripts/generate_sb2_collision_authority_vectors.py --check
 
+      - name: Verify pay-dem execution vectors are deterministic
+        run: python3 scripts/generate_pay_dem_execution_vectors.py --check
+
       - name: Verify legacy-agreement admission vectors are deterministic
         run: python3 scripts/generate_legacy_agreement_admission_vectors.py --check
 

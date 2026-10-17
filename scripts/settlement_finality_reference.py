@@ -35,9 +35,15 @@ AGREEMENT_DOMAIN = "dacs-agreement:v1:"
 CHAIN_AUTHORITY_DOMAIN = "dacs-finality-fixture-chain-observation:v1:"
 BFT_CERTIFICATE_DOMAIN = "dacs-finality-fixture-bft-certificate:v1:"
 PROVIDER_ATTESTATION_DOMAIN = "dacs-finality-fixture-provider-response:v1:"
+# DEMOS-MAPPING §A.2: the node source whose execution-record semantics the
+# verifier pins for a `pay-dem` record.
+DEMOS_RECORD_PROFILE = "kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f45578"
+DEMOS_OS_PER_DEM = 10**9
 
 POSITION_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
+DEMOS_KEY_RE = re.compile(r"(?:0x)?([0-9a-f]{64})\Z")
+DEM_AMOUNT_RE = re.compile(r"(0|[1-9][0-9]*)(?:\.([0-9]{1,9}))?\Z")
 DECIMAL_RE = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
 SIG_RE = re.compile(r"[A-Za-z0-9_-]+\Z")
 MAX_SAFE_INTEGER = 9_007_199_254_740_991
@@ -913,12 +919,99 @@ def _verify_bft_certificate(observation: dict, profile: dict, trusted: dict) -> 
     return "pass", "BFT certificate and weighted quorum verified"
 
 
+def _demos_key(value: Any) -> str | None:
+    match = DEMOS_KEY_RE.match(value) if isinstance(value, str) else None
+    return match.group(1) if match else None
+
+
+def _demos_integer(value: Any) -> int | None:
+    """A safe JSON integer or a canonical decimal string (DEMOS-MAPPING §A.2)."""
+    if _safe_integer(value):
+        return int(value)
+    if isinstance(value, str) and POSITION_RE.match(value):
+        return int(value)
+    return None
+
+
+def _demos_native_send(record: Any) -> dict | None:
+    """DEMOS-MAPPING §A.2 native-send projection of a transaction record."""
+    if not isinstance(record, dict) or not isinstance(record.get("content"), dict):
+        return None
+    content = record["content"]
+    tx_hash = record.get("hash")
+    nonce = _demos_integer(content.get("nonce"))
+    amount = _demos_integer(content.get("amount"))
+    sender = _demos_key(content.get("from"))
+    recipient = _demos_key(content.get("to"))
+    data = content.get("data")
+    if not (
+        isinstance(tx_hash, str) and SHA256_RE.match(tx_hash)
+        and _safe_integer(record.get("blockNumber"))
+        and isinstance(record.get("status"), str)
+        and content.get("type") == "native"
+        and None not in (nonce, amount, sender, recipient)
+        and ("from_ed25519_address" not in content or _demos_key(content["from_ed25519_address"]) == sender)
+        and isinstance(data, list) and len(data) == 2 and data[0] == "native"
+        and _exact_object(data[1], {"nativeOperation", "args"})
+        and data[1]["nativeOperation"] == "send"
+        and isinstance(data[1]["args"], list) and len(data[1]["args"]) == 2
+        and _demos_key(data[1]["args"][0]) == recipient
+        and isinstance(data[1]["args"][1], str) and POSITION_RE.match(data[1]["args"][1])
+        and int(data[1]["args"][1]) == amount
+    ):
+        return None
+    return {
+        "txHash": tx_hash, "blockNumber": int(record["blockNumber"]), "status": record["status"],
+        "nonce": nonce, "sender": sender, "recipient": recipient, "amountOs": amount,
+    }
+
+
+def _party_demos_key(trusted: dict, claim: Any) -> str | None:
+    """The fixture party's Demos key: its pinned Ed25519 party key (the pay-dem
+    payee is intrinsically the primary claim's address, §9.5.1 Tier 1)."""
+    try:
+        raw = b64url_decode((trusted.get("partyKeys") or {}).get(claim))
+    except (ValueError, TypeError, binascii.Error):
+        return None
+    return raw.hex() if len(raw) == 32 else None
+
+
+def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: dict) -> tuple[str, str]:
+    """DACS-4 §9.5.9 DEM-7 under FV-5 for an authenticated `pay-dem` record."""
+    if trusted.get("demosRecordProfile") != DEMOS_RECORD_PROFILE:
+        return "indeterminate", "Demos execution-record semantics are not pinned (DEM-7)"
+    projection = _demos_native_send(record)
+    if projection is None:
+        return "indeterminate", "authenticated Demos record does not decode as a native send (DEM-7)"
+    amount = DEM_AMOUNT_RE.match(expected.get("amount") or "") if expected.get("currency") == "DEM" else None
+    payer = _party_demos_key(trusted, expected.get("payer"))
+    payee = _party_demos_key(trusted, expected.get("payee"))
+    if amount is None or payer is None or payee is None:
+        return "error", "phase lacks a DEM amount or Demos party keys"
+    amount_os = int(amount.group(1)) * DEMOS_OS_PER_DEM + int((amount.group(2) or "").ljust(9, "0"))
+    if (
+        projection["txHash"] != reference.get("txHash")
+        or projection["blockNumber"] != reference.get("blockNumber")
+        or projection["sender"] != payer
+        or projection["recipient"] != payee
+        or projection["amountOs"] != amount_os
+    ):
+        return "fail", "authenticated Demos record contradicts the signed reference or phase (DEM-7)"
+    if projection["status"] == "failed":
+        return "fail", "authenticated Demos transaction record failed execution (DEM-7)"
+    if projection["status"] != "confirmed":
+        return "indeterminate", "authenticated Demos record status is not an execution result (DEM-7)"
+    return "pass", "authenticated Demos record binds a confirmed native send"
+
+
 def _verify_chain_observation(
     observation: Any,
     profile: dict,
     reference: dict,
     expected: dict,
     trusted: dict,
+    *,
+    native_send: bool = False,
 ) -> tuple[dict, dict | None]:
     if observation is None:
         return _result("indeterminate", "required chain observation unavailable"), None
@@ -949,19 +1042,28 @@ def _verify_chain_observation(
         return _result(event_decision, event_reason), None
     if transaction_decision != "pass":
         return _result(transaction_decision, transaction_reason), None
-    if not _exact_object(transaction, {"networkId", "genesisHash", "transactionRef", "eventsRoot", "status"}):
+    # A `pay-dem` transaction body carries the Demos execution record in
+    # place of the fixture codec's status; DACS-4 §9.5.9 DEM-7 classifies it.
+    native_send = native_send and reference.get("kind") == "demos"
+    outcome = "record" if native_send else "status"
+    if not _exact_object(transaction, {"networkId", "genesisHash", "transactionRef", "eventsRoot", outcome}):
         return _result("error", "malformed raw transaction body"), None
     if (
         transaction.get("networkId") != profile["networkId"]
         or transaction.get("genesisHash") != profile["genesisHash"]
         or canonical_bytes(transaction.get("transactionRef")) != canonical_bytes(reference)
         or transaction.get("eventsRoot") != observation["selectedEventProof"]["root"]
-        or transaction.get("status") != "success"
+        or (not native_send and transaction.get("status") != "success")
     ):
         return _result("fail", "raw transaction does not bind selected event, network, or reference"), None
     economics_decision, economics_reason = _verify_event_economics(event, reference, expected)
     if economics_decision != "pass":
         return _result(economics_decision, economics_reason), None
+    record_decision, record_reason = "pass", ""
+    if native_send:
+        record_decision, record_reason = _verify_demos_record(transaction["record"], reference, expected, trusted)
+        if record_decision in {"error", "fail"}:
+            return _result(record_decision, record_reason), None
 
     inclusion = observation.get("inclusionBlock")
     head = observation.get("authenticatedHead")
@@ -1005,6 +1107,8 @@ def _verify_chain_observation(
         return _result("error", "ancestryProof is not an array"), None
     inclusion_position = int(inclusion["position"])
     head_position = int(head["position"])
+    if reference.get("kind") == "demos" and reference.get("blockNumber") != inclusion_position:
+        return _result("fail", "Demos blockNumber differs from the authenticated inclusion block (DEM-7)"), None
     if head_position < inclusion_position:
         return _result("fail", "authenticated head precedes inclusion block"), None
     if len(ancestry) != head_position - inclusion_position:
@@ -1074,6 +1178,8 @@ def _verify_chain_observation(
         bft_decision, bft_reason = _verify_bft_certificate(observation, profile, trusted)
         if bft_decision != "pass":
             return _result(bft_decision, bft_reason), None
+    if record_decision != "pass":
+        return _result(record_decision, record_reason), None
     return _result("pass", "chain observation verified"), event
 
 
@@ -1596,7 +1702,8 @@ def _verify(value: Any, trusted: Any) -> dict:
         if not isinstance(refs, list) or len(refs) != 1:
             return _result("error", "single-chain evidence requires exactly one transaction reference")
         result, event = _verify_chain_observation(
-            context.get("observation"), profile["settlement"], refs[0], expected, trusted
+            context.get("observation"), profile["settlement"], refs[0], expected, trusted,
+            native_send=model == "bft-final",
         )
         if result["decision"] == "pass" and event.get("eventType") != "transfer":
             return _result("fail", "single-chain finality selected a non-transfer event")

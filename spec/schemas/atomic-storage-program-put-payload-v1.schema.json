@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dacs.dev/schemas/atomic-storage-program-put-payload-v1.schema.json",
+  "title": "AtomicStorageProgramPutPayloadV1",
+  "description": "Writes complete immutable artifact bytes or explicit Base64URL bytes at a logical address under an authenticated create-only or compare-and-set condition.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["artifact", "logicalAddress", "writeCondition"],
+      "properties": {
+        "artifact": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "logicalAddress": {
+          "type": "string",
+          "minLength": 1
+        },
+        "writeCondition": { "$ref": "#/$defs/writeCondition" }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["bytes", "contentHash", "logicalAddress", "writeCondition"],
+      "properties": {
+        "bytes": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]*$"
+        },
+        "contentHash": { "$ref": "#/$defs/hash" },
+        "logicalAddress": {
+          "type": "string",
+          "minLength": 1
+        },
+        "writeCondition": { "$ref": "#/$defs/writeCondition" }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "writeCondition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "create-only" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "expectedContentHash"],
+          "properties": {
+            "kind": { "const": "compare-and-set" },
+            "expectedContentHash": { "$ref": "#/$defs/hash" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

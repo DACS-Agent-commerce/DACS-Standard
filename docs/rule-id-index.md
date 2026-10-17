@@ -10,6 +10,10 @@ This non-normative index helps implementers locate labelled conformance rules in
 | AP2-* | `pay-ap2` provider-receipt verification, session binding, split credential scope, capture semantics, idempotency-key derivation, and `transaction_id` tuple binding / replay-safe retry | §9.5.6 | §14.4 |
 | APR-* | Signed alternative-payment selection, projection, retry, and audit recomputation | §9.9.1 | §14.4 |
 | AWT-* | Standalone independently verified business-outcome occurrence window (narrower than combined current-use) | §10.5 | §14.5 |
+| AW-* | Atomic DACS Work capability, canonical intent, authorization, execution, receipt, rollback, recovery, and anchor projection (AW-1..AW-77) | §5.2 | §14.8 |
+| AWB-* | Atomic Work role anchoring, proof-chain verification, and idempotent audit finalisation | §10.4.2 | §14.5 |
+| AWP-* | Atomic Purchase and Completion DACS profile composition (AWP-1..AWP-21) | §8.6.1 | §14.3 |
+| AWS-* | Atomic `pay-dem` payment-slot compare-and-set plus versioned Work settlement evidence and proof binding | §9.5.10 / §9.7.3 | §14.4 |
 | BB-* | Bundle logical→native binding (publication, carriage, verification, resolution, multiplicity-void, fail-closed, suppression diligence) | §10.4.2 | §14.5 |
 | BP-* | Bundle producers for IdentityBundle | §6.3.2 | §14.1 |
 | BR-* | Bundle readers for IdentityBundle | §6.3.2 | §14.1 |
@@ -60,6 +64,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | RB-* | Listing-revocation marker binding, retained discovery, and fail-closed resolution | §6.3.4 | §14.1 |
 | RSC-* | Current listing-revocation state head, append-only completeness proofs, and new-session admission | §6.3.4 | §14.1 |
 | RT-* | Rating bounds and derivation handling | §10.6.1 | §14.5 |
+| RTB-* | Rail-authority time bound: registry-index and definition receipts and `governance.acceptedAt` no later than session start | §9.4.3 | §14.4 |
 | RSV-* | SettlementEvidence semantic admission before reputation | §10.5.1 | §14.5 |
 | SB-* | Session-bound settlement evidence (full PC-2 address binding, signed event identity, deterministic projection, legacy replay, tx↔session binding, anti-double-count) | §9.5.8 | §14.4 |
 | SE-* | Sealed-envelope negotiation | §8.4.3 | §14.3 |

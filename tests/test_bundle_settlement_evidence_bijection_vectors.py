@@ -1,9 +1,12 @@
 """Executable assertions for DACS-5 v0.4 SEB-1..SEB-6 candidate vectors."""
 
+import __future__
 import base64
 import copy
 import hashlib
+import inspect
 import json
+import textwrap
 import threading
 import unittest
 from pathlib import Path
@@ -515,6 +518,7 @@ def derive_phase_disposition(authority, pubkeys):
         authority.get("verifiedReceiptByCanonicalRef"),
         authority.get("deliveryArtifactAuthorityByPhaseKey"),
         authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+        authority.get("atomicEvidenceAdmissionByCanonicalRef"),
         effective_pipeline=authority.get("effectivePipeline"),
         additional_commit_phase=authority.get("additionalCommitPhase"),
         agreement_selection_result=authority.get("agreementSelectionResult"),
@@ -536,6 +540,8 @@ def evaluate(vector_data, authorities, pubkeys):
     authority_disposition, _, expected = derive_phase_disposition(authority, pubkeys)
     if authority_disposition == "indeterminate":
         return "indeterminate", "execution-authority-indeterminate"
+    if authority_disposition == "error":
+        return "error", "execution-authority-error"
     if authority_disposition != "pass":
         return "rejected", "execution-authority"
 
@@ -659,6 +665,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             "verified": "pass",
             "rejected": "fail",
             "indeterminate": "indeterminate",
+            "error": "error",
         }
         for vector in self.data["vectors"]:
             with self.subTest(vector=vector["name"]):
@@ -673,6 +680,296 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 self.assertEqual(
                     vector["expected"], verdict_for_disposition[actual_disposition]
                 )
+
+    def test_atomic_shape_cases_have_exact_passing_member_admission(self):
+        evidence_hash = R.settlement_evidence_hash
+        authorities = {
+            name: authority for name, authority in self.data["executionAuthorities"].items()
+            if name.startswith("atomic-shape-")
+        }
+        self.assertEqual(len(authorities), 27)
+        for name, authority in authorities.items():
+            with self.subTest(case=name):
+                bad_members = []
+                for key, resolution in authority["referenceValidationByCanonicalRef"].items():
+                    record = resolution["record"]
+                    admission = authority["atomicEvidenceAdmissionByCanonicalRef"][key]
+                    self.assertEqual(admission["disposition"], "pass")
+                    self.assertEqual(admission["evidenceHash"], evidence_hash(record))
+                    self.assertEqual(json.loads(key)["contentHash"], evidence_hash(record))
+                    if not R._atomic_settlement_evidence_shape_valid(record):
+                        bad_members.append(record)
+                self.assertEqual(len(bad_members), 1)
+
+    def test_atomic_member_admission_guard_is_load_bearing(self):
+        # Wrong implementation: a present admission map that lacks this
+        # member's entry falls through to the malformed-admission rejection.
+        function = R._validate_ebfab_boolean
+        source = textwrap.dedent(inspect.getsource(function))
+        guard = "if atomic_admission is None:"
+        self.assertEqual(source.count(guard), 1)
+        namespace = {}
+        exec(
+            compile(
+                source.replace(guard, "if False:"), inspect.getsourcefile(function),
+                "exec", flags=__future__.annotations.compiler_flag, dont_inherit=True,
+            ),
+            function.__globals__, namespace,
+        )
+        vector = next(
+            item for item in self.data["vectors"]
+            if item["name"] == "bundle-settlement-bijection-atomic-member-admission-missing-indeterminate"
+        )
+        authorities = self.data["executionAuthorities"]
+        self.assertEqual(
+            evaluate(vector["input"], authorities, self.pubkeys),
+            ("indeterminate", "execution-authority-indeterminate"),
+        )
+        with mock.patch.object(R, function.__name__, namespace[function.__name__]):
+            self.assertEqual(
+                evaluate(vector["input"], authorities, self.pubkeys),
+                ("rejected", "execution-authority"),
+            )
+
+    def test_atomic_evidence_composes_with_exact_set_and_reputation_dispatch(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["atomic-current-completed"]
+        )
+        disposition, reason, phase_keys = derive_phase_disposition(
+            authority, self.pubkeys
+        )
+        self.assertEqual((disposition, reason), ("pass", "ok"))
+        self.assertEqual(
+            phase_keys, ["2:pay-dem", "3:deliver-storage-program"]
+        )
+        authority["publicKeys"] = self.pubkeys
+        self.assertEqual(
+            R._tagged_copy_validation_for_derive({
+                "bundle": authority["bundle"],
+                "ebfabAuthority": authority,
+            }),
+            ("pass", "ok"),
+        )
+
+        missing = copy.deepcopy(authority)
+        missing.pop("atomicEvidenceAdmissionByCanonicalRef")
+        self.assertEqual(
+            R._tagged_copy_validation_for_derive({
+                "bundle": missing["bundle"],
+                "ebfabAuthority": missing,
+            })[0],
+            "indeterminate",
+        )
+
+    def test_atomic_and_ordinary_delivery_families_cannot_be_cross_coerced(self):
+        ordinary = copy.deepcopy(
+            self.data["executionAuthorities"]["completed-storage-delivery"]
+        )
+        delivery_phase_key = next(
+            key
+            for key, execution in ordinary[
+                "sessionExecutionAuthorityByPhaseKey"
+            ].items()
+            if execution.get("phaseKind") == "deliver-storage-program"
+        )
+        ordinary["sessionExecutionAuthorityByPhaseKey"][delivery_phase_key][
+            "evidenceFamily"
+        ] = "atomic"
+        disposition, _, _ = derive_phase_disposition(ordinary, self.pubkeys)
+        self.assertEqual(disposition, "fail")
+
+        for name, expected in (
+            ("atomic-wrong-phase-family", "fail"),
+            ("atomic-dual-selector", "fail"),
+            ("atomic-missing-aws-admission", "indeterminate"),
+        ):
+            with self.subTest(authority=name):
+                disposition, _, _ = derive_phase_disposition(
+                    self.data["executionAuthorities"][name], self.pubkeys
+                )
+                self.assertEqual(disposition, expected)
+
+    def test_atomic_admission_binds_exact_hash_phase_and_logical_address(self):
+        # SEB-3: Atomic evidence enters only through an exact passing AWS
+        # admission for its complete bytes, phase, and Atomic logical address;
+        # malformed, substituted, or cross-phase authority, or an AWS fail,
+        # rejects admission.  Each case keeps every artifact exact and moves
+        # one binding of the pay-dem member to the (itself valid) delivery
+        # member's value.
+        base = self.data["executionAuthorities"]["atomic-current-completed"]
+        disposition, reason, _ = derive_phase_disposition(
+            copy.deepcopy(base), self.pubkeys
+        )
+        self.assertEqual((disposition, reason), ("pass", "ok"))
+        admission_keys = {
+            admission["phaseKey"]: ref_key
+            for ref_key, admission in base[
+                "atomicEvidenceAdmissionByCanonicalRef"
+            ].items()
+        }
+        pay_key = admission_keys["2:pay-dem"]
+        delivery_key = admission_keys["3:deliver-storage-program"]
+        cases = (
+            (
+                "atomic-foreign-evidence-hash",
+                "atomicEvidenceAdmissionByCanonicalRef", "evidenceHash",
+                "Atomic Work settlement admission is malformed or mismatched",
+            ),
+            (
+                "atomic-foreign-phase-key",
+                "atomicEvidenceAdmissionByCanonicalRef", "phaseKey",
+                "Atomic Work admission resolves to another phase",
+            ),
+            (
+                "atomic-foreign-logical-address",
+                "atomicEvidenceAdmissionByCanonicalRef", "logicalAddress",
+                "evidence does not resolve to exactly one authenticated phase receipt",
+            ),
+            (
+                "atomic-foreign-receipt-address",
+                "verifiedReceiptByCanonicalRef", "logicalAddress",
+                "evidence does not resolve to exactly one authenticated phase receipt",
+            ),
+        )
+        for corpus_name, container, field, expected_reason in cases:
+            authority = copy.deepcopy(base)
+            entries = authority[container]
+            self.assertNotEqual(entries[pay_key][field], entries[delivery_key][field])
+            entries[pay_key][field] = entries[delivery_key][field]
+            with self.subTest(binding=f"{container}.{field}"):
+                disposition, reason, phase_keys = derive_phase_disposition(
+                    authority, self.pubkeys
+                )
+                self.assertEqual(disposition, "fail", reason)
+                self.assertEqual(str(reason), expected_reason)
+                self.assertIsNone(phase_keys)
+            with self.subTest(corpus=corpus_name):
+                disposition, reason, _ = derive_phase_disposition(
+                    self.data["executionAuthorities"][corpus_name], self.pubkeys
+                )
+                self.assertEqual(disposition, "fail", reason)
+                self.assertEqual(str(reason), expected_reason)
+
+        # These keep the pay-dem admission exact in hash, phase key and
+        # logical address: only its non-pass AWS result, a case-variant of
+        # the exact lowercase "pass", or an unknown member outside the closed
+        # admission shape, can refuse it.  The stored corpus authority is
+        # exactly the passing one with that one change.
+        expected_reason = "Atomic Work settlement admission is malformed or mismatched"
+        for corpus_name, field, value in (
+            ("atomic-non-passing-admission", "disposition", "fail"),
+            ("atomic-extra-member-admission", "valid", True),
+            ("atomic-case-folded-admission", "disposition", "PASS"),
+        ):
+            authority = copy.deepcopy(base)
+            authority["atomicEvidenceAdmissionByCanonicalRef"][pay_key][field] = value
+            with self.subTest(admission=f"{field}={value!r}"):
+                disposition, reason, phase_keys = derive_phase_disposition(
+                    copy.deepcopy(authority), self.pubkeys
+                )
+                self.assertEqual(disposition, "fail", reason)
+                self.assertEqual(str(reason), expected_reason)
+                self.assertIsNone(phase_keys)
+            with self.subTest(corpus=corpus_name):
+                stored = self.data["executionAuthorities"][corpus_name]
+                self.assertEqual(stored, authority)
+                disposition, reason, _ = derive_phase_disposition(
+                    stored, self.pubkeys
+                )
+                self.assertEqual(disposition, "fail", reason)
+                self.assertEqual(str(reason), expected_reason)
+
+        # Only an exact AWS "pass" admits the member, and only a deterministic
+        # AWS "fail" rejects it.  SEB-3 propagates an AWS "indeterminate" or
+        # "error" for these exact bytes as that exact state, like an LAA
+        # result; the stored corpus authority is the passing one with that
+        # one change.
+        for corpus_name, value in (
+            ("atomic-indeterminate-admission", "indeterminate"),
+            ("atomic-error-admission", "error"),
+        ):
+            authority = copy.deepcopy(base)
+            authority["atomicEvidenceAdmissionByCanonicalRef"][pay_key][
+                "disposition"
+            ] = value
+            expected = (value, f"exact Atomic Work settlement admission is {value}")
+            with self.subTest(admission=f"disposition={value!r}"):
+                disposition, reason, phase_keys = derive_phase_disposition(
+                    copy.deepcopy(authority), self.pubkeys
+                )
+                self.assertEqual((disposition, str(reason)), expected)
+                self.assertIsNone(phase_keys)
+            with self.subTest(corpus=corpus_name):
+                stored = self.data["executionAuthorities"][corpus_name]
+                self.assertEqual(stored, authority)
+                disposition, reason, _ = derive_phase_disposition(
+                    stored, self.pubkeys
+                )
+                self.assertEqual((disposition, str(reason)), expected)
+            # A deterministic contradiction in the same admission still
+            # rejects: the AWS result does not mask a foreign phase key.
+            foreign = copy.deepcopy(authority)
+            admissions = foreign["atomicEvidenceAdmissionByCanonicalRef"]
+            admissions[pay_key]["phaseKey"] = admissions[delivery_key]["phaseKey"]
+            with self.subTest(admission=f"disposition={value!r}, foreign phase key"):
+                disposition, reason, _ = derive_phase_disposition(
+                    foreign, self.pubkeys
+                )
+                self.assertEqual(
+                    (disposition, str(reason)),
+                    ("fail", "Atomic Work admission resolves to another phase"),
+                )
+
+    def test_seb3_states_atomic_aws_result_propagation(self):
+        text = " ".join(SPEC.read_text(encoding="utf-8").split())
+        start = text.index("current Atomic Work evidence family")
+        paragraph = text[start:start + 2500]
+        for phrase in (
+            "Only a deterministic AWS `fail` is a non-passing result that rejects",
+            "that exact state propagates as SEB-3's result for the member",
+            "therefore stays `indeterminate` and an AWS `error` stays `error`",
+            "only an exact AWS `pass` admits the member",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, paragraph)
+
+    def test_atomic_payment_is_laa_qualified_like_every_payment(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["atomic-current-completed"]
+        )
+
+        def validate(carriers):
+            return R.validate_ebfab_disposition(
+                authority["bundle"],
+                authority["listing"],
+                self.pubkeys,
+                authority["referenceValidationByCanonicalRef"],
+                authority["bundleLifecycle"],
+                authority["sessionExecutionAuthorityByPhaseKey"],
+                authority["verifiedReceiptByCanonicalRef"],
+                authority.get("deliveryArtifactAuthorityByPhaseKey"),
+                authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
+                authority["atomicEvidenceAdmissionByCanonicalRef"],
+                effective_pipeline=authority.get("effectivePipeline"),
+                additional_commit_phase=authority.get("additionalCommitPhase"),
+                agreement_selection_result=authority.get("agreementSelectionResult"),
+                legacy_agreement_authority_by_phase_key=carriers,
+            )
+
+        carriers = refreshed_laa_phase_carriers(authority)
+        self.assertEqual(sorted(carriers), ["2:pay-dem"])
+        self.assertEqual(("pass", "ok"), validate(carriers)[:2])
+
+        missing = validate({})
+        self.assertEqual("indeterminate", missing[0], missing[1])
+        self.assertIn("legacy agreement authority", str(missing[1]))
+
+        for field in ("evidenceContentHash", "evidenceRef", "evidenceReceiptHash"):
+            mutated = copy.deepcopy(carriers)
+            mutated["2:pay-dem"]["binding"][field] = "substituted"
+            with self.subTest(binding=field):
+                result = validate(mutated)
+                self.assertEqual("fail", result[0], result[1])
 
     def test_cross_phase_inner_dependency_ownership_is_load_bearing(self):
         expected_reasons = {

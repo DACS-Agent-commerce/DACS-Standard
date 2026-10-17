@@ -1396,18 +1396,37 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-bft-validator-key-substitution", "fail", "unknown validator cannot enter the pinned set", changed("bft-final", lambda v: v["context"]["observation"]["finalityCertificate"]["signatures"][0].__setitem__("validatorId", CLAIMS["orchestrator"]))),
     ])
 
-    # Same transfer, inclusion block and BFT certificate as the canonical
-    # bft-final case; only the authenticated execution record failed.
-    execution_failed = factory.model_input("bft-final")
-    obs = execution_failed["context"]["observation"]
-    encoded = obs["selectedEventProof"]["eventBytes"]
-    event = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
-    execution_failed["context"]["observation"] = factory.chain_observation(
-        execution_failed["rail"]["consumerFinalityProfile"]["settlement"],
-        execution_failed["evidence"]["paymentTxRefs"][0], event, "bft-final",
-        transaction_status="failed",
-    )
-    vectors.append(case("fv-bft-final-included-execution-failed", "fail", "BFT-final inclusion of a Demos transfer whose authenticated record failed is not settlement", execution_failed))
+    # DACS-4 §9.5.9 DEM-7 under FV-5. Each case re-forges an authentic,
+    # BFT-certified block for the canonical bft-final transfer with exactly
+    # one execution-record dimension changed; fv-bft-final-canonical-success
+    # is the positive control.
+    def demos_record(*, status="success", event_changes=None, block_number=None):
+        value = factory.model_input("bft-final")
+        reference = value["evidence"]["paymentTxRefs"][0]
+        encoded = value["context"]["observation"]["selectedEventProof"]["eventBytes"]
+        event = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+        event.update(event_changes or {})
+        if block_number is not None:
+            reference["blockNumber"] = block_number
+            event["transactionRef"]["blockNumber"] = block_number
+            factory.resign_evidence(value["evidence"])
+        value["context"]["observation"] = factory.chain_observation(
+            value["rail"]["consumerFinalityProfile"]["settlement"],
+            reference, event, "bft-final", transaction_status=status,
+        )
+        return value
+
+    other_party = CLAIMS["orchestrator"]
+    vectors.extend([
+        case("fv-bft-final-included-execution-failed", "fail", "BFT-final inclusion of a Demos transfer whose authenticated record failed is not settlement", demos_record(status="failed")),
+        case("fv-bft-final-execution-pending", "indeterminate", "an authenticated Demos record that is neither confirmed nor failed is not an execution result", demos_record(status="pending")),
+        case("fv-bft-final-execution-included-alias", "indeterminate", "the status-index label included is not a Demos execution result", demos_record(status="included")),
+        case("fv-bft-final-record-wrong-payee", "fail", "an authentic confirmed Demos transfer to another payee contradicts the phase", demos_record(event_changes={"payee": other_party})),
+        case("fv-bft-final-record-wrong-payer", "fail", "an authentic confirmed Demos transfer from another payer contradicts the phase", demos_record(event_changes={"payer": other_party})),
+        case("fv-bft-final-record-wrong-amount", "fail", "an authentic confirmed Demos transfer of another amount contradicts the phase", demos_record(event_changes={"amount": "6"})),
+        case("fv-bft-final-record-wrong-block", "fail", "the signed Demos blockNumber must be the authenticated inclusion block", demos_record(block_number=101)),
+        case("fv-bft-final-record-wrong-hash", "fail", "a re-signed Demos txHash must match the authenticated transaction", changed("bft-final", lambda v: (v["evidence"]["paymentTxRefs"][0].__setitem__("txHash", "ff" * 32), factory.resign_evidence(v["evidence"])))),
+    ])
 
     provider_not_captured, provider_override = factory.provider_variant(status="declined")
     vectors.extend([

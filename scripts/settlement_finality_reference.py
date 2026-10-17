@@ -951,17 +951,24 @@ def _verify_chain_observation(
         return _result(transaction_decision, transaction_reason), None
     if not _exact_object(transaction, {"networkId", "genesisHash", "transactionRef", "eventsRoot", "status"}):
         return _result("error", "malformed raw transaction body"), None
+    # A `demos` record is classified under DACS-4 §9.5.9 DEM-7: the fixture
+    # codec's "success" is the Demos `confirmed` status, `failed` refutes the
+    # payment, and any other status is not an execution result.
+    demos = reference.get("kind") == "demos"
+    status = transaction.get("status")
     if (
         transaction.get("networkId") != profile["networkId"]
         or transaction.get("genesisHash") != profile["genesisHash"]
         or canonical_bytes(transaction.get("transactionRef")) != canonical_bytes(reference)
         or transaction.get("eventsRoot") != observation["selectedEventProof"]["root"]
-        or transaction.get("status") != "success"
+        or (status != "success" and not demos)
     ):
         return _result("fail", "raw transaction does not bind selected event, network, or reference"), None
     economics_decision, economics_reason = _verify_event_economics(event, reference, expected)
     if economics_decision != "pass":
         return _result(economics_decision, economics_reason), None
+    if demos and status == "failed":
+        return _result("fail", "authenticated Demos transaction record failed execution (DEM-7)"), None
 
     inclusion = observation.get("inclusionBlock")
     head = observation.get("authenticatedHead")
@@ -1005,6 +1012,8 @@ def _verify_chain_observation(
         return _result("error", "ancestryProof is not an array"), None
     inclusion_position = int(inclusion["position"])
     head_position = int(head["position"])
+    if demos and reference.get("blockNumber") != inclusion_position:
+        return _result("fail", "Demos blockNumber differs from the authenticated inclusion block (DEM-7)"), None
     if head_position < inclusion_position:
         return _result("fail", "authenticated head precedes inclusion block"), None
     if len(ancestry) != head_position - inclusion_position:
@@ -1074,6 +1083,8 @@ def _verify_chain_observation(
         bft_decision, bft_reason = _verify_bft_certificate(observation, profile, trusted)
         if bft_decision != "pass":
             return _result(bft_decision, bft_reason), None
+    if demos and status != "success":
+        return _result("indeterminate", "authenticated Demos record status is not an execution result (DEM-7)"), None
     return _result("pass", "chain observation verified"), event
 
 

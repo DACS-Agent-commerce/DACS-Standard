@@ -167,7 +167,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(87, self.data["count"])
+        self.assertEqual(94, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -205,6 +205,31 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                     case["want"]["finalityClass"], result.get("finalityClass")
                 )
         self.assertEqual({"pass", "fail", "indeterminate", "error"}, set(observed.values()))
+
+    def test_demos_record_cases_bind_every_dem7_dimension(self):
+        # DACS-4 §9.5.9 DEM-7 under FV-5: each case is an authentic
+        # BFT-final block that differs from the passing control in one
+        # execution-record dimension.
+        control = self.cases["fv-bft-final-canonical-success"]
+        self.assertEqual("pass", self.evaluate_case(control)["decision"])
+        expected = {
+            "fv-bft-final-included-execution-failed": ("fail", "failed execution (DEM-7)"),
+            "fv-bft-final-execution-pending": ("indeterminate", "not an execution result (DEM-7)"),
+            "fv-bft-final-execution-included-alias": ("indeterminate", "not an execution result (DEM-7)"),
+            "fv-bft-final-record-wrong-payee": ("fail", "authenticated economics"),
+            "fv-bft-final-record-wrong-payer": ("fail", "authenticated economics"),
+            "fv-bft-final-record-wrong-amount": ("fail", "authenticated economics"),
+            "fv-bft-final-record-wrong-block": ("fail", "authenticated inclusion block (DEM-7)"),
+            "fv-bft-final-record-wrong-hash": ("fail", "differs from signed evidence"),
+        }
+        for name, (decision, reason) in expected.items():
+            with self.subTest(case=name):
+                case = self.cases[name]
+                self.assertEqual("bft-final", case["input"]["rail"]["consumerFinalityProfile"]["model"])
+                self.assertNotEqual(control["input"], case["input"])
+                result = self.evaluate_case(case)
+                self.assertEqual((case["expected"], decision), (result["decision"], result["decision"]))
+                self.assertIn(reason, result["reason"])
 
     def test_every_finality_model_has_a_legitimate_control(self):
         controls = {

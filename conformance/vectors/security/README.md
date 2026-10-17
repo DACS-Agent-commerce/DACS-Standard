@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; §9.5.1 PC-4/PC-7; §9.7.0 FV-5 | 46 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 93 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -92,7 +92,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 87 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 94 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1247,33 +1247,54 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-46 candidate vectors pin native-DEM settlement on execution, not inclusion.
+93 candidate vectors pin native-DEM settlement on execution, not inclusion.
 The node's status index may label a transaction `included` while its
-transaction record is `failed`, so the index is never decisive. A
-`classify-execution` case passes only for a record whose hash, nonce, sender,
-recipient and OS amount equal the retained signed transfer, whose block
-equals the inclusion observation, and whose status is exactly `confirmed`. A
-record bound the same way with status `failed` is a durable `permanent`
-failure without `settlementFinality`. Missing, unavailable, pending, aliased,
-case-variant, mismatched, missing-member, float-typed or boolean-typed
-records stay `indeterminate` and authorize no delivery or settlement
-accounting.
+transaction record is `failed`, so the index is never decisive. Records use
+the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
+and are compared through the DEMOS-MAPPING §A.2 native-send record profile:
+a string or integer nonce, a numeric or string OS amount, and `0x`-prefixed
+or bare party keys project to the same values. Two `node2-*` vectors copy
+read-only node2 records, one `confirmed` and one `failed` with status index
+`included`. `demosProfile` names the pinned node source commit and SDK
+package; the live records are observations, not that pin.
+
+A `classify-execution` case passes only for a record from a pinned node that
+decodes and whose projected hash, nonce, sender, recipient and OS amount
+equal the retained signed transfer, whose block equals the inclusion
+observation, and whose status is exactly `confirmed`. A record bound the same
+way with status `failed` is a durable `permanent` failure without
+`settlementFinality`. Missing, unavailable, pending, aliased, case-variant,
+mismatched, undecodable (missing, boolean, fractional or leading-zero
+numbers, a `0x` hash, upper-case keys, an inconsistent `send` payload) and
+unpinned-node records are `ok: false` with `errorClass: "substrate"`. They keep
+the retained hash, authorize no delivery or settlement accounting, and end
+`failed-substrate` without a replacement payment if the ST-7 pause expires.
 
 `resume-phase` cases reuse a valid retained failure proof without a node
-read, refuse to reuse a corrupted one, and recover a confirmed transfer by
-re-reading the retained hash. `broadcast-gate` cases allow only the first
-broadcast after complete, durable DEM-1 retention and refuse a second or
-replacement broadcast. `admit-evidence` cases apply DEM-7 for consumers,
-including the payee before delivery. An authenticated contradiction is `fail`
-under FV-5, while an unauthenticated mismatched read stays `indeterminate`.
-A consumer `pass` only satisfies this gate; FV, SB and PB checks still apply.
+read, refuse to reuse one corrupted in its nonce, recipient, block or status,
+and recover a confirmed transfer by re-reading the retained hash.
+`broadcast-gate` cases allow only the first broadcast of a complete, durable
+DEM-1 retention for the authenticated phase. They refuse a transfer retained
+for another job or phase, from another paying key, to another destination or
+for another amount, signed bytes that differ from the retained values, a hash
+retained for another phase, and any second or replacement broadcast.
+`admit-evidence` cases apply DEM-7 alone, for consumers including the payee
+before delivery: their result is `dem7GatePassed` and never authorizes
+delivery. An authenticated contradiction is `fail` under FV-5, while an
+unauthenticated mismatched read stays `indeterminate`. `admit-for-delivery`
+cases authorize delivery only when DEM-7 passes on an FV-5-authenticated
+record and the FV, SB-1 and PB verdicts pass, and when the consumer has not
+already admitted the same `demos:{txHash}` for another `(jobId, phaseIndex)`
+(SB-2; `pay-dem` has no settlement-side job binding).
 
 Each vector's `guards` lists exactly the oracle checks whose removal changes
 its result. The test asserts that list for every vector and that every guard
-is named at least once. The fixture vocabulary is abstract: it pins the Demos
-record and status-index semantics, not a node RPC wire format. The consumer
-path through the FV reference is
-`settlement-finality-verification.json#fv-bft-final-included-execution-failed`.
+is named at least once. The expected handler results are written out in the
+test, the corpus `hash` is SHA-256 over the RFC 8785 JCS form of `vectors`,
+and the test runs the generator's `--check` against both the committed file
+and a stale copy. The consumer path through the FV reference is the
+`settlement-finality-verification.json#fv-bft-final-*` cases: a failed
+record, non-executed statuses, and wrong payee, payer, amount, block and hash.
 
 Regenerate and execute with:
 
@@ -1946,10 +1967,14 @@ bodies, Merkle relations, every ancestry link, independently pinned Ed25519
 observation/provider authorities, and weighted BFT certificates. Cases cover
 network, genesis, transaction/index, proof/root/path, quorum/key, freshness,
 provider-byte/attestation, malformed-nested-input and production-codec-unavailable
-failures. `fv-bft-final-included-execution-failed` keeps the canonical
-BFT-final transfer, inclusion block and certificate but records a failed
-execution; it is `fail` under FV-5 and §9.5.9 DEM-7. The codec's transaction
-`status: "success"` stands in for the executed Demos `confirmed` record.
+failures. The `fv-bft-final-*` record cases re-forge an authentic,
+BFT-certified block for the canonical BFT-final transfer with one §9.5.9 DEM-7
+dimension changed. A failed execution is `fail`, a `pending` or `included`
+record status is `indeterminate`, and a wrong payee, payer, amount, hash, or
+signed `blockNumber` that differs from the authenticated inclusion block is
+`fail`. `fv-bft-final-canonical-success` is the positive control. The codec's
+transaction `status: "success"` stands in for the executed Demos `confirmed`
+record.
 Provider capture passes only as `provisional-provider-capture`.
 HTLC carries four independently verified source-lock/source-claim/
 destination-lock/destination-reveal arms and recomputes contract, per-chain

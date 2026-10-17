@@ -107,11 +107,18 @@ ledger retains each summary in a pinned-resolver record that is bound to the
 logical address its terminal references, whatever the lifecycle's other
 checks or sibling summaries decide. Two writes carried by different
 lifecycles, in one batch or in successive calls, are therefore the same
-equivocation. Every lifecycle whose terminal evidence references that
-address is `indeterminate` under DRAA-4. None of them selects either copy:
-neither DRC-15 nor the decision-anchor check is evaluated from it. A verdict
-already issued after that point, whether `pass` or one that rested on a
-sole copy, such as DRD-11, is revised to `indeterminate`.
+equivocation. No lifecycle whose terminal evidence references that address
+selects either copy: neither DRC-15 nor the decision-anchor check is
+evaluated from it. As in FV-10, a deterministic `error` or `fail` comes
+before this uncertainty: a lifecycle that fails a check that reads no write
+copy keeps that finding, and so does a terminal that the replay comparison
+fails (DRD-8, DRL-4, DRT-4, DRT-16). Every other such lifecycle is
+`indeterminate` under DRAA-4. A verdict already issued is revised to
+`indeterminate` only when it was `pass`, `indeterminate`, or a finding that
+rested on a sole copy the lifecycle carried, such as DRD-11. DRC-15 reads a
+copy only when the lifecycle carries a decision write summary; without one,
+the resolver's decision anchor orders the decision, and a DRD-11 there is
+final and records no terminal.
 
 The protocol verifier requires the finality records embedded in signed funding
 and terminal artifacts to use the exact DACS-4 `SettlementFinalityRecord`
@@ -361,8 +368,12 @@ verdict it issued for each recorded terminal. An evaluation that changes an
 earlier verdict lists the change under `revises` in every result it returns:
 the terminal (its `priorTerminals`-style identity, block, and attested
 history), the `previous` verdict, and the verdict that replaces it. A
-revision never upgrades a verdict: `pass` can become `indeterminate` or
-`fail`, and `indeterminate` can become `fail`. A later arrival that conflicts
+verdict decided before the replay comparison is named by the lifecycle's
+content hash instead. A revision never upgrades a verdict: `pass` can become
+`indeterminate` or `fail`, and `indeterminate` can become `fail`. The one
+exception is DRAA-4 above: a second qualifying write revises a `fail` to
+`indeterminate` only when that `fail` rested on a sole write copy the
+lifecycle carried, such as DRD-11 or the per-copy DRV-6. A later arrival that conflicts
 with a passing terminal never passes, so two conflicting terminals never both
 pass in one ledger. The verdicts issued, with their revisions applied, are
 the verdicts of evaluating everything seen so far as one set, whatever the

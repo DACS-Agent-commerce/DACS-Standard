@@ -65,15 +65,18 @@ def verdict(observed):
 
 
 # A replay revision never moves a verdict to an earlier entry, except that a
-# second qualifying write replaces any verdict with DRAA-4 (CORE §5.1).
+# second qualifying write (CORE §5.1) replaces with DRAA-4 a `pass`, an
+# uncertainty, or a finding that rested on one selected write copy.  It never
+# replaces a deterministic `error` or `fail` (candidate §9, FV-10).
 REPLAY_VERDICT_RANK = {"pass": 0, "indeterminate": 1, "fail": 2}
 EQUIVOCATION = ("indeterminate", "DRAA-4")
+COPY_SELECTING_RULES = {"DRV-6", "DRD-10", "DRD-11", "DRC-15", "DRW-4"}
 
 
 def revision_allowed(revision, current):
-    return verdict(revision) == EQUIVOCATION or (
-        REPLAY_VERDICT_RANK[revision["result"]] >= REPLAY_VERDICT_RANK[current[0]]
-    )
+    if verdict(revision) == EQUIVOCATION:
+        return current[0] in ("pass", "indeterminate") or current[1] in COPY_SELECTING_RULES
+    return REPLAY_VERDICT_RANK[revision["result"]] >= REPLAY_VERDICT_RANK[current[0]]
 
 
 def _signed_by_resolver(edit):
@@ -913,8 +916,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                         self.assertEqual(verdict(evaluate_protocol(candidate, ledger)), ("indeterminate", "DRAA-4"))
                     self.assertEqual(candidate, before)
                     # Its terminal takes part in the replay comparison, as
-                    # when the two writes arrive in separate lifecycles, but
-                    # it is issued no verdict that a later input could revise.
+                    # when the two writes arrive in separate lifecycles; its
+                    # verdict is held by lifecycle, not issued for the terminal.
                     self.assertEqual(list(ledger.terminals()), [verifier._terminal_record(value)])
                     self.assertIsNone(ledger.issued(verifier._terminal_record(value)))
 
@@ -1117,6 +1120,124 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         ledger = DecisionLedger()
         self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(expiry), ledger)), ("fail", "DRV-6"))
         self.assertEqual(ledger.writes_at(write["logicalAddress"]), frozenset())
+
+    def test_a_summary_without_a_terminal_reference_does_not_stop_retention(self):
+        """DRAA-4: a decision summary listed first, for a terminal with no decision, leaves its sibling retained."""
+        decision = self._vector("sr2-single-write-two-producers")["resolverEvidence"]["qualifiedArtifactWrites"]["decision"][0]
+
+        def expiry(writes):
+            value = self._fixture("expired-pre")
+            value["resolverEvidence"]["qualifiedArtifactWrites"] = writes(value)
+            generator.resign_resolver(value)
+            return value
+
+        first = expiry(lambda value: {"funding": [generator.qualified_artifact_write(value, "funding", 0, 1700000000)]})
+        self.assertEqual(finding(first), ("pass", "DRV-7"))
+        carrier = expiry(lambda value: {
+            "decision": [copy.deepcopy(decision)],
+            "funding": [generator.qualified_artifact_write(value, "funding", 1, 1700000000)],
+        })
+        self.assertEqual(list(carrier["resolverEvidence"]["qualifiedArtifactWrites"]), ["decision", "funding"])
+        self.assertNotIn("decisionRef", carrier["artifacts"]["terminal"])
+        address = carrier["artifacts"]["terminal"]["fundingEvidenceRef"]["anchor"]["locator"]
+        ledger = DecisionLedger()
+        self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(carrier), ledger)), ("fail", "DRV-6"))
+        self.assertEqual(len(ledger.writes_at(address)), 1)
+        self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(first), ledger)), EQUIVOCATION)
+        observed = evaluate_lifecycles([copy.deepcopy(carrier), copy.deepcopy(first)], DecisionLedger())
+        self.assertEqual([verdict(item) for item in observed], [("fail", "DRV-6"), EQUIVOCATION])
+
+    def test_a_second_write_never_hides_a_deterministic_error_or_fail(self):
+        """Candidate §9, FV-10: DRAA-4 replaces no check's or replay comparison's `error` or `fail`."""
+        release = self._vector("release-complete-budget")
+        for name, companions, vector, own in (
+            ("funding", [], "wrong-release-recipient", ("fail", "DRT-5")),
+            ("funding", [], "nonzero-platform-fee", ("fail", "DRT-7")),
+            ("funding", [], "finding-classification-unknown", ("error", "DRV-3")),
+            ("decision", [], "release-with-seller-fault-finding", ("fail", "DRE-10")),
+            ("decision", ["release-complete-budget"], "decision-reused-by-another-terminal-transaction", ("fail", "DRD-8")),
+            ("funding", ["release-complete-budget"], "second-terminal-for-terminal-job", ("fail", "DRL-4")),
+        ):
+            values = {
+                **{item: self._vector(item) for item in (*companions, vector)},
+                "copy-0": self._single_write_copy(name, 0), "copy-1": self._single_write_copy(name, 1),
+            }
+            members = [*companions, vector]
+            with self.subTest(vector=vector):
+                self.assertIn(
+                    values["copy-0"]["resolverEvidence"]["qualifiedArtifactWrites"][name][0]["logicalAddress"],
+                    verifier._write_addresses(values[vector]["artifacts"]["terminal"]),
+                )
+                alone = evaluate_lifecycles([copy.deepcopy(values[item]) for item in members], DecisionLedger())
+                self.assertEqual(verdict(alone[-1]), own)
+                joint = None
+                for order in ([*members, "copy-0", "copy-1"], ["copy-1", "copy-0", *members[::-1]]):
+                    observed = evaluate_lifecycles([copy.deepcopy(values[item]) for item in order], DecisionLedger())
+                    verdicts = {item: verdict(outcome) for item, outcome in zip(order, observed)}
+                    joint = joint or verdicts
+                    self.assertEqual(verdicts, joint)
+                self.assertEqual(joint[vector], own)
+                # DRAA-4 still replaces a `pass` and an unordered replay conflict.
+                self.assertEqual({joint[item] for item in joint if item != vector}, {EQUIVOCATION})
+                # One at a time, in any order, the verdicts as revised are the
+                # joint ones, and nothing revises the `error` or `fail`.
+                for order in (
+                    [*members, "copy-0", "copy-1"], ["copy-0", "copy-1", *members],
+                    ["copy-0", *members[::-1], "copy-1"],
+                ):
+                    self.assertEqual(self._streamed(values, order), joint)
+                ledger = DecisionLedger()
+                outcomes = [evaluate_protocol(copy.deepcopy(values[item]), ledger) for item in (*members, "copy-0", "copy-1")]
+                self.assertEqual(verdict(outcomes[len(members) - 1]), own)
+                for outcome in outcomes[len(members):]:
+                    self.assertNotIn(own, [verdict(revision["previous"]) for revision in outcome.get("revises", [])])
+                self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(values[vector]), ledger)), own)
+        # One lifecycle carrying both writes and a deterministic `fail`.
+        both = self._vector("sr2-identical-funding-writes")["resolverEvidence"]["qualifiedArtifactWrites"]
+        for vector, own in (("wrong-release-recipient", ("fail", "DRT-5")), ("nonzero-platform-fee", ("fail", "DRT-7"))):
+            value = self._vector(vector)
+            value["resolverEvidence"]["qualifiedArtifactWrites"] = copy.deepcopy(both)
+            generator.resign_resolver(value)
+            with self.subTest(vector=vector, writes="both"):
+                self.assertEqual(finding(value), own)
+
+    def test_a_decision_ordered_after_its_terminal_records_no_terminal(self):
+        """DRD-11 without a decision write selects no copy: it is decided as is and never enters replay state."""
+        release = self._fixture("release")
+        terminal = generator.block_time(generator.TERMINAL_BLOCKS["release"])
+        widened = (release["artifacts"]["railDefinition"]["parameters"]["maxCrossSubstrateSkewMs"] + 1000) // 1000
+        late = copy.deepcopy(release)
+        late["resolverEvidence"]["decisionAnchor"]["finalizedBlockTimestampSec"] = terminal + widened + 1
+        generator.resign_resolver(late)
+        self.assertNotIn("qualifiedArtifactWrites", late["resolverEvidence"])
+        second = self._fixture("release-second-terminal-transaction")
+        self.assertEqual(finding(late), ("fail", "DRD-11"))
+        self.assertEqual(finding(second), ("pass", "DRV-7"))
+        recorded = (verifier._terminal_record(copy.deepcopy(second)),)
+        for order in ((late, second), (second, late)):
+            expected = [("fail", "DRD-11") if item is late else ("pass", "DRV-7") for item in order]
+            with self.subTest(late_first=order[0] is late):
+                ledger = DecisionLedger()
+                observed = evaluate_lifecycles([copy.deepcopy(item) for item in order], ledger)
+                self.assertEqual([verdict(item) for item in observed], expected)
+                self.assertEqual(ledger.terminals(), recorded)
+                ledger = DecisionLedger()
+                observed = [evaluate_protocol(copy.deepcopy(item), ledger) for item in order]
+                self.assertEqual([verdict(item) for item in observed], expected)
+                self.assertNotIn("revises", observed[1])
+                self.assertEqual(ledger.terminals(), recorded)
+        # Two writes known at its decision address do not make it DRAA-4:
+        # its ordering never read either copy.
+        writes = [self._single_write_copy("decision", index) for index in (0, 1)]
+        address = writes[0]["resolverEvidence"]["qualifiedArtifactWrites"]["decision"][0]["logicalAddress"]
+        self.assertIn(address, verifier._write_addresses(late["artifacts"]["terminal"]))
+        for batch in ([late, *writes], [*writes, late]):
+            observed = evaluate_lifecycles([copy.deepcopy(item) for item in batch], DecisionLedger())
+            self.assertEqual(verdict(observed[batch.index(late)]), ("fail", "DRD-11"))
+        ledger = DecisionLedger()
+        issued = evaluate_protocol(copy.deepcopy(late), ledger)
+        later = [evaluate_protocol(copy.deepcopy(item), ledger) for item in writes]
+        self.assertEqual(self._revised(late, issued, *later), ("fail", "DRD-11"))
 
     def test_every_negative_fails_only_at_its_intended_guard(self):
         self.assertEqual(generator.negative_isolation_problems(self.vector_pack), [])
@@ -1740,7 +1861,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 for other in revised:
                     self.assertTrue(revision_allowed(revision, current[other]))
                     current[other] = verdict(revision)
-            if verifier._lifecycle_check(copy.deepcopy(values[name])) is None:
+            if verifier._lifecycle_check(copy.deepcopy(values[name]), ledger) is None:
                 terminal = verifier._terminal_record(copy.deepcopy(values[name]))
                 key = json.dumps(verifier.terminal_identity(terminal), sort_keys=True)
             else:

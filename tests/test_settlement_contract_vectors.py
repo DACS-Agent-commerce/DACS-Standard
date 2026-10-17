@@ -45,6 +45,19 @@ NETWORKS = [
 ]
 
 
+def edits(before, after, path=""):
+    """Each member path where after differs from before, for a subtest label."""
+    if isinstance(before, dict) and isinstance(after, dict):
+        return [change for key in sorted(set(before) | set(after))
+                for change in edits(before.get(key, ...), after.get(key, ...), f"{path}.{key}")]
+    if isinstance(before, list) and isinstance(after, list) and len(before) == len(after):
+        return [change for index, pair in enumerate(zip(before, after))
+                for change in edits(*pair, f"{path}[{index}]")]
+    if before == after and type(before) is type(after):
+        return []
+    return [f"{path}=" + ("<missing>" if after is ... else json.dumps(after)[:60])]
+
+
 class SettlementContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -388,6 +401,8 @@ class SettlementContractTests(unittest.TestCase):
                 bad += [with_profile({**profile, "finalityProfileVersion": "2"}, model),
                         with_profile({**profile, "finalityResolutionCapability": None}, model),
                         with_profile({k: v for k, v in profile.items() if k != "model"}, model)]
+                # A wrong-typed model is a type rejection, never a crash.
+                bad += [with_profile({**profile, "model": value}, model) for value in (None, 1, [], {}, [model])]
                 for key in profile:
                     if key not in ("finalityProfileVersion", "model", "finalityResolutionCapability"):
                         bad.append(with_profile({k: v for k, v in profile.items() if k != key}, model))
@@ -411,14 +426,74 @@ class SettlementContractTests(unittest.TestCase):
                 {"threshold": len(settlement["observation"]["authorityRefs"]) + 1},
                 {"maxHeadAgeSec": 0}, {"maxHeadAgeSec": "60"})]
             bad.append(with_settlement(observation={**observation, "method": "rpc-quorum"}))
+            # Label each case by its edits from the nearest unedited input.
+            origins = {"input": base, **{model: {**base, "rail": value} for model, value in rails.items()}}
+            labels = []
             for value in bad:
-                with self.subTest(binding=binding, rejected=json.dumps({
-                        "agreement": value["agreement"], "rail": value["rail"]})[-160:]):
+                name, origin = min(origins.items(), key=lambda item: len(edits(item[1], value)))
+                labels.append(f"{name}: " + " ".join(edits(origin, value)))
+            self.assertEqual(sorted({label for label in labels if labels.count(label) > 1}), [])
+            for value, label in zip(bad, labels):
+                with self.subTest(binding=binding, rejected=label):
                     handler = mock.Mock(return_value={"status": "accepted", "ok": True})
                     result = ref.dispatch_payment(BINDINGS[binding], value, handler)
                     self.assertEqual((result["status"], result["errorClass"], result["reason"]), (
                         "rejected", "permanent", "payment input member is not its declared type"))
                     handler.assert_not_called()
+
+    def test_rail_id_rule_matches_the_section_9_4_1_definition_and_registry(self):
+        # PC-1 cites the 9.4.1 railId rule; the 9.4.2 registry ids are uppercase.
+        spec = (ROOT / "spec/DACS-4-SETTLE.md").read_text()
+        schema = spec.split("type RailDefinition = {", 1)[1].split("\n}", 1)[0]
+        comment = next(line for line in schema.splitlines() if line.strip().startswith("railId:"))
+        self.assertIn("1-64 printable ASCII chars (0x21-0x7E, no whitespace); case-sensitive", comment)
+        self.assertNotIn("lowercase", comment)
+        registry = spec.split("#### 9.4.2", 1)[1].split("\n\n**", 1)[0]
+        ids = [row.split("|")[1].strip() for row in registry.splitlines()
+               if row.startswith("| ") and not row.startswith(("| Rail ID", "| ---"))]
+        self.assertIn("demos-native:DEM", ids)
+        self.assertEqual(len(ids), 13)
+        names = {v["name"]: v for v in self.data["phaseInputs"]}
+        for binding in ("ordinary", "atomic"):
+            base = names[binding + "-input"]["input"]
+            for rail_id in (*ids, "\x21", "\x7e" * 64):
+                with self.subTest(binding=binding, accepted=rail_id):
+                    value = {**base, "rail": {**base["rail"], "railId": rail_id}}
+                    handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                    self.assertEqual(ref.dispatch_payment(BINDINGS[binding], value, handler)["status"], "accepted")
+                    handler.assert_called_once_with(value)
+            for rail_id in ("", "\x7e" * 65, "a\x20b", "\x7f", "évm"):
+                with self.subTest(binding=binding, rejected=rail_id):
+                    value = {**base, "rail": {**base["rail"], "railId": rail_id}}
+                    handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                    self.assertEqual(ref.dispatch_payment(BINDINGS[binding], value, handler)["status"], "rejected")
+                    handler.assert_not_called()
+
+    def test_profile_value_domains_stay_with_fv1(self):
+        # PC-1 types the profile; FV-1 makes these value-domain breaks `error`.
+        import settlement_finality_reference as fv
+        finality = json.loads((ROOT / "conformance/vectors/security/settlement-finality-verification.json").read_text())
+        profiles = {v["input"]["rail"]["consumerFinalityProfile"]["model"]: v["input"]["rail"]["consumerFinalityProfile"]
+                    for v in finality["vectors"] if v["expected"] == "pass"}
+        provider, bft = profiles["provider-receipt"], profiles["bft-final"]
+        observation = bft["settlement"]["observation"]
+        cases = {
+            "origin-with-path": {**provider, "statusEndpointOrigin": provider["statusEndpointOrigin"] + "/status"},
+            "duplicate-capture-statuses": {**provider, "captureStatuses": provider["captureStatuses"] * 2},
+            "duplicate-authority-refs": {**bft, "settlement": {**bft["settlement"], "observation": {
+                **observation, "authorityRefs": observation["authorityRefs"][:1] * 2, "threshold": 2}}},
+            "quorum-above-one": {**bft, "settlement": {**bft["settlement"],
+                                                       "quorumNumerator": 5, "quorumDenominator": 3}},
+        }
+        for model in ("provider-receipt", "bft-final"):
+            self.assertTrue(fv._finality_profile_shape(profiles[model]), model)
+        for name, profile in cases.items():
+            with self.subTest(case=name):
+                self.assertTrue(ref._finality_profile_valid(ref._shapes(), profile))
+                self.assertFalse(fv._finality_profile_shape(profile))
+        spec = " ".join((ROOT / "spec/DACS-4-SETTLE.md").read_text().split())
+        self.assertIn("These are declared-type checks. A profile's further value domains", spec)
+        self.assertIn("stay with FV-1, which classifies a malformed profile as `error`", spec)
 
     def test_unknown_target_members_follow_each_arms_schema(self):
         names = {v["name"]: v for v in self.data["amendmentTargets"]}
@@ -434,6 +509,8 @@ class SettlementContractTests(unittest.TestCase):
                        "DeliverableRef, PaymentRailRef, payout binding entries",
                        "The agreement must carry `terms.rail` (DACS-3 §8.5.2 rule 3)",
                        "do not gate settlement (DACS-3 §8.5.2, FS-3)",
+                       "the rail's `railId` must be 1–64 printable ASCII characters (0x21–0x7E, case-sensitive",
+                       "These are declared-type checks: a profile's further value domains",
                        "three DACS-4 v0.x target arms use closed shapes and reject unknown members",
                        "Atomic targets use the open normative schema (§9.7.3)"):
             self.assertIn(phrase, changed)

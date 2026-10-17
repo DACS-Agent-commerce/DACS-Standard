@@ -166,7 +166,7 @@ A versioned, anchored set of payment rails. Each rail entry describes one settle
 ```
 type RailDefinition = {
   railVersion: number                  // positive JSON safe integer
-  railId: string                       // canonical id; lowercase ASCII; max 64 chars
+  railId: string                       // canonical id; 1-64 printable ASCII chars (0x21-0x7E, no whitespace); case-sensitive
   railType: "evm-erc20" | "solana-spl" | "cross-chain-htlc" | "cross-chain-liquidity-tank" | "ap2" | "x402" | "demos-native"
   asset: AssetSpec                     // what is being transferred
   network: NetworkSpec                 // where it lives
@@ -471,13 +471,18 @@ handler MUST also reject an input that lacks a required member of its arm or
 carries one that is not of its declared type, including the `AgreementArtifact`
 (exactly one supported discriminator, its required members, and the
 `terms.rail` that DACS-3 §8.5.2 rule 3 requires of a pay-* pipeline), the
-`RailDefinition` (§9.4.1 required members, closed enumerations and canonical
-ASCII `railId`), the nested payer and payee objects, the `PriceTerm`, and the
+`RailDefinition` (§9.4.1 required members, closed enumerations and a `railId`
+of 1–64 printable ASCII characters, 0x21–0x7E, compared case-sensitively), the
+nested payer and payee objects, the `PriceTerm`, and the
 arm's session context. A present optional member of the `AgreementArtifact` or
 `RailDefinition`, including `consumerFinalityProfile`, is also checked against
 its declared type, except the informational `terms.priceAnchor` and
 disclosure-only `terms.feeSchedule`, on which no consumer gates settlement
-(DACS-3 §8.5.2, FS-3). The
+(DACS-3 §8.5.2, FS-3). These are declared-type checks. A profile's further value
+domains, such as the exact HTTPS `statusEndpointOrigin`, duplicate-free
+`authorityRefs` and `captureStatuses`, and the quorum ratio, stay with FV-1,
+which classifies a malformed profile as `error` before any finality-bound
+claim. The
 serialized ordinary `SessionContext` omits the runtime `signer`, and its nested
 members, like the ordinary arm's own, remain subject to CORE SIG-5. No handler
 may add, drop or rename a member to make an input fit its arm. A PC-1 rejection

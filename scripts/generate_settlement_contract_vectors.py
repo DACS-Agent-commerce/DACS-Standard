@@ -325,6 +325,8 @@ def build_fixture():
             ("rail-finality-profile-array", rail_with(consumerFinalityProfile=[])),
             ("rail-finality-profile-version-2", rail_finality(finalityProfileVersion="2")),
             ("rail-finality-profile-model-unknown", rail_finality(model="optimistic")),
+            ("rail-finality-profile-model-array", rail_finality(model=[])),
+            ("rail-finality-profile-model-object", rail_finality(model={})),
             ("rail-finality-profile-capability-unknown", rail_finality(finalityResolutionCapability="v2")),
             ("rail-finality-profile-settlement-kind-mismatch", rail_finality(model="block-depth")),
             ("rail-finality-profile-quorum-string", rail_settlement(quorumNumerator="2")),

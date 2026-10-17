@@ -313,7 +313,7 @@ def _finality_profile_valid(shape, value) -> bool:
             and value.get("finalityResolutionCapability", capability) == capability):
         return False
     model = value.get("model")
-    if model in _CHAIN_FINALITY_KINDS:
+    if shape._string_member(model, _CHAIN_FINALITY_KINDS):
         return _chain_finality_valid(shape, value.get("settlement"), model)
     if model == "provider-receipt":
         statuses = value.get("captureStatuses")

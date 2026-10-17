@@ -1444,9 +1444,11 @@ The format used per release:
   also checks each AssetSpec and NetworkSpec arm's nested members, governance
   optionals, DeliverableRef, PaymentRailRef, each payout binding, identity-bound
   party hashes, and DACS-3's forbidden members for the selected agreement kind.
-  It requires `terms.rail`, the canonical ASCII `railId` and the type of every
+  It requires `terms.rail`, the §9.4.1 `railId` (1–64 printable ASCII
+  characters, case-sensitive) and the type of every
   present declared optional, including `consumerFinalityProfile`; only the
-  informational `priceAnchor` and `feeSchedule` stay ungated.
+  informational `priceAnchor` and `feeSchedule` stay ungated. A profile's value
+  domains (origin form, duplicate-free lists, quorum ratio) stay with FV-1.
   A PC-1 rejection is permanent and precedes rail calls. AMEND-1 resolves the finalized
   target, authenticates its anchor receipt, checks that the receipt binds the
   reference's hash and then the bytes, selects one of the four payment evidence
@@ -1534,10 +1536,15 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   optionals, DeliverableRef, PaymentRailRef, payout binding entries, bare
   lowercase identity-bound party hashes, and each agreement kind's forbidden
   members under DACS-3 §8.5. The agreement must carry `terms.rail` (DACS-3
-  §8.5.2 rule 3), the rail's `railId` must be canonical ASCII, and each present
+  §8.5.2 rule 3), the rail's `railId` must be 1–64 printable ASCII characters
+  (0x21–0x7E, case-sensitive, as §9.4.1 now states), and each present
   optional member of either artifact must have its declared type, including the
   `consumerFinalityProfile` union. The informational `priceAnchor` and
   disclosure-only `feeSchedule` do not gate settlement (DACS-3 §8.5.2, FS-3).
+  These are declared-type checks: a profile's further value domains (an exact
+  HTTPS `statusEndpointOrigin`, duplicate-free `authorityRefs` and
+  `captureStatuses`, the quorum ratio) stay with FV-1, which makes a malformed
+  profile `error`.
 - **Amendment target** (DACS-4 §9.7.1 AMEND-1) — an amendment consumer MUST
   resolve `amendsEvidenceRef` and recompute its content hash before reading any
   target member. The target may now be `SettlementEvidence`,

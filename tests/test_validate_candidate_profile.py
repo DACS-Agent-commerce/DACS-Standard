@@ -1,8 +1,10 @@
 import copy
+import hashlib
 import importlib.util
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import unittest
@@ -197,6 +199,13 @@ class CandidateProfileValidationTests(unittest.TestCase):
             "an elementary value type that fills one ABI word",
             "a `PaymentReleased` event whose payee input is named `recipient`",
             "https://github.com/kynesyslabs/node/blob/ac8f45f02fc9c25082ce9b83595c2e3916b49c5a/src/libs/consensus/v2/types/secretaryManager.ts#L177",
+            # Sweep 8: the job-escrow rail domain reaches every reader of the rail record.
+            "In LRR-3 the schema is `JobEscrowRailDefinition`",
+            "MUST come from a snapshot named by the reader's CORE §B.6 out-of-band agreement",
+            "For a job-escrow rail the rows govern",
+            "with the DRA-20 and DRA-22 extensions",
+            "regenerate every existing Demos-anchored vector whose `blockRef.timestamp` is not a whole multiple of 1000",
+            "amend CORE CF-3, or narrow DRW-5 to the DRA-6 and DRA-7 collision checks",
         ):
             self.assertIn(anchor, self.text)
         for removed in (
@@ -215,6 +224,9 @@ class CandidateProfileValidationTests(unittest.TestCase):
             "so two writes of identical bytes at two native addresses give one reference",
             "A second write of byte-identical content is not a distinct artifact",
             "each written twice on Demos with identical bytes",
+            "MUST apply RAV-R1 through RAV-R5 unchanged",
+            "any other authenticated binding mismatch are `permanent`",
+            "Neither policy authorizes",
         ):
             self.assertNotIn(removed, self.text)
 
@@ -246,6 +258,119 @@ class CandidateProfileValidationTests(unittest.TestCase):
         self.assertLessEqual({"DRAA-4", "DRC-15"}, set(cases["I8"]["rules"]))
         for positive in (c for c in cases.values() if c["kind"] == "P"):
             self.assertNotIn("written twice", positive["description"], positive["id"])
+
+    def spec_at_pin(self, path: str) -> str:
+        """A spec/ file at the **Checked against** commit, which every cited rule means."""
+        pin = self.validator.checked_against(self.text)
+        return subprocess.run(["git", "-C", str(ROOT), "show", f"{pin}:{path}"],
+                              capture_output=True, text=True, check=True).stdout
+
+    # Sweep 8: DRP-17 classifies the payout binding as the DACS-4 PB failure modes do,
+    # so a destination mismatch is `counterparty`, not `permanent`.
+    @unittest.skipIf(SHALLOW, SHALLOW_REASON)
+    def test_payout_binding_error_classes_follow_the_pb_failure_modes(self):
+        settle = self.spec_at_pin("spec/DACS-4-SETTLE.md")
+        block = settle.split("**PB failure modes (all pay rails).**", 1)[1].split("####", 1)[0]
+        modes = [line for line in block.splitlines() if line.startswith("- PB-")]
+        rule = {r["id"]: r["text"] for r in self.validator.parse_rules(self.text)}["DRP-17"]
+        expected = (
+            ("malformed or incomplete", "permanent",
+             "A malformed or incomplete payout binding is `permanent`."),
+            ("destination mismatch, or PB-2 tier-2 resolving to a different address", "counterparty",
+             "A PB-1 destination mismatch, or a PB-2 tier-2 resolution to a different address, is `counterparty`."),
+            ("applicable-but-unresolvable", "substrate",
+             "A PB-2 applicable-but-unresolvable binding is `substrate`."),
+        )
+        self.assertEqual(len(modes), len(expected), modes)
+        for mode, (trigger, error_class, statement) in zip(modes, expected):
+            self.assertIn(trigger, mode)
+            self.assertEqual(re.findall(r"`(permanent|counterparty|substrate)`", mode)[0], error_class, mode)
+            self.assertIn(statement, rule)
+        r42 = {c["id"]: c for c in self.validator.parse_cases(self.text)}["R42"]
+        self.assertIn("A PB-1 payout destination mismatch classified `permanent`", r42["description"])
+        self.assertEqual(r42["expected"], ["fail"])
+        self.assertLessEqual({"DRP-17", "DRA-20"}, set(r42["rules"]))
+
+    # Sweep 8: every spec rule that verifies or reads a `dacs-rail:v1:` record is one DRR-2
+    # adapts; otherwise LRR-2/LRR-3 reject every correctly signed job-escrow rail.
+    @unittest.skipIf(SHALLOW, SHALLOW_REASON)
+    def test_every_rail_domain_rule_is_adapted_for_the_job_escrow_rail(self):
+        pin = self.validator.checked_against(self.text)
+        files = git("ls-tree", "--name-only", f"{pin}:spec").stdout.split()
+        label = re.compile(r"^- \(([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)\)")
+        named = set()
+        for name in (f for f in files if f.endswith(".md")):
+            for line in self.spec_at_pin(f"spec/{name}").splitlines():
+                match = label.match(line)
+                if match and "dacs-rail:v1:" in line:
+                    named.add(match.group(1))
+        # A new reader of the rail record at a later pin must be added to DRR-2 (DRG-2 re-audit).
+        self.assertEqual(named, {"RD-1", "LRR-2", "LRR-3", "RAV-R5"})
+        rules = {r["id"]: r["text"] for r in self.validator.parse_rules(self.text)}
+        self.assertTrue(rules["DRR-2"].startswith("RD-1 through RD-7 apply"))
+        for rule_id in named - {"RD-1"}:
+            self.assertIn(rule_id, rules["DRR-2"])
+        self.assertIn("step 3 of the DACS-4 §9.4.3 consumer resolution", rules["DRR-2"])
+        self.assertIn('signed under `"dacs-rail:v1:"` does not verify and MUST yield `fail`', rules["DRR-2"])
+        self.assertNotIn("unchanged", rules["DRR-5"])
+        r21 = {c["id"]: c for c in self.validator.parse_cases(self.text)}["R21"]
+        self.assertIn('a `JobEscrowRailDefinition` signed under `"dacs-rail:v1:"`', r21["description"])
+        self.assertIn("fail", r21["expected"])
+        self.assertIn("DRR-2", r21["rules"])
+
+    # Sweep 8: an unsupported version of any signed artifact is `error` before hashing.
+    def test_every_signed_version_member_has_a_refusal_rule_and_case(self):
+        rules = {r["id"]: r for r in self.validator.parse_rules(self.text)}
+        cases = [c for c in self.validator.parse_cases(self.text) if "DRV-8" in c["rules"]]
+        self.assertTrue(rules["DRV-8"]["requirement"])
+        self.assertIn("MUST yield `error` under step 1 before any hash or signature check", rules["DRV-8"]["text"])
+        for member, _operand in self.validator.SIGNED_TYPES.values():
+            self.assertIn(f"`{member}`", rules["DRV-8"]["text"], member)
+            self.assertTrue(any(f"`{member}`" in c["description"] and c["expected"] == ["error"] for c in cases),
+                            member)
+        for text in [rules["DRV-8"]["text"]] + [c["description"] for c in cases]:
+            self.assertIn("`railType` is not `x-evm-erc8183`", text)
+
+    # Sweep 8: a case that lists a rule describes a violation of the clause it is listed for.
+    def test_clause_level_sub_cases_list_their_rules(self):
+        cases = {c["id"]: c for c in self.validator.parse_cases(self.text)}
+        for case_id, rule_id, clause in (
+            ("R6", "DRA-8", "whose hash differs from `requirementHash`"),
+            ("R6", "DRA-8", "composite result that does not meet that requirement"),
+            ("R22", "DRA-4", "resolves but fails verification"),
+            ("I1", "DRA-4", "EVM account claim that cannot be resolved"),
+            ("R3", "DRJ-4", "through an intermediary contract"),
+            ("R3", "DRJ-4", "taken from `getJob` or an `eth_call`"),
+            ("R25", "DRE-8", "a rule whose `jobId` differs from the overlay's"),
+            ("R25", "DRE-8", "a rule finalized after the overlay"),
+            ("R20", "DRP-13", "An older reader that drops either `x-job-escrow` step"),
+            ("R29", "DRX-5", "names the agreement party the finding does not fault"),
+            ("R1", "DRA-20", "one keyed at `terminalPhaseIndex`"),
+            ("R35", "DRQ-3", "on the authority of `public-evidence-only`"),
+            ("R37", "DRR-5", 'read from a `"dacs-rail:v1:"` record'),
+            ("I1", "DRR-3", "holds no registry snapshot named by a CORE §B.6 out-of-band agreement"),
+        ):
+            self.assertIn(rule_id, cases[case_id]["rules"], case_id)
+            self.assertIn(clause, cases[case_id]["description"], (case_id, rule_id))
+        # R28 tests time units and freshness, so it no longer stands in for DRA-8.
+        self.assertNotIn("DRA-8", cases["R28"]["rules"])
+        rules = {r["id"]: r for r in self.validator.parse_rules(self.text)}
+        self.assertTrue(rules["DRQ-3"]["requirement"])
+
+    # Sweep 8: selectors, topics, and log layout rest on a pinned ABI specification, and
+    # keccak-256 is the Ethereum function, which differs from FIPS 202 SHA3-256.
+    def test_abi_specification_and_keccak_are_pinned(self):
+        lines = self.text.splitlines()
+        self.assertEqual(self.validator.external_pin_errors(lines), [])
+        start = lines.index(self.validator.EXTERNAL_PINS_HEADING) + 2
+        pins = lines[start:lines.index("", start)]
+        abi = "https://github.com/ethereum/solidity/blob/f401782df49be312ea4ef52a2d467cf5183b5906/docs/abi-spec.rst"
+        self.assertTrue(any(f"]({abi})" in line for line in pins), pins)
+        empty_code_hash = "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        self.assertIn(f"keccak-256 of empty input is the DRW-2 empty-code hash `{empty_code_hash}`", self.text)
+        rules = {r["id"]: r["text"] for r in self.validator.parse_rules(self.text)}
+        self.assertIn(empty_code_hash, rules["DRW-2"])
+        self.assertNotEqual("0x" + hashlib.sha3_256(b"").hexdigest(), empty_code_hash)
 
     # A later spec/ PR on `next` that does not revise the candidate must not fail
     # these tests: only the pin check may see spec/, and it pins the committed revision.
@@ -400,6 +525,18 @@ class CandidateProfileValidationTests(unittest.TestCase):
                    "(DRC-4) No authority MAY withdraw"),
             "prohibition phrased as 'No ... MAY'",
         )
+
+    # Sweep 8: RFC 2119 RECOMMENDED and OPTIONAL, and RFC 8174 NOT RECOMMENDED, are keywords too.
+    def test_recommended_and_optional_are_requirement_keywords(self):
+        for keyword in ("RECOMMENDED", "NOT RECOMMENDED", "OPTIONAL"):
+            self.assert_structural(
+                mutate(self.text, "DRP-13 states what it must not do instead.\n",
+                       f"Stripping either phase is {keyword}.\n"),
+                "capitalized requirement keyword outside a labelled rule",
+            )
+        rule = self.validator.parse_rules("- (DRX-1) Stripping either phase is NOT RECOMMENDED.\n")[0]
+        self.assertEqual(rule["keywords"], ["NOT RECOMMENDED"])
+        self.assertFalse(rule["requirement"])
 
     def test_candidate_cannot_claim_normative_status_or_drop_revision_pin(self):
         self.assert_structural(

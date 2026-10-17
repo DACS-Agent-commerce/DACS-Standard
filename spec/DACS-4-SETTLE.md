@@ -2119,11 +2119,15 @@ is `error`.
   Then re-run SB-1..SB-3. A real transaction with the wrong receipt, event,
   instruction, block or economic binding is `fail`; unavailable historical
   proof is `indeterminate`. For a `demos` reference, verify the included
-  transaction record under §9.5.9 DEM-7: the signed `blockNumber` MUST be the
-  authenticated inclusion block, and the record's hash, payer, payee and OS
-  amount MUST bind the signed reference and phase. An authenticated `failed`
-  execution or contradicting value is `fail`, and an authenticated status
-  other than `confirmed` or `failed` is `indeterminate`.
+  transaction record under §9.5.9 DEM-7: the authenticated transaction MUST
+  carry its Demos record, decoded under the DEMOS-MAPPING §A.2 native-send
+  record profile with that profile's node semantics pinned in the verifier's
+  configuration. The signed `blockNumber` MUST be the authenticated inclusion
+  block, and the record's hash, block number, sender, recipient and OS amount
+  MUST bind the signed reference, the payer's and payee's Demos keys and the
+  phase amount. An authenticated `failed` execution or contradicting value is
+  `fail`. A record that does not decode, unpinned record semantics and an
+  authenticated status other than `confirmed` or `failed` are `indeterminate`.
 - **(FV-6) Authenticated canonical head and ancestry.** Verify
   `authorityEvidence` using exactly the profile method: a light client executes
   the network's header/finality transition rules from its configured trusted

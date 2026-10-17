@@ -92,7 +92,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 94 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 107 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1293,8 +1293,10 @@ is named at least once. The expected handler results are written out in the
 test, the corpus `hash` is SHA-256 over the RFC 8785 JCS form of `vectors`,
 and the test runs the generator's `--check` against both the committed file
 and a stale copy. The consumer path through the FV reference is the
-`settlement-finality-verification.json#fv-bft-final-*` cases: a failed
-record, non-executed statuses, and wrong payee, payer, amount, block and hash.
+`settlement-finality-verification.json#fv-bft-final-*` cases, which bind an
+authenticated native-send record: a failed record, non-executed statuses,
+undecodable records, an unpinned verifier, and wrong payee, payer, amount,
+block and hash.
 
 Regenerate and execute with:
 
@@ -1967,14 +1969,21 @@ bodies, Merkle relations, every ancestry link, independently pinned Ed25519
 observation/provider authorities, and weighted BFT certificates. Cases cover
 network, genesis, transaction/index, proof/root/path, quorum/key, freshness,
 provider-byte/attestation, malformed-nested-input and production-codec-unavailable
-failures. The `fv-bft-final-*` record cases re-forge an authentic,
-BFT-certified block for the canonical BFT-final transfer with one §9.5.9 DEM-7
-dimension changed. A failed execution is `fail`, a `pending` or `included`
-record status is `indeterminate`, and a wrong payee, payer, amount, hash, or
-signed `blockNumber` that differs from the authenticated inclusion block is
-`fail`. `fv-bft-final-canonical-success` is the positive control. The codec's
-transaction `status: "success"` stands in for the executed Demos `confirmed`
-record.
+failures. A `pay-dem` transaction body carries the Demos `getTxByHash`
+native-send record (`hash`, `blockNumber`, `status`, `content`) in place of the
+codec's `status`. The verifier decodes it under the DEMOS-MAPPING §A.2 profile
+only when `demosRecordProfile` pins the node source, and binds it to the
+signed `txHash` and `blockNumber`, the parties' Demos keys and the phase amount
+in OS. The `fv-bft-final-*` record cases re-forge an authentic, BFT-certified
+block for the canonical BFT-final transfer with one §9.5.9 DEM-7 dimension
+changed. A `failed` record is `fail`. A `pending`, `included` or `success`
+record status, a record that does not decode (a non-canonical or missing
+nonce, a `send` argument that disagrees with `to` or `amount`, an operation
+other than `send`) and an unpinned verifier are `indeterminate`. A record or
+selected event naming another payee, payer or amount, a record for another
+hash or block, and a signed `blockNumber` that differs from the authenticated
+inclusion block are `fail`, and a body without the record is `error`.
+`fv-bft-final-canonical-success` is the positive control.
 Provider capture passes only as `provisional-provider-capture`.
 HTLC carries four independently verified source-lock/source-claim/
 destination-lock/destination-reveal arms and recomputes contract, per-chain

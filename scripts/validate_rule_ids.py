@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Validate labelled DACS rule IDs and the non-normative rule-ID index.
 
-The checker is intentionally conservative. It only validates families that are
-actually defined as labelled rules in the normative spec text, then reports:
+The checker is intentionally conservative. It validates labelled rule families
+and the substrate capabilities defined by the CORE §5 table, then reports:
 
 - references to numbered rules in those families that have no definition;
+- references to substrate capabilities absent from that table;
 - defined rule families missing from docs/rule-id-index.md.
 
 It deliberately ignores standards names such as EIP-4361 and ERC-8004.
@@ -25,6 +26,11 @@ INDEX = ROOT / "docs" / "rule-id-index.md"
 RULE_ID_RE = re.compile(r"\b([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)?-?\d+)\b")
 PAREN_DEF_RE = re.compile(r"\(([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)?-?\d+)\)")
 RULE_WORD_DEF_RE = re.compile(r"\b[Rr]ule\s+([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)?-?\d+)\b")
+CAPABILITY_HEADING_RE = re.compile(r"^## (?:\d+\. )?Substrate capabilities$")
+CAPABILITY_DEF_RE = re.compile(r"^\|\s*(SR-\d+)\s*\|")
+CAPABILITY_REF_RE = re.compile(r"\bSR-\d+\b")
+HEADING_RE = re.compile(r"^#{1,6}\s")
+FENCE_PREFIXES = ("```", "~~~")
 SKIP_PREFIXES = {"AP", "CAIP", "DACS", "EIP", "ERC", "HTTP", "IEEE", "L", "NAICS", "P", "RE", "SR", "UTF"}
 
 
@@ -51,6 +57,36 @@ def defined_rule_ids(spec_text: str) -> set[str]:
 
 def referenced_rule_ids(spec_text: str) -> set[str]:
     return {rule_id for rule_id in RULE_ID_RE.findall(spec_text) if is_rule_like(rule_id)}
+
+
+def defined_capability_ids(spec_text: str) -> set[str]:
+    """SR capabilities are rows of the first table in CORE §5, separate from labelled SR2-* rules.
+
+    Only the first "Substrate capabilities" section counts (CORE comes first in
+    spec_text). An SR row in a code fence, a later table, or any other section
+    defines nothing."""
+    in_section = in_code = False
+    rows: list[str] = []
+    for line in spec_text.splitlines():
+        if line.lstrip().startswith(FENCE_PREFIXES):
+            in_code = not in_code
+            if rows:
+                break
+            continue
+        if in_code:
+            continue
+        if HEADING_RE.match(line):
+            if in_section:
+                break
+            in_section = CAPABILITY_HEADING_RE.match(line) is not None
+            continue
+        if not in_section:
+            continue
+        if line.startswith("|"):
+            rows.append(line)
+        elif rows:
+            break
+    return {match.group(1) for row in rows if (match := CAPABILITY_DEF_RE.match(row))}
 
 
 def indexed_families(index_text: str) -> set[str]:
@@ -84,6 +120,10 @@ def validate_repo(root: Path = ROOT) -> list[str]:
         family = rule_family(rule_id)
         if family in defined_by_family and rule_id not in defined_by_family[family]:
             errors.append(f"{display(spec_path, root)}: referenced rule {rule_id} is not defined")
+
+    capabilities = defined_capability_ids(spec_text)
+    for capability in sorted(set(CAPABILITY_REF_RE.findall(spec_text)) - capabilities):
+        errors.append(f"{display(spec_path, root)}: referenced substrate capability {capability} is not defined")
 
     indexed = indexed_families(index_text)
     for family in sorted(defined_by_family):

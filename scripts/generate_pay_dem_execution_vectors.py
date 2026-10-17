@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 
 from jcs import canonicalize  # noqa: E402
+from demos_json import stringify  # noqa: E402
 
 _OMIT = object()
 
@@ -276,7 +277,7 @@ def phase(**changes: Any) -> dict[str, Any]:
 
 def content_hash(content: dict[str, Any]) -> str:
     """demosdk 4.0.16 `sign()`: SHA-256 hex of `JSON.stringify(content)`."""
-    serialized = json.dumps(content, separators=(",", ":"), ensure_ascii=False)
+    serialized = stringify(content)
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
@@ -764,6 +765,11 @@ def build_vectors() -> list[dict[str, Any]]:
             "broadcast-signed-nonce-differs", "fail", "DEM-1", ["signed-transfer-matches-retention"],
             "The retained nonce must be the nonce the payer signed.",
             **consistent(send_content(nonce=NONCE + 1, amount=AMOUNT_OS)),
+        ),
+        gate(
+            "broadcast-signed-sender-differs", "fail", "DEM-1", ["signed-transfer-matches-retention"],
+            "An authentic transfer from another key must not replace the retained payer transfer.",
+            **consistent(send_content(sender=OTHER_KEY, nonce=NONCE, amount=AMOUNT_OS), OTHER_SIGNER),
         ),
         gate(
             "broadcast-signed-recipient-differs", "fail", "DEM-1", ["signed-transfer-matches-retention"],

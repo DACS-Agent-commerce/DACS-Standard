@@ -1086,7 +1086,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 99-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 100-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-broadcast gate with phase and payment authority and signed-envelope
@@ -1099,19 +1099,18 @@ The format used per release:
   has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
   set is identified by its `hash`, not by its name alone. In
-  `settlement-finality-verification` (107 cases), the authenticated `pay-dem`
-  transaction now carries its Demos native-send record, which the FV
-  reference decodes under the profile only with `demosRecordProfile` pinned
-  in its trusted configuration and binds to the signed reference, the
-  parties' Demos keys and the phase amount in OS. Twenty-one `fv-bft-final-*`
-  cases change one dimension each: a failed execution, a contradicting
-  record or event (payee, payer, amount, hash or block) and a signed
-  `blockNumber` other than the inclusion block are `fail`; non-executed
-  statuses, undecodable records and an unpinned verifier are
-  `indeterminate`; a body without the record is `error`. The generated
-  `finality-resolution-context-v1`, `current-use-reputation-v1` and
-  `current-use-authenticated-window-v1` sets, which reuse the same fixture,
-  are regenerated with the pin and record and no decision changes.
+  `settlement-finality-verification` (146 cases), transaction inclusion and
+  execution-result authentication are verified separately. The fixture uses
+  independently pinned threshold result signatures over the full Demos record,
+  network, block identity and transaction reference; BFT inclusion does not
+  authenticate the later RPC execution status. Missing result authority is
+  `indeterminate`. The sender binds the selected authenticated phase paying key,
+  which may differ from the primary party signer. Cases cover raw transaction
+  binding, fractional DEM amounts down to one OS, underpayment, malformed
+  records, result signature/binding checks, and deterministic record failures
+  with withheld finality inputs. The generated `finality-resolution-context-v1`,
+  `current-use-reputation-v1` and `current-use-authenticated-window-v1` sets
+  reuse the independent result policy with no decision changes.
 - **Migration** — a `pay-dem` handler or consumer that treated `included` as
   settled must read the bound transaction record before returning success,
   delivering or counting payment, and must stop rebroadcasting or replacing a

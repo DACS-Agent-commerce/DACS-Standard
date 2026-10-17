@@ -33,6 +33,7 @@ LEGACY_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 RAIL_DOMAIN = "dacs-rail:v1:"
 AGREEMENT_DOMAIN = "dacs-agreement:v1:"
 CHAIN_AUTHORITY_DOMAIN = "dacs-finality-fixture-chain-observation:v1:"
+DEMOS_EXECUTION_DOMAIN = "dacs-fixture-demos-execution:v1:"
 BFT_CERTIFICATE_DOMAIN = "dacs-finality-fixture-bft-certificate:v1:"
 PROVIDER_ATTESTATION_DOMAIN = "dacs-finality-fixture-provider-response:v1:"
 # DEMOS-MAPPING §A.2: the node source whose execution-record semantics the
@@ -976,6 +977,45 @@ def _party_demos_key(trusted: dict, claim: Any) -> str | None:
     return raw.hex() if len(raw) == 32 else None
 
 
+def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -> tuple[str, str, Any]:
+    """Independent result attestation, never inferred from BFT inclusion."""
+    policy = trusted.get("demosExecutionPolicy")
+    if not isinstance(policy, dict) or policy.get("kind") != "fixture-independent-results-v1":
+        return "indeterminate", "independent Demos execution-result policy unavailable", None
+    keys, threshold = policy.get("authorityKeys"), policy.get("threshold")
+    if not isinstance(keys, dict) or not _safe_integer(threshold, positive=True) or threshold > len(keys):
+        return "error", "malformed Demos execution-result policy", None
+    proof = observation.get("executionResult")
+    if proof is None:
+        return "indeterminate", "independent Demos execution result unavailable", None
+    if not _exact_object(proof, {"kind", "networkId", "genesisHash", "blockId", "transactionRef", "record", "attestations"}):
+        return "error", "malformed Demos execution result", None
+    if proof["kind"] != policy["kind"] or not isinstance(proof["attestations"], list):
+        return "error", "malformed Demos execution result attestations", None
+    payload = {key: value for key, value in proof.items() if key != "attestations"}
+    digest = hash_value(payload)
+    seen = set()
+    for attestation in proof["attestations"]:
+        if not _exact_object(attestation, {"authorityRef", "algorithm", "value"}):
+            return "error", "malformed Demos result signature", None
+        signer = attestation["authorityRef"]
+        if not isinstance(signer, str) or signer in seen or attestation["algorithm"] != "ed25519" or not _verify_ed25519(
+            keys, signer, DEMOS_EXECUTION_DOMAIN, digest, attestation["value"]
+        ):
+            return "fail", "Demos execution result signature does not verify", None
+        seen.add(signer)
+    if len(seen) < threshold:
+        return "indeterminate", "independent Demos execution result quorum unavailable", None
+    inclusion = observation.get("inclusionBlock")
+    if not isinstance(inclusion, dict):
+        return "error", "malformed inclusion block for Demos execution result", None
+    if (proof["networkId"] != observation["networkId"] or proof["genesisHash"] != observation["genesisHash"]
+            or proof["blockId"] != inclusion.get("id")
+            or canonical_bytes(proof["transactionRef"]) != canonical_bytes(reference)):
+        return "fail", "authenticated Demos execution result binds another block, network or transaction", None
+    return "pass", "independent execution result authenticated", proof["record"]
+
+
 def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: dict) -> tuple[str, str]:
     """DACS-4 §9.5.9 DEM-7 under FV-5 for an authenticated `pay-dem` record."""
     if trusted.get("demosRecordProfile") != DEMOS_RECORD_PROFILE:
@@ -984,7 +1024,15 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
     if projection is None:
         return "indeterminate", "authenticated Demos record does not decode as a native send (DEM-7)"
     amount = DEM_AMOUNT_RE.match(expected.get("amount") or "") if expected.get("currency") == "DEM" else None
-    payer = _party_demos_key(trusted, expected.get("payer"))
+    resolutions = trusted.get("demosPhasePayingKeys")
+    if resolutions is None:
+        return "indeterminate", "authenticated phase payingKey resolution unavailable"
+    if not isinstance(resolutions, dict):
+        return "error", "malformed authenticated phase payingKey resolutions"
+    resolution = resolutions.get(expected["jobId"] + ":" + str(expected["phaseIndex"]))
+    if not isinstance(resolution, dict) or resolution.get("payer") != expected["payer"]:
+        return "indeterminate", "authenticated phase payingKey resolution unavailable"
+    payer = _demos_key(resolution.get("payingKey"))
     payee = _party_demos_key(trusted, expected.get("payee"))
     if amount is None or payer is None or payee is None:
         return "error", "phase lacks a DEM amount or Demos party keys"
@@ -1020,7 +1068,7 @@ def _verify_chain_observation(
         "selectedEventProof", "inclusionBlock", "authenticatedHead", "ancestryProof",
         "authorityEvidence",
     }
-    optional = {"finalityCertificate"}
+    optional = {"finalityCertificate", "executionResult"}
     if not _exact_object(observation, required, optional):
         return _result("error", "malformed AuthenticatedChainObservation"), None
     if not _chain_profile_shape(profile):
@@ -1042,10 +1090,9 @@ def _verify_chain_observation(
         return _result(event_decision, event_reason), None
     if transaction_decision != "pass":
         return _result(transaction_decision, transaction_reason), None
-    # A `pay-dem` transaction body carries the Demos execution record in
-    # place of the fixture codec's status; DACS-4 §9.5.9 DEM-7 classifies it.
+    # Inclusion commits to transaction identity, not the post-execution RPC record.
     native_send = native_send and reference.get("kind") == "demos"
-    outcome = "record" if native_send else "status"
+    outcome = "txHash" if native_send else "status"
     if not _exact_object(transaction, {"networkId", "genesisHash", "transactionRef", "eventsRoot", outcome}):
         return _result("error", "malformed raw transaction body"), None
     if (
@@ -1054,6 +1101,7 @@ def _verify_chain_observation(
         or canonical_bytes(transaction.get("transactionRef")) != canonical_bytes(reference)
         or transaction.get("eventsRoot") != observation["selectedEventProof"]["root"]
         or (not native_send and transaction.get("status") != "success")
+        or (native_send and transaction.get("txHash") != reference.get("txHash"))
     ):
         return _result("fail", "raw transaction does not bind selected event, network, or reference"), None
     economics_decision, economics_reason = _verify_event_economics(event, reference, expected)
@@ -1061,7 +1109,9 @@ def _verify_chain_observation(
         return _result(economics_decision, economics_reason), None
     record_decision, record_reason = "pass", ""
     if native_send:
-        record_decision, record_reason = _verify_demos_record(transaction["record"], reference, expected, trusted)
+        record_decision, record_reason, record = _verify_demos_execution(observation, reference, trusted)
+        if record_decision == "pass":
+            record_decision, record_reason = _verify_demos_record(record, reference, expected, trusted)
         if record_decision in {"error", "fail"}:
             return _result(record_decision, record_reason), None
 

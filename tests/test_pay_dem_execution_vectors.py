@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import generate_pay_dem_execution_vectors as generator  # noqa: E402
 from jcs import canonicalize  # noqa: E402
+from demos_json import stringify  # noqa: E402
 
 
 VECTORS = ROOT / "conformance/vectors/security/pay-dem-execution-v0.1.json"
@@ -226,7 +227,10 @@ def authentic(transaction) -> bool:
     `content.from` covers the UTF-8 hash."""
     if not isinstance(transaction, dict) or not isinstance(transaction.get("content"), dict):
         return False
-    serialized = json.dumps(transaction["content"], separators=(",", ":"), ensure_ascii=False)
+    try:
+        serialized = stringify(transaction["content"])
+    except (ValueError, TypeError, UnicodeError):
+        return False
     tx_hash = transaction.get("hash")
     if tx_hash != hashlib.sha256(serialized.encode("utf-8")).hexdigest():
         return False
@@ -543,7 +547,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as scratch:
             root = Path(scratch)
             (root / "scripts").mkdir()
-            for name in ("generate_pay_dem_execution_vectors.py", "jcs.py"):
+            for name in ("generate_pay_dem_execution_vectors.py", "jcs.py", "demos_json.py"):
                 shutil.copy(ROOT / "scripts" / name, root / "scripts" / name)
             output = root / "conformance/vectors/security/pay-dem-execution-v0.1.json"
             output.parent.mkdir(parents=True)
@@ -689,6 +693,32 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 bytes.fromhex(record["signature"]["data"][2:]), record["hash"].encode("utf-8")
             )
 
+    def test_authentic_other_sender_must_match_retained_payer(self):
+        case = self.cases["broadcast-signed-sender-differs"]
+        value = case["protocolInput"]
+        self.assertTrue(authentic(value["signedTransaction"]))
+        self.assertNotEqual(value["retainedTransfer"]["sender"],
+                            value["signedTransaction"]["content"]["from"].removeprefix("0x"))
+        self.assertEqual("fail", evaluate(case)[0])
+        self.assertEqual("pass", evaluate(case, {"signed-transfer-matches-retention"})[0])
+
+    def test_sdk_json_stringify_numbers_preserve_signed_content(self):
+        # Literal outputs of JavaScript JSON.stringify; preserve non-NFC strings and member order.
+        content = {"z": 1e-7, "a": 1.0, "tiny": 1e-6, "negativeZero": -0.0,
+                   "text": "e\u0301", "10": 10, "2": 2}
+        serialized = '{"2":2,"10":10,"z":1e-7,"a":1,"tiny":0.000001,"negativeZero":0,"text":"e\u0301"}'
+        self.assertEqual(serialized, stringify(content))
+        for number, spelling in ((1e-7, "1e-7"), (1.0, "1"), (1e-6, "0.000001"), (-0.0, "0")):
+            with self.subTest(number=number):
+                body = generator.send_content(nonce=generator.NONCE, amount=generator.AMOUNT_OS, extra=number)
+                # Independent expected SDK bytes, before signing the deterministic fixture hash.
+                expected = json.dumps({k: v for k, v in body.items() if k != "extra"}, separators=(",", ":"))[:-1] + ',"extra":' + spelling + '}'
+                tx_hash = hashlib.sha256(expected.encode()).hexdigest()
+                transaction = {"content": body, "hash": tx_hash,
+                               "signature": {"type": "ed25519", "data": "0x" + generator.PAYER_SIGNER.sign(tx_hash.encode()).hex()}}
+                self.assertTrue(authentic(transaction))
+                self.assertEqual(tx_hash, generator.content_hash(body))
+
     def test_inclusion_only_implementation_is_rejected(self):
         wrong = {
             vector["name"]
@@ -743,10 +773,14 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertNotIn("differently typed", spec)
         self.assertIn("by itself it authorizes neither delivery nor settlement accounting", spec)
         self.assertIn("MUST NOT broadcast a transaction that the profile does not authenticate", spec)
-        self.assertIn("carry its Demos record, decoded under the DEMOS-MAPPING §A.2 native-send", spec)
+        self.assertIn("authenticate the full result record independently", spec)
+        self.assertIn("primary party signing key\n  MUST NOT substitute", spec)
+        self.assertIn("unavailable\n  execution-result authentication is `indeterminate`", spec)
         self.assertIn("*Signed transaction.*", demos)
         self.assertIn("SHA-256 of the UTF-8 `JSON.stringify(content)`", demos)
         self.assertIn("`nonceEnforcement` fork", demos)
+        self.assertIn("`signatureDomain` fork", demos)
+        self.assertIn("requires a revision of this profile", demos)
         self.assertIn("DEM-2 and DEM-3", demos)
         self.assertIn("61b8e75aa8db5e408c49e1c3a89db4d673f45578", demos)
         self.assertIn("**Native-send record profile (normative).**", demos)

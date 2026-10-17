@@ -2659,11 +2659,14 @@ SettlementAmendment is anchored via SR-2 at dacs4:amendment:{jobId}:{evidenceHas
   signer MUST be the authenticated phase orchestrator of the target's session;
   another party's valid signature is not authority. The target MUST be a
   complete record of its arm, including the members its `outcome` makes
-  required, and is checked against that arm's closed shape, as DACS-5 SEB-3
-  consumes the same record. Each of the following violates AMEND-1 and is
+  required, as DACS-5 SEB-3 consumes the same record. The three DACS-4 v0.x
+  arms use their closed shapes; the Atomic arm uses the normative schema in
+  §9.7.3, which admits unknown members preserved under CORE SIG-5. Each of the
+  following violates AMEND-1 and is
   handled under AMEND-4: no recognized discriminator or more than one, an
   unsupported version, a signature valid only under another domain, a signer
-  other than that orchestrator, a missing, mistyped or unknown arm member, a
+  other than that orchestrator, a missing required member or mistyped arm member,
+  an unknown member in one of the three closed DACS-4 v0.x arms, a
   `jobId` other than the amendment's, a non-pay-* `phase`, an authentic anchor
   at the reference's locator that binds a different content hash, or an
   amendment address whose `{jobId}` or `{evidenceHash}` segment differs from the

@@ -24,6 +24,26 @@ BINDINGS = {
     "other-payment": ref.PhaseBinding("pay-evm-erc20", "dacs-purchase-v1", True),
 }
 
+# Complete DACS-4 §9.4.1 examples, independent of the reference predicates.
+ASSETS = [
+    {"kind": "erc20", "chainId": 1, "contract": "0x1234", "symbol": "USDC", "decimals": 6},
+    {"kind": "spl", "cluster": "mainnet", "mint": "mint-key", "symbol": "USDC", "decimals": 6},
+    {"kind": "native-evm", "chainId": 1, "symbol": "ETH", "decimals": 18},
+    {"kind": "native-solana", "cluster": "mainnet", "symbol": "SOL", "decimals": 9},
+    {"kind": "native-dem", "symbol": "DEM", "decimals": 9},
+    {"kind": "fiat-via-ap2", "isoCurrency": "USD", "provider": "provider-1"},
+    {"kind": "stablecoin-cross-chain", "canonicalSymbol": "USDC", "routes": [{
+        "sourceChainId": 1, "destChainId": "solana",
+        "htlcContracts": {"source": "0x1234", "dest": "contract-key"}, "liquidityTankIds": ["tank-1"]}]},
+]
+NETWORKS = [
+    {"kind": "evm", "chainId": 1, "rpcAttestation": "consensus-backed-proxy"},
+    {"kind": "solana", "cluster": "mainnet"}, {"kind": "demos"},
+    {"kind": "ap2-provider", "providerEndpoint": "https://provider.example"},
+    {"kind": "x402-resource", "resourceBaseUrl": "https://resource.example"},
+    {"kind": "cross-chain", "mechanism": "htlc"},
+]
+
 
 class SettlementContractTests(unittest.TestCase):
     @classmethod
@@ -140,14 +160,20 @@ class SettlementContractTests(unittest.TestCase):
             "pay-cross-chain-liquidity-tank", "pay-ap2", "pay-x402", "pay-dem")]
         variants += [("availability", value) for value in (
             "live", "operator_gated", "closed_data", "bilateral", "mocked", "disabled", "failed")]
-        variants += [("asset", {"kind": value}) for value in (
-            "erc20", "spl", "native-evm", "native-solana", "native-dem", "fiat-via-ap2",
-            "stablecoin-cross-chain")]
-        variants += [("network", {"kind": value}) for value in (
-            "evm", "solana", "demos", "ap2-provider", "x402-resource", "cross-chain")]
+        variants += [("asset", value) for value in ASSETS]
+        variants += [("network", value) for value in NETWORKS]
+        variants += [("asset", {**value, "cluster": cluster}) for value in ASSETS
+                     if "cluster" in value for cluster in ("devnet", "testnet")]
+        variants += [("network", {**NETWORKS[1], "cluster": cluster}) for cluster in ("devnet", "testnet")]
+        variants += [("network", {**NETWORKS[0], "rpcAttestation": "evm-rpc"})]
+        variants += [("network", {**NETWORKS[-1], "mechanism": value})
+                     for value in ("liquidity-tank", "substrate-native")]
         variants += [("governance", {**rail["governance"], "anchoring": value})
                      for value in ("in-code", "single-signer", "multisig")]
         variants.append(("railId", "r" * 64))  # the longest canonical railId
+        variants += [("governance", {**rail["governance"], **change}) for change in (
+            {"supersedes": 0}, {"deprecated": False}, {"deprecated": True, "deprecationReason": "retired"},
+            {"emergency": {"isEmergency": True, "failureObservation": "unavailable"}})]
         inputs = [{**accepted, "rail": {**rail, key: value}} for key, value in variants]
         for change in ([{"derivedFromPattern": value} for value in ("fixed-price", "rfq", "sealed-envelope")]
                        + [{"parties": [{**agreement["parties"][0], "role": "bidder-non-winning"},
@@ -158,7 +184,8 @@ class SettlementContractTests(unittest.TestCase):
         for selector in ("identityBoundAgreementVersion", "agreementVersion"):
             inputs.append({**accepted, "agreement": {selector: "1", **{
                 k: v for k, v in agreement.items() if k != "agreementVersion"}}})
-        payout = {**agreement["terms"], "payoutBindings": []}
+        payout = {**agreement["terms"], "payoutBindings": [{
+            "railId": rail["railId"], "phaseIndex": 0, "payeeAddress": "seller-address"}]}
         for selector in ("payeeBoundAgreementVersion", "identityBoundPayeeAgreementVersion"):
             inputs.append({**accepted, "agreement": {selector: "1", **{
                 k: v for k, v in agreement.items() if k != "agreementVersion"}, "terms": payout}})
@@ -169,6 +196,142 @@ class SettlementContractTests(unittest.TestCase):
         for value in inputs:
             with self.subTest(input=json.dumps({k: value[k] for k in ("agreement", "rail")})[:120]):
                 ref.check_payment_input(BINDINGS["ordinary"], value)
+
+    def test_nested_rail_required_members_and_types_reject_before_handler(self):
+        names = {v["name"]: v for v in self.data["phaseInputs"]}
+        for binding in ("ordinary", "atomic"):
+            base = names[binding + "-input"]["input"]
+            for member, examples in (("asset", ASSETS), ("network", NETWORKS)):
+                for example in examples:
+                    for key in example:
+                        # Each required union member independently refuses omission
+                        # and a value of another type; routes get their own tests.
+                        for replacement in (None, {}):
+                            value = {k: v for k, v in example.items() if k != key}
+                            if replacement is not None:
+                                value[key] = replacement
+                            with self.subTest(binding=binding, kind=example["kind"], key=key, replacement=replacement):
+                                handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                                result = ref.dispatch_payment(BINDINGS[binding], {
+                                    **base, "rail": {**base["rail"], member: value}}, handler)
+                                self.assertEqual(result["status"], "rejected")
+                                self.assertEqual(result["errorClass"], "permanent")
+                                self.assertIs(result["ok"], False)
+                                handler.assert_not_called()
+
+    def test_nested_optional_rail_members_are_typed(self):
+        base = next(v["input"] for v in self.data["phaseInputs"] if v["name"] == "ordinary-input")
+        route = ASSETS[-1]["routes"][0]
+        changes = [("asset", {**ASSETS[-1], "routes": [{**route, **change}]}) for change in (
+            {"sourceChainId": True}, {"destChainId": 2**53}, {"htlcContracts": {}},
+            {"htlcContracts": []}, {"htlcContracts": {"source": "a", "dest": 1}},
+            {"liquidityTankIds": "tank"}, {"liquidityTankIds": [1]})]
+        changes += [("governance", {**base["rail"]["governance"], **change}) for change in (
+            {"supersedes": True}, {"deprecated": 1}, {"deprecationReason": 1},
+            {"emergency": True}, {"emergency": {"isEmergency": 1, "failureObservation": "outage"}},
+            {"emergency": {"isEmergency": False, "failureObservation": "outage"}},
+            {"emergency": {"isEmergency": True, "failureObservation": 1}})]
+        changes += [("asset", {**ASSETS[0], key: value}) for key, value in (
+            ("chainId", 0), ("chainId", 2**53), ("decimals", True), ("decimals", -1), ("decimals", 2**53))]
+        changes += [("asset", {**ASSETS[3], key: value}) for key, value in (("symbol", "ETH"), ("decimals", 18))]
+        for member, value in changes:
+            with self.subTest(member=member, value=value):
+                handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                result = ref.dispatch_payment(BINDINGS["ordinary"], {**base, "rail": {**base["rail"], member: value}}, handler)
+                self.assertEqual(result["status"], "rejected")
+                handler.assert_not_called()
+
+    def test_complete_nested_shapes_preserve_unknown_members_and_boundaries(self):
+        names = {v["name"]: v for v in self.data["phaseInputs"]}
+        for binding in ("ordinary", "atomic"):
+            for asset in ASSETS:
+                value = copy.deepcopy(names[binding + "-input"]["input"])
+                value["rail"]["asset"] = {**asset, "future": "preserved"}
+                value["rail"]["network"]["future"] = "preserved"
+                value["rail"]["governance"]["future"] = "preserved"
+                value["agreement"]["listingRef"]["future"] = "preserved"
+                value["agreement"]["terms"]["deliverable"]["future"] = "preserved"
+                value["agreement"]["terms"]["rail"].update(railVersion=1, parameters={"future": True})
+                before = copy.deepcopy(value)
+                handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                with self.subTest(binding=binding, asset=asset["kind"]):
+                    self.assertEqual(ref.dispatch_payment(BINDINGS[binding], value, handler)["status"], "accepted")
+                    handler.assert_called_once_with(value)
+                    self.assertEqual(value, before)
+        ordinary = names["ordinary-input"]["input"]
+        for asset in ({**ASSETS[0], "chainId": 2**53 - 1, "decimals": 0},
+                      {**ASSETS[-1], "routes": []},
+                      {**ASSETS[-1], "routes": [{"sourceChainId": 0, "destChainId": 1}]},
+                      {**ASSETS[-1], "routes": [{"sourceChainId": "evm:1", "destChainId": 1}]}):
+            ref.check_payment_input(BINDINGS["ordinary"], {**ordinary, "rail": {**ordinary["rail"], "asset": asset}})
+        for kind in ("storage-program", "entitlement", "attested-payload", "external"):
+            ref.check_payment_input(BINDINGS["ordinary"], {**ordinary, "agreement": {
+                **ordinary["agreement"], "terms": {**ordinary["agreement"]["terms"], "deliverable": {
+                    "deliverableType": kind, "hash": "ab" * 32}}}})
+        # Historical AgreementParty hashes keep their declared string contract.
+        legacy = copy.deepcopy(ordinary)
+        legacy["agreement"]["parties"][0]["bundleHash"] = "sha256:" + "AB" * 32
+        ref.check_payment_input(BINDINGS["ordinary"], legacy)
+
+    def test_agreement_nested_members_and_arm_exclusions(self):
+        base = next(v["input"] for v in self.data["phaseInputs"] if v["name"] == "ordinary-input")
+        agreement = base["agreement"]
+        for selector in ("agreementVersion", "identityBoundAgreementVersion", "payeeBoundAgreementVersion",
+                         "identityBoundPayeeAgreementVersion", "sealedSelectionAgreementVersion"):
+            source = copy.deepcopy(agreement)
+            source.pop("agreementVersion")
+            source[selector] = "1"
+            payout = selector not in ("agreementVersion", "identityBoundAgreementVersion")
+            if payout:
+                source["terms"]["payoutBindings"] = [{"railId": "rail", "phaseIndex": 0, "payeeAddress": "seller"}]
+            if selector == "sealedSelectionAgreementVersion":
+                source.update(derivedFromPattern="sealed-envelope", selectionReceiptRef=agreement["parties"][0]["vetRecordRef"])
+            # A complete minimal arm is accepted; no optional member is required.
+            source["terms"] = {k: v for k, v in source["terms"].items() if k in ("deliverable", "price", "deadline", "payoutBindings")}
+            source["terms"]["deliverable"].pop("schemaUrl", None)
+            ref.check_payment_input(BINDINGS["ordinary"], {**base, "agreement": source})
+            bad = []
+            for member, value in (("deliverable", {"deliverableType": "external"}),
+                                  ("rail", {}), ("rail", {"railId": "rail", "parameters": []}),
+                                  ("deliverable", {"deliverableType": "external", "hash": "ab" * 32, "schemaUrl": 1})):
+                bad.append({**source, "terms": {**source["terms"], member: value}})
+            if not payout:
+                for key, value in (("payoutBindings", []), ("priorPaymentDispositionRef", agreement["parties"][0]["vetRecordRef"])):
+                    bad.append({**source, "terms": {**source["terms"], key: value}})
+            else:
+                for key, value in (("railId", ""), ("payeeAddress", ""), ("phaseIndex", True), ("phaseIndex", -1), ("phaseIndex", 2**53)):
+                    bad.append({**source, "terms": {**source["terms"], "payoutBindings": [{
+                        **source["terms"]["payoutBindings"][0], key: value}]}})
+                bad.append({**source, "terms": {**source["terms"], "priorPaymentDispositionRef": {}}})
+            if selector != "sealedSelectionAgreementVersion":
+                bad.append({**source, "selectionReceiptRef": agreement["parties"][0]["vetRecordRef"]})
+            if selector.startswith("identityBound"):
+                for bundle_hash in ("sha256:" + "ab" * 32, "AB" * 32):
+                    bad.append({**source, "parties": [{**source["parties"][0], "bundleHash": bundle_hash}, *source["parties"][1:]]})
+            for candidate in bad:
+                with self.subTest(selector=selector, agreement=candidate):
+                    handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                    result = ref.dispatch_payment(BINDINGS["ordinary"], {**base, "agreement": candidate}, handler)
+                    self.assertEqual(result["status"], "rejected")
+                    handler.assert_not_called()
+
+    def test_unknown_target_members_follow_each_arms_schema(self):
+        names = {v["name"]: v for v in self.data["amendmentTargets"]}
+        for label in ("ordinary", "legacy-transition", "finality-bound", "atomic"):
+            with self.subTest(arm=label):
+                vector = names[label + "-unknown-member"]
+                self.assertIn("futureMember", vector["resolved"]["artifact"])
+                self.assertEqual(self.consume(vector)[0], "valid" if label == "atomic" else "violation")
+        changelog = (ROOT / "CHANGELOG.md").read_text()
+        heading = "### Changed — general normative changes in candidate DACS-4 v0.8 (every profile)"
+        changed = " ".join(changelog.split(heading, 1)[1].split("\n### ", 1)[0].split())
+        for phrase in ("complete AssetSpec and NetworkSpec arms",
+                       "DeliverableRef, PaymentRailRef, payout binding entries",
+                       "three DACS-4 v0.x target arms use closed shapes and reject unknown members",
+                       "Atomic targets use the open normative schema (§9.7.3)"):
+            self.assertIn(phrase, changed)
+        spec = " ".join((ROOT / "spec/DACS-4-SETTLE.md").read_text().split())
+        self.assertIn("the Atomic arm uses the normative schema in §9.7.3, which admits unknown members", spec)
 
     def test_inauthentic_target_anchor_leaves_the_amendment_pending(self):
         # CORE SR2-4/SR2-12: an inauthentic receipt is discarded, not a violation.

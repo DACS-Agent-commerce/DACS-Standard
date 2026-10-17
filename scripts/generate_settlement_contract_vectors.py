@@ -249,6 +249,64 @@ def build_fixture():
     ):
         phase(label, binding, {**base, **change}, "rejected")
 
+    # Nested declared types are checked in both dispatch arms before a rail call.
+    for binding, base in (("ordinary", ordinary_input), ("atomic", atomic_input)):
+        for label, change in (
+            ("rail-native-dem-without-decimals", rail_with(asset={"kind": "native-dem", "symbol": "DEM"})),
+            ("rail-native-dem-without-symbol", rail_with(asset={"kind": "native-dem", "decimals": 9})),
+            ("rail-native-dem-symbol-eth", rail_with(asset={**rail["asset"], "symbol": "ETH"})),
+            ("rail-native-dem-decimals-18", rail_with(asset={**rail["asset"], "decimals": 18})),
+            ("rail-erc20-asset-without-contract", rail_with(asset={
+                "kind": "erc20", "chainId": 1, "symbol": "USDC", "decimals": 6})),
+            ("rail-erc20-asset-kind-only", rail_with(asset={"kind": "erc20"})),
+            ("rail-spl-asset-without-mint", rail_with(asset={
+                "kind": "spl", "cluster": "mainnet", "symbol": "USDC", "decimals": 6})),
+            ("rail-native-evm-chain-id-boolean", rail_with(asset={
+                "kind": "native-evm", "chainId": True, "symbol": "ETH", "decimals": 18})),
+            ("rail-native-solana-cluster-unknown", rail_with(asset={
+                "kind": "native-solana", "cluster": "mainnet-beta", "symbol": "SOL", "decimals": 9})),
+            ("rail-fiat-asset-without-provider", rail_with(asset={"kind": "fiat-via-ap2", "isoCurrency": "USD"})),
+            ("rail-cross-chain-route-not-object", rail_with(asset={
+                "kind": "stablecoin-cross-chain", "canonicalSymbol": "USDC", "routes": [1]})),
+            ("rail-cross-chain-route-without-destination", rail_with(asset={
+                "kind": "stablecoin-cross-chain", "canonicalSymbol": "USDC", "routes": [{"sourceChainId": 1}]})),
+            ("rail-evm-network-without-chain-id", rail_with(network={"kind": "evm", "rpcAttestation": "evm-rpc"})),
+            ("rail-evm-network-rpc-attestation-unknown", rail_with(network={
+                "kind": "evm", "chainId": 1, "rpcAttestation": "trust-me"})),
+            ("rail-solana-network-without-cluster", rail_with(network={"kind": "solana"})),
+            ("rail-ap2-network-without-endpoint", rail_with(network={"kind": "ap2-provider"})),
+            ("rail-x402-network-without-base-url", rail_with(network={"kind": "x402-resource"})),
+            ("rail-cross-chain-network-without-mechanism", rail_with(network={"kind": "cross-chain"})),
+            ("rail-cross-chain-network-mechanism-unknown", rail_with(network={"kind": "cross-chain", "mechanism": "bridge"})),
+            ("rail-governance-supersedes-string", rail_governance(supersedes="1")),
+            ("rail-governance-deprecated-string", rail_governance(deprecated="yes")),
+            ("rail-governance-deprecated-without-reason", rail_governance(deprecated=True)),
+            ("rail-governance-emergency-without-observation", rail_governance(emergency={"isEmergency": True})),
+            ("agreement-deliverable-empty", agreement_terms(deliverable={})),
+            ("agreement-deliverable-type-unknown", agreement_terms(deliverable={"deliverableType": "teleport", "hash": "00" * 32})),
+            ("agreement-deliverable-hash-malformed", agreement_terms(deliverable={"deliverableType": "external", "hash": "x"})),
+            ("agreement-rail-string", agreement_terms(rail="demos-native:DEM")),
+            ("agreement-rail-version-string", agreement_terms(rail={"railId": rail["railId"], "railVersion": "1"})),
+        ):
+            phase(binding + "-" + label, binding, {**base, **change}, "rejected")
+        for label, entries in (("not-object", [1]), ("empty", [{}]), ("phase-index-string", [{
+                "railId": rail["railId"], "payeeAddress": ordinary_input["payee"]["payeeAddress"], "phaseIndex": "2"}])):
+            payee_agreement = {"payeeBoundAgreementVersion": "1", **{
+                k: v for k, v in agreement.items() if k != "agreementVersion"},
+                "terms": {**agreement["terms"], "payoutBindings": entries}}
+            phase(f"{binding}-payee-bound-payout-binding-{label}", binding,
+                  {**base, "agreement": payee_agreement}, "rejected")
+        identity = {"identityBoundAgreementVersion": "1", **{
+            k: v for k, v in agreement.items() if k != "agreementVersion"},
+            "parties": [{**agreement["parties"][0], "bundleHash": "sha256:ABC"}, *agreement["parties"][1:]]}
+        phase(binding + "-agreement-identity-bound-bundle-hash-malformed", binding,
+              {**base, "agreement": identity}, "rejected")
+    phase("ordinary-session-listing-ref-without-content-hash", "ordinary", {
+        **ordinary_input, "sessionContext": {**session, "listingRef": {
+            k: v for k, v in session["listingRef"].items() if k != "contentHash"}}}, "rejected")
+    phase("atomic-context-listing-ref-not-object", "atomic", {
+        **atomic_input, "atomicSessionContext": {**context, "listingRef": 1}}, "rejected")
+
     receipt = atomic.final_receipt(purchase)
     atomic_target = atomic.settlement_evidence(purchase, receipt, "payment")
     completion = atomic.completion_intent(receipt)
@@ -326,6 +384,8 @@ def build_fixture():
         ("finality-bound", finality_target, finality_domain, "finalityBoundEvidenceVersion", legacy_domain),
     ):
         target_case(label + "-target", base, domain, "valid")
+        target_case(label + "-unknown-member", {**base, "futureMember": {"note": "preserve signed bytes"}},
+                    domain, "valid" if label == "atomic" else "violation")
         target_case(label + "-unsupported-version", {**base, selector: "2"}, domain, "violation")
         target_case(label + "-wrong-domain", base, other, "violation")
         target_case(label + "-wrong-job", {**base, "jobId": "01K1DPA0000000000000000009"}, domain, "violation")

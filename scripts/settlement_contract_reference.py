@@ -7,6 +7,9 @@ this module makes no live rail calls and implements no refund ledger. A `valid`
 result admits the target under AMEND-1 only. AMEND-2/3, amendment writer
 authorization, and a transition or finality-bound target's §9.7 reservation or
 FV-1..FV-10 authority remain the enclosing consumer's responsibility.
+PhaseBinding does not carry the signed Listing's agreement-kind selection;
+the enclosing verifier must enforce that selection and require/verify the
+identityBindingCompanions for either identity-bound agreement kind.
 """
 from __future__ import annotations
 
@@ -54,13 +57,7 @@ _RAIL_TYPES = frozenset({
     "evm-erc20", "solana-spl", "cross-chain-htlc", "cross-chain-liquidity-tank",
     "ap2", "x402", "demos-native",
 })
-_ASSET_KINDS = frozenset({
-    "erc20", "spl", "native-evm", "native-solana", "native-dem", "fiat-via-ap2",
-    "stablecoin-cross-chain",
-})
-_NETWORK_KINDS = frozenset({
-    "evm", "solana", "demos", "ap2-provider", "x402-resource", "cross-chain",
-})
+_SOLANA_CLUSTERS = frozenset({"mainnet", "devnet", "testnet"})
 _RAIL_AVAILABILITY = frozenset({
     "live", "operator_gated", "closed_data", "bilateral", "mocked", "disabled", "failed",
 })
@@ -118,7 +115,10 @@ def _agreement_valid(shape, value) -> bool:
     if (len(selectors) != 1 or value[selectors[0]] != "1"
             or not _AGREEMENT_MEMBERS <= set(value)):
         return False
-    sealed = selectors[0] == "sealedSelectionAgreementVersion"
+    selector = selectors[0]
+    sealed = selector == "sealedSelectionAgreementVersion"
+    payout = _AGREEMENT_SELECTORS[selector]
+    identity_bound = selector in {"identityBoundAgreementVersion", "identityBoundPayeeAgreementVersion"}
     terms = value["terms"]
     return (shape._nonempty_jcs_string(value["jobId"])
             and _listing_ref_valid(shape, value["listingRef"], closed=False)
@@ -126,16 +126,22 @@ def _agreement_valid(shape, value) -> bool:
             and all(isinstance(party, dict)
                     and shape._string_member(party.get("role"),
                                              {"buyer", "seller", "bidder-non-winning"})
-                    and shape._nonempty_jcs_string(party.get("bundleHash"))
+                    and (shape._sha256_hex(party.get("bundleHash")) if identity_bound
+                         else shape._nonempty_jcs_string(party.get("bundleHash")))
                     and shape._claim_reference_shape_valid(party.get("primaryClaim"))
                     and shape._attestation_ref_shape_valid(party.get("vetRecordRef"))
                     for party in value["parties"])
             and isinstance(terms, dict) and {"deliverable", "price", "deadline"} <= set(terms)
-            and isinstance(terms["deliverable"], dict)
+            and _agreement_deliverable_valid(shape, terms["deliverable"])
             and shape._price_term_shape_valid(terms["price"])
             and shape._safe_nonnegative_integer(terms["deadline"])
-            and (not _AGREEMENT_SELECTORS[selectors[0]]
-                 or isinstance(terms.get("payoutBindings"), list))
+            and ("rail" not in terms or _payment_rail_ref_valid(shape, terms["rail"]))
+            and (isinstance(terms.get("payoutBindings"), list)
+                 and all(_payout_binding_valid(shape, entry) for entry in terms["payoutBindings"])
+                 if payout else "payoutBindings" not in terms and "priorPaymentDispositionRef" not in terms)
+            and ("priorPaymentDispositionRef" not in terms
+                 or shape._attestation_ref_shape_valid(terms["priorPaymentDispositionRef"]))
+            and (sealed or "selectionReceiptRef" not in value)
             and shape._string_member(value["derivedFromPattern"], {"sealed-envelope"} if sealed
                                      else {"fixed-price", "rfq", "sealed-envelope"})
             and (not sealed or shape._attestation_ref_shape_valid(value.get("selectionReceiptRef")))
@@ -149,28 +155,116 @@ def _agreement_valid(shape, value) -> bool:
                     for signature in value["signatures"]))
 
 
+def _agreement_deliverable_valid(shape, value) -> bool:
+    return (isinstance(value, dict)
+            and shape._string_member(value.get("deliverableType"),
+                                     {"storage-program", "entitlement", "attested-payload", "external"})
+            and shape._sha256_hex(value.get("hash"))
+            and ("schemaUrl" not in value or shape._nonempty_jcs_string(value["schemaUrl"])))
+
+
+def _payment_rail_ref_valid(shape, value) -> bool:
+    return (isinstance(value, dict) and shape._nonempty_jcs_string(value.get("railId"))
+            and ("railVersion" not in value
+                 or shape._safe_nonnegative_integer(value["railVersion"], positive=True))
+            and ("parameters" not in value or isinstance(value["parameters"], dict)))
+
+
+def _payout_binding_valid(shape, value) -> bool:
+    return (isinstance(value, dict) and shape._nonempty_jcs_string(value.get("railId"))
+            and shape._nonempty_jcs_string(value.get("payeeAddress"))
+            and shape._safe_nonnegative_integer(value.get("phaseIndex")))
+
+
+def _cross_chain_route_valid(shape, value) -> bool:
+    def chain_id(member):
+        return (shape._nonempty_jcs_string(member)
+                or shape._safe_nonnegative_integer(member))
+    if not isinstance(value, dict):
+        return False
+    contracts = value.get("htlcContracts")
+    return (chain_id(value.get("sourceChainId")) and chain_id(value.get("destChainId"))
+            and ("htlcContracts" not in value
+                 or (isinstance(contracts, dict)
+                     and all(shape._nonempty_jcs_string(contracts.get(key)) for key in ("source", "dest"))))
+            and ("liquidityTankIds" not in value
+                 or (isinstance(value["liquidityTankIds"], list)
+                     and all(shape._nonempty_jcs_string(item) for item in value["liquidityTankIds"]))))
+
+
+def _asset_valid(shape, value) -> bool:
+    if not isinstance(value, dict):
+        return False
+    kind = value.get("kind")
+    if kind == "fiat-via-ap2":
+        return all(shape._nonempty_jcs_string(value.get(key)) for key in ("isoCurrency", "provider"))
+    if kind == "stablecoin-cross-chain":
+        return (shape._nonempty_jcs_string(value.get("canonicalSymbol"))
+                and isinstance(value.get("routes"), list)
+                and all(_cross_chain_route_valid(shape, route) for route in value["routes"]))
+    if not shape._string_member(kind, {"erc20", "spl", "native-evm", "native-solana", "native-dem"}):
+        return False
+    if not (shape._nonempty_jcs_string(value.get("symbol"))
+            and shape._safe_nonnegative_integer(value.get("decimals"))):
+        return False
+    if kind in {"erc20", "native-evm"}:
+        return (shape._safe_nonnegative_integer(value.get("chainId"), positive=True)
+                and (kind != "erc20" or shape._nonempty_jcs_string(value.get("contract"))))
+    if kind in {"spl", "native-solana"}:
+        return (shape._string_member(value.get("cluster"), _SOLANA_CLUSTERS)
+                and (shape._nonempty_jcs_string(value.get("mint")) if kind == "spl"
+                     else value["symbol"] == "SOL" and value["decimals"] == 9))
+    return value["symbol"] == "DEM" and value["decimals"] == 9
+
+
+def _network_valid(shape, value) -> bool:
+    if not isinstance(value, dict):
+        return False
+    kind = value.get("kind")
+    if kind == "evm":
+        return (shape._safe_nonnegative_integer(value.get("chainId"), positive=True)
+                and shape._string_member(value.get("rpcAttestation"), {"consensus-backed-proxy", "evm-rpc"}))
+    if kind == "solana":
+        return shape._string_member(value.get("cluster"), _SOLANA_CLUSTERS)
+    if kind == "ap2-provider":
+        return shape._nonempty_jcs_string(value.get("providerEndpoint"))
+    if kind == "x402-resource":
+        return shape._nonempty_jcs_string(value.get("resourceBaseUrl"))
+    if kind == "cross-chain":
+        return shape._string_member(value.get("mechanism"), {"htlc", "liquidity-tank", "substrate-native"})
+    return kind == "demos"
+
+
+def _governance_valid(shape, value) -> bool:
+    if not isinstance(value, dict):
+        return False
+    emergency = value.get("emergency")
+    return (shape._claim_reference_shape_valid(value.get("proposedBy"))
+            and shape._safe_nonnegative_integer(value.get("acceptedAt"))
+            and shape._string_member(value.get("anchoring"), {"in-code", "single-signer", "multisig"})
+            and ("supersedes" not in value or shape._safe_nonnegative_integer(value["supersedes"]))
+            and ("deprecated" not in value or isinstance(value["deprecated"], bool))
+            and (value.get("deprecated") is not True or "deprecationReason" in value)
+            and ("deprecationReason" not in value or shape._nonempty_jcs_string(value["deprecationReason"]))
+            and ("emergency" not in value
+                 or (isinstance(emergency, dict) and emergency.get("isEmergency") is True
+                     and shape._nonempty_jcs_string(emergency.get("failureObservation")))))
+
+
 def _rail_valid(shape, value) -> bool:
     """DACS-4 9.4.1 RailDefinition: required members and closed enumerations."""
     if not isinstance(value, dict) or not _RAIL_MEMBERS <= set(value):
         return False
-    governance = value["governance"]
     return (shape._safe_nonnegative_integer(value["railVersion"], positive=True)
             and shape._nonempty_jcs_string(value["railId"]) and len(value["railId"]) <= 64
             and shape._string_member(value["railType"], _RAIL_TYPES)
-            and isinstance(value["asset"], dict)
-            and shape._string_member(value["asset"].get("kind"), _ASSET_KINDS)
-            and isinstance(value["network"], dict)
-            and shape._string_member(value["network"].get("kind"), _NETWORK_KINDS)
+            and _asset_valid(shape, value["asset"])
+            and _network_valid(shape, value["network"])
             # A concrete executable handler; pay-alternative is not one.
             and shape._string_member(value["phaseHandler"], PAYMENT_PHASES)
             and isinstance(value["parameters"], dict)
             and shape._string_member(value["availability"], _RAIL_AVAILABILITY)
-            and isinstance(governance, dict)
-            and {"proposedBy", "acceptedAt", "anchoring"} <= set(governance)
-            and shape._claim_reference_shape_valid(governance["proposedBy"])
-            and shape._safe_nonnegative_integer(governance["acceptedAt"])
-            and shape._string_member(governance["anchoring"],
-                                     {"in-code", "single-signer", "multisig"})
+            and _governance_valid(shape, value["governance"])
             and isinstance(value["signature"], dict)
             and shape._nonempty_jcs_string(value["signature"].get("algorithm"))
             and shape._nonempty_jcs_string(value["signature"].get("value")))
@@ -259,7 +353,10 @@ def dispatch_payment(binding: PhaseBinding, phase_input: Any, handler: Callable)
 
 
 def _target_arms(ref, shape) -> dict:
-    """AMEND-1 selector -> (signature domain, complete closed-arm shape check)."""
+    """AMEND-1 selector -> (signature domain, complete arm shape check).
+
+    The three DACS-4 v0.x shapes are closed; Atomic uses its open schema.
+    """
     def atomic_shape(target):
         ref.validate_schema(target, "atomic-settlement-evidence-v1.schema.json")
         return True

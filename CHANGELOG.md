@@ -1441,7 +1441,10 @@ The format used per release:
   Each arm's required members and their types, including the `AgreementArtifact`
   and `RailDefinition` discriminators and members, the nested party,
   `PriceTerm` and session-context shapes, are checked before dispatch. PC-1
-  rejection is permanent and precedes rail calls. AMEND-1 resolves the finalized
+  also checks each AssetSpec and NetworkSpec arm's nested members, governance
+  optionals, DeliverableRef, PaymentRailRef, each payout binding, identity-bound
+  party hashes, and DACS-3's forbidden members for the selected agreement kind.
+  A PC-1 rejection is permanent and precedes rail calls. AMEND-1 resolves the finalized
   target, authenticates its anchor receipt, checks that the receipt binds the
   reference's hash and then the bytes, selects one of the four payment evidence
   arms and its signature domain, requires the session orchestrator as signer and
@@ -1450,7 +1453,9 @@ The format used per release:
   not bind their own fields, and resolved bytes that differ from an authentic
   anchor remain indeterminate; AMEND-4 continues to allow rejection or flagging.
   A separate deterministic fixture and non-normative reference pin these
-  choices.
+  choices. The three DACS-4 v0.x target arms reject unknown members; Atomic
+  targets follow the open normative schema (§9.7.3) and preserve unknown signed
+  members under CORE SIG-5.
 - **Focused Atomic profile time and candidate fixtures** — the focused sequential
   profile verifies the commitment AnchorReceipt and reads its consensus time for
   Listing checks. Unsupported revocation-state reference versions remain
@@ -1522,6 +1527,10 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   and `RailDefinition` discriminators and members, the nested party,
   `PriceTerm` and session-context shapes, is rejected. A PC-1 rejection is
   permanent (`ok: false`, `errorClass: "permanent"`) and precedes any rail call.
+  The checks include complete AssetSpec and NetworkSpec arms, governance
+  optionals, DeliverableRef, PaymentRailRef, payout binding entries, bare
+  lowercase identity-bound party hashes, and each agreement kind's forbidden
+  members under DACS-3 §8.5.
 - **Amendment target** (DACS-4 §9.7.1 AMEND-1) — an amendment consumer MUST
   resolve `amendsEvidenceRef` and recompute its content hash before reading any
   target member. The target may now be `SettlementEvidence`,
@@ -1534,7 +1543,9 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   unfinalized target, or resolved bytes that differ from an authentic anchor,
   leaves the amendment `indeterminate`, as does an anchor receipt whose proof
   does not bind its own fields. Only an authentic anchor that binds another
-  content hash is a violation.
+  content hash is a violation. The three DACS-4 v0.x target arms use closed
+  shapes and reject unknown members; Atomic targets use the open normative
+  schema (§9.7.3), preserving unknown signed members under CORE SIG-5.
 - **Evidence selectors** (DACS-4 §9.7) — the exclusive-discriminator rule
   counts `atomicEvidenceVersion` with the four existing selectors and lists the
   `dacs-atomic-evidence:v1:` domain, so every consumer, not only an Atomic

@@ -117,7 +117,8 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 The separate [payment input and amendment target fixture](../../fixtures/settlement/payment-input-amendment-v0.1.json)
 executes the general DACS-4 PC-1 and AMEND-1 choices through
 `scripts/settlement_contract_reference.py`. The MUST-to-vector map is in
-CONFORMANCE-PLAN §14.8. AMEND-1 target validity does not establish refund accounting.
+CONFORMANCE-PLAN §14.8. AMEND-1 target validity does not establish refund accounting
+or a transition or finality-bound target's reservation or FV-1..FV-10 authority.
 
 The six `atomic-work-*.json` sets exercise the candidate CORE §5.2 profile with
 deterministic, public Ed25519 fixtures. Their synthetic witnesses are not Demos

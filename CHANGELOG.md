@@ -1438,11 +1438,17 @@ The format used per release:
 - **Payment input and amendment target reference** — authenticated phase binding
   selects PC-1's arm before input interpretation; ordinary handlers reject the
   Atomic session member while retaining CORE SIG-5 for other unknown members.
-  PC-1 rejection is permanent and precedes rail calls. AMEND-1 resolves and
-  hash-checks the finalized target, selects its exclusive supported discriminator
-  and signature domain, and checks the job and payment phase. Pending targets
-  remain indeterminate; AMEND-4 continues to allow rejection or flagging.
-  A separate deterministic fixture and non-normative reference pin these choices.
+  Each arm's required members and their types, including the nested party,
+  `PriceTerm` and session-context shapes, are checked before dispatch. PC-1
+  rejection is permanent and precedes rail calls. AMEND-1 resolves the finalized
+  target, checks that its authentic anchor binds the reference's hash and then
+  the bytes, selects one of the four payment evidence arms and its signature
+  domain, requires the session orchestrator as signer and a complete arm record,
+  and checks the job, payment phase and the amendment address's
+  `{evidenceHash}` segment. Pending targets and resolved bytes that differ from
+  an authentic anchor remain indeterminate; AMEND-4 continues to allow rejection
+  or flagging. A separate deterministic fixture and non-normative reference pin
+  these choices.
 - **Focused Atomic profile time and candidate fixtures** — the focused sequential
   profile verifies the commitment AnchorReceipt and reads its consensus time for
   Listing checks. Unsupported revocation-state reference versions remain
@@ -1483,8 +1489,8 @@ The format used per release:
   permissive validator, and require each validator CLI's success line. The
   355 earlier vectors are byte-identical. These vectors narrow, but do not
   close, the CONFORMANCE-PLAN
-  §14.8 semantic-fixture gap, which now also names the general DACS-4 changes
-  that still have no executable case.
+  §14.8 semantic-fixture gap. §14.8 maps the general DACS-4 PC-1 and AMEND-1
+  rules to the separate payment input and amendment target fixture.
 - **SEB-3 per-member Atomic admission** (DACS-5 §10.4.3 SEB-3) — names the
   states: missing Atomic authority, including a present admission map without
   this member's entry, is `indeterminate`, and malformed, stale, substituted,
@@ -1506,12 +1512,24 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   index or definition MUST NOT rewrite the rail authority of an existing
   session.
 - **Payment input arm** (DACS-4 §9.5.1 PC-1) — every pay-* handler MUST select
-  the `PaymentPhaseInput` or `AtomicPaymentPhaseInputV1` arm before
-  interpreting fields and MUST NOT coerce either arm into the other.
-- **Amendment target** (DACS-4 §9.7.1 AMEND-1) — `amendsEvidenceRef` may now
-  resolve to `SettlementEvidence` or `AtomicSettlementEvidenceV1`, and an
-  amendment consumer MUST verify the target discriminator and signature domain
-  before applying amendment semantics.
+  the `PaymentPhaseInput` or `AtomicPaymentPhaseInputV1` arm from the
+  authenticated phase binding before it reads any input member, and MUST NOT
+  coerce either arm into the other. The ordinary arm requires `sessionContext`
+  and rejects `atomicSessionContext`; the Atomic arm is closed. A missing
+  required member or one of the wrong type, including the nested party,
+  `PriceTerm` and session-context shapes, is rejected. A PC-1 rejection is
+  permanent (`ok: false`, `errorClass: "permanent"`) and precedes any rail call.
+- **Amendment target** (DACS-4 §9.7.1 AMEND-1) — an amendment consumer MUST
+  resolve `amendsEvidenceRef` and recompute its content hash before reading any
+  target member. The target may now be `SettlementEvidence`,
+  `LegacyTransitionSettlementEvidence`, `FinalityBoundSettlementEvidence` or
+  `AtomicSettlementEvidenceV1`, selected by exactly one discriminator and
+  verified under that arm's signature domain; `DeliveryEvidence` is not a
+  target. The signer MUST be the session's phase orchestrator, the target MUST
+  be a complete record of its arm, and the amendment address's `{evidenceHash}`
+  segment MUST equal the target's content hash. An unavailable, unanchored or
+  unfinalized target, or resolved bytes that differ from an authentic anchor,
+  leaves the amendment `indeterminate`.
 - **Evidence selectors** (DACS-4 §9.7) — the exclusive-discriminator rule
   counts `atomicEvidenceVersion` with the four existing selectors and lists the
   `dacs-atomic-evidence:v1:` domain, so every consumer, not only an Atomic

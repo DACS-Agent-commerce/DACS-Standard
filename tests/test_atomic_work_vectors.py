@@ -437,6 +437,21 @@ class AtomicWorkVectorTests(unittest.TestCase):
         ):
             with self.subTest(rule=rule):
                 self.assertIn(rule, changed)
+        # One phrase per PC-1 / AMEND-1 obligation, so a bullet cannot lag the rule.
+        for phrase in (
+            "authenticated phase binding before it reads any input member",
+            "requires `sessionContext` and rejects `atomicSessionContext`",
+            "nested party, `PriceTerm` and session-context shapes, is rejected",
+            "permanent (`ok: false`, `errorClass: \"permanent\"`) and precedes any rail call",
+            "recompute its content hash before reading any target member",
+            "`LegacyTransitionSettlementEvidence`, `FinalityBoundSettlementEvidence`",
+            "signer MUST be the session's phase orchestrator",
+            "`{evidenceHash}` segment MUST equal the target's content hash",
+            "unfinalized target, or resolved bytes that differ from an authentic anchor, "
+            "leaves the amendment `indeterminate`",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, changed)
 
     def test_coverage_overclaim_guard_cases(self):
         for sentence, overclaims in (
@@ -1815,6 +1830,9 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
     GUARDS = (
         ("verify_receipt", "Purchase Work does not carry exactly one signed payment slot", (
             ("aw-receipt-multiple-signed-slot-operations", PASS),
+            # No earlier predicate rejects a zero-slot Purchase: without the
+            # guard the single-slot read itself fails.
+            ("aw-receipt-no-signed-slot-operation", ("error", "IndexError: list index out of range")),
         )),
         ("verify_receipt", "retry receipt is not bound to complete prior rolled-back state", (
             ("aw-receipt-retry-prior-failure-commitment-differs", PASS),

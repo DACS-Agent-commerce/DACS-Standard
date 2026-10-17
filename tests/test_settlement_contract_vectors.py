@@ -286,11 +286,13 @@ class SettlementContractTests(unittest.TestCase):
                 source["terms"]["payoutBindings"] = [{"railId": "rail", "phaseIndex": 0, "payeeAddress": "seller"}]
             if selector == "sealedSelectionAgreementVersion":
                 source.update(derivedFromPattern="sealed-envelope", selectionReceiptRef=agreement["parties"][0]["vetRecordRef"])
-            # A complete minimal arm is accepted; no optional member is required.
-            source["terms"] = {k: v for k, v in source["terms"].items() if k in ("deliverable", "price", "deadline", "payoutBindings")}
+            # A complete minimal arm is accepted. A pay-* agreement names its rail
+            # (DACS-3 8.5.2 rule 3); no other optional member is required.
+            source["terms"] = {k: v for k, v in source["terms"].items()
+                               if k in ("deliverable", "price", "deadline", "rail", "payoutBindings")}
             source["terms"]["deliverable"].pop("schemaUrl", None)
             ref.check_payment_input(BINDINGS["ordinary"], {**base, "agreement": source})
-            bad = []
+            bad = [{**source, "terms": {k: v for k, v in source["terms"].items() if k != "rail"}}]
             for member, value in (("deliverable", {"deliverableType": "external"}),
                                   ("rail", {}), ("rail", {"railId": "rail", "parameters": []}),
                                   ("deliverable", {"deliverableType": "external", "hash": "ab" * 32, "schemaUrl": 1})):
@@ -315,6 +317,109 @@ class SettlementContractTests(unittest.TestCase):
                     self.assertEqual(result["status"], "rejected")
                     handler.assert_not_called()
 
+    def test_declared_optional_members_are_typed_before_handler(self):
+        # DACS-3 8.5 and DACS-4 9.4.1 type every present optional member.
+        names = {v["name"]: v for v in self.data["phaseInputs"]}
+        # Published rails whose complete profile matches their handler (DACS-4 9.4.3 RD-7).
+        finality = json.loads((ROOT / "conformance/vectors/security/settlement-finality-verification.json").read_text())
+        rails = {v["input"]["rail"]["consumerFinalityProfile"]["model"]: v["input"]["rail"]
+                 for v in finality["vectors"] if v["expected"] == "pass"}
+        self.assertEqual(set(rails), {"block-depth", "commitment-level", "bft-final",
+                                      "provider-receipt", "htlc-reveal", "liquidity-tank"})
+        profiles = {model: rail["consumerFinalityProfile"] for model, rail in rails.items()}
+        settlement = profiles["block-depth"]["settlement"]
+        for binding in ("ordinary", "atomic"):
+            base = names[binding + "-input"]["input"]
+            agreement, rail = base["agreement"], base["rail"]
+            party = agreement["parties"][0]
+
+            def with_agreement(**change):
+                return {**base, "agreement": {**agreement, **change}}
+
+            def with_terms(**change):
+                return with_agreement(terms={**agreement["terms"], **change})
+
+            def with_profile(profile, model="bft-final"):
+                # A one-member edit of that model's published rail.
+                return {**base, "rail": {**rails[model], "consumerFinalityProfile": profile}}
+
+            def with_settlement(**change):
+                return with_profile({**profiles["block-depth"], "settlement": {**settlement, **change}}, "block-depth")
+
+            def with_observation(**change):
+                return with_settlement(observation={**settlement["observation"], **change})
+
+            # The published spec-complete rails of every model, unknown members kept.
+            good = [{**base, "rail": value} for value in rails.values()]
+            good += [with_profile({**profiles["bft-final"], "future": True}),
+                     with_profile({**profiles["block-depth"], "finalityResolutionCapability":
+                                   "finality-resolution-context-v1"}, "block-depth"),
+                     with_observation(method="light-client", threshold=1),
+                     {**base, "rail": {**rail, "railId": "evm-erc20:8453:USDC"}},
+                     with_agreement(derivedFromChannel={"subnet": "s", "lastMessageHash": "m", "future": 1}),
+                     with_agreement(parties=[{**party, "encryptionKey": "k"}, *agreement["parties"][1:]]),
+                     with_terms(meteredQuantity={"quantity": "120", "unit": "call"}),
+                     with_terms(additionalTerms={}),
+                     # Informational members never gate settlement (DACS-3 8.5.2, FS-3).
+                     with_terms(priceAnchor=[]), with_terms(feeSchedule=[])]
+            observation = {k: v for k, v in settlement["observation"].items() if k != "threshold"}
+            good.append(with_settlement(observation={**observation, "method": "consensus-backed-proxy"}))
+            for value in good:
+                with self.subTest(binding=binding, accepted=json.dumps(value["agreement"]["terms"])[:60]
+                                  + json.dumps(value["rail"].get("consumerFinalityProfile"))[:80]):
+                    handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                    self.assertEqual(ref.dispatch_payment(BINDINGS[binding], value, handler)["status"], "accepted")
+                    handler.assert_called_once_with(value)
+            bad = [with_agreement(parties=[{**party, "encryptionKey": key}, *agreement["parties"][1:]])
+                   for key in (None, 1, [], "")]
+            bad += [with_agreement(derivedFromChannel=value) for value in (
+                None, [], "subnet", {"subnet": "s"}, {"lastMessageHash": "m"},
+                {"subnet": "", "lastMessageHash": "m"}, {"subnet": "s", "lastMessageHash": 1})]
+            bad += [with_terms(meteredQuantity=value) for value in (
+                None, [], {"quantity": "1"}, {"unit": "call"}, {"quantity": 1, "unit": "call"},
+                {"quantity": "-1", "unit": "call"}, {"quantity": "1.5", "unit": "call"},
+                {"quantity": "1e3", "unit": "call"}, {"quantity": "00", "unit": "call"},
+                {"quantity": "", "unit": "call"}, {"quantity": "1", "unit": ""})]
+            bad += [with_terms(additionalTerms=value) for value in (None, [], 0, "x")]
+            bad += [{**base, "rail": {**rail, "railId": value}}
+                    for value in ("démo", "ＡＢ", "a b", "a\tb", "a\x7fb", 1)]
+            bad += [with_profile(value) for value in (None, [], {}, "bft-final")]
+            for model, profile in profiles.items():
+                bad += [with_profile({**profile, "finalityProfileVersion": "2"}, model),
+                        with_profile({**profile, "finalityResolutionCapability": None}, model),
+                        with_profile({k: v for k, v in profile.items() if k != "model"}, model)]
+                for key in profile:
+                    if key not in ("finalityProfileVersion", "model", "finalityResolutionCapability"):
+                        bad.append(with_profile({k: v for k, v in profile.items() if k != key}, model))
+                        bad.append(with_profile({**profile, key: None}, model))
+            bad.append(with_profile({**profiles["bft-final"], "model": "block-depth"}))
+            bad += [with_profile({**profiles["provider-receipt"], key: value}, "provider-receipt") for key, value in (
+                ("captureStatuses", []), ("captureStatuses", [1]), ("maxObservationAgeSec", 0),
+                ("maxObservationAgeSec", "60"), ("reversibility", "final"), ("providerId", ""))]
+            for key in settlement:
+                bad.append(with_settlement(**{key: None}))
+            bad += [with_settlement(requiredDepth=0), with_settlement(kind="optimistic")]
+            bft = profiles["bft-final"]
+            bad += [with_profile({**bft, "settlement": {**bft["settlement"], key: value}}) for key, value in (
+                ("quorumNumerator", "2"), ("quorumDenominator", 0), ("validatorSetRef", {}))]
+            commitment = profiles["commitment-level"]
+            bad.append(with_profile({**commitment, "settlement": {
+                **commitment["settlement"], "requiredCommitment": "safe"}}, "commitment-level"))
+            bad += [with_observation(**change) for change in (
+                {"method": "gossip"}, {"authorityRefs": []}, {"authorityRefs": [""]},
+                {"authorityRefs": "ref"}, {"threshold": 0},
+                {"threshold": len(settlement["observation"]["authorityRefs"]) + 1},
+                {"maxHeadAgeSec": 0}, {"maxHeadAgeSec": "60"})]
+            bad.append(with_settlement(observation={**observation, "method": "rpc-quorum"}))
+            for value in bad:
+                with self.subTest(binding=binding, rejected=json.dumps({
+                        "agreement": value["agreement"], "rail": value["rail"]})[-160:]):
+                    handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                    result = ref.dispatch_payment(BINDINGS[binding], value, handler)
+                    self.assertEqual((result["status"], result["errorClass"], result["reason"]), (
+                        "rejected", "permanent", "payment input member is not its declared type"))
+                    handler.assert_not_called()
+
     def test_unknown_target_members_follow_each_arms_schema(self):
         names = {v["name"]: v for v in self.data["amendmentTargets"]}
         for label in ("ordinary", "legacy-transition", "finality-bound", "atomic"):
@@ -327,6 +432,8 @@ class SettlementContractTests(unittest.TestCase):
         changed = " ".join(changelog.split(heading, 1)[1].split("\n### ", 1)[0].split())
         for phrase in ("complete AssetSpec and NetworkSpec arms",
                        "DeliverableRef, PaymentRailRef, payout binding entries",
+                       "The agreement must carry `terms.rail` (DACS-3 §8.5.2 rule 3)",
+                       "do not gate settlement (DACS-3 §8.5.2, FS-3)",
                        "three DACS-4 v0.x target arms use closed shapes and reject unknown members",
                        "Atomic targets use the open normative schema (§9.7.3)"):
             self.assertIn(phrase, changed)

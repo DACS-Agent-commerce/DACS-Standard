@@ -89,6 +89,24 @@ def build_fixture():
     def rail_governance(**change):
         return rail_with(governance={**rail["governance"], **change})
 
+    # A complete pay-dem consumer finality profile (DACS-4 9.4.1, 9.4.3).
+    bft_final = {
+        "kind": "bft-final", "networkId": "demos:testnet-atomic", "genesisHash": "9a" * 32,
+        "validatorSetRef": {"anchor": {"kind": "storage-program",
+                                       "locator": "dacs4:validator-set:test-validator-set-1"},
+                            "contentHash": "78" * 32},
+        "quorumNumerator": 2, "quorumDenominator": 3,
+        "observation": {"method": "consensus-backed-proxy",
+                        "authorityRefs": ["did:dacs:test:network"], "maxHeadAgeSec": 60},
+    }
+    finality_profile = {"finalityProfileVersion": "1", "model": "bft-final", "settlement": bft_final}
+
+    def rail_finality(**change):
+        return rail_with(consumerFinalityProfile={**finality_profile, **change})
+
+    def rail_settlement(**change):
+        return rail_finality(settlement={**bft_final, **change})
+
     # A sealed-selection agreement carries payout bindings and its selection receipt.
     sealed = {
         "sealedSelectionAgreementVersion": "1",
@@ -287,8 +305,47 @@ def build_fixture():
             ("agreement-deliverable-hash-malformed", agreement_terms(deliverable={"deliverableType": "external", "hash": "x"})),
             ("agreement-rail-string", agreement_terms(rail="demos-native:DEM")),
             ("agreement-rail-version-string", agreement_terms(rail={"railId": rail["railId"], "railVersion": "1"})),
+            # A pay-* agreement names its rail (DACS-3 8.5.2 rule 3).
+            ("agreement-without-terms-rail", agreement_with(terms={
+                k: v for k, v in agreement["terms"].items() if k != "rail"})),
+            # Present declared optionals are typed too.
+            ("agreement-party-encryption-key-array", agreement_party(encryptionKey=[])),
+            ("agreement-party-encryption-key-empty", agreement_party(encryptionKey="")),
+            ("agreement-derived-from-channel-array", agreement_with(derivedFromChannel=[])),
+            ("agreement-derived-from-channel-without-last-message-hash",
+             agreement_with(derivedFromChannel={"subnet": "subnet-1"})),
+            ("agreement-metered-quantity-array", agreement_terms(meteredQuantity=[])),
+            ("agreement-metered-quantity-number", agreement_terms(meteredQuantity={"quantity": 3, "unit": "call"})),
+            ("agreement-metered-quantity-leading-zero", agreement_terms(meteredQuantity={"quantity": "03", "unit": "call"})),
+            ("agreement-metered-quantity-without-unit", agreement_terms(meteredQuantity={"quantity": "3"})),
+            ("agreement-additional-terms-array", agreement_terms(additionalTerms=[])),
+            ("agreement-additional-terms-null", agreement_terms(additionalTerms=None)),
+            ("rail-id-non-ascii", rail_with(railId="démo")),
+            ("rail-id-whitespace", rail_with(railId="demos-native: DEM")),
+            ("rail-finality-profile-array", rail_with(consumerFinalityProfile=[])),
+            ("rail-finality-profile-version-2", rail_finality(finalityProfileVersion="2")),
+            ("rail-finality-profile-model-unknown", rail_finality(model="optimistic")),
+            ("rail-finality-profile-capability-unknown", rail_finality(finalityResolutionCapability="v2")),
+            ("rail-finality-profile-settlement-kind-mismatch", rail_finality(model="block-depth")),
+            ("rail-finality-profile-quorum-string", rail_settlement(quorumNumerator="2")),
+            ("rail-finality-profile-validator-set-ref-malformed", rail_settlement(validatorSetRef={})),
+            ("rail-finality-profile-authority-refs-empty", rail_settlement(observation={
+                **bft_final["observation"], "authorityRefs": []})),
+            ("rail-finality-profile-rpc-quorum-without-threshold", rail_settlement(observation={
+                **bft_final["observation"], "method": "rpc-quorum"})),
+            ("rail-finality-profile-threshold-above-authorities", rail_settlement(observation={
+                **bft_final["observation"], "threshold": 2})),
         ):
             phase(binding + "-" + label, binding, {**base, **change}, "rejected")
+        # Every declared optional, well formed, is accepted with the input unchanged.
+        phase(binding + "-declared-optional-members", binding, {
+            **base, **rail_finality(),
+            "agreement": {**agreement,
+                          "derivedFromChannel": {"subnet": "subnet-1", "lastMessageHash": "ab" * 32},
+                          "parties": [{**agreement["parties"][0], "encryptionKey": "x25519:buyer-key"},
+                                      *agreement["parties"][1:]],
+                          "terms": {**agreement["terms"], "meteredQuantity": {"quantity": "0", "unit": "call"}}},
+        }, "accepted")
         for label, entries in (("not-object", [1]), ("empty", [{}]), ("phase-index-string", [{
                 "railId": rail["railId"], "payeeAddress": ordinary_input["payee"]["payeeAddress"], "phaseIndex": "2"}])):
             payee_agreement = {"payeeBoundAgreementVersion": "1", **{

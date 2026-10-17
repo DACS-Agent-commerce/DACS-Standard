@@ -469,9 +469,15 @@ remain subject to CORE SIG-5. An Atomic handler MUST reject an input that carrie
 `sessionContext` or any member outside `AtomicPaymentPhaseInputV1`. Either
 handler MUST also reject an input that lacks a required member of its arm or
 carries one that is not of its declared type, including the `AgreementArtifact`
-(exactly one supported discriminator and its required members), the
-`RailDefinition` (§9.4.1 required members and closed enumerations), the nested
-payer and payee objects, the `PriceTerm`, and the arm's session context. The
+(exactly one supported discriminator, its required members, and the
+`terms.rail` that DACS-3 §8.5.2 rule 3 requires of a pay-* pipeline), the
+`RailDefinition` (§9.4.1 required members, closed enumerations and canonical
+ASCII `railId`), the nested payer and payee objects, the `PriceTerm`, and the
+arm's session context. A present optional member of the `AgreementArtifact` or
+`RailDefinition`, including `consumerFinalityProfile`, is also checked against
+its declared type, except the informational `terms.priceAnchor` and
+disclosure-only `terms.feeSchedule`, on which no consumer gates settlement
+(DACS-3 §8.5.2, FS-3). The
 serialized ordinary `SessionContext` omits the runtime `signer`, and its nested
 members, like the ordinary arm's own, remain subject to CORE SIG-5. No handler
 may add, drop or rename a member to make an input fit its arm. A PC-1 rejection

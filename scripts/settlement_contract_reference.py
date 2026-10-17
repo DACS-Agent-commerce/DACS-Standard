@@ -61,6 +61,12 @@ _SOLANA_CLUSTERS = frozenset({"mainnet", "devnet", "testnet"})
 _RAIL_AVAILABILITY = frozenset({
     "live", "operator_gated", "closed_data", "bilateral", "mocked", "disabled", "failed",
 })
+# Canonical railId: ASCII without whitespace, at most 64 characters. The
+# registry's own ids carry uppercase asset symbols, so case is not checked.
+_RAIL_ID = re.compile(r"[\x21-\x7e]{1,64}\Z")
+_CHAIN_FINALITY_KINDS = frozenset({"block-depth", "commitment-level", "bft-final"})
+# DACS-3 MTR-4 canonical unsigned decimal quantity.
+_METERED_QUANTITY = re.compile(r"(0|[1-9][0-9]*)\Z")
 
 
 def _shapes():
@@ -110,7 +116,13 @@ def _listing_ref_valid(shape, value, *, closed: bool) -> bool:
 
 
 def _agreement_valid(shape, value) -> bool:
-    """DACS-3 AgreementArtifact: one supported discriminator and its typed members."""
+    """DACS-3 AgreementArtifact: one supported discriminator and its typed members.
+
+    A pay-* input's agreement carries `terms.rail` (DACS-3 8.5.2 rule 3). Every
+    present optional member is typed except the informational `priceAnchor`
+    and disclosure-only `feeSchedule`, which no consumer may gate settlement on
+    (DACS-3 8.5.2 priceAnchor tolerance, FS-3).
+    """
     selectors = [key for key in _AGREEMENT_SELECTORS if isinstance(value, dict) and key in value]
     if (len(selectors) != 1 or value[selectors[0]] != "1"
             or not _AGREEMENT_MEMBERS <= set(value)):
@@ -120,6 +132,8 @@ def _agreement_valid(shape, value) -> bool:
     payout = _AGREEMENT_SELECTORS[selector]
     identity_bound = selector in {"identityBoundAgreementVersion", "identityBoundPayeeAgreementVersion"}
     terms = value["terms"]
+    channel = value.get("derivedFromChannel")
+    metered = terms.get("meteredQuantity") if isinstance(terms, dict) else None
     return (shape._nonempty_jcs_string(value["jobId"])
             and _listing_ref_valid(shape, value["listingRef"], closed=False)
             and isinstance(value["parties"], list) and bool(value["parties"])
@@ -130,12 +144,24 @@ def _agreement_valid(shape, value) -> bool:
                          else shape._nonempty_jcs_string(party.get("bundleHash")))
                     and shape._claim_reference_shape_valid(party.get("primaryClaim"))
                     and shape._attestation_ref_shape_valid(party.get("vetRecordRef"))
+                    and ("encryptionKey" not in party
+                         or shape._nonempty_jcs_string(party["encryptionKey"]))
                     for party in value["parties"])
-            and isinstance(terms, dict) and {"deliverable", "price", "deadline"} <= set(terms)
+            and isinstance(terms, dict) and {"deliverable", "price", "deadline", "rail"} <= set(terms)
             and _agreement_deliverable_valid(shape, terms["deliverable"])
             and shape._price_term_shape_valid(terms["price"])
             and shape._safe_nonnegative_integer(terms["deadline"])
-            and ("rail" not in terms or _payment_rail_ref_valid(shape, terms["rail"]))
+            and _payment_rail_ref_valid(shape, terms["rail"])
+            and ("meteredQuantity" not in terms
+                 or (isinstance(metered, dict)
+                     and isinstance(metered.get("quantity"), str)
+                     and _METERED_QUANTITY.fullmatch(metered["quantity"]) is not None
+                     and shape._nonempty_jcs_string(metered.get("unit"))))
+            and ("additionalTerms" not in terms or isinstance(terms["additionalTerms"], dict))
+            and ("derivedFromChannel" not in value
+                 or (isinstance(channel, dict)
+                     and all(shape._nonempty_jcs_string(channel.get(key))
+                             for key in ("subnet", "lastMessageHash"))))
             and (isinstance(terms.get("payoutBindings"), list)
                  and all(_payout_binding_valid(shape, entry) for entry in terms["payoutBindings"])
                  if payout else "payoutBindings" not in terms and "priorPaymentDispositionRef" not in terms)
@@ -251,18 +277,75 @@ def _governance_valid(shape, value) -> bool:
                      and shape._nonempty_jcs_string(emergency.get("failureObservation")))))
 
 
+def _chain_finality_valid(shape, value, kind: str | None = None) -> bool:
+    """DACS-4 9.4.1 ChainFinalityProfile with its ChainObservationPolicy."""
+    if not isinstance(value, dict) or not shape._string_member(value.get("kind"), _CHAIN_FINALITY_KINDS):
+        return False
+    observation = value.get("observation")
+    refs = observation.get("authorityRefs") if isinstance(observation, dict) else None
+    if not ((kind is None or value["kind"] == kind)
+            and shape._nonempty_jcs_string(value.get("networkId"))
+            and shape._nonempty_jcs_string(value.get("genesisHash"))
+            and isinstance(observation, dict)
+            and shape._string_member(observation.get("method"),
+                                     {"light-client", "consensus-backed-proxy", "rpc-quorum"})
+            and isinstance(refs, list) and bool(refs)
+            and all(shape._nonempty_jcs_string(item) for item in refs)
+            # threshold is required for rpc-quorum and bounded by the authority set.
+            and (("threshold" not in observation and observation["method"] != "rpc-quorum")
+                 or (shape._safe_nonnegative_integer(observation.get("threshold"), positive=True)
+                     and observation["threshold"] <= len(refs)))
+            and shape._safe_nonnegative_integer(observation.get("maxHeadAgeSec"), positive=True)):
+        return False
+    if value["kind"] == "block-depth":
+        return shape._safe_nonnegative_integer(value.get("requiredDepth"), positive=True)
+    if value["kind"] == "commitment-level":
+        return shape._string_member(value.get("requiredCommitment"), {"processed", "confirmed", "finalized"})
+    return (shape._attestation_ref_shape_valid(value.get("validatorSetRef"))
+            and all(shape._safe_nonnegative_integer(value.get(key), positive=True)
+                    for key in ("quorumNumerator", "quorumDenominator")))
+
+
+def _finality_profile_valid(shape, value) -> bool:
+    """DACS-4 9.4.1 ConsumerFinalityProfile: one model arm and its typed members."""
+    capability = "finality-resolution-context-v1"
+    if not (isinstance(value, dict) and value.get("finalityProfileVersion") == "1"
+            and value.get("finalityResolutionCapability", capability) == capability):
+        return False
+    model = value.get("model")
+    if model in _CHAIN_FINALITY_KINDS:
+        return _chain_finality_valid(shape, value.get("settlement"), model)
+    if model == "provider-receipt":
+        statuses = value.get("captureStatuses")
+        return (all(shape._nonempty_jcs_string(value.get(key))
+                    for key in ("providerId", "statusEndpointOrigin", "sr3Binding"))
+                and isinstance(statuses, list) and bool(statuses)
+                and all(shape._nonempty_jcs_string(item) for item in statuses)
+                and shape._safe_nonnegative_integer(value.get("maxObservationAgeSec"), positive=True)
+                and value.get("reversibility") == "provisional-provider-capture")
+    if model == "htlc-reveal":
+        return all(_chain_finality_valid(shape, value.get(key)) for key in ("source", "destination"))
+    if model == "liquidity-tank":
+        return (shape._nonempty_jcs_string(value.get("bridgeId"))
+                and all(_chain_finality_valid(shape, value.get(key))
+                        for key in ("coordinator", "source", "destination")))
+    return False
+
+
 def _rail_valid(shape, value) -> bool:
-    """DACS-4 9.4.1 RailDefinition: required members and closed enumerations."""
+    """DACS-4 9.4.1 RailDefinition: required members, closed enumerations, typed optionals."""
     if not isinstance(value, dict) or not _RAIL_MEMBERS <= set(value):
         return False
     return (shape._safe_nonnegative_integer(value["railVersion"], positive=True)
-            and shape._nonempty_jcs_string(value["railId"]) and len(value["railId"]) <= 64
+            and isinstance(value["railId"], str) and _RAIL_ID.fullmatch(value["railId"]) is not None
             and shape._string_member(value["railType"], _RAIL_TYPES)
             and _asset_valid(shape, value["asset"])
             and _network_valid(shape, value["network"])
             # A concrete executable handler; pay-alternative is not one.
             and shape._string_member(value["phaseHandler"], PAYMENT_PHASES)
             and isinstance(value["parameters"], dict)
+            and ("consumerFinalityProfile" not in value
+                 or _finality_profile_valid(shape, value["consumerFinalityProfile"]))
             and shape._string_member(value["availability"], _RAIL_AVAILABILITY)
             and _governance_valid(shape, value["governance"])
             and isinstance(value["signature"], dict)

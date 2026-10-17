@@ -15,8 +15,10 @@ verification results: `pass`, `fail`, `indeterminate`, or `error` (§9).
   rejection and refund before or after submission, a dispute-outcome release
   and refund, pre-submission expiry, and post-submission expiry. The
   positives also cover each reachable row of the candidate §7 projection
-  table, relayed evaluator execution, and the DACS-1 claim forms the
-  candidate admits. Negative cases cover the §2 pipeline and commit phase,
+  table and the DACS-1 claim forms the candidate admits. Relayed evaluator
+  execution has negatives only (DREB-18, DREB-22): its positive cannot be
+  produced here (see the proof limits). Negative cases cover the §2
+  pipeline and commit phase,
   the steward-signed rail definition and its DRC-14 and DRC-17 pins, the
   DACS-3 payee-bound agreement and the overlay, exact hash-to-`bytes32`
   mapping, role and account collisions, the §4.1 crosswalk, the §6.2
@@ -115,10 +117,14 @@ copy keeps that finding, and so does a terminal that the replay comparison
 fails (DRD-8, DRL-4, DRT-4, DRT-16). Every other such lifecycle is
 `indeterminate` under DRAA-4. A verdict already issued is revised to
 `indeterminate` only when it was `pass`, `indeterminate`, or a finding that
-rested on a sole copy the lifecycle carried, such as DRD-11. DRC-15 reads a
-copy only when the lifecycle carries a decision write summary; without one,
-the resolver's decision anchor orders the decision, and a DRD-11 there is
-final and records no terminal.
+rested on a sole copy, such as DRD-11. Without a decision write summary,
+the resolver's decision anchor orders the decision. That anchor rests on the
+one write known at the decision address, so its DRD-11 stands beside
+another address's equivocation but becomes DRAA-4 once two writes are known
+at the decision address. A lifecycle whose finding rests on a copy that can
+still be selected records no terminal; its terminal is recorded when the
+finding becomes DRAA-4. The DRW-4 bound on the terminal side of the DRC-15
+sums reads no copy and stays `error`.
 
 The protocol verifier requires the finality records embedded in signed funding
 and terminal artifacts to use the exact DACS-4 `SettlementFinalityRecord`
@@ -338,7 +344,10 @@ Replay state belongs to the verifier. Callers pass a `DecisionLedger` to
 `evaluate_lifecycles`, which evaluates a set of lifecycles together, or to
 `evaluate_protocol`, which evaluates one. Each lifecycle that passes every
 check before the replay comparison records its terminal: native job, terminal
-event and its authenticated position, decision, and attested history.
+event and its authenticated position, decision, and attested history. So
+does a lifecycle that is `indeterminate` under DRAA-4 and fails no check that
+reads no copy; one whose finding rests on a selectable copy records its
+terminal once that finding becomes DRAA-4.
 Verifying the same terminal again is idempotent, and it reproduces one
 terminal evidence hash: a second, distinct evidence record for that terminal
 is `fail` for both (DRT-16). Two different terminals
@@ -372,8 +381,9 @@ verdict decided before the replay comparison is named by the lifecycle's
 content hash instead. A revision never upgrades a verdict: `pass` can become
 `indeterminate` or `fail`, and `indeterminate` can become `fail`. The one
 exception is DRAA-4 above: a second qualifying write revises a `fail` to
-`indeterminate` only when that `fail` rested on a sole write copy the
-lifecycle carried, such as DRD-11 or the per-copy DRV-6. A later arrival that conflicts
+`indeterminate` only when that `fail` rested on the sole write known at an
+address, such as DRD-11 or the per-copy DRV-6; the lifecycle's terminal is
+then recorded. A later arrival that conflicts
 with a passing terminal never passes, so two conflicting terminals never both
 pass in one ledger. The verdicts issued, with their revisions applied, are
 the verdicts of evaluating everything seen so far as one set, whatever the

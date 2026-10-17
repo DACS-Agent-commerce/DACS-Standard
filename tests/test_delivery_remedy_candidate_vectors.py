@@ -1299,6 +1299,46 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                             self.assertEqual(self._streamed(values, order), joint)
                             self.assertIn(verifier._terminal_record(copy.deepcopy(late)), ledger.terminals())
 
+    def test_an_unordered_resolver_anchor_records_its_terminal_only_once_unselectable(self):
+        """DRC-15 on the resolver's own anchor keeps its terminal out of replay until two decision writes are known."""
+        terminal = generator.block_time(generator.TERMINAL_BLOCKS["release"])
+        inside = self._fixture("release")
+        inside["resolverEvidence"]["decisionAnchor"]["finalizedBlockTimestampSec"] = terminal
+        generator.resign_resolver(inside)
+        self.assertNotIn("qualifiedArtifactWrites", inside["resolverEvidence"])
+        second = self._fixture("release-second-terminal-transaction")
+        own = ("indeterminate", "DRC-15")
+        self.assertEqual(finding(inside), own)
+        values = {"inside": inside, "second": second}
+        # Carriers of each write that fail before the write checks: their
+        # writes are retained and their own terminals are not recorded.
+        for name in ("funding", "decision"):
+            for index in (0, 1):
+                carrier = self._single_write_copy(name, index)
+                carrier["artifacts"]["evaluation"]["signature"]["value"] = carrier["artifacts"]["decision"]["signature"]["value"]
+                self.assertEqual(finding(carrier), ("fail", "DRE-1"))
+                values[f"{name}-{index}"] = carrier
+        recorded = {verifier._terminal_record(copy.deepcopy(item)) for item in (inside, second)}
+        self.assertEqual(len(recorded), 2)
+        for writes, records_inside in ((("funding-0", "funding-1"), False), (("decision-0", "decision-1"), True)):
+            members = ("inside", "second", *writes)
+            joint = None
+            for order in itertools.permutations(members):
+                with self.subTest(writes=writes, order=order):
+                    ledger = DecisionLedger()
+                    observed = evaluate_lifecycles([copy.deepcopy(values[item]) for item in order], ledger)
+                    verdicts = dict(zip(order, map(verdict, observed)))
+                    joint = joint or verdicts
+                    self.assertEqual(verdicts, joint)
+                    self.assertEqual(self._streamed(values, order), joint)
+                    self.assertEqual(
+                        verifier._terminal_record(copy.deepcopy(inside)) in ledger.terminals(), records_inside
+                    )
+            # Two funding writes withhold the verdict, but the decision
+            # ordering is still unknown: its terminal fails nothing.
+            self.assertEqual(joint["inside"], EQUIVOCATION)
+            self.assertEqual(joint["second"] == ("fail", "DRD-8"), records_inside)
+
     def test_a_terminal_side_ordering_overflow_rests_on_no_copy(self):
         """DRW-4 from the rail skew and the terminal time is an `error` whatever decision writes are known."""
         unsafe = GUARD_CASES["decision-ordering-sum-unsafe"][0](self.vector_pack)

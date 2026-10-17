@@ -102,11 +102,16 @@ under DRAA-4. Both summaries are retained, neither is selected, and DRC-15 is
 not evaluated from either copy, including when their finality times fall on
 opposite sides of the terminal transaction. Receiving the exact same receipt
 twice still describes one write. A consumer with one receipt needs no proof
-that no other write exists. The verifier's ledger retains every
-authenticated summary bound to its logical address, so two writes carried by
-different lifecycles, in one batch or in successive calls, are the same
-equivocation: no lifecycle whose terminal evidence references that address
-then passes, and a `pass` already issued for it is revised to `indeterminate`.
+that no other write exists. Before it checks any lifecycle, the verifier's
+ledger retains each summary in a pinned-resolver record that is bound to the
+logical address its terminal references, whatever the lifecycle's other
+checks or sibling summaries decide. Two writes carried by different
+lifecycles, in one batch or in successive calls, are therefore the same
+equivocation. Every lifecycle whose terminal evidence references that
+address is `indeterminate` under DRAA-4. None of them selects either copy:
+neither DRC-15 nor the decision-anchor check is evaluated from it. A verdict
+already issued after that point, whether `pass` or one that rested on a
+sole copy, such as DRD-11, is revised to `indeterminate`.
 
 The protocol verifier requires the finality records embedded in signed funding
 and terminal artifacts to use the exact DACS-4 `SettlementFinalityRecord`

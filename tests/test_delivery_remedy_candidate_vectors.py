@@ -64,8 +64,16 @@ def verdict(observed):
     return observed["result"], observed["rule"]
 
 
-# A replay revision never moves a verdict to an earlier entry.
+# A replay revision never moves a verdict to an earlier entry, except that a
+# second qualifying write replaces any verdict with DRAA-4 (CORE §5.1).
 REPLAY_VERDICT_RANK = {"pass": 0, "indeterminate": 1, "fail": 2}
+EQUIVOCATION = ("indeterminate", "DRAA-4")
+
+
+def revision_allowed(revision, current):
+    return verdict(revision) == EQUIVOCATION or (
+        REPLAY_VERDICT_RANK[revision["result"]] >= REPLAY_VERDICT_RANK[current[0]]
+    )
 
 
 def _signed_by_resolver(edit):
@@ -904,7 +912,11 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                     with unittest.mock.patch.object(verifier, "_decision_ordering_check", side_effect=AssertionError("equivocation must stop before DRC-15")):
                         self.assertEqual(verdict(evaluate_protocol(candidate, ledger)), ("indeterminate", "DRAA-4"))
                     self.assertEqual(candidate, before)
-                    self.assertEqual(list(ledger.terminals()), [])
+                    # Its terminal takes part in the replay comparison, as
+                    # when the two writes arrive in separate lifecycles, but
+                    # it is issued no verdict that a later input could revise.
+                    self.assertEqual(list(ledger.terminals()), [verifier._terminal_record(value)])
+                    self.assertIsNone(ledger.issued(verifier._terminal_record(value)))
 
     def _single_write_copy(self, name, copy_index):
         """P13 with the resolver qualifying only copy ``copy_index`` of the ``name`` write."""
@@ -947,10 +959,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                     self.assertEqual(verdict(observed), conflict)
                     self.assertNotIn("revises", observed)
                 self.assertEqual([verdict(ledger.issued(item)) for item in ledger.terminals()], [conflict])
-                # The conflict first: retained although it records no terminal.
+                # The conflict first: retained, and its terminal recorded.
                 ledger = DecisionLedger()
                 self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(both), ledger)), conflict)
-                self.assertEqual(list(ledger.terminals()), [])
+                self.assertEqual(list(ledger.terminals()), [verifier._terminal_record(both)])
                 for retry in (first, second):
                     self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(retry), ledger)), conflict)
                 # An explicit later conflict revises the earlier pass.
@@ -985,6 +997,126 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 observed = evaluate_protocol(copy.deepcopy(item), ledger)
                 self.assertEqual(verdict(observed), ("pass", "DRV-7"))
                 self.assertNotIn("revises", observed)
+
+    def _late_decision_copy(self, anchored=True):
+        """P13 with the resolver qualifying only I8's late decision copy; ``anchored`` orders the decision on it."""
+        late = self._vector("sr2-identical-decision-writes")["resolverEvidence"]["qualifiedArtifactWrites"]["decision"][1]
+        value = self._vector("sr2-single-write-two-producers")
+        value["resolverEvidence"]["qualifiedArtifactWrites"]["decision"] = [late]
+        if anchored:
+            value["resolverEvidence"]["decisionAnchor"]["finalizedBlockTimestampSec"] = late["finalizedBlockTimestampSec"]
+        generator.resign_resolver(value)
+        return value
+
+    def test_a_sole_copy_is_not_selected_once_another_input_carries_the_other_write(self):
+        """DRAA-4 / I8: with both writes known, neither DRC-15 nor the anchor check reads either copy."""
+        conflict = ("indeterminate", "DRAA-4")
+        early = self._vector("sr2-single-write-two-producers")
+        unordered = AssertionError("DRC-15 read a copy that cannot be selected")
+        for late, own in (
+            (self._late_decision_copy(), ("fail", "DRD-11")),
+            (self._late_decision_copy(anchored=False), ("fail", "DRV-6")),
+        ):
+            with self.subTest(own=own):
+                self.assertEqual(finding(late), own)
+                # One batch, in either order: neither lifecycle orders the decision.
+                for batch in ([early, late], [late, early]):
+                    with unittest.mock.patch.object(verifier, "_decision_ordering_check", side_effect=unordered):
+                        observed = evaluate_lifecycles([copy.deepcopy(item) for item in batch], DecisionLedger())
+                    self.assertEqual([verdict(item) for item in observed], [conflict, conflict])
+                # The early copy first: the late one is never selected, and
+                # the pass already issued is revised.
+                ledger = DecisionLedger()
+                issued = evaluate_protocol(copy.deepcopy(early), ledger)
+                self.assertEqual(verdict(issued), ("pass", "DRV-7"))
+                with unittest.mock.patch.object(verifier, "_decision_ordering_check", side_effect=unordered):
+                    later = evaluate_protocol(copy.deepcopy(late), ledger)
+                self.assertEqual(verdict(later), conflict)
+                self.assertEqual(self._revised(early, issued, later), conflict)
+                # The late copy first: its finding rested on the sole copy
+                # then known, and is revised when the other write arrives.
+                ledger = DecisionLedger()
+                issued = evaluate_protocol(copy.deepcopy(late), ledger)
+                self.assertEqual(verdict(issued), own)
+                with unittest.mock.patch.object(verifier, "_decision_ordering_check", side_effect=unordered):
+                    later = evaluate_protocol(copy.deepcopy(early), ledger)
+                    again = evaluate_protocol(copy.deepcopy(late), ledger)
+                self.assertEqual(verdict(later), conflict)
+                self.assertEqual(
+                    later["revises"],
+                    [{"lifecycle": content_hash(late), "previous": issued, **verifier._equivocation()}],
+                )
+                self.assertEqual(self._revised(late, issued, later), conflict)
+                self.assertEqual(verdict(again), conflict)
+                self.assertNotIn("revises", again)
+        # A finding before the write-selection stage is not revised: the
+        # write is still retained, and the verdict rests on no copy.
+        detached = self._late_decision_copy()
+        detached["resolverEvidence"]["qualifiedArtifactWrites"]["funding"][0]["logicalAddress"] += "-other"
+        generator.resign_resolver(detached)
+        ledger = DecisionLedger()
+        issued = evaluate_protocol(copy.deepcopy(detached), ledger)
+        self.assertEqual(verdict(issued), ("fail", "DRV-6"))
+        later = evaluate_protocol(copy.deepcopy(early), ledger)
+        self.assertEqual(verdict(later), conflict)
+        self.assertNotIn("revises", later)
+
+    def test_a_qualifying_write_is_retained_whatever_its_carrier_decides(self):
+        """DRAA-4: each pinned-resolver summary bound to its address counts, beside a bad sibling or a failed check."""
+        conflict = ("indeterminate", "DRAA-4")
+        first = self._vector("sr2-single-write-two-producers")
+        # A second funding write beside a decision summary for another address.
+        misaddressed = self._single_write_copy("funding", 1)
+        misaddressed["resolverEvidence"]["qualifiedArtifactWrites"]["decision"][0]["logicalAddress"] += "-other"
+        generator.resign_resolver(misaddressed)
+        # Beside a malformed decision summary.
+        malformed = self._single_write_copy("funding", 1)
+        malformed["resolverEvidence"]["qualifiedArtifactWrites"]["decision"][0]["nonce"] = 7
+        generator.resign_resolver(malformed)
+        # In a lifecycle that fails a stage before the write checks.
+        unsigned = self._single_write_copy("funding", 1)
+        unsigned["artifacts"]["evaluation"]["signature"]["value"] = unsigned["artifacts"]["decision"]["signature"]["value"]
+        for carrier, own in (
+            (misaddressed, ("fail", "DRV-6")), (malformed, ("error", "DRV-3")), (unsigned, ("fail", "DRE-1")),
+        ):
+            with self.subTest(own=own):
+                self.assertEqual(finding(carrier), own)
+                observed = evaluate_lifecycles([copy.deepcopy(first), copy.deepcopy(carrier)], DecisionLedger())
+                self.assertEqual([verdict(item) for item in observed], [conflict, own])
+                observed = evaluate_lifecycles([copy.deepcopy(carrier), copy.deepcopy(first)], DecisionLedger())
+                self.assertEqual([verdict(item) for item in observed], [own, conflict])
+                ledger = DecisionLedger()
+                issued = evaluate_protocol(copy.deepcopy(first), ledger)
+                later = evaluate_protocol(copy.deepcopy(carrier), ledger)
+                self.assertEqual(verdict(later), own)
+                self.assertEqual(self._revised(first, issued, later), conflict)
+                ledger = DecisionLedger()
+                evaluate_protocol(copy.deepcopy(carrier), ledger)
+                self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(first), ledger)), conflict)
+        # The misaddressed and malformed summaries themselves are not retained.
+        decision = first["resolverEvidence"]["qualifiedArtifactWrites"]["decision"][0]["logicalAddress"]
+        for carrier in (misaddressed, malformed):
+            ledger = DecisionLedger()
+            evaluate_protocol(copy.deepcopy(carrier), ledger)
+            self.assertEqual(ledger.writes_at(decision), frozenset())
+            self.assertEqual(ledger.writes_at(decision + "-other"), frozenset())
+        # A summary the pinned resolver did not sign is never retained, even
+        # in a lifecycle that fails before the resolver stage.
+        forged = copy.deepcopy(unsigned)
+        forged["resolverEvidence"]["qualifiedArtifactWrites"]["funding"][0]["nonce"] = "99"
+        ledger = DecisionLedger()
+        self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(forged), ledger)), ("fail", "DRE-1"))
+        self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(first), ledger)), ("pass", "DRV-7"))
+
+    def test_decision_writes_for_a_decisionless_terminal_are_misaddressed(self):
+        """An expiry terminal references no decision, so a decision write summary binds nothing (DRV-6)."""
+        write = self._vector("sr2-single-write-two-producers")["resolverEvidence"]["qualifiedArtifactWrites"]["decision"][0]
+        expiry = self._fixture("expired-pre")
+        expiry["resolverEvidence"]["qualifiedArtifactWrites"] = {"decision": [copy.deepcopy(write)]}
+        generator.resign_resolver(expiry)
+        ledger = DecisionLedger()
+        self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(expiry), ledger)), ("fail", "DRV-6"))
+        self.assertEqual(ledger.writes_at(write["logicalAddress"]), frozenset())
 
     def test_every_negative_fails_only_at_its_intended_guard(self):
         self.assertEqual(generator.negative_isolation_problems(self.vector_pack), [])
@@ -1575,36 +1707,45 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 self.assertEqual(verdict(observed), (vector["expected"], vector["expectedRule"]))
 
     def _revised(self, value, issued, *later):
-        """The verdict ``issued`` for ``value`` after the revisions in ``later`` results."""
+        """The verdict ``issued`` for ``value`` after the revisions in ``later`` results.
+
+        A revision names a terminal or, for a verdict decided before the
+        replay comparison, the lifecycle's content hash; it applies to the
+        verdicts issued for it that equal its `previous`.
+        """
         identity = verifier.terminal_identity(verifier._terminal_record(copy.deepcopy(value)))
+        lifecycle = content_hash(value)
         current = verdict(issued)
         for observed in later:
             for revision in observed.get("revises", []):
-                if revision["terminal"] == identity:
+                if revision.get("lifecycle") == lifecycle or (
+                    revision.get("terminal") == identity and verdict(revision["previous"]) == current
+                ):
                     self.assertEqual(verdict(revision["previous"]), current)
-                    self.assertGreaterEqual(REPLAY_VERDICT_RANK[revision["result"]], REPLAY_VERDICT_RANK[current[0]])
+                    self.assertTrue(revision_allowed(revision, current))
                     current = verdict(revision)
         return current
 
     def _streamed(self, values, order):
         """Evaluate ``order`` one at a time through one ledger, applying each revision."""
         ledger = DecisionLedger()
-        current, by_terminal = {}, {}
+        current, issued_for = {}, {}
         for name in order:
             observed = evaluate_protocol(copy.deepcopy(values[name]), ledger)
             current[name] = verdict(observed)
             for revision in observed.get("revises", []):
-                revised = by_terminal.get(json.dumps(revision["terminal"], sort_keys=True))
-                self.assertTrue(revised, "a revision names a terminal this ledger issued a verdict for")
+                key = json.dumps(revision.get("terminal", revision.get("lifecycle")), sort_keys=True)
+                revised = [other for other in issued_for.get(key, []) if current[other] == verdict(revision["previous"])]
+                self.assertTrue(revised, "a revision names a verdict this ledger issued")
                 for other in revised:
-                    self.assertEqual(verdict(revision["previous"]), current[other])
-                    self.assertGreaterEqual(REPLAY_VERDICT_RANK[revision["result"]], REPLAY_VERDICT_RANK[current[other][0]])
+                    self.assertTrue(revision_allowed(revision, current[other]))
                     current[other] = verdict(revision)
             if verifier._lifecycle_check(copy.deepcopy(values[name])) is None:
                 terminal = verifier._terminal_record(copy.deepcopy(values[name]))
-                by_terminal.setdefault(
-                    json.dumps(verifier.terminal_identity(terminal), sort_keys=True), []
-                ).append(name)
+                key = json.dumps(verifier.terminal_identity(terminal), sort_keys=True)
+            else:
+                key = json.dumps(content_hash(values[name]))
+            issued_for.setdefault(key, []).append(name)
         return current
 
     def _assert_no_conflicting_pass(self, values, verdicts):
@@ -2562,16 +2703,16 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         self.assertEqual([verdict(item) for item in batch], [
             ("pass", "DRV-7"), ("error", "DRV-3"), ("error", "DRV-3"), ("pass", "DRV-7"),
         ])
-        original = verifier._lifecycle_check
+        original = verifier._checked_lifecycle
         try:
             def raising(value, ledger=None):
                 if value.get("raise"):
                     raise KeyError("unread member")
                 return original(value, ledger)
-            verifier._lifecycle_check = raising
+            verifier._checked_lifecycle = raising
             batch = evaluate_lifecycles([self._fixture("release"), {"raise": True}], DecisionLedger())
         finally:
-            verifier._lifecycle_check = original
+            verifier._checked_lifecycle = original
         self.assertEqual(verdict(batch[0]), ("pass", "DRV-7"))
         self.assertEqual(
             (batch[1]["result"], batch[1]["rule"], batch[1]["detail"]),
@@ -2621,16 +2762,16 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             ("pass", "DRV-7"), ("error", "DRV-3"), ("error", "DRV-3"), ("pass", "DRV-7"),
         ])
         # A RecursionError that no bound decides is contained per lifecycle.
-        original = verifier._lifecycle_check
+        original = verifier._checked_lifecycle
         try:
             def raising(value, ledger=None):
                 if value.get("recurse"):
                     raise RecursionError("maximum recursion depth exceeded")
                 return original(value, ledger)
-            verifier._lifecycle_check = raising
+            verifier._checked_lifecycle = raising
             batch = evaluate_lifecycles([{"recurse": True}, self._fixture("release")], DecisionLedger())
         finally:
-            verifier._lifecycle_check = original
+            verifier._checked_lifecycle = original
         self.assertEqual(
             (batch[0]["result"], batch[0]["rule"], batch[0]["detail"]),
             ("error", "DRV-3", "malformed input could not be read (RecursionError)"),

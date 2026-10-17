@@ -765,6 +765,27 @@ def _run():
             "exact unittest contract failed: " + json.dumps(summary, sort_keys=True),
             file=sys.stderr,
         )
+        detail_limit = 8 * 1024
+        remaining = 64 * 1024
+        for kind, records in (("FAIL", result.failures), ("ERROR", result.errors)):
+            for test, detail in records:
+                diagnostic = "%s: %s\\n%s" % (kind, test.id(), detail)
+                if len(diagnostic) > detail_limit:
+                    diagnostic = (
+                        diagnostic[:detail_limit - 20] + "\\n[detail truncated]"
+                    )
+                if len(diagnostic) > remaining:
+                    diagnostic = (
+                        diagnostic[:max(0, remaining - 20)]
+                        + "\\n[output truncated]"
+                    )
+                if diagnostic:
+                    print(diagnostic, file=sys.stderr)
+                    remaining -= len(diagnostic) + 1
+                if remaining <= 0:
+                    break
+            if remaining <= 0:
+                break
         raise SystemExit(1)
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -1360,6 +1381,17 @@ def _terminate_selected_test_process(process: subprocess.Popen) -> str | None:
     return cleanup_issue
 
 
+class _SelectedTestSignal(BaseException):
+    """A termination signal received while an isolated test runner is active."""
+
+    def __init__(self, signum: int):
+        self.signum = signum
+
+
+def _raise_selected_test_signal(signum: int, _frame) -> None:
+    raise _SelectedTestSignal(signum)
+
+
 def _run_python_evidence(entries: list[dict], label: str) -> int:
     python_path = os.pathsep.join((str(ROOT), str(ROOT / "tests")))
     for entry in entries:
@@ -1378,17 +1410,24 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
             "regression" if label == "regression"
             else "independent review evidence"
         )
-        process = subprocess.Popen(
-            command,
-            cwd=ROOT,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env={**os.environ, "PYTHONPATH": python_path},
-            start_new_session=os.name == "posix",
-        )
+        previous_handlers = {}
+        process = None
         try:
+            if os.name == "posix":
+                for signum in (signal.SIGTERM, signal.SIGHUP):
+                    previous_handlers[signum] = signal.signal(
+                        signum, _raise_selected_test_signal
+                    )
+            process = subprocess.Popen(
+                command,
+                cwd=ROOT,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env={**os.environ, "PYTHONPATH": python_path},
+                start_new_session=os.name == "posix",
+            )
             stdout, stderr = process.communicate(
                 input=nonce + "\n",
                 timeout=SELECTED_TEST_TIMEOUT_SECONDS,
@@ -1406,10 +1445,22 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
             # start_new_session isolates the selected runner from terminal
             # signals sent to this gate. Preserve subprocess.run-style cleanup
             # by terminating the isolated group before propagating interrupts.
-            cleanup_issue = _terminate_selected_test_process(process)
+            cleanup_issue = (
+                _terminate_selected_test_process(process)
+                if process is not None else None
+            )
             if cleanup_issue and hasattr(exc, "add_note"):
                 exc.add_note(f"selected test cleanup: {cleanup_issue}")
+            if isinstance(exc, _SelectedTestSignal):
+                for signum, previous_handler in previous_handlers.items():
+                    signal.signal(signum, previous_handler)
+                previous_handlers.clear()
+                signal.signal(exc.signum, signal.SIG_DFL)
+                os.kill(os.getpid(), exc.signum)
             raise
+        finally:
+            for signum, previous_handler in previous_handlers.items():
+                signal.signal(signum, previous_handler)
         if process.returncode or not _exact_unittest_completed(stdout, nonce):
             detail = (stdout + stderr).strip()
             raise GateError(

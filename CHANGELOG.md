@@ -1054,9 +1054,11 @@ The format used per release:
   hash, nonce, sender, recipient and OS amount for the authenticated
   `(jobId, phaseIndex)`. The sender is the payer's paying key, the recipient
   is the payee address and the amount is the phase amount, and the retained
-  values must equal the signed transaction's (DEM-1). The handler returns
+  values must equal the signed transaction's, whose hash and Ed25519
+  signature must authenticate its content (DEM-1). The handler returns
   `ok: true` only for a record bound to those values and the inclusion block
-  whose status is exactly `confirmed` (DEM-2, DEM-3). A bound `failed` record
+  whose status is exactly `confirmed` (DEM-2, DEM-3); that success alone
+  authorizes no delivery or settlement accounting. A bound `failed` record
   is a durable `permanent` failure without `settlementFinality` (DEM-4).
   Missing, unavailable, pending, aliased or unbound records are `ok: false`
   with `errorClass: "substrate"`, keep the retained hash, and authorize no
@@ -1077,25 +1079,39 @@ The format used per release:
   semantics to `kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f45578`
   and the SDK to `@kynesyslabs/demosdk` 4.0.16. A record from a node not
   pinned to those semantics (for example the `testnet` branch, which stores
-  every included transaction as `confirmed`) is unbound. The Demos `txHash`
-  spelling (64 lower-case hex digits, no `0x`) is now canonical for
+  every included transaction as `confirmed`) is unbound. The pin includes the
+  node's refusal of `gcr_edits` that differ from the `send` arguments, which
+  is why the profile ignores them. A DEM-1 signed transaction is the
+  demosdk `sign()` result: its `hash` is SHA-256 over `JSON.stringify(content)`
+  and its `ed25519` signature by `content.from` covers that hash. The Demos
+  `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 93-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 99-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
-  first-broadcast gate with phase and payment authority, the standalone DEM-7
-  gate, and delivery composed with FV-5, SB-1, SB-2 and PB. Each vector lists
+  first-broadcast gate with phase and payment authority and signed-envelope
+  authentication (unsigned, forged hash, wrong signer or signature type), the
+  standalone DEM-7 gate, and delivery composed with FV-5, SB-1, SB-2 and PB.
+  Each vector lists
   the oracle guards whose removal changes its result. The set `hash` is
   SHA-256 over the JCS form of `vectors`. An earlier 8-vector draft with the
   same set name, synced into dacs-sdk#352 under `test/fixtures/standard-next/`,
   has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
-  set is identified by its `hash`, not by its name alone. Adds eight
-  `fv-bft-final-*` cases to `settlement-finality-verification` (94 cases):
-  a failed execution is `fail`, non-executed statuses are `indeterminate`,
-  and a wrong payee, payer, amount, hash or block is `fail`. The FV reference
-  now binds a `demos` reference's `blockNumber` to the authenticated
-  inclusion block.
+  set is identified by its `hash`, not by its name alone. In
+  `settlement-finality-verification` (107 cases), the authenticated `pay-dem`
+  transaction now carries its Demos native-send record, which the FV
+  reference decodes under the profile only with `demosRecordProfile` pinned
+  in its trusted configuration and binds to the signed reference, the
+  parties' Demos keys and the phase amount in OS. Twenty-one `fv-bft-final-*`
+  cases change one dimension each: a failed execution, a contradicting
+  record or event (payee, payer, amount, hash or block) and a signed
+  `blockNumber` other than the inclusion block are `fail`; non-executed
+  statuses, undecodable records and an unpinned verifier are
+  `indeterminate`; a body without the record is `error`. The generated
+  `finality-resolution-context-v1`, `current-use-reputation-v1` and
+  `current-use-authenticated-window-v1` sets, which reuse the same fixture,
+  are regenerated with the pin and record and no decision changes.
 - **Migration** — a `pay-dem` handler or consumer that treated `included` as
   settled must read the bound transaction record before returning success,
   delivering or counting payment, and must stop rebroadcasting or replacing a

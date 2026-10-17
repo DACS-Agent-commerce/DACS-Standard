@@ -1050,31 +1050,65 @@ The format used per release:
   `pay-dem` previously returned success once the transaction reached
   `included`. The Demos status index can label a transaction `included` while
   its transaction record is `failed`, so a failed transfer could count as
-  payment. A handler now durably retains the signed hash, nonce, sender,
-  recipient and OS amount before its only broadcast (DEM-1). It returns
+  payment. Before its only broadcast, a handler now durably retains the signed
+  hash, nonce, sender, recipient and OS amount for the authenticated
+  `(jobId, phaseIndex)`. The sender is the payer's paying key, the recipient
+  is the payee address and the amount is the phase amount, and the retained
+  values must equal the signed transaction's (DEM-1). The handler returns
   `ok: true` only for a record bound to those values and the inclusion block
   whose status is exactly `confirmed` (DEM-2, DEM-3). A bound `failed` record
   is a durable `permanent` failure without `settlementFinality` (DEM-4).
-  Missing, unavailable, pending, aliased or unbound records stay
-  `indeterminate` and authorize no delivery or settlement accounting (DEM-5).
+  Missing, unavailable, pending, aliased or unbound records are `ok: false`
+  with `errorClass: "substrate"`, keep the retained hash, and authorize no
+  delivery or settlement accounting. If the ST-7 pause expires, the session
+  ends `failed-substrate` without a replacement payment (DEM-5; PC-4 row).
   Recovery and resume only re-read the retained hash; they never rebroadcast
   or send a replacement transfer (DEM-6). Consumers, including the payee
-  before delivery, and FV-5 require the same confirmed binding (DEM-7).
-- **Vectors** — adds the generated 46-case `pay-dem-execution-v0.1` set
-  covering handler classification, resume, the first-broadcast gate and
-  consumer admission. Each vector lists the oracle guards whose removal
-  changes its result. Adds `fv-bft-final-included-execution-failed` to
-  `settlement-finality-verification` (87 cases): a BFT-final inclusion whose
-  authenticated execution record failed is `fail`.
+  before delivery, and FV-5 require the same confirmed binding (DEM-7). DEM-7
+  alone authorizes no delivery. `pay-dem` is listed among the §9.5.8 rails
+  without session binding, so consumers apply SB-2 to `demos:{txHash}` across
+  every evidence set they have admitted.
+- **Demos native-send record profile** (Demos mapping §A.2) — records are
+  compared by projected value, not by JSON member type. The profile maps the
+  node's `getTxByHash` members to the hash, nonce, sender, recipient, OS amount
+  and block. It accepts the node's string nonce and numeric amount and the
+  SDK's numeric nonce and string amount, and checks the native `send` payload
+  against `content.to` and `content.amount`. It pins the execution-record
+  semantics to `kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f45578`
+  and the SDK to `@kynesyslabs/demosdk` 4.0.16. A record from a node not
+  pinned to those semantics (for example the `testnet` branch, which stores
+  every included transaction as `confirmed`) is unbound. The Demos `txHash`
+  spelling (64 lower-case hex digits, no `0x`) is now canonical for
+  `ChainTxRef` and SB-1.
+- **Vectors** — adds the generated 93-case `pay-dem-execution-v0.1` set in
+  the node's record shape, including two read-only node2 records. It covers
+  handler classification, profile decoding, node pinning, resume, the
+  first-broadcast gate with phase and payment authority, the standalone DEM-7
+  gate, and delivery composed with FV-5, SB-1, SB-2 and PB. Each vector lists
+  the oracle guards whose removal changes its result. The set `hash` is
+  SHA-256 over the JCS form of `vectors`. An earlier 8-vector draft with the
+  same set name, synced into dacs-sdk#352 under `test/fixtures/standard-next/`,
+  has a different schema and hash. This set supersedes it, and a runner built
+  for the draft must be rewritten for this schema when it is re-pinned. The
+  set is identified by its `hash`, not by its name alone. Adds eight
+  `fv-bft-final-*` cases to `settlement-finality-verification` (94 cases):
+  a failed execution is `fail`, non-executed statuses are `indeterminate`,
+  and a wrong payee, payer, amount, hash or block is `fail`. The FV reference
+  now binds a `demos` reference's `blockNumber` to the authenticated
+  inclusion block.
 - **Migration** — a `pay-dem` handler or consumer that treated `included` as
   settled must read the bound transaction record before returning success,
   delivering or counting payment, and must stop rebroadcasting or replacing a
-  transfer whose execution is unresolved. Existing `pay-dem` evidence bytes
-  are unchanged and are not relabelled; re-verification under DEM-7 returns
-  `fail` for a bound failed record and `indeterminate` without a bound
-  confirmed record. No artifact shape, signature domain, rail definition or
-  registry entry changes. This correction is part of the unreleased DACS-4
-  v0.8 candidate and allocates no new version.
+  transfer whose execution is unresolved. Its pre-broadcast journal must be
+  durable and mandatory: an optional or process-local journal does not
+  satisfy DEM-1. Its record comparison must use the native-send projection,
+  neither raw JSON types nor a looser normalization such as case-folding.
+  Existing `pay-dem` evidence bytes are unchanged and are not relabelled;
+  re-verification under DEM-7 returns `fail` for a bound failed record and
+  `indeterminate` without a bound confirmed record. No artifact shape,
+  signature domain, rail definition or registry entry changes. This
+  correction is part of the unreleased DACS-4 v0.8 candidate and allocates
+  no new version.
 
 ### Fixed — DACS-X conformance provenance
 

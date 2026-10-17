@@ -442,6 +442,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
             "authenticated phase binding before it reads any input member",
             "requires `sessionContext` and rejects `atomicSessionContext`",
             "nested party, `PriceTerm` and session-context shapes, is rejected",
+            "`AgreementArtifact` and `RailDefinition` discriminators and members",
             "permanent (`ok: false`, `errorClass: \"permanent\"`) and precedes any rail call",
             "recompute its content hash before reading any target member",
             "`LegacyTransitionSettlementEvidence`, `FinalityBoundSettlementEvidence`",
@@ -449,6 +450,8 @@ class AtomicWorkVectorTests(unittest.TestCase):
             "`{evidenceHash}` segment MUST equal the target's content hash",
             "unfinalized target, or resolved bytes that differ from an authentic anchor, "
             "leaves the amendment `indeterminate`",
+            "anchor receipt whose proof does not bind its own fields",
+            "Only an authentic anchor that binds another content hash is a violation",
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, changed)

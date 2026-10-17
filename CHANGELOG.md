@@ -1438,17 +1438,19 @@ The format used per release:
 - **Payment input and amendment target reference** — authenticated phase binding
   selects PC-1's arm before input interpretation; ordinary handlers reject the
   Atomic session member while retaining CORE SIG-5 for other unknown members.
-  Each arm's required members and their types, including the nested party,
+  Each arm's required members and their types, including the `AgreementArtifact`
+  and `RailDefinition` discriminators and members, the nested party,
   `PriceTerm` and session-context shapes, are checked before dispatch. PC-1
   rejection is permanent and precedes rail calls. AMEND-1 resolves the finalized
-  target, checks that its authentic anchor binds the reference's hash and then
-  the bytes, selects one of the four payment evidence arms and its signature
-  domain, requires the session orchestrator as signer and a complete arm record,
-  and checks the job, payment phase and the amendment address's
-  `{evidenceHash}` segment. Pending targets and resolved bytes that differ from
-  an authentic anchor remain indeterminate; AMEND-4 continues to allow rejection
-  or flagging. A separate deterministic fixture and non-normative reference pin
-  these choices.
+  target, authenticates its anchor receipt, checks that the receipt binds the
+  reference's hash and then the bytes, selects one of the four payment evidence
+  arms and its signature domain, requires the session orchestrator as signer and
+  a complete arm record, and checks the job, payment phase and the amendment
+  address's `{evidenceHash}` segment. Pending targets, receipts whose proof does
+  not bind their own fields, and resolved bytes that differ from an authentic
+  anchor remain indeterminate; AMEND-4 continues to allow rejection or flagging.
+  A separate deterministic fixture and non-normative reference pin these
+  choices.
 - **Focused Atomic profile time and candidate fixtures** — the focused sequential
   profile verifies the commitment AnchorReceipt and reads its consensus time for
   Listing checks. Unsupported revocation-state reference versions remain
@@ -1516,7 +1518,8 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   authenticated phase binding before it reads any input member, and MUST NOT
   coerce either arm into the other. The ordinary arm requires `sessionContext`
   and rejects `atomicSessionContext`; the Atomic arm is closed. A missing
-  required member or one of the wrong type, including the nested party,
+  required member or one of the wrong type, including the `AgreementArtifact`
+  and `RailDefinition` discriminators and members, the nested party,
   `PriceTerm` and session-context shapes, is rejected. A PC-1 rejection is
   permanent (`ok: false`, `errorClass: "permanent"`) and precedes any rail call.
 - **Amendment target** (DACS-4 §9.7.1 AMEND-1) — an amendment consumer MUST
@@ -1529,7 +1532,9 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   be a complete record of its arm, and the amendment address's `{evidenceHash}`
   segment MUST equal the target's content hash. An unavailable, unanchored or
   unfinalized target, or resolved bytes that differ from an authentic anchor,
-  leaves the amendment `indeterminate`.
+  leaves the amendment `indeterminate`, as does an anchor receipt whose proof
+  does not bind its own fields. Only an authentic anchor that binds another
+  content hash is a violation.
 - **Evidence selectors** (DACS-4 §9.7) — the exclusive-discriminator rule
   counts `atomicEvidenceVersion` with the four existing selectors and lists the
   `dacs-atomic-evidence:v1:` domain, so every consumer, not only an Atomic

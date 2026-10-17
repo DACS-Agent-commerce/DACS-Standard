@@ -35,6 +35,35 @@ _ATOMIC_CONTEXT_MEMBERS = frozenset({
 _AMENDMENT_ADDRESS = re.compile(
     r"dacs4:amendment:([^:]+):([0-9a-f]{64}):(0|[1-9][0-9]*)\Z"
 )
+# DACS-3 AgreementArtifact discriminators; the last three carry payout bindings.
+_AGREEMENT_SELECTORS = {
+    "agreementVersion": False, "identityBoundAgreementVersion": False,
+    "payeeBoundAgreementVersion": True, "identityBoundPayeeAgreementVersion": True,
+    "sealedSelectionAgreementVersion": True,
+}
+_AGREEMENT_MEMBERS = frozenset({
+    "jobId", "listingRef", "parties", "terms", "derivedFromPattern", "generatedAt",
+    "signatures",
+})
+_RAIL_MEMBERS = frozenset({
+    "railVersion", "railId", "railType", "asset", "network", "phaseHandler",
+    "parameters", "availability", "governance", "signature",
+})
+# DACS-4 9.4.1 closed enumerations.
+_RAIL_TYPES = frozenset({
+    "evm-erc20", "solana-spl", "cross-chain-htlc", "cross-chain-liquidity-tank",
+    "ap2", "x402", "demos-native",
+})
+_ASSET_KINDS = frozenset({
+    "erc20", "spl", "native-evm", "native-solana", "native-dem", "fiat-via-ap2",
+    "stablecoin-cross-chain",
+})
+_NETWORK_KINDS = frozenset({
+    "evm", "solana", "demos", "ap2-provider", "x402-resource", "cross-chain",
+})
+_RAIL_AVAILABILITY = frozenset({
+    "live", "operator_gated", "closed_data", "bilateral", "mocked", "disabled", "failed",
+})
 
 
 def _shapes():
@@ -83,6 +112,70 @@ def _listing_ref_valid(shape, value, *, closed: bool) -> bool:
             and shape._sha256_hex(value["contentHash"]))
 
 
+def _agreement_valid(shape, value) -> bool:
+    """DACS-3 AgreementArtifact: one supported discriminator and its typed members."""
+    selectors = [key for key in _AGREEMENT_SELECTORS if isinstance(value, dict) and key in value]
+    if (len(selectors) != 1 or value[selectors[0]] != "1"
+            or not _AGREEMENT_MEMBERS <= set(value)):
+        return False
+    sealed = selectors[0] == "sealedSelectionAgreementVersion"
+    terms = value["terms"]
+    return (shape._nonempty_jcs_string(value["jobId"])
+            and _listing_ref_valid(shape, value["listingRef"], closed=False)
+            and isinstance(value["parties"], list) and bool(value["parties"])
+            and all(isinstance(party, dict)
+                    and shape._string_member(party.get("role"),
+                                             {"buyer", "seller", "bidder-non-winning"})
+                    and shape._nonempty_jcs_string(party.get("bundleHash"))
+                    and shape._claim_reference_shape_valid(party.get("primaryClaim"))
+                    and shape._attestation_ref_shape_valid(party.get("vetRecordRef"))
+                    for party in value["parties"])
+            and isinstance(terms, dict) and {"deliverable", "price", "deadline"} <= set(terms)
+            and isinstance(terms["deliverable"], dict)
+            and shape._price_term_shape_valid(terms["price"])
+            and shape._safe_nonnegative_integer(terms["deadline"])
+            and (not _AGREEMENT_SELECTORS[selectors[0]]
+                 or isinstance(terms.get("payoutBindings"), list))
+            and shape._string_member(value["derivedFromPattern"], {"sealed-envelope"} if sealed
+                                     else {"fixed-price", "rfq", "sealed-envelope"})
+            and (not sealed or shape._attestation_ref_shape_valid(value.get("selectionReceiptRef")))
+            and shape._safe_nonnegative_integer(value["generatedAt"])
+            and isinstance(value["signatures"], list) and bool(value["signatures"])
+            and all(isinstance(signature, dict)
+                    and shape._claim_reference_shape_valid(signature.get("party"))
+                    and shape._string_member(signature.get("algorithm"),
+                                             {"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
+                    and shape._nonempty_jcs_string(signature.get("value"))
+                    for signature in value["signatures"]))
+
+
+def _rail_valid(shape, value) -> bool:
+    """DACS-4 9.4.1 RailDefinition: required members and closed enumerations."""
+    if not isinstance(value, dict) or not _RAIL_MEMBERS <= set(value):
+        return False
+    governance = value["governance"]
+    return (shape._safe_nonnegative_integer(value["railVersion"], positive=True)
+            and shape._nonempty_jcs_string(value["railId"]) and len(value["railId"]) <= 64
+            and shape._string_member(value["railType"], _RAIL_TYPES)
+            and isinstance(value["asset"], dict)
+            and shape._string_member(value["asset"].get("kind"), _ASSET_KINDS)
+            and isinstance(value["network"], dict)
+            and shape._string_member(value["network"].get("kind"), _NETWORK_KINDS)
+            # A concrete executable handler; pay-alternative is not one.
+            and shape._string_member(value["phaseHandler"], PAYMENT_PHASES)
+            and isinstance(value["parameters"], dict)
+            and shape._string_member(value["availability"], _RAIL_AVAILABILITY)
+            and isinstance(governance, dict)
+            and {"proposedBy", "acceptedAt", "anchoring"} <= set(governance)
+            and shape._claim_reference_shape_valid(governance["proposedBy"])
+            and shape._safe_nonnegative_integer(governance["acceptedAt"])
+            and shape._string_member(governance["anchoring"],
+                                     {"in-code", "single-signer", "multisig"})
+            and isinstance(value["signature"], dict)
+            and shape._nonempty_jcs_string(value["signature"].get("algorithm"))
+            and shape._nonempty_jcs_string(value["signature"].get("value")))
+
+
 def _session_context_valid(shape, value) -> bool:
     # The runtime SubstrateSigner is not serializable, so `signer` may be absent.
     return (isinstance(value, dict)
@@ -94,8 +187,11 @@ def _session_context_valid(shape, value) -> bool:
             and shape._safe_nonnegative_integer(value["railRegistryVersion"])
             and isinstance(value["parties"], list) and bool(value["parties"])
             and all(isinstance(party, dict)
-                    and shape._nonempty_jcs_string(party.get("role"))
+                    and shape._string_member(party.get("role"), {"buyer", "seller", "orchestrator"})
+                    and shape._sha256_hex(party.get("bundleHash"))
                     and shape._claim_reference_shape_valid(party.get("primaryClaim"))
+                    and ("vetRecordRef" not in party
+                         or shape._attestation_ref_shape_valid(party["vetRecordRef"]))
                     for party in value["parties"])
             and isinstance(value["priorPhaseOutputs"], dict)
             and shape._safe_nonnegative_integer(value["startedAt"]))
@@ -136,8 +232,8 @@ def check_payment_input(binding: PhaseBinding, phase_input: Any) -> None:
     if not (ORDINARY_INPUT_MEMBERS - {"sessionContext"}) <= set(phase_input):
         raise InputArmError("payment input lacks a required member")
     if not (shape._nonempty_jcs_string(phase_input["jobId"])
-            and isinstance(phase_input["agreement"], dict)
-            and isinstance(phase_input["rail"], dict)
+            and _agreement_valid(shape, phase_input["agreement"])
+            and _rail_valid(shape, phase_input["rail"])
             and _party_valid(shape, phase_input["payer"], "payingKey", closed=closed)
             and _party_valid(shape, phase_input["payee"], "payeeAddress", closed=closed)
             and shape._price_term_shape_valid(phase_input["amount"])):
@@ -187,9 +283,10 @@ def consume_amendment_target(
 ) -> tuple[str, str]:
     """Resolve, establish finality, hash, then select/verify the AMEND-1 arm.
 
-    The resolver returns {artifact, anchorReceipt}; absent/unfinalized receipts,
-    or bytes that differ from an authentic anchor binding the reference's hash,
-    leave the target pending. Contradictory established proofs are violations.
+    The resolver returns {artifact, anchorReceipt}; absent, unfinalized or
+    inauthentic receipts, or bytes that differ from an authentic anchor binding
+    the reference's hash, leave the target pending. Contradictory established
+    proofs are violations.
     `orchestrator` is the authenticated session phase orchestrator and
     `amendment_address` the amendment's own anchored logical address.
     No AMEND-4 reject-versus-flag policy is selected here.
@@ -214,15 +311,23 @@ def consume_amendment_target(
                 or anchor.get("state") != "finalized"
                 or anchor.get("observationDisposition") != "established"):
             raise ref.Unknown("amendment target not anchored and finalized")
-        # The authentic anchor must bind the reference's own hash; one binding
+        # CORE SR2-4/SR2-12: receipt fields are assertions until its proof binds
+        # them, so authenticate the receipt's own tuple first. A forged or
+        # mismatched receipt is discarded, leaving the target pending.
+        try:
+            ref._verify_anchor_receipt(
+                anchor, logical=target_ref["anchor"]["locator"],
+                content_hash=anchor.get("contentHash"),
+                public_keys=public_keys, network_authority=network_authority,
+                network_id=network_id, proof_profile=proof_profile,
+                validator_set_id=validator_set_id,
+            )
+        except (ref.Invalid, ref.Malformed, ValueError, TypeError, KeyError) as exc:
+            raise ref.Unknown(f"amendment target anchor is not authentic: {exc}") from exc
+        # PC-2's payment address is single-write, so an authentic anchor binding
         # another hash means the reference names other content.
-        ref._verify_anchor_receipt(
-            anchor, logical=target_ref["anchor"]["locator"],
-            content_hash=target_ref["contentHash"],
-            public_keys=public_keys, network_authority=network_authority,
-            network_id=network_id, proof_profile=proof_profile,
-            validator_set_id=validator_set_id,
-        )
+        if anchor["contentHash"] != target_ref["contentHash"]:
+            raise ref.Invalid("authentic amendment target anchor binds another content hash")
         # CORE B.2 / DACS-4 9.7: content hashes omit only signature. No target
         # discriminator, job or phase is read before this recomputation. Bytes
         # differing from the anchored hash are a substituted resolution.

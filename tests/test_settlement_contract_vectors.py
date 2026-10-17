@@ -89,13 +89,106 @@ class SettlementContractTests(unittest.TestCase):
         # PC-1 accepts the typed arm, not any object carrying its session key.
         names = {v["name"]: v for v in self.data["phaseInputs"]}
         for name in ("ordinary-empty-session-context", "ordinary-null-payer",
-                     "atomic-null-payer", "atomic-context-parties-reordered"):
+                     "atomic-null-payer", "atomic-context-parties-reordered",
+                     "ordinary-empty-agreement", "atomic-empty-agreement",
+                     "ordinary-empty-rail", "atomic-empty-rail"):
             with self.subTest(vector=name):
                 rail = mock.Mock()
                 result = ref.dispatch_payment(BINDINGS[names[name]["binding"]],
                                               copy.deepcopy(names[name]["input"]), rail)
                 self.assertEqual((result["status"], result["errorClass"]), ("rejected", "permanent"))
                 rail.assert_not_called()
+
+    def test_single_member_edit_fails_on_that_members_type(self):
+        # A one-member edit of an accepted input is rejected by that member's
+        # own check, so no case passes by tripping an earlier, unrelated one.
+        reasons = {"sessionContext": "sessionContext is not SessionContext",
+                   "atomicSessionContext": "atomicSessionContext is not AtomicPaymentSessionContextV1",
+                   "identityBindingCompanions": "identityBindingCompanions is not an array"}
+        names = {v["name"]: v for v in self.data["phaseInputs"]}
+        bases = {"ordinary": names["ordinary-input"]["input"], "atomic": names["atomic-input"]["input"]}
+        absent, checked = object(), set()
+        for vector in self.data["phaseInputs"]:
+            base, value = bases.get(vector["binding"]), vector["input"]
+            if vector["expected"] != "rejected" or base is None:
+                continue
+            changed = [key for key in set(value) | set(base)
+                       if value.get(key, absent) != base.get(key, absent)]
+            # Skip removals and additions other than the optional companions:
+            # they fail on the member set.
+            if (len(changed) != 1 or changed[0] not in value
+                    or (changed[0] not in base and changed[0] != "identityBindingCompanions")):
+                continue
+            with self.subTest(vector=vector["name"]):
+                result = ref.dispatch_payment(BINDINGS[vector["binding"]], copy.deepcopy(value), mock.Mock())
+                self.assertEqual(result["reason"], reasons.get(
+                    changed[0], "payment input member is not its declared type"))
+                checked.add(changed[0])
+        self.assertTrue({"agreement", "rail", "payer", "payee", "amount", "jobId",
+                         "sessionContext", "atomicSessionContext"} <= checked, checked)
+
+    def test_agreement_and_rail_accept_every_declared_enumeration_value(self):
+        # DACS-3 AgreementArtifact and DACS-4 9.4.1 RailDefinition closed unions.
+        names = {v["name"]: v for v in self.data["phaseInputs"]}
+        accepted = names["ordinary-input"]["input"]
+        agreement, rail = accepted["agreement"], accepted["rail"]
+        variants = [("railType", value) for value in (
+            "evm-erc20", "solana-spl", "cross-chain-htlc", "cross-chain-liquidity-tank",
+            "ap2", "x402", "demos-native")]
+        variants += [("phaseHandler", value) for value in (
+            "pay-evm-erc20", "pay-solana-spl", "pay-cross-chain-htlc",
+            "pay-cross-chain-liquidity-tank", "pay-ap2", "pay-x402", "pay-dem")]
+        variants += [("availability", value) for value in (
+            "live", "operator_gated", "closed_data", "bilateral", "mocked", "disabled", "failed")]
+        variants += [("asset", {"kind": value}) for value in (
+            "erc20", "spl", "native-evm", "native-solana", "native-dem", "fiat-via-ap2",
+            "stablecoin-cross-chain")]
+        variants += [("network", {"kind": value}) for value in (
+            "evm", "solana", "demos", "ap2-provider", "x402-resource", "cross-chain")]
+        variants += [("governance", {**rail["governance"], "anchoring": value})
+                     for value in ("in-code", "single-signer", "multisig")]
+        variants.append(("railId", "r" * 64))  # the longest canonical railId
+        inputs = [{**accepted, "rail": {**rail, key: value}} for key, value in variants]
+        for change in ([{"derivedFromPattern": value} for value in ("fixed-price", "rfq", "sealed-envelope")]
+                       + [{"parties": [{**agreement["parties"][0], "role": "bidder-non-winning"},
+                                       *agreement["parties"][1:]]}]
+                       + [{"signatures": [{**agreement["signatures"][0], "algorithm": value}]}
+                          for value in ("ed25519", "ecdsa-secp256k1", "sr1-aggregate")]):
+            inputs.append({**accepted, "agreement": {**agreement, **change}})
+        for selector in ("identityBoundAgreementVersion", "agreementVersion"):
+            inputs.append({**accepted, "agreement": {selector: "1", **{
+                k: v for k, v in agreement.items() if k != "agreementVersion"}}})
+        payout = {**agreement["terms"], "payoutBindings": []}
+        for selector in ("payeeBoundAgreementVersion", "identityBoundPayeeAgreementVersion"):
+            inputs.append({**accepted, "agreement": {selector: "1", **{
+                k: v for k, v in agreement.items() if k != "agreementVersion"}, "terms": payout}})
+        for party in ("buyer", "seller", "orchestrator"):
+            session = accepted["sessionContext"]
+            inputs.append({**accepted, "sessionContext": {**session, "parties": [
+                {**session["parties"][0], "role": party}, *session["parties"][1:]]}})
+        for value in inputs:
+            with self.subTest(input=json.dumps({k: value[k] for k in ("agreement", "rail")})[:120]):
+                ref.check_payment_input(BINDINGS["ordinary"], value)
+
+    def test_inauthentic_target_anchor_leaves_the_amendment_pending(self):
+        # CORE SR2-4/SR2-12: an inauthentic receipt is discarded, not a violation.
+        names = {v["name"]: v for v in self.data["amendmentTargets"]}
+        for name in ("anchor-content-mismatch", "anchor-proof-signature-invalid",
+                     "anchor-without-evidence"):
+            with self.subTest(vector=name):
+                result, reason = self.consume(names[name])
+                self.assertEqual(result, "indeterminate")
+                self.assertTrue(reason.startswith("amendment target anchor is not authentic"), reason)
+        self.assertEqual(self.consume(names["anchor-binds-other-content"]), (
+            "violation", "authentic amendment target anchor binds another content hash"))
+
+    def test_delivery_target_fails_the_payment_phase_rule(self):
+        # A complete delivery record passes its arm and fails only the pay-* rule.
+        names = {v["name"]: v for v in self.data["amendmentTargets"]}
+        for name in ("ordinary-delivery-target", "atomic-delivery-target"):
+            with self.subTest(vector=name):
+                self.assertEqual(self.consume(names[name]),
+                                 ("violation", "amendment target is not a payment phase"))
 
     def test_amendment_targets_resolve_hash_select_and_verify(self):
         for vector in self.data["amendmentTargets"]:

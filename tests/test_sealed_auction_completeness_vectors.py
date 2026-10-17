@@ -839,6 +839,7 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "procurement-phase-demand-mode-rejected",
             "demand-role-direction-rejected",
             "complete-highest-price",
+            "receipt-selection-rule-phase-mismatch-rejected",
             "finalized-state-at-reveal-deadline",
             "finalized-state-before-reveal-deadline-rejected",
             "binding-definition-unavailable",
@@ -1076,6 +1077,24 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             changed["listing"]["pricing"]["selectionRule"] = rule
             with self.subTest(rule=rule):
                 self.assertEqual(Evaluator(changed).evaluate(), "fail")
+
+    def test_receipt_rule_must_equal_signed_phase_rule(self):
+        vectors = {item["name"]: item for item in self.data["vectors"]}
+        control = vectors["complete-highest-price"]
+        mismatch = vectors["receipt-selection-rule-phase-mismatch-rejected"]
+        self.assertEqual(Evaluator(control).evaluate(), "pass")
+        self.assertEqual(mismatch["expected"], "fail")
+        # Receipt, agreement and records are the passing highest-price control's;
+        # only the signed phase rule, and the invocation bound to it, differ.
+        self.assertEqual(mismatch["receipt"]["selectionRule"], "highest-price")
+        self.assertEqual(mismatch["listing"]["pricing"]["selectionRule"], "highest-price")
+        aligned = copy.deepcopy(mismatch)
+        aligned["listing"]["parameters"]["selectionRule"] = "highest-price"
+        aligned["context"]["authenticatedInvocation"]["selectionRule"] = "highest-price"
+        del aligned["listing"]["pricing"]
+        for key in ("listing", "receipt", "agreement", "context"):
+            self.assertEqual(aligned[key], control[key])
+        self.assertEqual(Evaluator(mismatch).evaluate(), "fail")
 
     def test_unsupported_rules_fail_before_runtime_outcome_is_read(self):
         cases = [

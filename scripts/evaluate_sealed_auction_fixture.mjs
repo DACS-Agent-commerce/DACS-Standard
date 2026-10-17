@@ -152,6 +152,7 @@ function reproduce(vector) {
       || phaseKind !== invocation.phaseKind
       || listing.publisherClaim !== invocation.publisherClaim
       || listing.parameters.selectionRule !== invocation.selectionRule
+      || receipt.selectionRule !== listing.parameters.selectionRule
       || !equal(binding, invocation.candidateSetBinding)
       || listing.pricingCurrency !== invocation.pricingCurrency
       || receipt.jobId !== invocation.jobId
@@ -209,7 +210,7 @@ function reproduce(vector) {
   if (listing.pricing !== undefined) {
     const pricing = listing.pricing;
     if (pricing === null || typeof pricing !== "object" || Array.isArray(pricing)
-        || pricing.kind !== "auction" || pricing.selectionRule !== receipt.selectionRule) {
+        || pricing.kind !== "auction" || pricing.selectionRule !== listing.parameters.selectionRule) {
       return { ...result, verdict: "fail" };
     }
     if (Object.hasOwn(pricing, "reservePrice")) {
@@ -327,6 +328,7 @@ const controls = new Set([
   "auction-pricing-without-reserve",
   "auction-pricing-selection-rule-mismatch-rejected",
   "complete-highest-price",
+  "receipt-selection-rule-phase-mismatch-rejected",
   "finalized-state-at-reveal-deadline",
   "finalized-state-before-reveal-deadline-rejected",
   "binding-definition-unavailable",

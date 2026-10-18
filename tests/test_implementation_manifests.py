@@ -74,12 +74,22 @@ class ImplementationManifestTests(unittest.TestCase):
         delivery = {"settlement-delivery-pass", "settlement-delivery-missing-deliverable-fail",
                     "settlement-delivery-malformed-contenthash-fail",
                     "settlement-storage-anchored-as-entitlement-fail"}
+        # The README says "four of the six"; the other two test PC-6 and SIG-5.
+        golden_delivery = {case["id"] for case in suite["cases"] if case["status"] == "golden"
+                           and case["id"].startswith(("settlement-delivery-", "settlement-storage-"))}
+        self.assertEqual(golden_delivery - delivery, {"settlement-delivery-with-finality-fail",
+                                                      "settlement-delivery-extra-payment-field-pass"})
+        self.assertLess(delivery, golden_delivery)
+        # §9.5.9 step 5 at the pin settles on `included`; #432 is the open fix.
+        self.assertIn("5. On the transaction reaching the terminal **`included`** state",
+                      git_show(V04_COMMIT, "spec/DACS-4-SETTLE.md"))
         for role in ("seller", "buyer"):
             with self.subTest(role=role):
                 manifest = load_example(f"fixed-price-pay-dem-{role}.json")
                 runs = {run["id"]: run for run in manifest["testRuns"]}
                 claims = {claim["capabilityRefs"][0]: claim for claim in manifest["claims"]}
                 self.assertEqual(manifest["conformanceSuite"]["commit"], V04_COMMIT)
+                self.assertEqual(manifest["profile"]["commit"], V04_COMMIT)
                 self.assertEqual(set(runs["fixed-price-vectors"]["caseIds"]), applicable_fixed_price)
                 self.assertEqual(set(runs["storage-program-delivery-vectors"]["caseIds"]), delivery)
                 self.assertEqual({claim["result"] for claim in manifest["claims"]}, {"implemented"})
@@ -95,31 +105,48 @@ class ImplementationManifestTests(unittest.TestCase):
                 for claim in manifest["claims"]:
                     rules = set(claim["ruleRefs"])
                     self.assertFalse({rule for rule in rules if rule.startswith("RD-")}, claim["id"])
-                    if role == "buyer":
-                        self.assertFalse({rule for rule in rules if rule.startswith("PS-")}, claim["id"])
+                    # PS-* are listing-publisher duties (§8.9); PB-* are checks
+                    # the payer runs before submitting payment (§9.5.1).
+                    other_side = "PS-" if role == "buyer" else "PB-"
+                    self.assertFalse({rule for rule in rules if rule.startswith(other_side)}, claim["id"])
+                self.assertEqual(claims["pay-dem"]["ruleRefs"], ["DACS-4-9.5.9", "PB-1", "PB-2", "PB-3"]
+                                 if role == "buyer" else ["DACS-4-9.5.9"])
                 self.assertIn("DACS-3-8.4.1", claims["fixed-price"]["ruleRefs"])
                 self.assertEqual(claims["storage-program-delivery"]["ruleRefs"], ["DACS-4-9.6.1"])
         readme = (EXAMPLE_DIR / "README.md").read_text(encoding="utf-8")
         self.assertIn("does not check\nwhether a cited case is golden or candidate", readme)
         self.assertIn("RD-1..RD-5 are rail-author duties (§9.4.3, §9.10)", readme)
-        self.assertIn("none exercises DV-1..DV-4", readme)
+        flat = " ".join(readme.split())
+        for text in ("PB-1..PB-3 appear only in the buyer example",
+                     "four of the six golden v0.4 settlement cases",
+                     "None of the six exercises DV-1..DV-4",
+                     "above its 128 KB soft limit; the Demos node itself enforces 1 MiB",
+                     "step 5 returns success on the `included` state; a Demos node also reports "
+                     "`included` for a failed transfer. Open draft PR #432"):
+            self.assertIn(text, flat)
 
-    def test_x402_example_passing_claims_omit_unexercised_pipeline_rules(self):
-        # Neither original fixed-price case exercises PS-1 or PS-2; the PS-3
-        # golden case backs the narrowed claim.
+    def test_x402_example_makes_no_passing_claim(self):
+        # A conformance-tested capability claim reports the whole capability
+        # (§14.10). The three cited cases exercise neither §8.4.1, PS-1, PS-2 nor
+        # PS-3's pattern/pricing compatibility, so fixed-price is partial.
         manifest = load_example()
         suite_pin = manifest["conformanceSuite"]
         suite = json.loads(git_show(suite_pin["commit"], suite_pin["manifestPath"]))
         tiers = {case["id"]: case["status"] for case in suite["cases"]}
         runs = {run["id"]: run for run in manifest["testRuns"]}
         fixed = next(claim for claim in manifest["claims"] if claim["capabilityRefs"] == ["fixed-price"])
-        self.assertEqual((fixed["result"], fixed["ruleRefs"]), ("conformance-tested", ["PS-3"]))
+        capability = next(cap for cap in manifest["capabilities"] if cap["ref"] == "fixed-price")
+        self.assertEqual((fixed["result"], fixed["ruleRefs"], capability["testStatus"]),
+                         ("implemented", ["PS-3"], "partial"))
         cases = {case for ref in fixed["evidenceRefs"] for case in runs[ref]["caseIds"]}
         self.assertIn("neg-ps3-fixed-over-negotiable", cases)
         self.assertEqual({tiers[case] for case in cases}, {"golden"})
-        for claim in manifest["claims"]:
-            if claim["result"] in {"conformant", "conformance-tested"}:
-                self.assertFalse({"PS-1", "PS-2"} & set(claim["ruleRefs"]), claim["id"])
+        self.assertEqual([claim["id"] for claim in manifest["claims"]
+                          if claim["result"] in {"conformant", "conformance-tested"}], [])
+        self.assertNotIn("passed", {cap["testStatus"] for cap in manifest["capabilities"]})
+        flat = " ".join((EXAMPLE_DIR / "README.md").read_text(encoding="utf-8").split())
+        self.assertIn("`fixed-price-x402-seller.json` makes no passing claim.", flat)
+        self.assertIn("its PS-3 golden case covers only PS-3's negotiable band-centre clause", flat)
 
     def test_x402_example_pay_claim_stays_within_its_evidence(self):
         # At the pin, the only §9.5.7/§9.5.8 case is one golden pass case, so no
@@ -136,18 +163,22 @@ class ImplementationManifestTests(unittest.TestCase):
         cases = {case for ref in claim["evidenceRefs"] for case in runs[ref]["caseIds"]}
         self.assertEqual(cases, {"settlement-x402-pass"})
         self.assertEqual((claim["result"], capability["testStatus"]), ("implemented", "partial"))
-        for passing in manifest["claims"]:
-            if passing["result"] in {"conformant", "conformance-tested"}:
-                rules = set(passing["ruleRefs"])
-                self.assertFalse({rule for rule in rules if rule.startswith(("SB-", "X402-"))}, passing["id"])
-                self.assertNotIn("DACS-4-9.5.7", rules, passing["id"])
-                self.assertNotIn("pay-x402", passing["capabilityRefs"], passing["id"])
         readme = (EXAMPLE_DIR / "README.md").read_text(encoding="utf-8")
-        self.assertIn("`fixed-price-x402-seller.json` makes one passing claim", readme)
         self.assertIn("so `pay-x402` is `partial` and claimed only as\n`implemented`", readme)
 
     def seller_example(self):
         manifest = load_example("fixed-price-pay-dem-seller.json")
+        self.assertEqual(self.validate(copy.deepcopy(manifest)), [])
+        return manifest
+
+    def x402_passing_example(self):
+        # The x402 example makes no passing claim, so promote its fixed-price
+        # claim and check that the promoted manifest is valid before a test changes it.
+        manifest = load_example()
+        claim = next(claim for claim in manifest["claims"] if claim["id"] == "claim-fixed-price")
+        claim["result"] = "conformance-tested"
+        capability = next(cap for cap in manifest["capabilities"] if cap["ref"] == "fixed-price")
+        capability["testStatus"] = "passed"
         self.assertEqual(self.validate(copy.deepcopy(manifest)), [])
         return manifest
 
@@ -255,7 +286,7 @@ class ImplementationManifestTests(unittest.TestCase):
         self.assertTrue(any("manifestSha256 mismatch" in error for error in errors))
 
     def test_passing_claim_requires_passing_deterministic_evidence(self):
-        manifest = load_example()
+        manifest = self.x402_passing_example()
         manifest["testRuns"][0]["result"] = "fail"
 
         errors = self.validate(manifest)
@@ -264,7 +295,7 @@ class ImplementationManifestTests(unittest.TestCase):
         self.assertTrue(any("passed capability must reference only passing" in error for error in errors))
 
     def test_passing_claim_evidence_must_cover_its_capability(self):
-        manifest = load_example()
+        manifest = self.x402_passing_example()
         manifest["claims"][0]["evidenceRefs"] = ["x402-vectors"]
 
         errors = self.validate(manifest)
@@ -281,6 +312,92 @@ class ImplementationManifestTests(unittest.TestCase):
         self.assertTrue(any("profile.repository must be a non-empty string" in error for error in errors))
         self.assertTrue(any("conformanceSuite.repository must be a non-empty string" in error for error in errors))
 
+    def assert_rejected(self, mutate, message, manifest=None):
+        manifest = manifest or self.seller_example()
+        mutate(manifest)
+        errors = self.validate(manifest)
+        self.assertTrue(any(message in error for error in errors), errors)
+
+    def test_pins_must_name_the_standard_repository_and_full_hex_digests(self):
+        # IM-1: a fork URL or a truncated or upper-case digest is not a pin.
+        fork = "https://github.com/someone/dacs-standard"
+        cases = [
+            (lambda m: m["profile"].update(repository=fork),
+             "profile.repository must identify https://github.com/dacs-agent-commerce/dacs-standard"),
+            (lambda m: m["conformanceSuite"].update(repository=fork),
+             "conformanceSuite.repository must identify https://github.com/dacs-agent-commerce/dacs-standard"),
+            (lambda m: m["profile"].update(commit=V04_COMMIT[:39]), "profile.commit must be 40 lower-case hex"),
+            (lambda m: m["conformanceSuite"].update(commit=V04_COMMIT.upper()),
+             "conformanceSuite.commit must be 40 lower-case hex"),
+            (lambda m: m["implementation"].update(commit="5" * 39), "implementation.commit must be 40 lower-case hex"),
+            (lambda m: m["conformanceSuite"].update(manifestSha256=m["conformanceSuite"]["manifestSha256"][:63]),
+             "conformanceSuite.manifestSha256 must be 64 lower-case hex"),
+        ]
+        for mutate, message in cases:
+            with self.subTest(message=message):
+                self.assert_rejected(mutate, message)
+
+    def test_capability_status_axes_are_closed_and_consistent(self):
+        # IM-2: support, availability and test status are separate closed axes,
+        # and availability MAY be omitted, as the FP-DEM examples do.
+        manifest = self.seller_example()
+        self.assertFalse([cap["ref"] for cap in manifest["capabilities"] if "availability" in cap])
+
+        def cap(ref, **changes):
+            def mutate(m):
+                next(c for c in m["capabilities"] if c["ref"] == ref).update(changes)
+            return mutate
+
+        cases = [
+            (cap("fixed-price", supportStatus="shipped"), "capabilities[fixed-price].supportStatus is unsupported"),
+            (cap("fixed-price", testStatus="green"), "capabilities[fixed-price].testStatus is unsupported"),
+            (cap("fixed-price", availability="always"), "capabilities[fixed-price].availability is unsupported"),
+            (cap("rfq", availability="live"), "capabilities[rfq] unsupported capability must omit availability"),
+            (cap("rfq", evidenceRefs=["fixed-price-vectors"]),
+             "capabilities[rfq] unsupported capability must be not_tested with no evidence"),
+            (cap("rfq", testStatus="partial"),
+             "capabilities[rfq] unsupported capability must be not_tested with no evidence"),
+            (cap("fixed-price", testStatus="not_tested"),
+             "capabilities[fixed-price] not_tested capability must not reference evidence"),
+            (cap("fixed-price", testStatus="failed"),
+             "capabilities[fixed-price] failed capability must reference a failing deterministic run"),
+        ]
+        for mutate, message in cases:
+            with self.subTest(message=message):
+                self.assert_rejected(mutate, message)
+
+    def test_passing_claim_needs_evidence_roles_modules_and_a_passed_capability(self):
+        # IM-3 and the level/result table.
+        def claim(**changes):
+            def mutate(m):
+                next(c for c in m["claims"] if c["id"] == "claim-fixed-price").update(changes)
+            return mutate
+
+        def capability(**changes):
+            def mutate(m):
+                next(c for c in m["capabilities"] if c["ref"] == "fixed-price").update(changes)
+            return mutate
+
+        def extra_role(m):
+            m["roles"].append("buyer")
+            capability(roles=["seller", "buyer"])(m)
+
+        label = "claims[claim-fixed-price]"
+        cases = [
+            (claim(evidenceRefs=[]), f"{label} passing claim must reference deterministic evidence"),
+            (extra_role, f"{label} does not declare every role used by capability 'fixed-price'"),
+            (capability(modules=["DACS-3", "DACS-4"]),
+             f"{label} does not declare every module used by capability 'fixed-price'"),
+            (capability(testStatus="partial"), f"{label} passing claim requires passed capability 'fixed-price'"),
+            (claim(level="module", result="implemented"),
+             f"{label} level 'module' cannot use result 'implemented'"),
+            (claim(level="capability", result="conformant"),
+             f"{label} level 'capability' cannot use result 'conformant'"),
+        ]
+        for mutate, message in cases:
+            with self.subTest(message=message):
+                self.assert_rejected(mutate, message, self.x402_passing_example())
+
     def test_live_test_cannot_substitute_for_deterministic_evidence(self):
         manifest = load_example()
         manifest["claims"][1]["evidenceRefs"] = ["base-sepolia-x402-live"]
@@ -290,7 +407,7 @@ class ImplementationManifestTests(unittest.TestCase):
         self.assertTrue(any("unknown deterministic runs" in error for error in errors))
 
     def test_passing_claim_cannot_include_unsupported_capability(self):
-        manifest = load_example()
+        manifest = self.x402_passing_example()
         capability = manifest["capabilities"][0]
         capability["supportStatus"] = "unsupported"
         capability["testStatus"] = "not_tested"
@@ -311,7 +428,7 @@ class ImplementationManifestTests(unittest.TestCase):
         self.assertTrue(any("experimental id must start with x-" in error for error in errors))
 
     def test_open_nonconforming_deviation_invalidates_passing_claim(self):
-        manifest = load_example()
+        manifest = self.x402_passing_example()
         manifest["deviations"] = [
             {
                 "id": "known-gap",
@@ -357,7 +474,7 @@ class ImplementationManifestTests(unittest.TestCase):
                 self.assertEqual(errors, [])
 
     def test_unknown_optional_members_do_not_change_conformance_evaluation(self):
-        manifest = load_example()
+        manifest = self.x402_passing_example()
         manifest["registryOverride"] = {"pay-x402": "authorized"}
         manifest["implementation"]["authorization"] = "transaction-signer"
         manifest["claims"][0]["authorization"] = "runtime-bypass"

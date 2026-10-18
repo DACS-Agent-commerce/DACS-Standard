@@ -31,7 +31,7 @@
     {
       "id": "claim-fixed-price",
       "level": "capability",
-      "result": "conformance-tested",
+      "result": "implemented",
       "roles": ["seller"],
       "modules": ["DACS-3"],
       "capabilityRefs": ["fixed-price"],
@@ -68,7 +68,7 @@
       "roles": ["seller"],
       "supportStatus": "implemented",
       "availability": "live",
-      "testStatus": "passed",
+      "testStatus": "partial",
       "evidenceRefs": ["fixed-price-vectors"]
     },
     {

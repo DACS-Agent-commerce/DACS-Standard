@@ -683,6 +683,15 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             result = verify_finality(copy.deepcopy(case["input"]), self.trust)
         self.assertEqual("pass", result["decision"], result["reason"])
 
+        # A leg chain the HTLC-6 table does not register needs a registry
+        # entry first: `error`, not a chain-native mismatch.
+        control = self.cases["fv-htlc-reveal-canonical-success"]["input"]
+        self.assertEqual("pass", verify_finality(copy.deepcopy(control), self.trust)["decision"])
+        with patch.dict(SFV.HTLC_CHAIN_NATIVE_HASH, {}, clear=True):
+            result = verify_finality(copy.deepcopy(control), self.trust)
+        self.assertEqual("error", result["decision"], result["reason"])
+        self.assertIn("no registered native hash", result["reason"])
+
     def test_missing_htlc_and_tank_arms_never_pass(self):
         models = {
             "htlc-reveal": ("sourceLock", "sourceClaim", "destinationLock", "destinationReveal"),

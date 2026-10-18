@@ -1588,6 +1588,11 @@ def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, t
     destination_hash = _hash_preimage(parameters["destinationHashAlgorithm"], source_preimage)
     if source_hash is None or destination_hash is None:
         return _result("error", "HTLC rail selects an unsupported hash algorithm")
+    if None in (
+        _chain_native_hash(profile["source"]["networkId"]),
+        _chain_native_hash(profile["destination"]["networkId"]),
+    ):
+        return _result("error", "HTLC leg chain has no registered native hash")
     if (
         parameters["sourceHashAlgorithm"] != _chain_native_hash(profile["source"]["networkId"])
         or parameters["destinationHashAlgorithm"] != _chain_native_hash(profile["destination"]["networkId"])
@@ -1619,8 +1624,9 @@ def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, t
         or source_expiry <= destination_expiry + (parameters["sourceFinalitySec"] + parameters["safetyWindowSec"]) * 1000
     ):
         return _result("fail", "HTLC timelock relation does not satisfy the signed route")
-    # HTLC-8 schedule check against the pinned source-finality bound (the
+    # HTLC-8 verifier schedule bound: the pinned source-finality bound (the
     # HTLC-7 `source_finality`), not a proof of when the source finalized.
+    # Waiting for actual source-lock finality is the payee's obligation.
     if destination_mined < source_mined + parameters["sourceFinalitySec"] * 1000:
         return _result("fail", "HTLC destination lock was mined before pinned source-lock finality")
     return _settle(deferred, _result("pass", "all four HTLC observations and recomputed relations verified"))

@@ -55,7 +55,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
-| [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 46 | `error` / `fail` / `indeterminate` / `pass` |
+| [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 49 | `error` / `fail` / `indeterminate` / `pass` |
 | [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 398 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
 | [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 166 | `error` / `fail` / `indeterminate` / `pass` |
@@ -2059,7 +2059,7 @@ python3 -m unittest tests.test_settlement_finality_verification_vectors -v
 
 ### `finality-resolution-context-v1.json` — DACS-4 §9.7.0 FRC-1..FRC-11
 
-Forty-six candidate cases execute the all-authorities finality resolution
+Forty-nine candidate cases execute the all-authorities finality resolution
 context over the fixture-only `dacs-finality-synthetic-fixture-v1` binding.
 Every case carries its complete verifier input and names the entry point it
 runs:
@@ -2090,6 +2090,11 @@ resolution context under a re-signed profile that does not select the
 capability. The FRC-8 cases refuse genuinely signed, acquired responses
 whose `finalityObservationResponseVersion` or arm `status` is outside the
 closed type, or that carry an extra member at the top level or in either arm.
+Four FRC-8 projection cases pass two verified views that differ only in
+authentication or freshness evidence: a sufficient RPC signature set, a later
+signed observation instant, and on a `bft-final` rail a validator certificate
+with all three signers in reverse order against the sufficient two. A
+below-quorum certificate on that rail still fails.
 The FRC-2 case presents a second validly signed evidence record for the same
 transaction with the query issued for the first. It fails even though each
 signed view verifies on its own.

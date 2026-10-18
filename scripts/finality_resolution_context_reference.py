@@ -576,26 +576,44 @@ def _acquisition_map(authority: FinalityResolutionAuthority) -> tuple[dict | Non
     return records, None
 
 
-def _projection(observation: dict) -> str:
+PROJECTED_CHAIN_MEMBERS = (
+    "networkId", "genesisHash", "transactionRef", "transactionInclusionProof",
+    "selectedEventProof", "inclusionBlock", "ancestryProof",
+)
+PROJECTED_HEAD_MEMBERS = ("id", "position", "header")
+PROJECTED_CERTIFICATE_MEMBERS = ("kind", "validatorSetHash", "blockId")
+
+
+def _projection(observation: Any) -> str:
     """Canonical fixture meaning, compared only after FV verified the view.
 
-    Which sufficient set of authority signatures accompanies a view, and in
-    what order, is authentication evidence, not finality meaning: the head,
-    ancestry, inclusion, transaction and event remain.
+    An explicit list of finality facts: network, transaction, inclusion,
+    event, head and ancestry, and for BFT which block the certificate binds
+    under which validator set.  Which sufficient set of RPC or validator
+    signatures accompanies a view, in what order, and the instant the head
+    was observed are authentication and freshness evidence FV has checked,
+    not finality meaning.
     """
-    value = copy.deepcopy(observation)
+    native = observation.get("observation") if isinstance(observation, dict) else None
+    if not isinstance(native, dict):
+        # FV has already refused this view; its bytes are its projection.
+        return hash_value(observation)
 
-    def normalize(item: Any) -> None:
-        if isinstance(item, dict):
-            item.pop("authorityEvidence", None)
-            for member in item.values():
-                normalize(member)
-        elif isinstance(item, list):
-            for member in item:
-                normalize(member)
+    def members(item: Any, names: tuple[str, ...]) -> Any:
+        if not isinstance(item, dict):
+            return item
+        return {name: item[name] for name in names if name in item}
 
-    normalize(value)
-    return hash_value(value)
+    meaning = {"kind": observation.get("kind")}
+    meaning.update(members(native, PROJECTED_CHAIN_MEMBERS))
+    meaning["authenticatedHead"] = members(
+        native.get("authenticatedHead"), PROJECTED_HEAD_MEMBERS
+    )
+    if "finalityCertificate" in native:
+        meaning["finalityCertificate"] = members(
+            native["finalityCertificate"], PROJECTED_CERTIFICATE_MEMBERS
+        )
+    return hash_value(meaning)
 
 
 def _fixture_checkpoint_relation(

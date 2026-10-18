@@ -26,6 +26,7 @@ try:
         with_acquisition,
     )
     from scripts.generate_settlement_finality_verification_vectors import (
+        BFT_CERTIFICATE_DOMAIN,
         FixtureFactory,
         OBSERVED_AT,
         nonminimal_b64u,
@@ -45,6 +46,7 @@ except ImportError:
         with_acquisition,
     )
     from generate_settlement_finality_verification_vectors import (
+        BFT_CERTIFICATE_DOMAIN,
         FixtureFactory,
         OBSERVED_AT,
         nonminimal_b64u,
@@ -58,6 +60,7 @@ OUTPUT = (
     / "finality-resolution-context-v1.json"
 )
 JOB_ID = "01K50M2V4W8Z7J6N5P3T1H9GQC"
+BFT_JOB_ID = "01K50M2V4W8Z7J6N5P3T1H9GQD"
 ISSUED_AT = 1_900_000_000_000
 ACQUIRED_AT = 1_900_000_005_000
 EXPIRES_AT = 1_900_000_006_000
@@ -838,6 +841,82 @@ def document() -> dict:
         "observer-b", {"status": "observed", "observation": threshold_observation},
         transport_metadata={"arrivalSequence": 1, "channel": "fixture-b"},
     )
+    # FRC-8: observer-b saw the same head two seconds later, so its RPC
+    # quorum signs a later observedAt.  The instant is freshness evidence.
+    later_observation = copy.deepcopy(observation)
+    later_observation["observation"]["authenticatedHead"]["observedAt"] += 2000
+    factory.sign_chain_authority(later_observation["observation"])
+    later_instant_input = closed_member_input(
+        "observer-b", {"status": "observed", "observation": later_observation},
+        transport_metadata={"arrivalSequence": 1, "channel": "fixture-b"},
+    )
+
+    # FRC-8 on a bft-final rail: each observer carries a validator
+    # certificate over the same inclusion block.  observer-a's holds all
+    # three validators in reverse order, observer-b's the canonical {a, b}
+    # (75 of 100 against 2/3).  Below quorum, {a} alone does not verify.
+    bft_value = factory.model_input("bft-final", job_id=BFT_JOB_ID)
+    bft_value["rail"]["consumerFinalityProfile"][
+        "finalityResolutionCapability"
+    ] = CAPABILITY
+    factory.rebind_rail(bft_value)
+    base_trusted["sessionAuthorityByJob"][BFT_JOB_ID] = copy.deepcopy(
+        factory.trusted["sessionAuthorityByJob"][BFT_JOB_ID]
+    )
+    bft_observation = copy.deepcopy(bft_value["context"])
+    bft_checkpoint = checkpoint_for(bft_observation)
+    bft_authority = build_authority(
+        bft_value,
+        base_trusted,
+        policy,
+        bft_checkpoint,
+        nonce="fixture-query-nonce-392-bft",
+        policy_source=policy_source,
+        authority_set_source=authority_set_source,
+        checkpoint_source=source_ref("checkpoint", bft_checkpoint),
+    )
+    bft_nonce = bft_authority.issued_query["nonce"]
+
+    def bft_view(signers) -> dict:
+        view = copy.deepcopy(bft_observation)
+        certificate = view["observation"]["finalityCertificate"]
+        certificate["signatures"] = [
+            {
+                "validatorId": signer,
+                "algorithm": "ed25519",
+                "value": factory.sign_digest(
+                    signer, BFT_CERTIFICATE_DOMAIN, certificate["blockId"]
+                ),
+            }
+            for signer in signers
+        ]
+        return view
+
+    def bft_input(views: dict) -> dict:
+        responses = [
+            signed_response(
+                keys[authority_id + "-key"],
+                authority_id=authority_id,
+                key_id=authority_id + "-key",
+                query=bft_authority.issued_query,
+                checkpoint=bft_checkpoint,
+                arm={"status": "observed", "observation": view},
+            )
+            for authority_id, view in views.items()
+        ]
+        return resolved_input(
+            bft_value, bft_authority, responses, responses,
+            [acquisition(response, bft_nonce, ACQUIRED_AT) for response in responses],
+        )
+
+    bft_equivalent_input = bft_input({
+        "observer-a": bft_view(("validator-c", "validator-b", "validator-a")),
+        "observer-b": bft_view(("validator-a", "validator-b")),
+    })
+    bft_below_quorum_input = bft_input({
+        "observer-a": bft_view(("validator-c", "validator-b", "validator-a")),
+        "observer-b": bft_view(("validator-a",)),
+    })
 
     # FRC-5: each verifier-local acquisition record names the issued nonce,
     # an obtained status, one response hash and the signed responder.
@@ -1113,6 +1192,25 @@ def document() -> dict:
                  "event; which sufficient set authenticates a view is not a "
                  "finality conflict",
          "input": threshold_set_input},
+        {"name": "equivalent-views-observed-at-different-instants", "expected": "pass",
+         "operation": "verify",
+         "note": "observer-b's RPC quorum signs the same head two seconds after "
+                 "observer-a's; the observation instant is freshness evidence, "
+                 "not a finality conflict",
+         "input": later_instant_input},
+        {"name": "bft-equivalent-certificate-signature-sets", "expected": "pass",
+         "operation": "verify",
+         "note": "on a bft-final rail observer-a's certificate carries validators "
+                 "c, b and a in that order and observer-b's the sufficient a and b "
+                 "over the same inclusion block; neither order nor set is a "
+                 "finality conflict",
+         "input": bft_equivalent_input},
+        {"name": "bft-certificate-below-quorum", "expected": "fail",
+         "operation": "verify",
+         "note": "on a bft-final rail observer-b's certificate carries only "
+                 "validator a (40 of 100 against 2/3); each view is still "
+                 "verified on its own",
+         "input": bft_below_quorum_input},
         {"name": "acquisition-record-other-nonce", "expected": "error",
          "operation": "verify",
          "note": "observer-a's verifier-local acquisition record names another "

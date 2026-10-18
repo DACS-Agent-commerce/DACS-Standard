@@ -370,6 +370,70 @@ class FinalityResolutionContextTests(unittest.TestCase):
         )
         self.assertNotEqual("pass", self.verify(changed, self.authority(payload))["decision"])
 
+    def test_bft_certificate_order_and_sufficient_set_are_one_view(self):
+        case = self.case("bft-equivalent-certificate-signature-sets")
+        value = case["input"]["value"]
+        self.assertEqual(
+            "bft-final", value["rail"]["consumerFinalityProfile"]["settlement"]["kind"]
+        )
+        views = {
+            response["authorityId"]: response["response"]["observation"]
+            for response in value["context"]["responseArtifacts"]
+        }
+        signers = {
+            authority_id: [
+                signature["validatorId"]
+                for signature in view["observation"]["finalityCertificate"]["signatures"]
+            ]
+            for authority_id, view in views.items()
+        }
+        self.assertEqual(["validator-c", "validator-b", "validator-a"], signers["observer-a"])
+        self.assertEqual(["validator-a", "validator-b"], signers["observer-b"])
+        for view in views.values():
+            candidate = copy.deepcopy(value)
+            candidate["context"] = copy.deepcopy(view)
+            result = _verify_single_view_finality(candidate, copy.deepcopy(self.base_trusted))
+            self.assertEqual("pass", result["decision"], result["reason"])
+        self.assertEqual(
+            FRC._projection(views["observer-a"]), FRC._projection(views["observer-b"])
+        )
+        self.assertEqual("pass", self.execute_vector(case)["decision"])
+
+        # The certificate's block and validator set remain finality meaning.
+        moved = copy.deepcopy(views["observer-b"])
+        moved["observation"]["finalityCertificate"]["blockId"] = "00" * 32
+        self.assertNotEqual(FRC._projection(views["observer-b"]), FRC._projection(moved))
+
+        below = self.case("bft-certificate-below-quorum")
+        thin = next(
+            response["response"]["observation"]
+            for response in below["input"]["value"]["context"]["responseArtifacts"]
+            if response["authorityId"] == "observer-b"
+        )
+        self.assertEqual(
+            ["validator-a"],
+            [s["validatorId"] for s in thin["observation"]["finalityCertificate"]["signatures"]],
+        )
+        result = self.execute_vector(below)
+        self.assertEqual("fail", result["decision"], result["reason"])
+        self.assertIn("quorum", result["reason"])
+
+    def test_observation_instant_is_not_finality_meaning(self):
+        case = self.case("equivalent-views-observed-at-different-instants")
+        views = {
+            response["authorityId"]: response["response"]["observation"]["observation"]
+            for response in case["input"]["value"]["context"]["responseArtifacts"]
+        }
+        heads = {authority_id: view["authenticatedHead"] for authority_id, view in views.items()}
+        self.assertEqual(
+            heads["observer-a"]["observedAt"] + 2000, heads["observer-b"]["observedAt"]
+        )
+        self.assertEqual(
+            {k: v for k, v in heads["observer-a"].items() if k != "observedAt"},
+            {k: v for k, v in heads["observer-b"].items() if k != "observedAt"},
+        )
+        self.assertEqual("pass", self.execute_vector(case)["decision"])
+
     def test_transport_omission_cannot_erase_retained_response(self):
         value = copy.deepcopy(self.data["positive"]["value"])
         value["context"]["responseArtifacts"] = [
@@ -433,7 +497,7 @@ class FinalityResolutionContextTests(unittest.TestCase):
         return case, copy.deepcopy(case["input"]["value"]), copy.deepcopy(case["input"]["authority"])
 
     def test_materialized_cases_execute_their_expectation(self):
-        self.assertEqual(46, self.data["count"])
+        self.assertEqual(49, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         self.assertEqual(
             hashlib.sha256(json.dumps(
@@ -476,8 +540,15 @@ class FinalityResolutionContextTests(unittest.TestCase):
              '        return False\n', "", "pass",
              ["response-transport-metadata-not-object", "response-transport-metadata-null"]),
             # FRC-8 projection: authentication evidence is not finality meaning.
-            ('item.pop("authorityEvidence", None)', "pass", "indeterminate",
-             ["equivalent-sufficient-authentication-sets"]),
+            ('"networkId", "genesisHash", "transactionRef", "transactionInclusionProof",',
+             '"networkId", "genesisHash", "transactionRef", "transactionInclusionProof", "authorityEvidence",',
+             "indeterminate", ["equivalent-sufficient-authentication-sets"]),
+            ('PROJECTED_HEAD_MEMBERS = ("id", "position", "header")',
+             'PROJECTED_HEAD_MEMBERS = ("id", "position", "header", "observedAt")',
+             "indeterminate", ["equivalent-views-observed-at-different-instants"]),
+            ('PROJECTED_CERTIFICATE_MEMBERS = ("kind", "validatorSetHash", "blockId")',
+             'PROJECTED_CERTIFICATE_MEMBERS = ("kind", "validatorSetHash", "blockId", "signatures")',
+             "indeterminate", ["bft-equivalent-certificate-signature-sets"]),
             ('return _exact(arm, {"status", "observation"}) and', "return", "pass",
              ["response-observed-arm-extra-member"]),
             ('return _exact(arm, {"status", "reason"}) and', "return", None,

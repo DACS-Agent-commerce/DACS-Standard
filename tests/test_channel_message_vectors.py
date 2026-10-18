@@ -374,6 +374,12 @@ class DurableChannelIdStore:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(pending, self._path)
+        # The rename is durable only once its directory entry is synced.
+        directory = os.open(self._path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
 
 
 class RetainedChannelRegistry:

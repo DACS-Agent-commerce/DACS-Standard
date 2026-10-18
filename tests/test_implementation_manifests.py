@@ -444,6 +444,29 @@ class ImplementationManifestTests(unittest.TestCase):
 
         self.assertTrue(any("invalidated by open nonconforming deviations" in error for error in errors))
 
+    def test_open_nonconforming_deviation_invalidates_only_claims_on_its_capability(self):
+        # IM-5 invalidates the passing claims "referencing its affected
+        # capability", so a deviation on fixed-price leaves the delivery claim valid.
+        manifest = self.seller_example()
+        self.passing_claim(manifest)
+        deviation = {
+            "id": "known-gap",
+            "capabilityRefs": ["fixed-price"],
+            "ruleRefs": ["PS-3"],
+            "status": "open",
+            "effect": "nonconforming",
+            "description": "Known protocol mismatch on another capability.",
+        }
+        manifest["deviations"] = [deviation]
+
+        self.assertEqual(self.validate(copy.deepcopy(manifest)), [])
+
+        deviation["capabilityRefs"] = ["storage-program-delivery"]
+        errors = self.validate(manifest)
+        self.assertTrue(any("claim-storage-program-delivery-seller" in error
+                            and "invalidated by open nonconforming deviations on: storage-program-delivery" in error
+                            for error in errors), errors)
+
     def test_open_nonconforming_deviation_does_not_invalidate_nonpassing_claim(self):
         cases = [
             ("capability", "implemented", "implemented", "fixed-price"),

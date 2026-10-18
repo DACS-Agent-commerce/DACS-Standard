@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2 | 691 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1, PB-2 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2 | 719 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1137,8 +1137,12 @@ The `*-record-*-not-string-*` cases pin both hash members as strings before
 hexadecimal validation. A re-signed number, null, list or object is a verifier
 `error` (`evidence-hash-shape`); execute and retry rebuild the unanchored record
 on ledger success and keep an unavailable ledger pending.
-The Solana payload is checked for form only too: a non-empty base64
-`transaction`, whose transfer, fee payer and memo the corpus does not decode.
+The Solana payload's `transaction` is decoded before the payer signs it: the
+27 `solana-signed-message-*` cases change one part of the message each (the
+`TransferChecked` amount, mint, decimals, accounts, authority or token program,
+a second transfer, the Memo, the compute budget, or an extra instruction,
+signer or lookup table) and each is refused (`paid-request-payload`) with no
+wallet call.
 The retained `validBefore` is a safe integer of seconds, so a decimal string,
 2⁵³ or a boolean is `error` (`retry-eip3009-retained-valid-before-*`). An
 EIP-155 `execute` without one is `error` (`authorization-valid-before`) with no
@@ -1225,8 +1229,13 @@ built record (manual recovery, `*-anchored-record-defect-manual-recovery`), and
 the unit suite replays every `execute` and `retry` case against a write-once
 store. The record's own `evidenceVersion` (`error`), `outcome`, `phase` and
 `jobId` (`fail`, `evidence-record-binding`) and `paymentAmount` (`fail` or
-`error`, `evidence-payment-amount`) are checked first
-(`verify-evidence-record-*`). A response changed after the record was
+`error`, `evidence-payment-amount`, a third member included) are checked first
+(`verify-evidence-record-*`). The finality record's `scheme`, `network` and
+`bindingProfile` each repeat the signed selection and the literal
+`dacs-x402-exact:v1`: another scheme, a missing or non-string
+`bindingProfile`, and a missing `schemeNetworkFinality` are each `fail`
+(`finality-profile`), and `execute-record-*-rebuilt` and
+`retry-record-*-rebuilt` rebuild such a record. A response changed after the record was
 built is `pass` with reason `payment-receipt-hash`, and so is a stored
 challenge hash that does not recompute, with `payment-required-hash`. A sound
 response beside a record naming another transaction is `pass` with
@@ -1281,6 +1290,22 @@ retry (`reconciliation-binding`), and a recorded `response-payer` defect in the
 response `payer`. The all-digit Solana seller has no
 letter to change, so the `payTo` cases use a letter-bearing seller whose
 unchanged spelling passes.
+
+PB-2 cases follow step 1(b): the fixture carries the seller's `payeeBundle`,
+pinned by the seller party's and the runtime payee's `bundleHash`, and
+`payeeLinkage`, the SR-1 linkage decision the adapter's resolver returns for
+each payee claim (a claim with no entry is unresolved). The base bundle has no
+EVM claim, so the co-signed payout binding (tier 3) binds the destination.
+Under the signed `eip155:8453` selection a `cci-xm:evm:8453` claim is
+applicable: the payout is bound when that claim names it and its linkage is
+`pass` (`pb2-negotiated-chain-controlled-claim-binds-payout`). A claim for
+another address is `fail` (`payee-destination`), unresolved or absent linkage
+`indeterminate` (`payee-linkage-unresolved`) and a resolver error `error`
+(`payee-linkage-error`), each with no wallet call although the payout binding
+matches. A claim for `eip155:1`, a name-style or non-minimal subchain, a Solana
+selection, and a Solana selection whose challenge also offers `eip155:8453` all
+leave tier 3 and pass, without consulting the linkage. A presented bundle that
+the `bundleHash` does not pin is `fail` (`payee-bundle`).
 
 SB-3 cases follow XN-9: the EIP-155 `exact` binding authorizes only through
 EIP-3009, so the job binding is mandatory whatever form the ledger event
@@ -1403,7 +1428,9 @@ session nonce, presenter and signatures; the request body against the signed
 challenge `x402Version`; omitted versus empty extensions in both directions;
 the classification of each received `extra` and extension member; and the
 legacy in-flight-only continuation. The retry's derivation of the signed terms
-is pinned by unit tests. Each value check of the definition (`railId`,
+is pinned by unit tests, and so are the EIP-155 chain-ID and other-namespace
+keyability checks of §9.5.7.1, whose only vector is the unmapped Solana
+cluster. Each value check of the definition (`railId`,
 `railType`, `phaseHandler`, `resolution`, and a `railVersion` of 0) has a
 re-signed `execute-definition-*` case that adds no member, so the member-set
 check cannot reject it first (`error`, `definition`). The selection has a

@@ -1307,6 +1307,73 @@ def payout_bindings(agreement, phase_index):
     )]
 
 
+def selection_eip155_chain(network):
+    """PB-2 step 1(b): the agreement-signed selection's canonical EIP-155 chain, or None."""
+    match = re.fullmatch(r"eip155:([1-9][0-9]*)", network)
+    if match is None or int(match.group(1)) > SAFE_INT:
+        return None
+    return network
+
+
+def claim_eip155_chain(claim):
+    """PB-2 step 2: a cci-xm claim's canonical EIP-155 chain under the DACS-1 EVM profile, or None."""
+    if not isinstance(claim, str):
+        return None
+    parts = claim.split(":", 3)
+    if len(parts) != 4 or parts[0].lower() != "cci-xm" or parts[1] != "evm":
+        return None
+    if re.fullmatch(r"[1-9][0-9]*", parts[2]) is None or int(parts[2]) > SAFE_INT:
+        return None
+    if not parts[3].split("?", 1)[0]:
+        return None
+    return f"eip155:{parts[2]}"
+
+
+def payee_destination_defect(v, seller, network, pay_to):
+    """PB-2: the (verdict, reason) when the payout is not bound to the payee, else None.
+
+    Tier applicability comes from the pinned payee bundle and the signed
+    selection's chain, never from whether linkage resolution succeeds. With
+    no applicable claim the co-signed payout binding (tier 3, PB-1) binds the
+    destination. With one, only a claim naming the payout whose linkage
+    resolves control-proven binds it; an unresolved one pauses and a resolver
+    error stays `error`, never falling through to tier 3.
+    """
+    bundle = v.get("payeeBundle")
+    if not isinstance(bundle, dict) or not isinstance(bundle.get("claims"), list):
+        return "fail", "payee-bundle"
+    bundle_hash = digest(bundle)
+    if (
+        seller.get("bundleHash") != bundle_hash
+        or v.get("runtime", {}).get("payee", {}).get("bundleHash") != bundle_hash
+        or bundle.get("presentedBy") != seller.get("primaryClaim")
+    ):
+        return "fail", "payee-bundle"
+    chain = selection_eip155_chain(network)
+    applicable = [
+        claim["ref"] for claim in bundle["claims"]
+        if chain is not None and isinstance(claim, dict) and claim_eip155_chain(claim.get("ref")) == chain
+    ]
+    if not applicable:
+        return None
+    naming = []
+    for ref in applicable:
+        try:
+            if adapter_address(network, ref.split("?", 1)[0].split(":", 3)[3]) == pay_to:
+                naming.append(ref)
+        except ValueError:
+            # A claim address with no adapter form cannot name the payout.
+            continue
+    if not naming:
+        return "fail", "payee-destination"
+    decisions = {v.get("payeeLinkage", {}).get(ref) for ref in naming}
+    if "pass" in decisions:
+        return None
+    if "error" in decisions:
+        return "error", "payee-linkage-error"
+    return "indeterminate", "payee-linkage-unresolved"
+
+
 def selection_amount(price, selection):
     """XN-5: the signed price in the selected asset's atomic units (ValueError if inexact)."""
     return exact_atomic(
@@ -1939,6 +2006,10 @@ def evaluate(v, effects=None):
         return "error", "address-form"
     if runtime_pay_to != pay_to:
         return "fail", "payout-binding"
+    # PB-2: the strongest applicable tier binds the payout before any wallet call.
+    defect = payee_destination_defect(v, seller[0], network, pay_to)
+    if defect is not None:
+        return defect
 
     if runtime.get("operatorConfigSource") != "local-operator-policy":
         return "error", "operator-config-source"
@@ -2659,7 +2730,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         names += tuple(f"retry-record-{member}-not-string-{shape}"
                        for member in ("paymentRequiredHash", "paymentReceiptHash")
                        for shape in ("number", "null", "list", "object"))
-        self.assertEqual(set(names), {v["name"] for v in self.vectors if v["operation"] == "retry"})
+        names += tuple(f"retry-record-{defect}-rebuilt" for defect in (
+            "payment-amount-extra-member", "finality-scheme-other", "finality-binding-profile-absent",
+            "finality-binding-profile-not-string", "finality-profile-absent"))
+        self.assertEqual(set(names),{v["name"] for v in self.vectors if v["operation"] == "retry"})
         for name in names:
             with self.subTest(vector=name):
                 effects = {"walletAuthorizationCalls": 0}
@@ -2870,7 +2944,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # Every stored-record verdict a verifier gives leaves the payment to the
         # ledger, after the wallet call and on retry alike.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
-        self.assertEqual(len(records), 54)
+        self.assertEqual(len(records), 60)
         for vector in records:
             for operation in ("execute", "retry"):
                 with self.subTest(record=vector["name"], operation=operation):
@@ -4078,6 +4152,83 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             with self.subTest(address=literal):
                 self.assertEqual(public_http_target(f"https://{literal}/pay"),
                                  public_http_target(f"https://[::ffff:{literal}]/pay"))
+
+    def test_pb2_tier_comes_from_the_signed_selection_before_the_wallet(self):
+        """PB-2 step 1(b): an applicable claim gates the wallet and never falls through to tier 3."""
+        refused = {
+            "pb2-negotiated-chain-claim-controls-other-address": ("fail", "payee-destination"),
+            "pb2-negotiated-chain-linkage-unresolved-pauses": ("indeterminate", "payee-linkage-unresolved"),
+            "pb2-negotiated-chain-linkage-absent-pauses": ("indeterminate", "payee-linkage-unresolved"),
+            "pb2-negotiated-chain-linkage-error-stays-error": ("error", "payee-linkage-error"),
+            "pb2-payee-bundle-not-pinned": ("fail", "payee-bundle"),
+            "pb2-runtime-payee-bundle-hash-not-signed": ("fail", "payee-bundle"),
+        }
+        for name, want in refused.items():
+            with self.subTest(vector=name):
+                vector = self.by_name[name]
+                # The co-signed payout binding (tier 3) is present and matches.
+                self.assertEqual(vector["runtime"]["payee"]["payeeAddress"],
+                                 payout_bindings(vector["agreement"], 3)[0]["payeeAddress"])
+                effects = {"walletAuthorizationCalls": 0}
+                self.assertEqual(evaluate(copy.deepcopy(vector), effects), want)
+                self.assertEqual(effects["walletAuthorizationCalls"], 0)
+        # Each refusal depends on the gate: the same vector with the claim's
+        # chain taken from nowhere (an implementation ignoring step 1(b)) pays.
+        for name in ("pb2-negotiated-chain-claim-controls-other-address",
+                     "pb2-negotiated-chain-linkage-unresolved-pauses",
+                     "pb2-negotiated-chain-linkage-error-stays-error"):
+            with self.subTest(without_step_1b=name):
+                with mock.patch(f"{__name__}.selection_eip155_chain", return_value=None):
+                    self.assertEqual(evaluate(copy.deepcopy(self.by_name[name])), ("pass", None))
+        for name in ("pb2-negotiated-chain-controlled-claim-binds-payout",
+                     "pb2-other-chain-claim-leaves-tier3",
+                     "pb2-name-style-subchain-claim-leaves-tier3",
+                     "pb2-leading-zero-chain-claim-leaves-tier3",
+                     "pb2-solana-selection-evm-claim-leaves-tier3",
+                     "pb2-challenge-chain-cannot-make-tier2-applicable"):
+            with self.subTest(vector=name):
+                effects = {}
+                self.assertEqual(evaluate(copy.deepcopy(self.by_name[name]), effects), ("pass", None))
+                self.assertEqual(effects["walletAuthorizationCalls"], 1)
+
+    def test_pb2_claim_profile_matches_the_static_rail_corpus(self):
+        """The negotiated arm reads a cci-xm claim's chain exactly as the static-rail PB-2 corpus does."""
+        sys.path.insert(0, str(ROOT / "tests"))
+        from test_cci_xm_rail_chain_applicability_vectors import (
+            VECTORS as STATIC_VECTORS,
+            claim_eip155_chain as static_claim_chain,
+        )
+        claims = {vector["claim"] for vector in json.loads(
+            STATIC_VECTORS.read_text(encoding="utf-8"))["vectors"]}
+        claims |= {claim["ref"] for vector in self.vectors
+                   for claim in vector["payeeBundle"]["claims"]}
+        claims |= {f"cci-xm:evm:{2**53 - 1}:0xab", f"cci-xm:evm:{2**53}:0xab", "cci-xm:evm:1:",
+                   "cci-xm:evm:1:?p=1", "CCI-XM:evm:1:0xab", "cci-xm:EVM:1:0xab", 7}
+        for claim in claims:
+            with self.subTest(claim=claim):
+                self.assertEqual(claim_eip155_chain(claim), static_claim_chain(claim))
+        for network, want in (("eip155:8453", "eip155:8453"), ("eip155:08453", None),
+                              ("eip155:0", None), (f"eip155:{2**53}", None),
+                              (f"eip155:{2**53 - 1}", f"eip155:{2**53 - 1}"),
+                              ("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", None)):
+            with self.subTest(network=network):
+                self.assertEqual(selection_eip155_chain(network), want)
+
+    def test_a_paid_protocol_job_is_held_out_of_current_use(self):
+        """RD-7/CUR-4/CUR-5: a pay-x402 success outside a finality-bound copy holds current use.
+
+        `x402:protocol` cannot produce FinalityBoundSettlementEvidence, so its
+        success can appear only in a weaker copy, which the DACS-5 reference
+        consumer holds as `indeterminate` (no derivation under CUR-2).
+        """
+        sys.path.insert(0, str(ROOT / "tests"))
+        import dacs5_reference
+        self.assertIn("pay-x402", dacs5_reference.PAYMENT_PHASES)
+        self.assertTrue(dacs5_reference._job_successful_payment_without_strong_finality(
+            {"phaseSummary": [{"kind": "pay-x402", "outcome": "ok"}]}, {}))
+        self.assertFalse(dacs5_reference._job_successful_payment_without_strong_finality(
+            {"phaseSummary": [{"kind": "pay-x402", "outcome": "failed"}]}, {}))
+        self.assertEqual(self.by_name["definition-with-consumer-finality-profile"]["expected"], "error")
 
     def test_spec_contains_load_bearing_guards(self):
         spec = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")

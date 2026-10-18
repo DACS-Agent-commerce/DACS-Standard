@@ -551,9 +551,18 @@ def make_base(version: int = 2) -> dict:
     event = f"evm:8453:{SAFE_TX}:7"
     bundle = buyer_bundle("eip155:8453", BUYER_ADDRESS)
     bundle_hash = digest(unsigned(bundle, "presentation"))
+    payee_bundle = {"bundleVersion": "1", "presentedBy": SELLER_CLAIM, "claims": [{"ref": SELLER_CLAIM}]}
     value = {
         "railDefinition": protocol_rail(),
         "buyerBundle": bundle,
+        # PB-2: the seller's bundle, pinned by the agreement's and the runtime
+        # payee's bundleHash. The base one carries no EVM settlement-chain
+        # claim, so tier 2 is not applicable and the co-signed payout binding
+        # (tier 3) binds the destination.
+        "payeeBundle": payee_bundle,
+        # PB-2: the SR-1 linkage decision the adapter's resolver returns for
+        # each payee claim; a claim with no entry is unresolved.
+        "payeeLinkage": {},
         "listing": {
             "dacsVersion": "1",
             "listingVersion": 1,
@@ -565,7 +574,7 @@ def make_base(version: int = 2) -> dict:
             "jobId": "01M0NVBGYEANE562QQXD33C7WX",
             "parties": [
                 {"role": "buyer", "bundleHash": bundle_hash, "primaryClaim": BUYER_CLAIM},
-                {"role": "seller", "bundleHash": "bb" * 32, "primaryClaim": SELLER_CLAIM},
+                {"role": "seller", "bundleHash": digest(payee_bundle), "primaryClaim": SELLER_CLAIM},
             ],
             "terms": {
                 "price": {"amount": "1.25", "currency": "USDC"},
@@ -587,7 +596,11 @@ def make_base(version: int = 2) -> dict:
                 "payingKey": payment_claim("eip155:8453", BUYER_ADDRESS),
                 "paymentAddress": BUYER_ADDRESS,
             },
-            "payee": {"primaryClaim": SELLER_CLAIM, "payeeAddress": SELLER_ADDRESS},
+            "payee": {
+                "bundleHash": digest(payee_bundle),
+                "primaryClaim": SELLER_CLAIM,
+                "payeeAddress": SELLER_ADDRESS,
+            },
             # XN-6: the request derived from the agreement, then the unpaid and
             # the paid request as sent.
             "effectiveMethod": "GET",
@@ -3669,6 +3682,7 @@ def build_vectors() -> list[dict]:
 
     add_solana_identity_cases(vectors, solana_exact)
     add_solana_instruction_cases(vectors, solana_exact)
+    add_payee_destination_cases(vectors, solana_exact)
     add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, response_lost,
                            listing_pipeline(fixed_price, "commit-payee-bound-agreement"),
                            listing_pipeline(fixed_price, "commit-identity-bound-payee-agreement"))
@@ -3934,6 +3948,85 @@ def add_solana_instruction_cases(vectors, solana_exact):
                      authorization_submitted=True, reason="authorization-identity-mismatch")
 
 
+def add_payee_destination_cases(vectors, solana_exact):
+    """PB-2 for the negotiated arm: step 1(b) takes the EVM chain from the
+    agreement-signed selection, and an applicable controlled claim in the pinned
+    payee bundle is checked before the wallet is called."""
+
+    def payee_claims(*claims, linkage=None, rebind=True):
+        def mutate(v):
+            v["payeeBundle"]["claims"] = [{"ref": SELLER_CLAIM}] + [{"ref": claim} for claim in claims]
+            v["payeeLinkage"] = dict(linkage or {})
+            if rebind:
+                bundle_hash = digest(v["payeeBundle"])
+                v["agreement"]["parties"][1]["bundleHash"] = bundle_hash
+                v["runtime"]["payee"]["bundleHash"] = bundle_hash
+        return mutate
+
+    def then(*changes):
+        def mutate(v):
+            for change in changes:
+                change(v)
+        return mutate
+
+    payout_claim = "cci-xm:evm:8453:" + SELLER_ADDRESS
+    other_claim = "cci-xm:evm:8453:0x" + "99" * 20
+    add_case(vectors, "pb2-negotiated-chain-controlled-claim-binds-payout", "pass", "PB-2",
+             "the signed eip155:8453 selection makes the payee's cci-xm:evm:8453 claim applicable "
+             "(step 1(b)); its linkage resolves control-proven to the payout address, so tier 2 binds it",
+             payee_claims(payout_claim, linkage={payout_claim: "pass"}))
+    add_case(vectors, "pb2-negotiated-chain-claim-controls-other-address", "fail", "PB-2",
+             "the applicable claim proves control of another address than the signed payout: tier 2 "
+             "is applicable, so the co-signed payout binding (tier 3) is not legal and nothing is paid",
+             payee_claims(other_claim, linkage={other_claim: "pass"}), reason="payee-destination")
+    add_case(vectors, "pb2-negotiated-chain-linkage-unresolved-pauses", "indeterminate", "PB-2",
+             "the applicable claim names the payout but its linkage cannot be resolved: an ST-7 pause "
+             "with no wallet call, never a fall-through to the payout binding's tier 3",
+             payee_claims(payout_claim, linkage={payout_claim: "indeterminate"}),
+             reason="payee-linkage-unresolved")
+    add_case(vectors, "pb2-negotiated-chain-linkage-absent-pauses", "indeterminate", "PB-2",
+             "no linkage decision for the applicable claim is unresolved, not tier 3",
+             payee_claims(payout_claim), reason="payee-linkage-unresolved")
+    add_case(vectors, "pb2-negotiated-chain-linkage-error-stays-error", "error", "PB-2",
+             "a resolver error for the applicable claim stays error (§7.3.2), never a silent downgrade",
+             payee_claims(payout_claim, linkage={payout_claim: "error"}), reason="payee-linkage-error")
+    for name, claim, note in (
+        ("pb2-other-chain-claim-leaves-tier3", "cci-xm:evm:1:" + SELLER_ADDRESS,
+         "a claim for eip155:1 is not applicable under an eip155:8453 selection"),
+        ("pb2-name-style-subchain-claim-leaves-tier3", "cci-xm:evm:base:" + SELLER_ADDRESS,
+         "a name-style subchain is not the DACS-1 EVM profile and is never aliased to a chain ID"),
+        ("pb2-leading-zero-chain-claim-leaves-tier3", "cci-xm:evm:08453:" + SELLER_ADDRESS,
+         "a non-minimal chain ID is not the DACS-1 EVM profile"),
+    ):
+        add_case(vectors, name, "pass", "PB-2", note + ", so its unresolved linkage is never consulted "
+                 "and the co-signed payout binding (tier 3) binds the destination",
+                 payee_claims(claim, linkage={claim: "indeterminate"}))
+    add_case(vectors, "pb2-solana-selection-evm-claim-leaves-tier3", "pass", "PB-2",
+             "a Solana selection exposes no EIP-155 chain, so an EVM claim cannot make tier 2 applicable",
+             then(solana_exact, payee_claims(payout_claim, linkage={payout_claim: "indeterminate"})),
+             refresh=True)
+
+    def challenge_offers_evm(v):
+        v["http"]["paymentRequired"]["accepts"].insert(0, requirement(2))
+    add_case(vectors, "pb2-challenge-chain-cannot-make-tier2-applicable", "pass", "PB-2",
+             "the challenge also offers eip155:8453, but only the agreement-signed selection derives "
+             "the chain: under the Solana selection the EVM claim stays inapplicable",
+             then(solana_exact, challenge_offers_evm,
+                  payee_claims(payout_claim, linkage={payout_claim: "indeterminate"})), refresh=True)
+    add_case(vectors, "pb2-payee-bundle-not-pinned", "fail", "PB-2",
+             "the presented payee bundle must be the one the agreement's and the runtime payee's "
+             "bundleHash pin; dropping or adding a claim cannot change the applicable tier",
+             payee_claims(payout_claim, linkage={payout_claim: "pass"}, rebind=False),
+             reason="payee-bundle")
+    add_case(vectors, "pb2-runtime-payee-bundle-hash-not-signed", "fail", "PB-2",
+             "the runtime payee's bundleHash must equal the seller party's signed bundleHash",
+             lambda v: v["runtime"]["payee"].update({"bundleHash": "cc" * 32}), reason="payee-bundle")
+    add_case(vectors, "pb2-verify-evidence-claim-controls-other-address", "fail", "PB-2",
+             "a verifier applies the same PB-2 gate to a stored success record",
+             payee_claims(other_claim, linkage={other_claim: "pass"}), operation="verify-evidence",
+             reason="payee-destination")
+
+
 def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, response_lost,
                            admissible_listing, violating_listing) -> None:
     """Cases for the stored record's own fields, the static arm, the challenge
@@ -3963,12 +4056,48 @@ def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, respons
          "error", "evidence-payment-amount"),
         ("payment-amount-not-canonical", lambda e: e["paymentAmount"].update({"amount": "1.250"}),
          "error", "evidence-payment-amount"),
+        ("payment-amount-extra-member", lambda e: e["paymentAmount"].update({"decimals": 6}),
+         "error", "evidence-payment-amount"),
     ):
         add_case(vectors, f"verify-evidence-record-{name}", verdict, "XN-8/SB-1/§9.7",
                  "a verifier compares the stored record's own fields with the agreement before "
                  "it counts the record as this payment's success",
                  lambda v, change=change: change(v["evidence"]), operation="verify-evidence",
                  reason=reason)
+    # XN-8: exactly `amount` and `currency`; and the finality record's scheme,
+    # network and bindingProfile, each different, missing or malformed.
+    record_defects = (
+        ("payment-amount-extra-member", lambda e: e["paymentAmount"].update({"decimals": 6}),
+         "evidence-payment-amount"),
+        ("finality-scheme-other",
+         lambda e: e["settlementFinality"]["schemeNetworkFinality"].update({"scheme": "upto"}),
+         "finality-profile"),
+        ("finality-binding-profile-absent",
+         lambda e: e["settlementFinality"]["schemeNetworkFinality"].pop("bindingProfile"),
+         "finality-profile"),
+        ("finality-binding-profile-not-string",
+         lambda e: e["settlementFinality"]["schemeNetworkFinality"].update({"bindingProfile": 1}),
+         "finality-profile"),
+        ("finality-profile-absent", lambda e: e["settlementFinality"].pop("schemeNetworkFinality"),
+         "finality-profile"),
+    )
+    for name, change, reason in record_defects[1:]:
+        add_case(vectors, f"verify-evidence-record-{name}", "fail", "XN-8",
+                 "the scheme-network-finality record repeats the signed selection's scheme and "
+                 "network and the literal dacs-x402-exact:v1; a different, missing or malformed "
+                 "member is a resolved evidence contradiction",
+                 lambda v, change=change: change(v["evidence"]), operation="verify-evidence",
+                 reason=reason)
+    for name, change, reason in record_defects:
+        add_case(vectors, f"execute-record-{name}-rebuilt", "pass", "XN-11/XN-8",
+                 "the stored record's defect is the recorded reason; the ledger decides and the "
+                 "record is rebuilt",
+                 lambda v, change=change: change(v["evidence"]), authorization_submitted=True,
+                 reason=reason)
+        add_case(vectors, f"retry-record-{name}-rebuilt", "pass", "XN-11/XN-8",
+                 "a retry judges the stored record like execute and rebuilds it",
+                 lambda v, change=change: change(v["evidence"]), operation="retry",
+                 authorization_submitted=True, reason=reason)
     add_case(vectors, "execute-record-job-other-rebuilt", "pass", "XN-11/SB-1",
              "a stored record naming another job never decides the payment: the settlement stands "
              "and the record is rebuilt",
@@ -4533,7 +4662,7 @@ def build() -> dict:
     vectors = [compact_case(case, fixtures) for case in build_vectors()]
     return {
         "set": "x402-negotiated-protocol-v0.8",
-        "spec": "§8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2",
+        "spec": "§8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1, PB-2 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2",
         "upstream": {
             "repository": "x402-foundation/x402",
             "commit": "230e6a9a7eebce22c911a0687d6f4e6d1ac019f7",

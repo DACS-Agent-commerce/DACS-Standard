@@ -226,7 +226,9 @@ The format used per release:
   `x402Version`; omitted versus empty extensions in both directions; artifact
   signatures; and
   the legacy in-flight-only continuation. Removing any single check turns at
-  least one vector or test red. Unit tests alone pin four kinds of check:
+  least one vector or test red. Unit tests alone pin five kinds of check:
+  the EIP-155 chain-ID and other-namespace keyability checks (§9.5.7.1), whose
+  only vector is the unmapped Solana cluster;
   the two paying-key algorithm checks, which the bundle presentation check
   already enforces; an object-form challenge outside the CF-5 profile, which
   JSON vectors cannot carry; the embedded-IPv4 unwrapping, whose vectors
@@ -329,6 +331,21 @@ The format used per release:
   comes from. The conformance plan lists the witnesses that this corpus cannot
   give and that other suites still owe: DACS-1 §6.3.6 per-connection resolution
   and bounds, XN-10 registry publication, and the RD-7 current-use consequence.
+- **Negotiated-chain PB-2 tier and the success record's finality and amount
+  members** (DACS-4 §9.5.1 PB-2, §9.5.7 XN-8) — the x402 corpus now carries the
+  seller's payee bundle, pinned by the agreement's and the runtime payee's
+  `bundleHash`, and the SR-1 linkage decision for each payee claim. Its
+  `pb2-*` vectors witness step 1(b): under a signed `eip155:<chainId>`
+  selection, a payee `cci-xm:evm:<chainId>` claim is applicable, so the payout
+  is bound only when that claim names it and its linkage resolves; another
+  address is `fail`, unresolved linkage `indeterminate` and a resolver error
+  `error`, each with no wallet call and no fall-through to the co-signed
+  payout binding. A claim for another chain, a name-style or non-minimal
+  subchain, a Solana selection, and a chain offered only by the challenge all
+  leave tier 3. The stored record's `paymentAmount` with a third member is
+  `error`, and a finality record with another `scheme`, or a missing or
+  non-string `bindingProfile`, or none at all, is `fail`; execute and retry
+  rebuild such a record.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

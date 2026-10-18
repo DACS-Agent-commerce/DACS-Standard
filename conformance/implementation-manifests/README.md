@@ -66,7 +66,8 @@ PS-3, is therefore `partial` and claimed only as `implemented`, as in the
 the single golden pass case `settlement-x402-pass`, which exercises none of
 the X402-1..X402-4 rejection paths in DACS-4 §9.5.7 or the SB-1..SB-3 session
 binding in §9.5.8, so `pay-x402` is `partial` and claimed only as
-`implemented`.
+`implemented`. Like the DEM rail claims, it claims its `x402:default` rail
+against the §9.4.2 registry entry, since RD-1..RD-5 are rail-author duties.
 
 This scoping is the examples' own choice. IM-4 requires only that cited case
 ids exist in the pinned conformance manifest, and the validator does not check

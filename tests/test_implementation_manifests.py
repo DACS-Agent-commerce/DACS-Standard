@@ -165,6 +165,13 @@ class ImplementationManifestTests(unittest.TestCase):
         self.assertEqual((claim["result"], capability["testStatus"]), ("implemented", "partial"))
         readme = (EXAMPLE_DIR / "README.md").read_text(encoding="utf-8")
         self.assertIn("so `pay-x402` is `partial` and claimed only as\n`implemented`", readme)
+        # RD-1..RD-5 are rail-author duties (§9.10), so the seller claims the
+        # rail against its §9.4.2 registry entry, as the DEM rail claims do.
+        rail = next(claim for claim in manifest["claims"] if claim["capabilityRefs"] == ["x402-default-rail"])
+        self.assertEqual((rail["roles"], rail["ruleRefs"]), (["seller"], ["DACS-4-9.4.2"]))
+        self.assertIn("| x402:default | pay-x402 |", git_show(manifest["profile"]["commit"], "spec/DACS-4-SETTLE.md")
+                      .split("#### 9.4.2 ", 1)[1].split("\n#### ", 1)[0])
+        self.assertIn("claims its `x402:default` rail against the §9.4.2 registry entry", " ".join(readme.split()))
 
     def seller_example(self):
         manifest = load_example("fixed-price-pay-dem-seller.json")

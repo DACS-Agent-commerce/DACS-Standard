@@ -55,7 +55,7 @@
       "roles": ["seller"],
       "modules": ["DACS-4"],
       "capabilityRefs": ["x402-default-rail"],
-      "ruleRefs": ["RD-1", "RD-2", "RD-3", "RD-4", "RD-5"],
+      "ruleRefs": ["DACS-4-9.4.2"],
       "evidenceRefs": ["x402-vectors"]
     }
   ],

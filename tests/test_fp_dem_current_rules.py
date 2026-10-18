@@ -214,13 +214,32 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
         self.assertIn("other\nthan the pull request adding this map were enumerated on 2026-10-18", self.text)
 
     def test_gaps_record_the_storage_program_cap_difference(self):
-        # §9.6.1 says 128 KB; the pinned node and SDK enforce 1 MiB.
+        # The pin says 128 KB in four places; the pinned node and SDK enforce
+        # 1 MiB, and draft PR #426 restates 128 KB as a stricter DACS soft limit.
         delivery = self.sources["DACS-4-SETTLE.md"].split("#### 9.6.1 ", 1)[1].split("\n#### ", 1)[0]
         self.assertIn("Storage Programs have a 128 KB cap", delivery)
+        anchoring = self.sources["DACS-5-VERIFY.md"].split("#### 10.4.2 ", 1)[1].split("\n#### ", 1)[0]
+        self.assertIn("storage-cap soft limit (128 KB on Demos Storage Programs)", anchoring)
+        mapping, glossary = (
+            subprocess.run(["git", "-C", str(ROOT), "show", f"{PIN}:spec/{name}"],
+                           capture_output=True, text=True, check=True).stdout
+            for name in ("DEMOS-MAPPING.md", "GLOSSARY.md")
+        )
+        self.assertIn("128 KB cap.", mapping.split("### A.2 ", 1)[1].split("\n### ", 1)[0])
+        self.assertIn("**Storage Program.** The Demos implementation of SR-2", glossary)
+        self.assertIn("128 KB soft cap.", glossary)
         gaps = " ".join(self.text.split("## Known gaps", 1)[1].split())
-        self.assertIn("§9.6.1 gives that soft limit as a 128 KB Storage Program cap. "
-                      "The Demos node enforces 1 MiB (`STORAGE_PROGRAM_MAX_SIZE_BYTES = 1048576`", gaps)
-        self.assertIn("No open issue tracks the difference.", gaps)
+        for text in ("§9.6.1 gives that soft limit as a 128 KB Storage Program cap.",
+                     "DACS-5 §10.4.2 (bundles MUST fit within it), in DEMOS-MAPPING §A.2 (\"128 KB cap\") "
+                     "and in the GLOSSARY entry for Storage Program (\"128 KB soft cap\")",
+                     "The Demos node enforces 1 MiB (`STORAGE_PROGRAM_MAX_SIZE_BYTES = 1048576`",
+                     "Open draft PR #426 proposes stating 128 KB in all four places as a DACS soft limit "
+                     "of 131,072 bytes, stricter than the 1 MB substrate cap"):
+            self.assertIn(text, gaps)
+        self.assertNotIn("No open issue tracks the difference.", gaps)
+        rows = {number: (kind, sections) for number, kind, sections, _what in
+                table_rows(self.text, "## Known gaps")}
+        self.assertEqual(rows["#426"], ("draft PR", "§9.6.1, §9.7.0, §10.4.2, DEMOS-MAPPING §A.2 and others"))
 
     def test_covers_column_follows_the_rule_id_index_at_the_pin(self):
         index = subprocess.run(["git", "-C", str(ROOT), "show", f"{PIN}:docs/rule-id-index.md"],

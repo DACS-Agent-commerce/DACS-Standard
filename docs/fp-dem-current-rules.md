@@ -134,7 +134,7 @@ checked against the pinned specification and its open issue on the same date.
 | #336, #320 | PR, issue | §9.4.3, §9.5.1, §9.7.1, §10.4.3 | A candidate Atomic DACS Work profile (RFC #320). For every profile it also changes rail resolution (§9.4.3), PC-1 arm selection (§9.5.1) and the AMEND-1 discriminator and signature-domain check (§9.7.1); it adds Atomic handling at SEB-3 |
 | #410 | issue | §9.5.1 | PB-* cases that no committed vector exercises yet |
 | #432 | draft PR | §9.5.9, §9.5.1, §9.5.8, §9.7.0 | `pay-dem` success only on a bound, executed transaction record (DEM-1..DEM-7); a node's `included` status is not settlement |
-| #426 | draft PR | §9.7.0 and others | Vectors for FV-1..FV-10 guards and other recently merged rules, with some clarifications |
+| #426 | draft PR | §9.6.1, §9.7.0, §10.4.2, DEMOS-MAPPING §A.2 and others | Vectors for FV-1..FV-10 guards and other recently merged rules, with some clarifications, including the Storage Program soft limit below |
 | #374 | issue | §10.5 | Binding reputation derivations to a complete per-claim session set |
 | #356, #371 | issue, draft PR | — | A pre-normative delivery-or-remedy profile; its first binding is an EVM escrow rail, not `pay-dem` |
 | #99 | issue | §10.4.2, §10.4.3, §11.2.1 | An optional DACS-X dispute-output interface and deterministic fixture contract over the bundle divergence walk |
@@ -177,10 +177,15 @@ No open issue tracks these vector gaps yet:
   `private-deliverables-v0.1` security set, which is not part of the
   conformance manifest.
 
-§9.6.1 gives that soft limit as a 128 KB Storage Program cap. The Demos node
-enforces 1 MiB (`STORAGE_PROGRAM_MAX_SIZE_BYTES = 1048576` in
-`GCRStorageProgramRoutines.ts` at `kynesyslabs/node` `61b8e75`), as does
-`@kynesyslabs/demosdk` 4.0.16. No open issue tracks the difference.
+§9.6.1 gives that soft limit as a 128 KB Storage Program cap. The same
+128 KB appears in DACS-5 §10.4.2 (bundles MUST fit within it), in
+DEMOS-MAPPING §A.2 ("128 KB cap") and in the GLOSSARY entry for Storage
+Program ("128 KB soft cap"). The Demos node enforces 1 MiB
+(`STORAGE_PROGRAM_MAX_SIZE_BYTES = 1048576` in `GCRStorageProgramRoutines.ts`
+at `kynesyslabs/node` `61b8e75`), as does `@kynesyslabs/demosdk` 4.0.16.
+Open draft PR #426 proposes stating 128 KB in all four places as a DACS soft
+limit of 131,072 bytes, stricter than the 1 MB substrate cap, and adds a
+reference test of that boundary rather than a conformance vector.
 
 `pay-dem` `bft-final` finality (§9.5.9, §9.7.0) and the `demos-native:DEM`
 registry entry (§9.4.2; resolved per §9.4.3) also depend on two open upstream

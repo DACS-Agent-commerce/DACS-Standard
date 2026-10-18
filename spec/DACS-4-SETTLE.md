@@ -114,7 +114,7 @@ type ChainTxRef =
 
   | { kind: "solana-instruction"; cluster: "mainnet" | "devnet" | "testnet"; signature: string; instructionIndex: number }   // current success-outcome pay-solana-spl evidence (SB-1)
 
-  | { kind: "demos"; txHash: string; blockNumber?: number }   // blockNumber set on a pay-dem settlement (bft-final inclusion, §9.5.9); txHash spelled as in SB-1
+  | { kind: "demos"; txHash: string; blockNumber?: number }   // blockNumber set on a pay-dem settlement: the inclusion block of the DEM-3 executed record (§9.5.9); inclusion alone is not settlement; txHash spelled as in SB-1
 
   | { kind: "storage-program"; address: string; writeTxHash: string }
 
@@ -2125,6 +2125,9 @@ is `error`.
   authenticate the full result record independently, bound to the exact network,
   inclusion block identity and transaction hash, using a configured execution-result
   commitment, verified replay, or independently authenticated result policy.
+  A result policy's threshold counts distinct authority keys: a policy whose
+  threshold is not positive or exceeds its keys, or that names one key twice,
+  is malformed configuration (`error`).
   A node semantics pin or ordinary RPC response alone is insufficient; unavailable
   execution-result authentication is `indeterminate`. Decode the authenticated
   record under DEMOS-MAPPING §A.2 with its node semantics pinned in verifier
@@ -2133,7 +2136,8 @@ is `error`.
   bind the signed reference, the authenticated phase's selected `payer.payingKey`,
   the payee's Demos key and the phase amount. Resolve the selected paying key
   from authenticated phase authority; the payer's primary party signing key
-  MUST NOT substitute for it. Unavailable resolution is `indeterminate`.
+  MUST NOT substitute for it. Unavailable resolution, including one that names
+  another payer, is `indeterminate`.
   An authenticated `failed` execution or contradicting value is
   `fail`. A record that does not decode, unpinned record semantics and an
   authenticated status other than `confirmed` or `failed` are `indeterminate`.

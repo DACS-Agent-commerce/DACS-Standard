@@ -167,7 +167,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(146, self.data["count"])
+        self.assertEqual(160, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -298,7 +298,10 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         for suffix, expected in (("fractional-amount-binds", "pass"), ("fractional-underpayment", "fail"),
                                  ("one-os-amount-binds", "pass"), ("amount-below-os-precision", "error"), ("amount-not-dem", "error")):
             with self.subTest(case=suffix):
-                self.assertEqual(expected, self.evaluate_case(self.cases["fv-bft-final-" + suffix])["decision"])
+                result = self.evaluate_case(self.cases["fv-bft-final-" + suffix])
+                self.assertEqual(expected, result["decision"])
+                if expected == "error":
+                    self.assertIn("phase lacks a DEM amount", result["reason"])
 
     def test_execution_contradictions_precede_withheld_certificate(self):
         for suffix in ("record-wrong-payee-certificate-withheld", "execution-failed-certificate-withheld",
@@ -324,11 +327,65 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         observation = control["input"]["context"]["observation"]
         observation["executionResult"]["record"]["content"]["amount"] = 1
         self.assertEqual("fail", self.evaluate_case(control)["decision"])
+        for suffix, reason in (("result-member-missing", "malformed Demos execution result"),
+                               ("result-kind-mismatch", "malformed Demos execution result attestations"),
+                               ("result-attestations-not-array", "malformed Demos execution result attestations"),
+                               ("result-attestation-malformed", "malformed Demos result signature"),
+                               ("result-inclusion-block-not-object", "malformed inclusion block for Demos execution result")):
+            with self.subTest(case=suffix):
+                result = self.evaluate_case(self.cases["fv-bft-final-" + suffix])
+                self.assertEqual("error", result["decision"])
+                self.assertIn(reason, result["reason"])
+
+    def test_execution_result_policy_counts_distinct_keys(self):
+        # A malformed trusted policy is rejected before any result is read.
+        for suffix in ("threshold-zero", "threshold-above-keys", "duplicate-key", "key-malformed"):
+            with self.subTest(case=suffix):
+                result = self.evaluate_case(self.cases["fv-bft-final-result-policy-" + suffix])
+                self.assertEqual("error", result["decision"])
+                self.assertIn("malformed Demos execution-result policy", result["reason"])
+        unsigned = self.cases["fv-bft-final-result-policy-threshold-zero"]
+        self.assertEqual([], unsigned["input"]["context"]["observation"]["executionResult"]["attestations"])
+        # One key under two names, with its one signature copied: two aliases are one authority.
+        aliased = self.cases["fv-bft-final-result-policy-duplicate-key"]
+        attestations = aliased["input"]["context"]["observation"]["executionResult"]["attestations"]
+        self.assertEqual(["execution-a", "execution-b"], [item["authorityRef"] for item in attestations])
+        self.assertEqual(attestations[0]["value"], attestations[1]["value"])
+        keys = merge(self.trust, aliased["trustedOverrides"])["demosExecutionPolicy"]["authorityKeys"]
+        self.assertEqual(keys["execution-a"], keys["execution-b"])
+        self.assertEqual("fail", verify_finality(aliased["input"], self.trust)["decision"])
+        for suffix, expected in (("all-of-n", "pass"), ("other-kind", "indeterminate")):
+            with self.subTest(case=suffix):
+                self.assertEqual(expected, self.evaluate_case(self.cases["fv-bft-final-result-policy-" + suffix])["decision"])
+        all_of_n = self.cases["fv-bft-final-result-policy-all-of-n"]
+        self.assertEqual(3, len(all_of_n["input"]["context"]["observation"]["executionResult"]["attestations"]))
 
     def test_demos_sender_uses_selected_phase_paying_key(self):
-        for suffix, expected in (("distinct", "pass"), ("wrong", "fail"), ("unavailable", "indeterminate")):
+        for suffix, expected in (("distinct", "pass"), ("wrong", "fail"), ("unavailable", "indeterminate"),
+                                 ("other-payer", "indeterminate"), ("phase-missing", "indeterminate"),
+                                 ("resolutions-malformed", "error")):
             with self.subTest(case=suffix):
-                self.assertEqual(expected, self.evaluate_case(self.cases["fv-bft-final-selected-paying-key-" + suffix])["decision"])
+                result = self.evaluate_case(self.cases["fv-bft-final-selected-paying-key-" + suffix])
+                self.assertEqual(expected, result["decision"])
+                if suffix in {"other-payer", "phase-missing"}:
+                    self.assertIn("payingKey resolution unavailable", result["reason"])
+                if suffix == "resolutions-malformed":
+                    self.assertIn("malformed authenticated phase payingKey resolutions", result["reason"])
+        # Another payer's resolution keeps the sender's key: only the payer binding rejects it.
+        other = self.cases["fv-bft-final-selected-paying-key-other-payer"]
+        merged = merge(self.trust, other["trustedOverrides"])["demosPhasePayingKeys"]["FV-392-bft-final:0"]
+        self.assertEqual(self.trust["demosPhasePayingKeys"]["FV-392-bft-final:0"]["payingKey"], merged["payingKey"])
+        self.assertNotEqual(self.trust["demosPhasePayingKeys"]["FV-392-bft-final:0"]["payer"], merged["payer"])
+
+    def test_trusted_overrides_do_not_depend_on_merge_semantics(self):
+        # A runner may replace or deep-merge an overridden member; the decision is the same.
+        for case in self.data["vectors"]:
+            overrides = case.get("trustedOverrides") or {}
+            if any(isinstance(value, dict) and isinstance(self.trust.get(key), dict) for key, value in overrides.items()):
+                with self.subTest(case=case["name"]):
+                    replaced = dict(copy.deepcopy(self.trust), **copy.deepcopy(overrides))
+                    self.assertEqual(case["expected"], verify_finality(case["input"], replaced)["decision"])
+                    self.assertEqual(case["expected"], self.evaluate_case(case)["decision"])
 
     def test_malformed_native_record_is_indeterminate(self):
         for suffix in ("record-not-object", "record-content-not-object", "record-ed25519-address-mismatch"):

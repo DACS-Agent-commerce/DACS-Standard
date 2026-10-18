@@ -983,7 +983,10 @@ def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -
     if not isinstance(policy, dict) or policy.get("kind") != "fixture-independent-results-v1":
         return "indeterminate", "independent Demos execution-result policy unavailable", None
     keys, threshold = policy.get("authorityKeys"), policy.get("threshold")
-    if not isinstance(keys, dict) or not _safe_integer(threshold, positive=True) or threshold > len(keys):
+    # The threshold counts distinct keys: an alias of one key is not a second authority.
+    decoded = [_public_key(keys, signer) for signer in keys] if isinstance(keys, dict) else [None]
+    if (None in decoded or len(set(decoded)) != len(decoded)
+            or not _safe_integer(threshold, positive=True) or threshold > len(keys)):
         return "error", "malformed Demos execution-result policy", None
     proof = observation.get("executionResult")
     if proof is None:

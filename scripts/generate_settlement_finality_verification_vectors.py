@@ -1607,6 +1607,49 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     vectors.append(case("fv-bft-final-result-forged-confirmed", "fail", "a valid BFT block cannot authenticate an altered execution outcome", forged_success))
     vectors.append(case("fv-bft-final-result-policy-unavailable", "indeterminate", "BFT does not authenticate execution status",
                         factory.model_input("bft-final"), trusted_overrides={"demosExecutionPolicy": None}))
+    # Each policy override is a whole replacement, so its decision does not
+    # depend on whether a runner merges or replaces trustedOverrides members.
+    def result_policy(**changes):
+        policy = copy.deepcopy(factory.trusted["demosExecutionPolicy"])
+        policy["authorityKeys"].update(changes.pop("keys", {}))
+        policy.update(changes)
+        return {"demosExecutionPolicy": policy}
+
+    vectors.append(case("fv-bft-final-result-policy-other-kind", "indeterminate", "only the registered result policy authenticates execution",
+                        factory.model_input("bft-final"), trusted_overrides=result_policy(kind="other")))
+    # A configured result policy is checked before any result: a threshold of
+    # zero, above its keys, or met by aliases of one key is malformed.
+    unsigned = factory.model_input("bft-final")
+    unsigned["context"]["observation"]["executionResult"]["attestations"] = []
+    aliased = factory.model_input("bft-final")
+    attestations = aliased["context"]["observation"]["executionResult"]["attestations"]
+    attestations[1]["value"] = attestations[0]["value"]
+    alias_key = factory.trusted["demosExecutionPolicy"]["authorityKeys"]["execution-a"]
+    for name, value, overrides in (
+        ("threshold-zero", unsigned, result_policy(threshold=0)),
+        ("threshold-above-keys", factory.model_input("bft-final"), result_policy(threshold=4)),
+        ("duplicate-key", aliased, result_policy(keys={"execution-b": alias_key})),
+        ("key-malformed", factory.model_input("bft-final"), result_policy(keys={"execution-c": "AAAA"})),
+    ):
+        vectors.append(case("fv-bft-final-result-policy-" + name, "error", "a result quorum counts distinct configured keys",
+                            value, trusted_overrides=overrides))
+    all_of_n = factory.model_input("bft-final")
+    factory.sign_execution_result(all_of_n["context"]["observation"], ("execution-a", "execution-b", "execution-c"))
+    vectors.append(case("fv-bft-final-result-policy-all-of-n", "pass", "a threshold equal to the key count is valid",
+                        all_of_n, trusted_overrides=result_policy(threshold=3)))
+    for name, mutate, resign in (
+        ("result-member-missing", lambda o: o["executionResult"].pop("blockId"), True),
+        ("result-kind-mismatch", lambda o: o["executionResult"].__setitem__("kind", "other-results-v1"), True),
+        ("result-attestations-not-array", lambda o: o["executionResult"].__setitem__("attestations", {}), False),
+        ("result-attestation-malformed", lambda o: o["executionResult"]["attestations"][0].pop("algorithm"), False),
+        ("result-inclusion-block-not-object", lambda o: o.__setitem__("inclusionBlock", []), False),
+    ):
+        value = factory.model_input("bft-final")
+        observation = value["context"]["observation"]
+        mutate(observation)
+        if resign:
+            factory.sign_execution_result(observation)
+        vectors.append(case("fv-bft-final-" + name, "error", "a malformed execution result is not evidence", value))
     selected_key = factory.demos_key("orchestrator")
     resolution = {"FV-392-bft-final:0": {"payer": CLAIMS["buyer"], "payingKey": selected_key}}
     vectors.append(case("fv-bft-final-selected-paying-key-distinct", "pass", "the selected authorized paying key may differ from the party signer",
@@ -1616,6 +1659,13 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
                         factory.model_input("bft-final"), trusted_overrides={"demosPhasePayingKeys": resolution}))
     vectors.append(case("fv-bft-final-selected-paying-key-unavailable", "indeterminate", "no selected paying key may be inferred",
                         factory.model_input("bft-final"), trusted_overrides={"demosPhasePayingKeys": None}))
+    for name, resolutions, expected in (
+        ("other-payer", {"FV-392-bft-final:0": {"payer": CLAIMS["seller"], "payingKey": factory.demos_key("buyer")}}, "indeterminate"),
+        ("phase-missing", {"FV-392-bft-final:0": None}, "indeterminate"),
+        ("resolutions-malformed", [], "error"),
+    ):
+        vectors.append(case("fv-bft-final-selected-paying-key-" + name, expected, "the selected paying key resolves for this phase's payer",
+                            factory.model_input("bft-final"), trusted_overrides={"demosPhasePayingKeys": resolutions}))
 
     provider_not_captured, provider_override = factory.provider_variant(status="declined")
     vectors.extend([

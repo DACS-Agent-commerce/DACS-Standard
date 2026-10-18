@@ -1099,15 +1099,20 @@ The format used per release:
   has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
   set is identified by its `hash`, not by its name alone. In
-  `settlement-finality-verification` (146 cases), transaction inclusion and
+  `settlement-finality-verification` (160 cases), transaction inclusion and
   execution-result authentication are verified separately. The fixture uses
   independently pinned threshold result signatures over the full Demos record,
   network, block identity and transaction reference; BFT inclusion does not
   authenticate the later RPC execution status. Missing result authority is
-  `indeterminate`. The sender binds the selected authenticated phase paying key,
-  which may differ from the primary party signer. Cases cover raw transaction
+  `indeterminate`. The result threshold counts distinct keys: a policy whose
+  threshold is zero or above its keys, or that lists one key under two names,
+  is `error`. The sender binds the selected authenticated phase paying key,
+  which may differ from the primary party signer; a resolution that names
+  another payer is unavailable. Cases cover raw transaction
   binding, fractional DEM amounts down to one OS, underpayment, malformed
-  records, result signature/binding checks, and deterministic record failures
+  records, result-policy thresholds and aliased keys, malformed results,
+  result signature/binding checks, selected-key resolutions for another payer
+  or no phase, and deterministic record failures
   with withheld finality inputs. The generated `finality-resolution-context-v1`,
   `current-use-reputation-v1` and `current-use-authenticated-window-v1` sets
   reuse the independent result policy with no decision changes.

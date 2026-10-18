@@ -23,9 +23,11 @@ The format used per release:
   signed OS-string amounts and fees, phase DEM-to-OS conversion, and record shape.
   Raw Demos references derive canonical SB-1 IDs before SB-2 collision grouping.
   Record and applied-transfer decimals compare by canonical spelling, so an
-  oversized amount, send argument or debit yields a decision instead of
-  aborting the verifier. The corpora contain 167 pay-dem and 173
-  settlement-finality cases.
+  oversized amount, send argument or debit yields its `fail` or
+  `indeterminate` decision instead of the catch-all `error`. The pay-dem
+  conformance oracle compares the same way, and oversized record, nonce,
+  applied-debit, phase and consumer amounts reach a decision. The corpora
+  contain 184 pay-dem and 173 settlement-finality cases.
 - The DEM-1 signed transaction must be the complete demosdk 4.0.16 native-send
   envelope that the pinned node admits. It carries a positive integer
   `timestamp`, `from_ed25519_address`, a fee object with exactly `network_fee`,
@@ -45,6 +47,24 @@ The format used per release:
   without an identifier is `error`, never skipped. Only an FV-5-authenticated
   bound `failed` record makes consumer evidence `fail`; a plain RPC read of
   one is `indeterminate`.
+- DEM-1 holds at the signed transaction's first egress: any call that carries
+  it out of the handler, including the demosdk `confirm` (`confirmTx`)
+  request before `broadcast`. The durable journal is written before that
+  request. DEM-6 starts there too: after `confirm`, only the broadcast that
+  completes the same uninterrupted submission may follow, and a timeout,
+  error or restart leaves only re-reads. The handler also refuses to sign
+  unless its Demos binding configures pinned nodes and an applied-payment
+  authority, since DEM-3 success is otherwise unreachable; this is
+  `permanent` before any effect. The DACS-4 maturity table now lists
+  `pay-dem`.
+- A DEM-4 failure proof built on plain RPC reads is the payer's terminal
+  classification only. It is APR `closed-cannot-settle` reconciliation
+  evidence only when FV-5 authenticates the failed record at its `bft-final`
+  inclusion. DEM-2 says that the handler's inclusion observation may be a
+  plain pinned-node read, which the pin does not authenticate.
+- Migration: a handler that confirms before journaling, or that resends or
+  replaces after an interrupted `confirm`, must journal first and re-read
+  only. A handler without applied-payment authority must not offer `pay-dem`.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
@@ -1119,17 +1139,17 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 167-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 184-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
-  first-broadcast gate with phase and payment authority and signed-envelope
+  first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope
   authentication (unsigned, forged hash, wrong signer or signature type), the
   standalone DEM-7 gate, and delivery composed with FV-5, SB-1, SB-2 and PB.
   Each vector lists
   the oracle guards whose removal changes its result. The set `hash` is
   SHA-256 over the JCS form of `vectors`. An earlier 10-vector draft with the
   same set name, synced into dacs-sdk#352 under `test/fixtures/standard-next/`
-  (head `4e7419f`, draft hash `da86e204…`), has a different schema and hash. This set supersedes it, and a runner built
+  (draft hash `da86e204…`), has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
   set is identified by its `hash`, not by its name alone. In
   `settlement-finality-verification` (173 cases), transaction inclusion and
@@ -1153,7 +1173,8 @@ The format used per release:
 - **Migration** — a `pay-dem` handler or consumer that treated `included` as
   settled must read the bound transaction record before returning success,
   delivering or counting payment, and must stop rebroadcasting or replacing a
-  transfer whose execution is unresolved. Its pre-broadcast journal must be
+  transfer whose execution is unresolved. Its journal must be written before the
+  signed transaction first leaves the handler, `confirm` included, and must be
   durable and mandatory: an optional or process-local journal does not
   satisfy DEM-1. Its record comparison must use the native-send projection,
   neither raw JSON types nor a looser normalization such as case-folding.

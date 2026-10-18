@@ -71,7 +71,9 @@ Other JSON files under `vectors/`, such as `golden.json`, the
 that directory and compared as type-strict parsed JSON. Each is reported as
 matching, drifted (naming its changed top-level members), missing or extra.
 For a copy that holds only the vector sets, `--sets-only` compares the sets
-alone and counts other JSON files as ignored.
+alone and counts other JSON files as ignored. In that mode only an object
+with a `set` member is a set, so other JSON that uses a member such as
+`hash` is ignored; every file must still parse.
 
 For each set, it reports changes to `vectors`, `count`, declared `hash`,
 `spec`, or any other top-level member, as well as missing and extra sets.

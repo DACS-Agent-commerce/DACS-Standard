@@ -22,6 +22,8 @@ Every other JSON file, such as ``golden.json``, the ``dacs-v0.1-*`` paths and
 compared as type-strict parsed JSON. Such a file is reported as ``match``,
 ``drifted``, ``missing`` or ``extra``. ``--sets-only`` compares sets alone and
 counts other JSON files as ignored, for a vendored copy that holds sets only.
+In that mode only an object with a ``set`` member is a set, so other JSON that
+uses a member such as ``hash`` is ignored; every file must still parse.
 
 Each set is reported as ``match``, ``drifted``, ``missing`` (in the Standard,
 not vendored), ``extra`` (vendored, not in the Standard), or ``uncheckable``
@@ -138,9 +140,15 @@ def parse_json(raw: bytes, label: str) -> Any:
         raise BadInput(f"{label}: invalid JSON: {exc}") from exc
 
 
-def parse_set(data: Any, label: str) -> VectorSet | None:
-    """Return the vector set held by parsed JSON, or None when it is not a set."""
-    if not isinstance(data, dict) or not REQUIRED_MEMBERS.keys() & data.keys():
+def parse_set(data: Any, label: str, sets_only: bool = False) -> VectorSet | None:
+    """Return the vector set held by parsed JSON, or None when it is not a set.
+
+    An object with any required set member is a set. With ``sets_only``, only
+    an object with a ``set`` member is, so other JSON that happens to use a
+    member such as ``hash`` is ignored. Either way a set needs all five members.
+    """
+    markers = {"set"} if sets_only else REQUIRED_MEMBERS.keys()
+    if not isinstance(data, dict) or not markers & data.keys():
         return None
     for member, kind in REQUIRED_MEMBERS.items():
         value = data.get(member)
@@ -182,14 +190,14 @@ def parse_set(data: Any, label: str) -> VectorSet | None:
 
 
 def index_sets(
-    files: list[tuple[str, bytes]], side: str
+    files: list[tuple[str, bytes]], side: str, sets_only: bool = False
 ) -> tuple[dict[str, VectorSet], dict[str, Any]]:
     """Split parsed files into sets keyed by name and other JSON keyed by path."""
     sets: dict[str, VectorSet] = {}
     others: dict[str, Any] = {}
     for label, raw in files:
         data = parse_json(raw, f"{side} {label}")
-        vector_set = parse_set(data, f"{side} {label}")
+        vector_set = parse_set(data, f"{side} {label}", sets_only)
         if vector_set is None:
             others[label] = data
             continue
@@ -399,10 +407,10 @@ def check(vendored_dir: Path, standard: Path, rev: str | None, sets_only: bool =
         standard_files = read_tree(standard / VECTORS_DIR)
     else:
         commit, standard_files = read_revision(standard, rev)
-    standard_sets, standard_others = index_sets(standard_files, "standard")
+    standard_sets, standard_others = index_sets(standard_files, "standard", sets_only)
     if not standard_sets:
         raise BadInput(f"no vector sets found under {VECTORS_DIR} in the Standard checkout")
-    vendored_sets, vendored_others = index_sets(read_tree(vendored_dir), "vendored")
+    vendored_sets, vendored_others = index_sets(read_tree(vendored_dir), "vendored", sets_only)
 
     files = []
     if not sets_only:

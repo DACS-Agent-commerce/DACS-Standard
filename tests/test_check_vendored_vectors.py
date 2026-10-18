@@ -461,6 +461,32 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertFalse(report["setsOnly"])
 
+    def test_sets_only_ignores_json_without_a_set_member(self):
+        # --sets-only counts other JSON as ignored, even when it uses a set
+        # member name; without --sets-only such a file is still bad input.
+        metadata = self.vendored / "metadata.json"
+        for text in ('{"hash": "ordinary metadata"}', '{"count": 3}', '{"spec": "notes"}', '{"vectors": []}'):
+            with self.subTest(text=text):
+                metadata.write_text(text, encoding="utf-8")
+                code, report = self.run_checker("--sets-only")
+                self.assertEqual(code, 0, report)
+                self.assertEqual((report["summary"]["match"], report["summary"]["ignoredJson"]),
+                                 (2, {"standard": 1, "vendored": 2}))
+                code, report = self.run_checker()
+                self.assertEqual(code, 2)
+                self.assertIn("metadata.json: vector set needs", report["error"])
+        # An object with a set member must still be a complete set.
+        metadata.write_text('{"set": "damaged-v0.1", "hash": "h"}', encoding="utf-8")
+        code, report = self.run_checker("--sets-only")
+        self.assertEqual(code, 2)
+        self.assertIn("metadata.json: vector set needs a str 'spec' member", report["error"])
+        metadata.unlink()
+        # A vendored set that lost its set member is ignored, so its set is missing.
+        self.edit_vendored("alpha-v0.1", lambda data: data.pop("set"))
+        code, report = self.run_checker("--sets-only")
+        self.assertEqual((code, self.result_for(report, "alpha-v0.1")["status"]), (1, "missing"))
+        self.assertEqual(report["summary"]["ignoredJson"], {"standard": 1, "vendored": 2})
+
     def test_text_report_names_each_problem(self):
         self.vendored_set("alpha-v0.1").unlink()
         write_json(self.vendored / "gamma-v0.1.json", make_set("gamma-v0.1", [{"name": "g1"}]))
@@ -588,6 +614,18 @@ class RepositoryVectorSetTests(unittest.TestCase):
                       if p.parent.name != "security"]
         self.assertEqual(report["summary"]["files"]["match"], len(other_json))
         self.assertIn("golden.json", {f["path"] for f in report["files"]})
+
+    def test_sets_only_flat_copy_ignores_unrelated_metadata(self):
+        security_sets = sorted((ROOT / "conformance" / "vectors" / "security").glob("*.json"))
+        with tempfile.TemporaryDirectory() as tmp:
+            vendored = Path(tmp)
+            for path in security_sets:
+                shutil.copy(path, vendored / path.name)
+            (vendored / "metadata.json").write_text('{"hash": "ordinary metadata"}', encoding="utf-8")
+            code, report = self.run_checker(vendored, "--sets-only")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["summary"]["match"], len(security_sets))
+        self.assertEqual(report["summary"]["ignoredJson"]["vendored"], 1)
 
     def test_v04_copy_reports_top_level_and_golden_drift(self):
         # Between v0.4 and the base of this checker, commitment-anchor-authority-v0.3

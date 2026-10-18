@@ -130,10 +130,15 @@ DRAA-4. A lifecycle whose finding rests on a copy that can still be selected
 records no terminal; its terminal is recorded once two writes are known at
 the address of every such copy, whatever its verdict then is. Until then
 that terminal still takes part in its own replay comparison, so its replay
-`fail` decides first, and while its findings on copies are all uncertainty
-(DRC-15, DRD-10), a conflict with it is `indeterminate` for the other
-terminal, never `pass` or `fail`. The DRW-4 bound on the terminal side of
-the DRC-15 sums reads no copy and stays `error`.
+`fail` decides first, even before an `error` on its copy. While its findings
+on copies are all uncertainty (DRC-15, DRD-10), a conflict with it over the
+first use of a decision or a native job (DRD-8, DRL-4) is `indeterminate`
+for the other terminal, never `pass` or `fail`, even when its own replay
+comparison fails, since it is recorded whatever that comparison decides. One
+terminal event claimed by two native jobs (DRT-4), or a second evidence
+record for one terminal (DRT-16), is still `fail` for the other terminal.
+The DRW-4 bound on the terminal side of the DRC-15 sums reads no copy and
+stays `error`.
 
 The protocol verifier requires the finality records embedded in signed funding
 and terminal artifacts to use the exact DACS-4 `SettlementFinalityRecord`
@@ -359,9 +364,10 @@ reads no copy, unless a finding rests on a copy still selectable at another
 address; one whose finding rests on a selectable copy records its terminal
 once two writes are known at that copy's address. Until then its terminal is
 compared but not recorded: its own replay `fail` decides first, and while its
-findings on copies are all uncertainty (DRC-15, DRD-10), a conflict that
-would `fail` the other terminal is `indeterminate` instead, because that
-terminal may not have been authorized.
+findings on copies are all uncertainty (DRC-15, DRD-10), a DRD-8 or DRL-4
+conflict that would `fail` the other terminal is `indeterminate` instead,
+because that terminal may not have been authorized. A DRT-4 or DRT-16
+conflict with it is `fail`, as with a recorded terminal.
 Verifying the same terminal again is idempotent, and it reproduces one
 terminal evidence hash: a second, distinct evidence record for that terminal
 is `fail` for both (DRT-16). Two different terminals
@@ -394,10 +400,12 @@ history), the `previous` verdict, and the verdict that replaces it. A
 verdict decided before the replay comparison is named by the lifecycle's
 content hash instead. A revision never upgrades a verdict: `pass` can become
 `indeterminate` or `fail`, and `indeterminate` can become `fail`. The one
-exception is DRAA-4 above: a second qualifying write revises a `fail` to
-`indeterminate` only when that `fail` rested on the sole write known at an
-address, such as DRD-11 or the per-copy DRV-6, and the second write is at
-that address; the lifecycle's terminal is then recorded. A later arrival that conflicts
+exception is DRAA-4 above: a second qualifying write revises a `fail` or an
+`error` to `indeterminate` only when it rested on the sole write known at an
+address, such as DRD-11, the per-copy DRV-6, or the anchor-side DRW-4 bound,
+and the second write is at that address; the lifecycle's terminal is then
+recorded. An `error` that rests on such a copy can also become `fail` when
+its terminal's replay comparison fails. A later arrival that conflicts
 with a passing terminal never passes, so two conflicting terminals never both
 pass in one ledger. The verdicts issued, with their revisions applied, are
 the verdicts of evaluating everything seen so far as one set, whatever the

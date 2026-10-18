@@ -67,8 +67,10 @@ def verdict(observed):
 # A replay revision never moves a verdict to an earlier entry, except that a
 # second qualifying write (CORE §5.1) replaces with DRAA-4 a `pass`, an
 # uncertainty, or a finding that rested on one selected write copy.  It never
-# replaces a deterministic `error` or `fail` (candidate §9, FV-10).
-REPLAY_VERDICT_RANK = {"pass": 0, "indeterminate": 1, "fail": 2}
+# replaces a deterministic `error` or `fail` (candidate §9, FV-10).  An
+# `error` on a copy (the anchor-side DRW-4 bound) can become its pending
+# terminal's replay `fail`, never `pass` or plain uncertainty.
+REPLAY_VERDICT_RANK = {"pass": 0, "indeterminate": 1, "error": 2, "fail": 3}
 EQUIVOCATION = ("indeterminate", "DRAA-4")
 COPY_SELECTING_RULES = {"DRV-6", "DRD-10", "DRD-11", "DRC-15", "DRW-4"}
 
@@ -76,6 +78,8 @@ COPY_SELECTING_RULES = {"DRV-6", "DRD-10", "DRD-11", "DRC-15", "DRW-4"}
 def revision_allowed(revision, current):
     if verdict(revision) == EQUIVOCATION:
         return current[0] in ("pass", "indeterminate") or current[1] in COPY_SELECTING_RULES
+    if revision["result"] == "error" or (current[0] == "error" and current[1] not in COPY_SELECTING_RULES):
+        return False
     return REPLAY_VERDICT_RANK[revision["result"]] >= REPLAY_VERDICT_RANK[current[0]]
 
 
@@ -1437,6 +1441,109 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                     observed = evaluate_lifecycles([copy.deepcopy(values[item]) for item in order], DecisionLedger())
                     self.assertEqual(dict(zip(order, map(verdict, observed))), joint)
                     self.assertEqual(self._streamed(values, order), joint)
+
+    def test_an_undecided_terminal_still_fails_an_event_or_evidence_conflict(self):
+        """DRT-4, DRT-16 fail beside an undecided terminal; DRD-8 stays undecided even when that terminal's own replay fails."""
+        release = self._fixture("release")
+        inside = copy.deepcopy(release)
+        inside["resolverEvidence"]["decisionAnchor"]["finalizedBlockTimestampSec"] = generator.block_time(
+            generator.TERMINAL_BLOCKS["release"]
+        )
+        generator.resign_resolver(inside)
+        event = self._fixture("other-job-reuses-release-terminal-event")
+        second = self._fixture("release-second-terminal-transaction")
+        self.assertEqual(finding(inside), ("indeterminate", "DRC-15"))
+        self.assertEqual((finding(event), finding(second)), (("pass", "DRV-7"), ("pass", "DRV-7")))
+        values = {"inside": inside, "event": event, "second": second}
+        values.update({f"decision-{index}": self._failing_carrier("decision", index) for index in (0, 1)})
+        recorded = {verifier._terminal_record(copy.deepcopy(values[item])) for item in ("event", "second")}
+        # The decided release fails DRT-4 against the other job's terminal and
+        # still takes the decision's first use from the second terminal.
+        decided = {"release": release, "event": event, "second": second}
+        observed = evaluate_lifecycles([copy.deepcopy(item) for item in decided.values()], DecisionLedger())
+        self.assertEqual(
+            dict(zip(decided, map(verdict, observed))),
+            {"release": ("fail", "DRT-4"), "event": ("fail", "DRT-4"), "second": ("fail", "DRD-8")},
+        )
+        # Undecided, it fails DRT-4 the same way, and whether the second
+        # terminal is the decision's first use is unknown: it would be
+        # recorded, whatever its replay comparison decides, once unselectable.
+        joint = {"inside": ("fail", "DRT-4"), "event": ("fail", "DRT-4"), "second": ("indeterminate", "DRD-8")}
+        for order in itertools.permutations(joint):
+            with self.subTest(order=order):
+                ledger = DecisionLedger()
+                observed = evaluate_lifecycles([copy.deepcopy(values[item]) for item in order], ledger)
+                self.assertEqual(dict(zip(order, map(verdict, observed))), joint)
+                self.assertEqual(set(ledger.terminals()), recorded)
+                self.assertEqual(self._streamed(values, order), joint)
+        # Two decision writes make its copy unselectable: it is recorded, and
+        # the second terminal fails as beside the decided release.
+        joint = {
+            "inside": ("fail", "DRT-4"), "event": ("fail", "DRT-4"), "second": ("fail", "DRD-8"),
+            "decision-0": ("fail", "DRE-1"), "decision-1": ("fail", "DRE-1"),
+        }
+        for first, middle, last in itertools.permutations(("inside", "event", "second")):
+            for order in (
+                ("decision-0", "decision-1", first, middle, last),
+                (first, "decision-0", middle, "decision-1", last),
+                (first, middle, last, "decision-0", "decision-1"),
+            ):
+                with self.subTest(order=order):
+                    ledger = DecisionLedger()
+                    observed = evaluate_lifecycles([copy.deepcopy(values[item]) for item in order], ledger)
+                    self.assertEqual(dict(zip(order, map(verdict, observed))), joint)
+                    self.assertIn(verifier._terminal_record(copy.deepcopy(inside)), ledger.terminals())
+                    self.assertEqual(self._streamed(values, order), joint)
+        # The other job's terminal arriving first passes, and is revised to
+        # `fail` by the undecided terminal, not to uncertainty.
+        with self.subTest(stream="event first"):
+            ledger = DecisionLedger()
+            self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(event), ledger)), ("pass", "DRV-7"))
+            last = evaluate_protocol(copy.deepcopy(inside), ledger)
+            self.assertEqual(verdict(last), ("fail", "DRT-4"))
+            self.assertEqual(
+                [(verdict(item["previous"]), verdict(item)) for item in last["revises"]],
+                [(("pass", "DRV-7"), ("fail", "DRT-4"))],
+            )
+        # A second, distinct evidence record for an undecided terminal fails.
+        with self.subTest(conflict="DRT-16"):
+            ledger = DecisionLedger()
+            self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(inside), ledger)), ("indeterminate", "DRC-15"))
+            ((key, entry),) = ledger.held()
+            ledger.hold(key, entry._replace(pending=entry.pending._replace(evidence="00" * 32)))
+            self.assertEqual(len(ledger.undecided()), 1)
+            self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(second), ledger)), ("indeterminate", "DRD-8"))
+            self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(release), ledger)), ("fail", "DRT-16"))
+
+    def test_an_error_on_a_copy_gives_way_to_its_terminal_replay_fail(self):
+        """The anchor-side DRW-4 `error` rests on the sole decision copy: its pending terminal's replay `fail` decides first."""
+        unsafe = GUARD_CASES["decision-ordering-anchor-sum-unsafe"][0](self.vector_pack)
+        earlier = self._fixture("release-earlier-terminal-transaction")
+        checked = verifier._checked_lifecycle(copy.deepcopy(unsafe), DecisionLedger())
+        self.assertEqual((verdict(checked.issue), checked.pending), (("error", "DRW-4"), True))
+        self.assertEqual(finding(earlier), ("pass", "DRV-7"))
+        values = {"unsafe": unsafe, "earlier": earlier}
+        values.update({f"decision-{index}": self._failing_carrier("decision", index) for index in (0, 1)})
+        carriers = {"decision-0": ("fail", "DRE-1"), "decision-1": ("fail", "DRE-1")}
+        for joint in (
+            {"unsafe": ("fail", "DRD-8"), "earlier": ("pass", "DRV-7")},
+            {"unsafe": EQUIVOCATION, **carriers},
+            {"unsafe": ("fail", "DRD-8"), "earlier": EQUIVOCATION, **carriers},
+        ):
+            for order in itertools.permutations(joint):
+                with self.subTest(order=order):
+                    observed = evaluate_lifecycles([copy.deepcopy(values[item]) for item in order], DecisionLedger())
+                    self.assertEqual(dict(zip(order, map(verdict, observed))), joint)
+                    self.assertEqual(self._streamed(values, order), joint)
+        # A stream that issued the `error` first revises it to the replay `fail`.
+        ledger = DecisionLedger()
+        self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(unsafe), ledger)), ("error", "DRW-4"))
+        last = evaluate_protocol(copy.deepcopy(earlier), ledger)
+        self.assertEqual(verdict(last), ("pass", "DRV-7"))
+        self.assertEqual([(verdict(item["previous"]), verdict(item)) for item in last["revises"]], [(("error", "DRW-4"), ("fail", "DRD-8"))])
+        # The oracle never takes a deterministic `error` to `fail`, nor any verdict to `error`.
+        self.assertFalse(revision_allowed({"result": "fail", "rule": "DRD-8"}, ("error", "DRV-3")))
+        self.assertFalse(revision_allowed({"result": "error", "rule": "DRW-4"}, ("pass", "DRV-7")))
 
     def test_an_unordered_resolver_anchor_records_its_terminal_only_once_unselectable(self):
         """DRC-15 on the resolver's own anchor keeps its terminal out of replay until two decision writes are known."""

@@ -1193,9 +1193,14 @@ class DecisionLedger:
     def undecided(self) -> tuple[TerminalRecord, ...]:
         """The pending terminals whose standing findings are all uncertainty.
 
-        Whether such a terminal was authorized is unknown, so a conflict with
-        it is `indeterminate` (see `_terminal_replay_check`).  A pending
-        terminal with a standing `error` or `fail` takes no part.
+        Whether such a terminal was authorized is unknown, so a conflict
+        with it over the first use of a decision or a native job is
+        `indeterminate`; one event claimed by two native jobs, or a second
+        evidence record for it, is still `fail` (see
+        `_terminal_replay_check`).  Its own replay `fail` leaves it listed:
+        it would be recorded, whatever that comparison decides, once its
+        copies are unselectable.  A pending terminal with a standing
+        `error` or `fail` takes no part.
         """
         return tuple(sorted({
             entry.pending for _, entry in self.held()
@@ -3792,11 +3797,14 @@ def _terminal_replay_check(
     later one is rejected.  The pair stays `indeterminate` when the positions
     cannot order it, or when the later terminal's attested history omits the
     earlier one: the resolver's records then contradict each other.  One
-    event claimed by two native jobs is ambiguous whichever came first.
-    A conflict that would `fail` against a terminal the ledger lists as
-    undecided, whose decision ordering rests on a copy still selectable, is
-    `indeterminate`: that terminal may not have been authorized.  The
-    finding depends only on ``current`` and the ledger's terminals.
+    event claimed by two native jobs (DRT-4), or one terminal with two
+    evidence records (DRT-16), is a conflict whichever came first, and
+    whether or not the other terminal was authorized.  A conflict over the
+    first use of a decision or a native job (DRD-8, DRL-4) that would `fail`
+    against a terminal the ledger lists as undecided, whose decision
+    ordering rests on a copy still selectable, is `indeterminate`: that
+    terminal may not have been authorized.  The finding depends only on
+    ``current`` and the ledger's terminals.
     """
     for prior in current.attested:
         conflict = terminal_conflict(TerminalRecord(*prior), current)
@@ -3808,13 +3816,15 @@ def _terminal_replay_check(
         if conflict is None:
             continue
         # One event claimed by two jobs, or one terminal with two evidence
-        # records, is a conflict whichever came first.
-        precedes = True if conflict[0] in ("DRT-4", "DRT-16") else terminal_precedes(other, current)
+        # records, is a conflict whichever came first and whether or not the
+        # other terminal was authorized.
+        either = conflict[0] in ("DRT-4", "DRT-16")
+        precedes = True if either else terminal_precedes(other, current)
         if precedes is None:
             undecided.append((conflict[0], "authenticated event positions cannot order this terminal against a conflicting terminal"))
         elif not precedes and current[:3] not in other.attested:
             undecided.append((conflict[0], "a later conflicting terminal's attested history omits this terminal"))
-        elif precedes and not decided:
+        elif precedes and not decided and not either:
             undecided.append((conflict[0], "a conflicting terminal's decision ordering rests on a write copy that is still selectable"))
         elif precedes:
             return result("fail", *conflict)
@@ -4041,7 +4051,10 @@ def _revise_issued(ledger: DecisionLedger, fresh: frozenset[str] = frozenset()) 
     only becomes recorded, so a revision never upgrades a verdict, except
     that DRAA-4 replaces a `pass`, an uncertainty, or a finding that rested
     on a write copy it makes unselectable.  A deterministic `error` or
-    `fail` is never revised to DRAA-4.
+    `fail` is never revised to DRAA-4.  An `error` that rests on a copy
+    (the anchor-side DRW-4 bound) is not deterministic: DRAA-4 at that
+    copy's address, or the replay `fail` of its pending terminal, which
+    decides first, replaces it.
     """
     issued = [(terminal, ledger.issued(terminal)) for terminal in ledger.terminals()]
     held = [(lifecycle, entry.verdict) for lifecycle, entry in ledger.held() if lifecycle not in fresh]

@@ -8,6 +8,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import re
 import sys
 from typing import Any
 
@@ -52,6 +53,9 @@ OTHER_AMOUNT_OS = "1500000001"
 NONCE = 9
 BLOCK = 42
 LARGE_AMOUNT_OS = "9007199254740993"  # above 2^53 - 1: the node serves a string
+# Longer than Python's 4,300-digit int() limit: readers compare it by spelling.
+OVERSIZED_OS = "9" * 4301
+CANONICAL = re.compile(r"0|[1-9][0-9]*")
 
 # Read-only node2.demos.sh `getTxByHash` responses, 2026-10-17. The node
 # reported `stabilisation@61b8e75aa8db` (dirty). These are observations that
@@ -162,12 +166,15 @@ def found(
     if applied:
         # Synthetic state-transition authority, separate from the RPC record.
         content = value["content"]
+        amount = content["amount"]
+        # A canonical string is already its spelling, so an oversized one never reaches int().
+        amount_os = amount if isinstance(amount, str) and CANONICAL.fullmatch(amount) else str(int(amount))
         read["appliedTransferAuthenticated"] = True
         read["appliedTransfer"] = {
             "txHash": value["hash"].removeprefix("0x").lower(), "blockNumber": int(value["blockNumber"]),
             "sender": content["from"].removeprefix("0x").lower(),
             "recipient": content["to"].removeprefix("0x").lower(),
-            "payerDebitOs": str(int(content["amount"])), "payeeCreditOs": str(int(content["amount"])),
+            "payerDebitOs": amount_os, "payeeCreditOs": amount_os,
         }
     return read
 
@@ -383,11 +390,17 @@ def gate(
     durable: bool = True,
     broadcast_state: str = "never-broadcast",
     request: str = "broadcast-retained",
+    pinned_node: bool = True,
+    applied_authority: bool = True,
+    phase_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return _vector(
         name, "broadcast-gate",
         {
-            "phase": phase(),
+            "phase": phase() if phase_context is None else phase_context,
+            # The Demos binding's configuration for the phase's network.
+            "pinnedNodeConfigured": pinned_node,
+            "appliedPaymentAuthorityConfigured": applied_authority,
             "signedTransaction": signed() if signed_transaction is None else signed_transaction,
             "retainedTransfer": retained() if transfer is None else transfer,
             "hashRetainedForOtherPhases": retained_elsewhere or [],
@@ -1209,6 +1222,81 @@ def build_vectors() -> list[dict[str, Any]]:
                                {"records": [{"settlementTxId": "demos:" + item["txHash"].removeprefix("0x").lower(),
                                              "decision": expected} for item in refs]},
                                "DEM-7/SB-1/SB-2", [], "Derive keys before grouping; no job, block or legacy spelling may split one transfer."))
+    # DEM-1 is checked at the first egress of the signed bytes, including the
+    # demosdk confirm (confirmTx) request; DEM-6 starts there.
+    vectors += [
+        gate("confirm-after-durable-retention", "pass", "DEM-1", ["first-broadcast-allowed"],
+             "The confirm request is the first egress: it may carry the signed transfer once it is durably retained.",
+             request="confirm-retained"),
+        gate("confirm-before-durable-retention", "fail", "DEM-1",
+             ["broadcast-requires-durable-retention", "retention-before-first-egress"],
+             "confirmTx hands the signed bytes to a node, which can submit them; retention must be durable first.",
+             request="confirm-retained", durable=False),
+        gate("broadcast-completes-own-confirm", "pass", "DEM-1/DEM-6",
+             ["first-broadcast-allowed", "submission-completes-own-confirm"],
+             "The one broadcast that completes the uninterrupted submission whose confirm just returned.",
+             broadcast_state="confirm-returned"),
+        gate("rebroadcast-after-interrupted-confirm-refused", "fail", "DEM-6",
+             ["confirm-egress-may-broadcast", "no-rebroadcast"],
+             "After a confirm timeout, error or restart the node may have submitted the bytes; only re-reads follow.",
+             broadcast_state="confirm-sent-interrupted"),
+        gate("replacement-after-interrupted-confirm-refused", "fail", "DEM-6",
+             ["confirm-egress-may-broadcast", "no-replacement"],
+             "A restart after confirm never signs a replacement transfer for the same phase.",
+             broadcast_state="confirm-sent-interrupted", request="broadcast-replacement"),
+        gate("broadcast-without-applied-payment-authority", "fail", "DEM-1",
+             ["broadcast-requires-applied-payment-authority"],
+             "Without applied-payment authority DEM-3 success is unreachable, so nothing is signed or sent.",
+             applied_authority=False),
+        gate("confirm-without-applied-payment-authority", "fail", "DEM-1",
+             ["broadcast-requires-applied-payment-authority", "retention-before-first-egress"],
+             "The binding precondition holds at the confirm request too.",
+             applied_authority=False, request="confirm-retained"),
+        gate("broadcast-without-pinned-node", "fail", "DEM-1", ["broadcast-requires-pinned-node"],
+             "Without a pinned node no record binds, so nothing is signed or sent.",
+             pinned_node=False),
+        gate("broadcast-hash-uppercase", "fail", "DEM-1", ["signed-hash-form"],
+             "The node compares the derived hash exactly, so an upper-case hash is refused even when signed as spelled.",
+             signed_transaction=dict(signed(), hash=TX_HASH.upper(),
+                                     signature={"type": "ed25519", "data": "0x" + PAYER_SIGNER.sign(TX_HASH.upper().encode()).hex()})),
+        gate("broadcast-oversized-phase-amount", "fail", "DEM-1", ["retained-amount-is-phase-amount"],
+             "The phase DEM amount converts to OS by spelling; an oversized amount is compared, not refused by int().",
+             phase_context=phase(amount={"amount": OVERSIZED_OS, "currency": "DEM"}, amountOs=OVERSIZED_OS + "000000000")),
+        classify("record-oversized-amount", "indeterminate", unbound, ["bind-amount"] + unresolved,
+                 "An oversized OS amount decodes as a canonical string and is unbound; it never aborts the handler.",
+                 read=found(record("confirmed", send_content(amount_os=OVERSIZED_OS, amount=OVERSIZED_OS)))),
+        classify("record-oversized-nonce", "indeterminate", unbound, ["bind-nonce"] + unresolved,
+                 "An oversized nonce decodes as a canonical string and is unbound.",
+                 read=found(record("confirmed", send_content(nonce=OVERSIZED_OS)))),
+        classify("applied-transfer-oversized-debit", "indeterminate", "DEM-3/DEM-5",
+                 ["success-requires-applied-transfer"] + unresolved,
+                 "An applied debit other than the OS amount, however long, is no proof of payment.",
+                 read=_apply(found(record("confirmed")), {"appliedTransfer": dict(
+                     found(record("confirmed"))["appliedTransfer"], payerDebitOs=OVERSIZED_OS)})),
+        admit("consumer-oversized-record-amount", "indeterminate", "DEM-7",
+              ["consumer-binding", "consumer-requires-confirmed-record"],
+              "An oversized record amount is compared with the phase by spelling and does not bind.",
+              read=found(record("confirmed", send_content(amount_os=OVERSIZED_OS, amount=OVERSIZED_OS)))),
+        admit("consumer-oversized-amount-bound", "pass", "DEM-7", ["consumer-admits-confirmed"],
+              "A large amount that every source spells the same way still binds.",
+              read=found(record("confirmed", send_content(amount_os=OVERSIZED_OS + "000000000", amount=OVERSIZED_OS + "000000000"))),
+              phase_context=phase(amount={"amount": OVERSIZED_OS, "currency": "DEM"}, amountOs=OVERSIZED_OS + "000000000")),
+    ]
+    # A DEM-4 proof is APR closed-cannot-settle evidence only when FV-5
+    # authenticates the failed record at its bft-final inclusion.
+    for name, expected, authentication, guards, note in (
+        ("apr-evidence-plain-rpc-failure-proof", "indeterminate", "rpc-read",
+         ["apr-evidence-requires-authenticated-failure"],
+         "The pin does not authenticate an RPC read, so the handler's terminal proof authorizes no replacement job."),
+        ("apr-evidence-authenticated-failure-proof", "pass", "fv5-bft-final",
+         ["apr-evidence-from-authenticated-failure"],
+         "The same failed record authenticated under FV-5 at its bft-final inclusion is reconciliation evidence."),
+    ):
+        vectors.append(_vector(
+            name, "apr-reconciliation-evidence",
+            {"retainedTransfer": retained(), "retainedFailureProof": failure_proof(), "proofAuthentication": authentication},
+            expected, {"reconciliationEvidence": expected == "pass"}, "DEM-4", guards, note,
+        ))
     for vector in vectors:
         if vector["operation"] == "project-settlement-id":
             name = vector["name"]
@@ -1251,6 +1339,11 @@ def document() -> dict[str, Any]:
             "inclusionObservation": "block identified for the retained hash, or null",
             "recordRead": "getTxByHash read: found (record and node pin), not-found or unavailable; appliedTransfer and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived in production from status or edits",
             "otherGates": "verdicts of the FV, SB-1 and PB checks that compose with DEM-7 before delivery",
+            "request": "the call about to carry the signed transaction out of the handler: confirm-retained (demosdk confirm/confirmTx), broadcast-retained or broadcast-replacement",
+            "broadcastState": "never-broadcast (nothing has left the handler), confirm-returned (this uninterrupted submission's confirm just returned), confirm-sent-interrupted (a confirm was sent, then a timeout, error or restart) or maybe-broadcast; any other value is refused",
+            "pinnedNodeConfigured": "the Demos binding pins nodes under the native-send record profile for the phase's network; anything but true is refused",
+            "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",
+            "proofAuthentication": "how the DEM-4 proof's failed record was obtained: fv5-bft-final (FV-5-authenticated at its bft-final inclusion) or rpc-read; anything else is not authenticated",
             "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) for every otherwise admitted pay-dem record; derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error",
             "guards": "checks whose removal makes this vector fail",
         },

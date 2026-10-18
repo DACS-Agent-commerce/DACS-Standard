@@ -14,11 +14,16 @@
     "inclusionObservation": "block identified for the retained hash, or null",
     "recordRead": "getTxByHash read: found (record and node pin), not-found or unavailable; appliedTransfer and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived in production from status or edits",
     "otherGates": "verdicts of the FV, SB-1 and PB checks that compose with DEM-7 before delivery",
+    "request": "the call about to carry the signed transaction out of the handler: confirm-retained (demosdk confirm/confirmTx), broadcast-retained or broadcast-replacement",
+    "broadcastState": "never-broadcast (nothing has left the handler), confirm-returned (this uninterrupted submission's confirm just returned), confirm-sent-interrupted (a confirm was sent, then a timeout, error or restart) or maybe-broadcast; any other value is refused",
+    "pinnedNodeConfigured": "the Demos binding pins nodes under the native-send record profile for the phase's network; anything but true is refused",
+    "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",
+    "proofAuthentication": "how the DEM-4 proof's failed record was obtained: fv5-bft-final (FV-5-authenticated at its bft-final inclusion) or rpc-read; anything else is not authenticated",
     "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) for every otherwise admitted pay-dem record; derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error",
     "guards": "checks whose removal makes this vector fail"
   },
-  "count": 167,
-  "hash": "3d82d0b02c146d0f6c3b5852d712687b68c694f568124f3014137c2c4adf69be",
+  "count": 184,
+  "hash": "b60669c726b6b4e3654983bb83529f9b6bb8b03477e6056534553479fde6de70",
   "vectors": [
     {
       "name": "included-confirmed",
@@ -3889,6 +3894,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -3994,6 +4001,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -4099,6 +4108,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -4203,6 +4214,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -4307,6 +4320,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -4411,6 +4426,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -4516,6 +4533,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -4621,6 +4640,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -4726,6 +4747,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -4831,6 +4854,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -4936,6 +4961,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -5041,6 +5068,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -5146,6 +5175,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -5251,6 +5282,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -5356,6 +5389,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -5461,6 +5496,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -5566,6 +5603,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -5671,6 +5710,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -5776,6 +5817,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -5882,6 +5925,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -5988,6 +6033,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -6089,6 +6136,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -6194,6 +6243,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -6299,6 +6350,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -6404,6 +6457,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -6510,6 +6565,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -6616,6 +6673,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -6723,6 +6782,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -9463,6 +9524,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "escrow",
@@ -9569,6 +9632,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -9675,6 +9740,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -9781,6 +9848,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -9881,6 +9950,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -9986,6 +10057,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10092,6 +10165,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10198,6 +10273,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10304,6 +10381,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10410,6 +10489,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10515,6 +10596,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10622,6 +10705,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10727,6 +10812,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10833,6 +10920,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10939,6 +11028,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11045,6 +11136,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11151,6 +11244,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11257,6 +11352,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11362,6 +11459,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11468,6 +11567,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11540,6 +11641,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11646,6 +11749,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11760,6 +11865,8 @@
             "currency": "DEM"
           }
         },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -13721,6 +13828,1561 @@
         "sb2-group-raw-references"
       ],
       "note": "Derive keys before grouping; no job, block or legacy spelling may split one transfer."
+    },
+    {
+      "name": "confirm-after-durable-retention",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "confirm-retained"
+      },
+      "expected": "pass",
+      "want": {
+        "broadcastPermitted": true
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "first-broadcast-allowed"
+      ],
+      "note": "The confirm request is the first egress: it may carry the signed transfer once it is durably retained."
+    },
+    {
+      "name": "confirm-before-durable-retention",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": false,
+        "broadcastState": "never-broadcast",
+        "request": "confirm-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "broadcast-requires-durable-retention",
+        "retention-before-first-egress"
+      ],
+      "note": "confirmTx hands the signed bytes to a node, which can submit them; retention must be durable first."
+    },
+    {
+      "name": "broadcast-completes-own-confirm",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "confirm-returned",
+        "request": "broadcast-retained"
+      },
+      "expected": "pass",
+      "want": {
+        "broadcastPermitted": true
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1/DEM-6",
+      "guards": [
+        "first-broadcast-allowed",
+        "submission-completes-own-confirm"
+      ],
+      "note": "The one broadcast that completes the uninterrupted submission whose confirm just returned."
+    },
+    {
+      "name": "rebroadcast-after-interrupted-confirm-refused",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "confirm-sent-interrupted",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-6",
+      "guards": [
+        "confirm-egress-may-broadcast",
+        "no-rebroadcast"
+      ],
+      "note": "After a confirm timeout, error or restart the node may have submitted the bytes; only re-reads follow."
+    },
+    {
+      "name": "replacement-after-interrupted-confirm-refused",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "confirm-sent-interrupted",
+        "request": "broadcast-replacement"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-6",
+      "guards": [
+        "confirm-egress-may-broadcast",
+        "no-replacement"
+      ],
+      "note": "A restart after confirm never signs a replacement transfer for the same phase."
+    },
+    {
+      "name": "broadcast-without-applied-payment-authority",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": false,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "broadcast-requires-applied-payment-authority"
+      ],
+      "note": "Without applied-payment authority DEM-3 success is unreachable, so nothing is signed or sent."
+    },
+    {
+      "name": "confirm-without-applied-payment-authority",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": false,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "confirm-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "broadcast-requires-applied-payment-authority",
+        "retention-before-first-egress"
+      ],
+      "note": "The binding precondition holds at the confirm request too."
+    },
+    {
+      "name": "broadcast-without-pinned-node",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": false,
+        "appliedPaymentAuthorityConfigured": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "broadcast-requires-pinned-node"
+      ],
+      "note": "Without a pinned node no record binds, so nothing is signed or sent."
+    },
+    {
+      "name": "broadcast-hash-uppercase",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2FB29AEA17FFED038874912FA040ABE126EAF313FF5322EFE4D9B59B5709DADE",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x46acacc9525c29414529a7a3c81f1100ce7c8a51c6ab27bf2af8484da5f0e43c2889b7f8189fc2723ea9ee8187551269caadfbeb1a3834e247ceb6727f234c05"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "signed-hash-form"
+      ],
+      "note": "The node compares the derived hash exactly, so an upper-case hash is refused even when signed as spelled."
+    },
+    {
+      "name": "broadcast-oversized-phase-amount",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999000000000",
+          "amount": {
+            "amount": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "retained-amount-is-phase-amount"
+      ],
+      "note": "The phase DEM amount converts to OS by spelling; an oversized amount is compared, not refused by int()."
+    },
+    {
+      "name": "record-oversized-amount",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+            "payeeCreditOs": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-amount",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "An oversized OS amount decodes as a canonical string and is unbound; it never aborts the handler."
+    },
+    {
+      "name": "record-oversized-nonce",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
+      "guards": [
+        "bind-nonce",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "An oversized nonce decodes as a canonical string and is unbound."
+    },
+    {
+      "name": "applied-transfer-oversized-debit",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42
+        },
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+            "payeeCreditOs": "1500000000"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3/DEM-5",
+      "guards": [
+        "success-requires-applied-transfer",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "An applied debit other than the OS amount, however long, is no proof of payment."
+    },
+    {
+      "name": "consumer-oversized-record-amount",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+            "payeeCreditOs": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-binding",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "An oversized record amount is compared with the phase by spelling and does not bind."
+    },
+    {
+      "name": "consumer-oversized-amount-bound",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999000000000",
+          "amount": {
+            "amount": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+            "currency": "DEM"
+          }
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999000000000",
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999000000000"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999000000000",
+            "payeeCreditOs": "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999000000000"
+          }
+        }
+      },
+      "expected": "pass",
+      "want": {
+        "dem7GatePassed": true,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-admits-confirmed"
+      ],
+      "note": "A large amount that every source spells the same way still binds."
+    },
+    {
+      "name": "apr-evidence-plain-rpc-failure-proof",
+      "operation": "apr-reconciliation-evidence",
+      "protocolInput": {
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "retainedFailureProof": {
+          "classification": "permanent",
+          "inclusionBlock": 42,
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "failed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "proofAuthentication": "rpc-read"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "reconciliationEvidence": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-4",
+      "guards": [
+        "apr-evidence-requires-authenticated-failure"
+      ],
+      "note": "The pin does not authenticate an RPC read, so the handler's terminal proof authorizes no replacement job."
+    },
+    {
+      "name": "apr-evidence-authenticated-failure-proof",
+      "operation": "apr-reconciliation-evidence",
+      "protocolInput": {
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "retainedFailureProof": {
+          "classification": "permanent",
+          "inclusionBlock": 42,
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "failed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "proofAuthentication": "fv5-bft-final"
+      },
+      "expected": "pass",
+      "want": {
+        "reconciliationEvidence": true
+      },
+      "rule": "DACS-4 §9.5.9 DEM-4",
+      "guards": [
+        "apr-evidence-from-authenticated-failure"
+      ],
+      "note": "The same failed record authenticated under FV-5 at its bft-final inclusion is reconciliation evidence."
     }
   ]
 }

@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 167 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 184 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -1247,7 +1247,7 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-167 candidate vectors pin native-DEM settlement on execution, not inclusion.
+184 candidate vectors pin native-DEM settlement on execution, not inclusion.
 The node's status index may label a transaction `included` while its
 transaction record is `failed`, so the index is never decisive. Records use
 the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
@@ -1274,14 +1274,22 @@ delivery or settlement accounting; only `admit-for-delivery` does.
 `resume-phase` cases reuse a valid retained failure proof without a node
 read, refuse to reuse one corrupted in its nonce, recipient, block or status,
 and recover a confirmed transfer by re-reading the retained hash.
-`broadcast-gate` cases allow only the first broadcast of a complete, durable
-DEM-1 retention for the authenticated phase. The signed transaction is the
+`apr-reconciliation-evidence` cases accept a DEM-4 proof as APR
+`closed-cannot-settle` evidence only when FV-5 authenticates its failed record
+at the `bft-final` inclusion; a plain RPC read is `indeterminate`.
+`broadcast-gate` cases check DEM-1 at the first egress of the signed bytes,
+either the demosdk `confirm` request or the broadcast. They allow that egress
+only for a complete, durable DEM-1 retention for the authenticated phase, under
+a binding that configures pinned nodes and an applied-payment authority. After
+a `confirm`, they allow only the broadcast that completes the same
+uninterrupted submission; after an interrupted `confirm`, they refuse a resend
+and a replacement. The signed transaction is the
 demosdk 4.0.16 envelope: `hash` is SHA-256 over `JSON.stringify(content)` and
 the `ed25519` `signature` by `content.from` covers the UTF-8 hash. The passing
 case carries every member the pinned node checks at admission: a positive integer
 `timestamp`, `from_ed25519_address`, the fee object in the node's member order, and the four native-send
 `gcr_edits` the node regenerates. They refuse
-an unsigned transaction, a signature that verifies only once respelled
+an unsigned transaction, an upper-case `hash`, a signature that verifies only once respelled
 (upper-case or unprefixed hex, an extra member), numeric, missing or noncanonical signed OS amounts or
 fees, a missing fee object, a fee object with reordered, missing or extra
 members, a non-string `rpc_address`, a missing, zero, negative, fractional or string `timestamp`, a missing or
@@ -1291,6 +1299,8 @@ job or phase, from another paying key, to another destination or for another
 amount, signed values that differ from the retained values or do not decode
 (a pre-`osDenomination` numeric `send` amount, an upper-case recipient), a
 hash retained for another phase, and any second or replacement broadcast.
+Decimals are compared by canonical spelling, so a 4,301-digit record amount
+or nonce, applied debit, phase amount or consumer amount reaches a decision.
 `admit-evidence` cases apply DEM-7 alone, for consumers including the payee
 before delivery: their result is `dem7GatePassed` and never authorizes
 delivery. An authenticated contradiction or authenticated `failed` record is

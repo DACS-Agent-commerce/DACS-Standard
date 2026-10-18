@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_DOWN, Decimal, InvalidOperation
 import hashlib
 import json
 from pathlib import Path
@@ -38,6 +38,9 @@ WORKFLOW = ROOT / ".github/workflows/validate.yml"
 GUARDS = frozenset({
     # DEM-1
     "first-broadcast-allowed",
+    "retention-before-first-egress",
+    "broadcast-requires-pinned-node",
+    "broadcast-requires-applied-payment-authority",
     "broadcast-requires-durable-retention",
     "broadcast-requires-complete-retention",
     "retention-bound-to-phase",
@@ -46,6 +49,7 @@ GUARDS = frozenset({
     "retained-amount-is-phase-amount",
     "signed-transfer-matches-retention",
     "signed-transaction-authentic",
+    "signed-hash-form",
     "signed-signature-form",
     "signed-os-strings",
     "signed-fee-members",
@@ -81,11 +85,15 @@ GUARDS = frozenset({
     "failure-proof-retained",
     "resume-reuses-failure-proof",
     "resume-validates-failure-proof",
+    "apr-evidence-requires-authenticated-failure",
+    "apr-evidence-from-authenticated-failure",
     # DEM-5
     "unresolved-authorizes-nothing",
     # DEM-6
     "no-rebroadcast",
     "no-replacement",
+    "confirm-egress-may-broadcast",
+    "submission-completes-own-confirm",
     # DEM-7
     "consumer-admits-confirmed",
     "consumer-requires-confirmed-record",
@@ -204,15 +212,44 @@ def _lenient_integer(value):
         return None
 
 
+def _lenient_spelling(value):
+    """The same permissive coercion, spelled as a decimal without int(), so an
+    oversized value is compared instead of raising."""
+    try:
+        number = Decimal(int(value)) if isinstance(value, (bool, int, float)) else Decimal(str(value).strip())
+        if not number.is_finite():
+            return None
+        whole = number.to_integral_value(rounding=ROUND_DOWN)
+        return "0" if whole == 0 else format(whole, "f")
+    except (InvalidOperation, ValueError, TypeError, OverflowError):
+        return None
+
+
+def _canonical(value):
+    """A canonical decimal string, else None. Untrusted decimals are compared
+    by this spelling and never converted with int()."""
+    return value if isinstance(value, str) and DECIMAL.fullmatch(value) else None
+
+
 def _integer(value, guard, off):
-    """Profile integer: a safe JSON integer or a canonical decimal string."""
+    """Profile integer: a safe JSON integer or a canonical decimal string,
+    projected to its canonical spelling."""
     if guard in off:
-        return _lenient_integer(value)
+        return _lenient_spelling(value)
     if _safe_integer(value):
-        return int(value)
-    if isinstance(value, str) and DECIMAL.fullmatch(value):
-        return int(value)
-    return None
+        return str(int(value))
+    return _canonical(value)
+
+
+def _retained(transfer, field):
+    """A DEM-1 retained value in its projected form: the nonce is a safe JSON
+    integer and the OS amount a canonical decimal string."""
+    value = transfer.get(field)
+    if field == "nonce":
+        return str(value) if _safe_integer(value) and isinstance(value, int) else None
+    if field == "amountOs":
+        return _canonical(value)
+    return value
 
 
 def _address(value, off):
@@ -230,7 +267,7 @@ def decode(transaction, off, *, executed: bool = True):
     content = transaction["content"]
     projection = {}
     tx_hash = transaction.get("hash")
-    if "decode-hash" in off:
+    if "decode-hash" in off or (not executed and "signed-hash-form" in off):
         tx_hash = tx_hash.lower().removeprefix("0x") if isinstance(tx_hash, str) else None
     elif not (isinstance(tx_hash, str) and HASH.fullmatch(tx_hash)):
         return None
@@ -291,9 +328,7 @@ def decode(transaction, off, *, executed: bool = True):
             and isinstance(data[1]["args"], list)
             and len(data[1]["args"]) == 2
             and _address(data[1]["args"][0], off) == recipient
-            and isinstance(data[1]["args"][1], str)
-            and DECIMAL.fullmatch(data[1]["args"][1])
-            and int(data[1]["args"][1]) == amount
+            and _canonical(data[1]["args"][1]) == amount
         ):
             return None
     projection.update(sender=sender, recipient=recipient, amountOs=amount)
@@ -311,7 +346,10 @@ def authentic(transaction, off=frozenset()) -> bool:
     except (ValueError, TypeError, UnicodeError):
         return False
     tx_hash = transaction.get("hash")
-    if tx_hash != hashlib.sha256(serialized.encode("utf-8")).hexdigest():
+    spelled = tx_hash.lower() if "signed-hash-form" in off and isinstance(tx_hash, str) else tx_hash
+    # A lenient implementation compares the hash in any hex case and verifies
+    # the signature over the hash as given.
+    if spelled != hashlib.sha256(serialized.encode("utf-8")).hexdigest():
         return False
     signature = transaction.get("signature")
     if "signed-signature-form" in off and isinstance(signature, dict) and isinstance(signature.get("data"), str):
@@ -349,8 +387,7 @@ def bound(projection, transfer, inclusion, off) -> bool:
     ):
         if guard in off or field not in projection:
             continue
-        want = int(transfer[field]) if field == "amountOs" else transfer.get(field)
-        if projection[field] != want:
+        if projection[field] != _retained(transfer, field):
             return False
     if "bind-block" in off:
         return True
@@ -386,7 +423,7 @@ def applied(read, projection, off) -> str:
         return "indeterminate"
     if (not _safe_integer(proof["blockNumber"])
             or any(proof[k] != projection[k] for k in ("txHash", "blockNumber", "sender", "recipient"))
-            or any(int(proof[k]) != projection["amountOs"] for k in ("payerDebitOs", "payeeCreditOs"))):
+            or any(proof[k] != projection["amountOs"] for k in ("payerDebitOs", "payeeCreditOs"))):
         return "fail"
     return "pass"
 
@@ -456,6 +493,20 @@ def resume(protocol_input: dict, off) -> tuple[str, dict]:
     return classify(protocol_input, off)
 
 
+def apr_evidence(protocol_input: dict, off) -> tuple[str, dict]:
+    """A DEM-4 failure proof offered as APR `closed-cannot-settle`
+    reconciliation evidence: only a bound failed record authenticated under
+    FV-5 at its `bft-final` inclusion qualifies, never a plain RPC read."""
+    refused = ("indeterminate", {"reconciliationEvidence": False})
+    if not valid_failure_proof(protocol_input["retainedFailureProof"], protocol_input["retainedTransfer"], off):
+        return refused
+    authenticated = protocol_input["proofAuthentication"] == "fv5-bft-final"
+    if authenticated or "apr-evidence-requires-authenticated-failure" in off:
+        if "apr-evidence-from-authenticated-failure" not in off:
+            return "pass", {"reconciliationEvidence": True}
+    return refused
+
+
 def complete_transfer(transfer) -> bool:
     return (
         isinstance(transfer, dict)
@@ -476,17 +527,37 @@ def complete_transfer(transfer) -> bool:
 
 
 def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
-    """DEM-1 retention for the authenticated phase, then DEM-6."""
+    """DEM-1 at the first egress of the signed transaction (a `confirm`
+    request or the broadcast) for the authenticated phase, then DEM-6."""
     refused = ("fail", {"broadcastPermitted": False})
+    request = protocol_input["request"]
+    if request == "confirm-retained" and "retention-before-first-egress" in off:
+        # The wrong implementation checks DEM-1 only at `broadcast` and sends
+        # the signed bytes to `confirmTx` unchecked.
+        return "pass", {"broadcastPermitted": True}
     transfer = protocol_input["retainedTransfer"]
     phase = protocol_input["phase"]
     if not complete_transfer(transfer) and "broadcast-requires-complete-retention" not in off:
         return "error", {"broadcastPermitted": False}
-    if protocol_input["broadcastState"] != "never-broadcast":
-        if protocol_input["request"] == "broadcast-replacement":
+    state = protocol_input["broadcastState"]
+    if state == "confirm-sent-interrupted" and "confirm-egress-may-broadcast" in off:
+        # The wrong implementation counts only a recorded broadcast.
+        state = "never-broadcast"
+    if (state == "confirm-returned" and request == "broadcast-retained"
+            and "submission-completes-own-confirm" not in off):
+        # The one broadcast that completes the uninterrupted submission.
+        state = "never-broadcast"
+    if state != "never-broadcast":
+        if request == "broadcast-replacement":
             if "no-replacement" not in off:
                 return refused
         elif "no-rebroadcast" not in off:
+            return refused
+    for guard, configured in (
+        ("broadcast-requires-pinned-node", "pinnedNodeConfigured"),
+        ("broadcast-requires-applied-payment-authority", "appliedPaymentAuthorityConfigured"),
+    ):
+        if protocol_input.get(configured) is not True and guard not in off:
             return refused
     if "retention-bound-to-phase" not in off and (
         transfer.get("jobId"), transfer.get("phaseIndex")
@@ -497,7 +568,8 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
     match = re.fullmatch(r"(0|[1-9][0-9]*)(?:\.([0-9]{1,9}))?", spelling) if isinstance(spelling, str) else None
     if amount.get("currency") != "DEM" or match is None:
         return "error", {"broadcastPermitted": False}
-    phase_os = str(int(match[1]) * 10**9 + int((match[2] or "").ljust(9, "0")))
+    # 10^9 OS per DEM, by spelling: no int() on the untrusted decimal.
+    phase_os = (match[1] + (match[2] or "").ljust(9, "0")).lstrip("0") or "0"
     for guard, field, authority in (
         ("retained-sender-is-payer", "sender", "payerPayingKey"),
         ("retained-recipient-is-payee", "recipient", "payeeAddress"),
@@ -513,7 +585,7 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
         projection = decode(protocol_input["signedTransaction"], off, executed=False)
         if projection is None or any(
             projection[field] != (
-                _lenient_integer(transfer.get(field)) if field == "amountOs" else transfer.get(field)
+                _lenient_spelling(transfer.get(field)) if field == "amountOs" else _retained(transfer, field)
             )
             for field in ("txHash", "nonce", "sender", "recipient", "amountOs")
         ):
@@ -548,7 +620,7 @@ def dem7(protocol_input: dict, off) -> str:
         "blockNumber": reference["blockNumber"],
         "sender": phase["payerPayingKey"],
         "recipient": phase["payeeAddress"],
-        "amountOs": int(phase["amountOs"]),
+        "amountOs": _canonical(phase["amountOs"]),
     }
     is_bound = "consumer-binding" in off or all(
         projection[field] == value for field, value in expected_values.items()
@@ -664,6 +736,7 @@ def resolve_group(protocol_input, off):
 OPERATIONS = {
     "classify-execution": classify,
     "resume-phase": resume,
+    "apr-reconciliation-evidence": apr_evidence,
     "broadcast-gate": broadcast_gate,
     "admit-evidence": admit,
     "admit-for-delivery": admit_for_delivery,
@@ -789,7 +862,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
 
     def test_inclusion_alone_never_succeeds_or_authorizes(self):
         for vector in self.data["vectors"]:
-            if vector["operation"] in {"broadcast-gate", "project-settlement-id", "resolve-settlement-group"}:
+            if vector["operation"] in {"broadcast-gate", "project-settlement-id", "resolve-settlement-group",
+                                       "apr-reconciliation-evidence"}:
                 continue
             read = vector["protocolInput"]["recordRead"]
             record = read.get("record") if read.get("state") == "found" else None
@@ -854,12 +928,19 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             "broadcast-signature-unprefixed-hex",
             "broadcast-signature-extra-member",
         }
+        # The digest in upper case, signed as spelled: only the exact hash form refuses it.
+        hash_respelled = {"broadcast-hash-uppercase"}
         for vector in self.data["vectors"]:
             if vector["operation"] != "broadcast-gate":
                 continue
             with self.subTest(name=vector["name"]):
                 signed_tx = vector["protocolInput"]["signedTransaction"]
-                self.assertEqual(vector["name"] not in forged | respelled, authentic(signed_tx))
+                self.assertEqual(vector["name"] not in forged | respelled | hash_respelled, authentic(signed_tx))
+                if vector["name"] in hash_respelled:
+                    self.assertTrue(authentic(signed_tx, {"signed-hash-form"}))
+                    self.assertEqual(signed_tx["hash"].lower(), vector["protocolInput"]["retainedTransfer"]["txHash"])
+                    self.assertEqual(["signed-hash-form"], vector["guards"])
+                    self.assertEqual("fail", vector["expected"])
                 if vector["name"] in forged:
                     # Every other DEM-1 value agrees, so only authentication refuses it.
                     self.assertEqual(["signed-transaction-authentic"], vector["guards"])
@@ -896,7 +977,11 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 served = self.cases[name]["protocolInput"]["recordRead"]["record"]["content"]
                 self.assertTrue(edits_match(served))
         permitted = [vector["name"] for vector in self.data["vectors"] if vector["want"].get("broadcastPermitted")]
-        self.assertEqual(["first-broadcast-after-durable-retention"], permitted)
+        self.assertEqual(["first-broadcast-after-durable-retention", "confirm-after-durable-retention",
+                          "broadcast-completes-own-confirm"], permitted)
+        for name in permitted:
+            with self.subTest(name=name):
+                self.assertEqual(content, self.cases[name]["protocolInput"]["signedTransaction"]["content"])
 
     def test_each_missing_or_misshaped_envelope_member_is_refused(self):
         control = self.cases["first-broadcast-after-durable-retention"]
@@ -955,7 +1040,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             "`content.from_ed25519_address` MUST be present": address,
             "`gcr_edits` MUST equal the four edits": edits,
             "`hash` MUST be the lower-case hexadecimal SHA-256": [
-                ("broadcast-hash-not-over-content", "signed-transaction-authentic")],
+                ("broadcast-hash-not-over-content", "signed-transaction-authentic"),
+                ("broadcast-hash-uppercase", "signed-hash-form")],
             "`signature` MUST be `{\"type\": \"ed25519\"": [
                 ("broadcast-unsigned-transaction", "signed-transaction-authentic"),
                 ("broadcast-signature-type-not-ed25519", "signed-transaction-authentic"),
@@ -977,6 +1063,113 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(vector, {guard}))
                     self.assertEqual(evaluate(control), evaluate(control, {guard}))
 
+    def test_dem1_is_checked_at_the_first_egress_of_the_signed_bytes(self):
+        # demosdk confirm (confirmTx) sends the whole signed transaction to a
+        # node, so DEM-1 holds before it and DEM-6 starts there.
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("The signed transaction's *first egress* is the first call that carries it out of the handler", spec)
+        self.assertIn("`confirm` (`confirmTx`) validity request that precedes `broadcast`", spec)
+        self.assertIn("Before the first egress, the handler MUST durably retain", spec)
+        self.assertIn("The retained transfer may have been broadcast from its first egress on", spec)
+        self.assertNotIn("Before the first broadcast, the handler MUST durably retain", spec)
+        # sign -> confirm -> journal -> broadcast: the confirm happens before durable retention.
+        early = self.cases["confirm-before-durable-retention"]
+        self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(early))
+        self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(early, {"retention-before-first-egress"}))
+        self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(self.cases["confirm-after-durable-retention"]))
+        # A timeout, error or restart after confirm leaves only re-reads.
+        for name, guard in (("rebroadcast-after-interrupted-confirm-refused", "no-rebroadcast"),
+                            ("replacement-after-interrupted-confirm-refused", "no-replacement")):
+            with self.subTest(name=name):
+                case = self.cases[name]
+                self.assertEqual("confirm-sent-interrupted", case["protocolInput"]["broadcastState"])
+                self.assertEqual("fail", evaluate(case)[0])
+                self.assertEqual("pass", evaluate(case, {"confirm-egress-may-broadcast"})[0])
+                self.assertEqual("pass", evaluate(case, {guard})[0])
+        # Only the broadcast that completes the uninterrupted submission follows a confirm.
+        own = self.cases["broadcast-completes-own-confirm"]
+        self.assertEqual("pass", evaluate(own)[0])
+        self.assertEqual("fail", evaluate(own, {"submission-completes-own-confirm"})[0])
+        for request in ("confirm-retained", "broadcast-replacement"):
+            with self.subTest(request=request):
+                again = json.loads(json.dumps(own))
+                again["protocolInput"]["request"] = request
+                self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(again))
+        # An unknown state fails closed.
+        unknown = json.loads(json.dumps(self.cases["first-broadcast-after-durable-retention"]))
+        unknown["protocolInput"]["broadcastState"] = "confirm-timed-out"
+        self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(unknown))
+
+    def test_no_debit_without_pinned_node_and_applied_payment_authority(self):
+        # DEM-3 success needs both, so DEM-1 refuses to sign or send without them.
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("The handler MUST NOT sign or broadcast a transfer unless its Demos binding configures", spec)
+        self.assertIn("Demos binding without pinned nodes or an applied-payment authority → `permanent`", spec)
+        self.assertIn("| `pay-dem` | Not reference-backed", spec)
+        self.assertIn("so DEM-1 refuses to sign or send a transfer under it", DEMOS.read_text(encoding="utf-8"))
+        for name, guard in (("broadcast-without-applied-payment-authority", "broadcast-requires-applied-payment-authority"),
+                            ("confirm-without-applied-payment-authority", "broadcast-requires-applied-payment-authority"),
+                            ("broadcast-without-pinned-node", "broadcast-requires-pinned-node")):
+            with self.subTest(name=name):
+                self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(self.cases[name]))
+                self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(self.cases[name], {guard}))
+        # Missing or non-boolean configuration fails closed.
+        for member in ("pinnedNodeConfigured", "appliedPaymentAuthorityConfigured"):
+            for value in (None, "true", 1):
+                with self.subTest(member=member, value=value):
+                    case = json.loads(json.dumps(self.cases["first-broadcast-after-durable-retention"]))
+                    if value is None:
+                        del case["protocolInput"][member]
+                    else:
+                        case["protocolInput"][member] = value
+                    self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(case))
+        for vector in self.data["vectors"]:
+            if vector["operation"] == "broadcast-gate" and vector["want"]["broadcastPermitted"]:
+                with self.subTest(name=vector["name"]):
+                    self.assertIs(True, vector["protocolInput"]["pinnedNodeConfigured"])
+                    self.assertIs(True, vector["protocolInput"]["appliedPaymentAuthorityConfigured"])
+
+    def test_plain_rpc_failure_proof_is_not_apr_reconciliation_evidence(self):
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("The proof is the payer handler's terminal classification only.", spec)
+        self.assertIn("a plain-read proof authorizes no replacement through a later job", spec)
+        self.assertIn("The handler's inclusion observation MAY be a plain read from a pinned node", spec)
+        plain = self.cases["apr-evidence-plain-rpc-failure-proof"]
+        self.assertEqual(("indeterminate", {"reconciliationEvidence": False}), evaluate(plain))
+        self.assertEqual(("pass", {"reconciliationEvidence": True}),
+                         evaluate(self.cases["apr-evidence-authenticated-failure-proof"]))
+        # Missing or other authentication labels, and a corrupt authenticated proof, are not evidence.
+        for change in ({"proofAuthentication": None}, {"proofAuthentication": "FV5-BFT-FINAL"},
+                       {"proofAuthentication": "bft-final"}):
+            with self.subTest(change=change):
+                case = json.loads(json.dumps(plain))
+                case["protocolInput"].update(change)
+                self.assertEqual("indeterminate", evaluate(case)[0])
+        corrupt = json.loads(json.dumps(self.cases["apr-evidence-authenticated-failure-proof"]))
+        corrupt["protocolInput"]["retainedFailureProof"]["record"]["content"]["nonce"] = str(generator.NONCE + 1)
+        self.assertEqual("indeterminate", evaluate(corrupt)[0])
+
+    def test_oversized_decimals_return_a_decision_in_every_path(self):
+        # Untrusted decimals are compared by canonical spelling, never int().
+        big = "9" * 4301
+        self.assertEqual(big, _integer(big, "decode-amount", frozenset()))
+        self.assertEqual(big, _lenient_spelling(" " + big + " "))
+        self.assertEqual("1500000000", _lenient_spelling("1.5e9"))
+        for name, expected in (("record-oversized-amount", "indeterminate"), ("record-oversized-nonce", "indeterminate"),
+                               ("applied-transfer-oversized-debit", "indeterminate"),
+                               ("broadcast-oversized-phase-amount", "fail"),
+                               ("consumer-oversized-record-amount", "indeterminate"),
+                               ("consumer-oversized-amount-bound", "pass")):
+            with self.subTest(name=name):
+                self.assertEqual(expected, evaluate(self.cases[name])[0])
+        # The same values substituted into controls reach a decision too.
+        control = json.loads(json.dumps(self.cases["first-broadcast-after-durable-retention"]))
+        control["protocolInput"]["retainedTransfer"]["amountOs"] = big
+        self.assertEqual("fail", evaluate(control)[0])
+        consumer = json.loads(json.dumps(self.cases["consumer-confirmed-gate-passes"]))
+        consumer["protocolInput"]["phase"]["amountOs"] = big
+        self.assertEqual("indeterminate", evaluate(consumer)[0])
+
     def test_phase_os_amount_is_the_conversion_of_its_dem_amount(self):
         # DEM-1 converts phase.amount and DEM-7 reads phase.amountOs; both
         # describe one authenticated phase, so they must agree in every vector.
@@ -987,7 +1180,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             with self.subTest(name=vector["name"]):
                 self.assertEqual("DEM", phase["amount"]["currency"])
                 whole, _, fraction = phase["amount"]["amount"].partition(".")
-                self.assertEqual(phase["amountOs"], str(int(whole) * 10**9 + int(fraction.ljust(9, "0"))))
+                # By spelling: the oversized phase amounts exceed int()'s digit limit.
+                self.assertEqual(phase["amountOs"], (whole + fraction.ljust(9, "0")).lstrip("0") or "0")
         live = self.cases["consumer-node2-confirmed-refused"]["protocolInput"]["phase"]
         self.assertEqual({"amount": "9.5", "currency": "DEM"}, live["amount"])
 
@@ -1085,9 +1279,15 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     self.assertFalse(want["broadcastPermitted"])
                     self.assertFalse(want["replacementPermitted"])
                 if vector["operation"] == "broadcast-gate" and want["broadcastPermitted"]:
-                    self.assertEqual(
-                        "never-broadcast", vector["protocolInput"]["broadcastState"]
-                    )
+                    # Nothing has left the handler, or this broadcast completes
+                    # the uninterrupted submission whose confirm just returned.
+                    state = vector["protocolInput"]["broadcastState"]
+                    request = vector["protocolInput"]["request"]
+                    self.assertIn((state, request), {
+                        ("never-broadcast", "broadcast-retained"),
+                        ("never-broadcast", "confirm-retained"),
+                        ("confirm-returned", "broadcast-retained"),
+                    })
 
     def test_proven_failure_is_durable_and_omits_settlement_finality(self):
         for vector in self.data["vectors"]:

@@ -96,6 +96,12 @@ FAILURE_MODE_ERROR_CLASSES = {
         "unsupported-action-extension", "unclassified-extra-member", "unclassified-extension",
         "terminal-non-settlement", "ledger-event", "currency", "asset-currency", "paid-request-payload",
     )},
+    # §9.5.1 PB failure modes, with the static PB corpus's classes.
+    "payee-destination": "counterparty",
+    "payee-linkage-unresolved": "substrate",
+    "payee-linkage-error": "permanent",
+    "payee-bundle": "permanent",
+    "payee-bundle-shape": "permanent",
 }
 REQUEST_HEADERS = {"Accept": "application/json"}
 # XN-6: a fixed 65-byte EIP-712 signature placeholder for the paid payload.
@@ -415,6 +421,29 @@ def buyer_bundle(network: str, address: str, *, presented_by_payment_key: bool =
     }
 
 
+def payee_bundle(*claims: str, presented_by: str = SELLER_CLAIM) -> dict:
+    """The seller's presented DACS-1 bundle (PB-2): its primary claim, then `claims`.
+
+    A complete `IdentityBundle`: the seller's key signs the per-claim
+    presentation over the bundle without `presentation`, the scope its
+    `bundleHash` covers (DACS-1 §6.3.2).
+    """
+    body = {
+        "bundleVersion": "1",
+        "presentedBy": presented_by,
+        "presentedAt": 1787443199000,
+        "claims": [{"ref": SELLER_CLAIM}] + [{"ref": claim} for claim in claims],
+    }
+    payload = ("dacs-bundle-presentation:v1:" + digest(body)).encode("ascii")
+    return {
+        **body,
+        "presentation": {
+            "kind": "per-claim",
+            "signatures": [{"ref": SELLER_CLAIM, "signature": b64u(key("seller").sign(payload))}],
+        },
+    }
+
+
 def evm_presentation_envelopes(body: dict, claim: str) -> list[dict]:
     """Per-claim presentation signatures over `body`: the buyer's key, then the EVM payment key."""
     payload = ("dacs-bundle-presentation:v1:" + digest(body)).encode("ascii")
@@ -551,15 +580,17 @@ def make_base(version: int = 2) -> dict:
     event = f"evm:8453:{SAFE_TX}:7"
     bundle = buyer_bundle("eip155:8453", BUYER_ADDRESS)
     bundle_hash = digest(unsigned(bundle, "presentation"))
-    payee_bundle = {"bundleVersion": "1", "presentedBy": SELLER_CLAIM, "claims": [{"ref": SELLER_CLAIM}]}
+    seller_bundle = payee_bundle()
+    seller_bundle_hash = digest(unsigned(seller_bundle, "presentation"))
     value = {
         "railDefinition": protocol_rail(),
         "buyerBundle": bundle,
-        # PB-2: the seller's bundle, pinned by the agreement's and the runtime
-        # payee's bundleHash. The base one carries no EVM settlement-chain
+        # PB-2: the seller's DACS-1 bundle, pinned by the agreement's and the
+        # runtime payee's bundleHash, which leave out its presentation like the
+        # buyer's. The base one carries no EVM settlement-chain
         # claim, so tier 2 is not applicable and the co-signed payout binding
         # (tier 3) binds the destination.
-        "payeeBundle": payee_bundle,
+        "payeeBundle": seller_bundle,
         # PB-2: the SR-1 linkage decision the adapter's resolver returns for
         # each payee claim; a claim with no entry is unresolved.
         "payeeLinkage": {},
@@ -574,7 +605,7 @@ def make_base(version: int = 2) -> dict:
             "jobId": "01M0NVBGYEANE562QQXD33C7WX",
             "parties": [
                 {"role": "buyer", "bundleHash": bundle_hash, "primaryClaim": BUYER_CLAIM},
-                {"role": "seller", "bundleHash": digest(payee_bundle), "primaryClaim": SELLER_CLAIM},
+                {"role": "seller", "bundleHash": seller_bundle_hash, "primaryClaim": SELLER_CLAIM},
             ],
             "terms": {
                 "price": {"amount": "1.25", "currency": "USDC"},
@@ -597,7 +628,7 @@ def make_base(version: int = 2) -> dict:
                 "paymentAddress": BUYER_ADDRESS,
             },
             "payee": {
-                "bundleHash": digest(payee_bundle),
+                "bundleHash": seller_bundle_hash,
                 "primaryClaim": SELLER_CLAIM,
                 "payeeAddress": SELLER_ADDRESS,
             },
@@ -3953,14 +3984,26 @@ def add_payee_destination_cases(vectors, solana_exact):
     agreement-signed selection, and an applicable controlled claim in the pinned
     payee bundle is checked before the wallet is called."""
 
-    def payee_claims(*claims, linkage=None, rebind=True):
+    def pin_payee_bundle(v, bundle_hash=None):
+        """The seller's signed and the runtime payee's bundleHash pin the presented bundle."""
+        if bundle_hash is None:
+            bundle_hash = digest(unsigned(v["payeeBundle"], "presentation"))
+        v["agreement"]["parties"][1]["bundleHash"] = bundle_hash
+        v["runtime"]["payee"]["bundleHash"] = bundle_hash
+
+    def payee_claims(*claims, linkage=None, rebind=True, presented_by=SELLER_CLAIM):
         def mutate(v):
-            v["payeeBundle"]["claims"] = [{"ref": SELLER_CLAIM}] + [{"ref": claim} for claim in claims]
+            v["payeeBundle"] = payee_bundle(*claims, presented_by=presented_by)
             v["payeeLinkage"] = dict(linkage or {})
             if rebind:
-                bundle_hash = digest(v["payeeBundle"])
-                v["agreement"]["parties"][1]["bundleHash"] = bundle_hash
-                v["runtime"]["payee"]["bundleHash"] = bundle_hash
+                pin_payee_bundle(v)
+        return mutate
+
+    def reshape_payee_bundle(change):
+        """A pinned payee bundle that is not a DACS-1 IdentityBundle."""
+        def mutate(v):
+            change(v["payeeBundle"])
+            pin_payee_bundle(v)
         return mutate
 
     def then(*changes):
@@ -4021,6 +4064,61 @@ def add_payee_destination_cases(vectors, solana_exact):
     add_case(vectors, "pb2-runtime-payee-bundle-hash-not-signed", "fail", "PB-2",
              "the runtime payee's bundleHash must equal the seller party's signed bundleHash",
              lambda v: v["runtime"]["payee"].update({"bundleHash": "cc" * 32}), reason="payee-bundle")
+
+    def strip_signed_claim(v):
+        payee_claims(other_claim, linkage={other_claim: "pass"})(v)
+        v["payeeBundle"] = payee_bundle()
+        v["runtime"]["payee"]["bundleHash"] = digest(unsigned(v["payeeBundle"], "presentation"))
+    add_case(vectors, "pb2-runtime-pin-matches-unsigned-bundle", "fail", "PB-2",
+             "the seller signs a bundle whose applicable claim names another address; the runtime "
+             "presents it without that claim, with an unsigned runtime bundleHash that pins what it "
+             "presents: only the seller's signed bundleHash refuses it, so it never takes tier 3",
+             strip_signed_claim, reason="payee-bundle")
+    add_case(vectors, "pb2-payee-bundle-hash-over-presentation", "fail", "PB-2",
+             "bundleHash covers the bundle without its presentation (DACS-1 §6.3.2), so a pin "
+             "over the whole bundle, presentation included, does not pin it",
+             then(payee_claims(payout_claim, linkage={payout_claim: "pass"}),
+                  lambda v: pin_payee_bundle(v, digest(v["payeeBundle"]))), reason="payee-bundle")
+    add_case(vectors, "pb2-payee-bundle-presented-by-other-claim", "fail", "PB-2",
+             "the pinned bundle is presented by the payout claim, not the seller party's primary "
+             "claim, so it is not the seller's bundle",
+             payee_claims(payout_claim, linkage={payout_claim: "pass"}, presented_by=payout_claim),
+             reason="payee-bundle")
+    for name, change, note in (
+        ("pb2-payee-claim-not-object", lambda b: b["claims"].append(payout_claim),
+         "a bare-string claim is a malformed claim container, a structural error, never "
+         "skipped so that the payment takes tier 3"),
+        ("pb2-payee-claim-ref-not-string", lambda b: b["claims"].append({"ref": 8453}),
+         "a claim whose ref is not a string is a malformed claim reference"),
+        ("pb2-payee-bundle-presentation-absent", lambda b: b.pop("presentation"),
+         "an IdentityBundle has a presentation; it is outside bundleHash, so only the bundle's "
+         "shape refuses a bundle without one"),
+        ("pb2-payee-bundle-presented-at-absent", lambda b: b.pop("presentedAt"),
+         "an IdentityBundle always carries presentedAt"),
+    ):
+        add_case(vectors, name, "error", "PB-2", note, reshape_payee_bundle(change),
+                 reason="payee-bundle-shape")
+    add_case(vectors, "pb2-negotiated-chain-linkage-fail-refuses", "fail", "PB-2",
+             "the applicable claim's linkage resolves not controlled: no tier binds the payout, so "
+             "nothing is paid and the co-signed payout binding (tier 3) is not legal",
+             payee_claims(payout_claim, linkage={payout_claim: "fail"}), reason="payee-destination")
+    add_case(vectors, "pb2-negotiated-chain-linkage-malformed-is-error", "error", "PB-2",
+             "a linkage decision that is not a VerifyResult decision is a malformed resolver answer",
+             payee_claims(payout_claim, linkage={payout_claim: {"decision": "pass"}}),
+             reason="payee-linkage-error")
+    add_case(vectors, "pb2-payee-linkage-not-object", "error", "PB-2",
+             "linkage decisions that are not an object keyed by claim are a malformed resolver answer",
+             then(payee_claims(payout_claim), lambda v: v.update({"payeeLinkage": [payout_claim]})),
+             reason="payee-linkage-error")
+    oversized_claim = "cci-xm:evm:" + "9" * 4301 + ":" + SELLER_ADDRESS
+    add_case(vectors, "pb2-oversized-chain-claim-leaves-tier3", "pass", "PB-2",
+             "a chain ID above 9007199254740991, here 4301 digits, establishes no EIP-155 chain and "
+             "cannot make tier 2 applicable, so the co-signed payout binding (tier 3) binds the "
+             "destination",
+             payee_claims(oversized_claim, linkage={oversized_claim: "indeterminate"}))
+    add_case(vectors, "pb2-verify-evidence-controlled-claim-binds-payout", "pass", "PB-2",
+             "a verifier admits a stored success record whose payout the applicable claim binds",
+             payee_claims(payout_claim, linkage={payout_claim: "pass"}), operation="verify-evidence")
     add_case(vectors, "pb2-verify-evidence-claim-controls-other-address", "fail", "PB-2",
              "a verifier applies the same PB-2 gate to a stored success record",
              payee_claims(other_claim, linkage={other_claim: "pass"}), operation="verify-evidence",

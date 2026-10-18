@@ -162,6 +162,15 @@ FAILURE_MODE_ERROR_CLASSES = {
     "currency": "permanent",
     "asset-currency": "permanent",
     "paid-request-payload": "permanent",
+    # §9.5.1 PB failure modes, with the static PB corpus's classes: a tier-2
+    # claim binding another address is `counterparty`, an unresolvable one
+    # `substrate` (the ST-7 pause), and a resolver error or a malformed or
+    # unpinned payee bundle `permanent`.
+    "payee-destination": "counterparty",
+    "payee-linkage-unresolved": "substrate",
+    "payee-linkage-error": "permanent",
+    "payee-bundle": "permanent",
+    "payee-bundle-shape": "permanent",
 }
 # X402-3: the registered v1 legacy-network mapping, the supported-network table
 # of the pinned v1 specification (x402-foundation/x402@22a7677f,
@@ -248,10 +257,26 @@ def base58_decoded_length(value):
     return zeroes + (number.bit_length() + 7) // 8
 
 
-def buyer_bundle_scope(bundle):
+def bundle_scope(bundle):
+    """DACS-1 §6.3.2 / CORE IBH-1: what `bundleHash` covers, every member but `presentation`.
+
+    The buyer's and the payee's pinned bundles are both hashed this way.
+    """
     if not isinstance(bundle, dict):
         return None
     return {name: value for name, value in bundle.items() if name != "presentation"}
+
+
+def safe_decimal(text):
+    """A minimal decimal spelling's value if it is at most SAFE_INT, else None.
+
+    Only spellings no longer than SAFE_INT's are converted, so a hostile digit
+    string never reaches an unbounded `int()`.
+    """
+    if len(text) > len(str(SAFE_INT)):
+        return None
+    value = int(text)
+    return value if value <= SAFE_INT else None
 
 
 def payment_claim_parts(claim):
@@ -266,7 +291,7 @@ def payment_claim_parts(claim):
 
 def verify_buyer_bundle_presentation(v):
     bundle = v.get("buyerBundle")
-    scope = buyer_bundle_scope(bundle)
+    scope = bundle_scope(bundle)
     if not isinstance(scope, dict) or bundle.get("bundleVersion") != "1":
         return False
     claims = bundle.get("claims")
@@ -318,7 +343,7 @@ def buyer_payment_control(v, buyer, selection):
     bundle = v.get("buyerBundle", {})
     runtime = v.get("runtime", {})
     payer = runtime.get("payer", {})
-    scope = buyer_bundle_scope(bundle)
+    scope = bundle_scope(bundle)
     if not isinstance(scope, dict):
         return False
     bundle_hash = digest(scope)
@@ -1310,23 +1335,54 @@ def payout_bindings(agreement, phase_index):
 def selection_eip155_chain(network):
     """PB-2 step 1(b): the agreement-signed selection's canonical EIP-155 chain, or None."""
     match = re.fullmatch(r"eip155:([1-9][0-9]*)", network)
-    if match is None or int(match.group(1)) > SAFE_INT:
+    if match is None or safe_decimal(match.group(1)) is None:
         return None
     return network
 
 
 def claim_eip155_chain(claim):
-    """PB-2 step 2: a cci-xm claim's canonical EIP-155 chain under the DACS-1 EVM profile, or None."""
+    """PB-2 step 2: a cci-xm claim's canonical EIP-155 chain under the DACS-1 EVM profile, or None.
+
+    A chain ID above SAFE_INT, however many digits, stays a readable generic
+    claim that establishes no EIP-155 chain, as in the static-rail predicate.
+    """
     if not isinstance(claim, str):
         return None
     parts = claim.split(":", 3)
     if len(parts) != 4 or parts[0].lower() != "cci-xm" or parts[1] != "evm":
         return None
-    if re.fullmatch(r"[1-9][0-9]*", parts[2]) is None or int(parts[2]) > SAFE_INT:
+    if re.fullmatch(r"[1-9][0-9]*", parts[2]) is None or safe_decimal(parts[2]) is None:
         return None
     if not parts[3].split("?", 1)[0]:
         return None
     return f"eip155:{parts[2]}"
+
+
+# DACS-1 §6.3.2: the closed `PresentationSignature` kinds.
+PRESENTATION_KINDS = frozenset({"siwd", "per-claim", "session-key", "sr1-root"})
+# DACS-2 §7.5: the `VerifyResult` decisions an SR-1 linkage resolver returns.
+LINKAGE_DECISIONS = frozenset({"pass", "fail", "indeterminate", "error"})
+
+
+def payee_bundle_shape_ok(bundle):
+    """DACS-1 §6.3.2: the presented payee bundle is an `IdentityBundle`.
+
+    A malformed claim container or reference is a structural `error`,
+    never a claim to skip. The presentation is outside
+    `bundleHash`, so its shape is checked here: the seller's agreement
+    signature over the pinned `bundleHash` is what authenticates the claims.
+    """
+    if not isinstance(bundle, dict) or bundle.get("bundleVersion") != "1":
+        return False
+    claims = bundle.get("claims")
+    presentation = bundle.get("presentation")
+    return (
+        isinstance(bundle.get("presentedBy"), str)
+        and is_safe_nonnegative(bundle.get("presentedAt"))
+        and isinstance(claims, list) and bool(claims)
+        and all(isinstance(claim, dict) and isinstance(claim.get("ref"), str) for claim in claims)
+        and isinstance(presentation, dict) and presentation.get("kind") in PRESENTATION_KINDS
+    )
 
 
 def payee_destination_defect(v, seller, network, pay_to):
@@ -1336,23 +1392,27 @@ def payee_destination_defect(v, seller, network, pay_to):
     selection's chain, never from whether linkage resolution succeeds. With
     no applicable claim the co-signed payout binding (tier 3, PB-1) binds the
     destination. With one, only a claim naming the payout whose linkage
-    resolves control-proven binds it; an unresolved one pauses and a resolver
-    error stays `error`, never falling through to tier 3.
+    resolves control-proven binds it; an unresolved one pauses, a resolver
+    error stays `error` and a resolved `fail` binds nothing, never falling
+    through to tier 3.
     """
     bundle = v.get("payeeBundle")
-    if not isinstance(bundle, dict) or not isinstance(bundle.get("claims"), list):
-        return "fail", "payee-bundle"
-    bundle_hash = digest(bundle)
+    if not payee_bundle_shape_ok(bundle):
+        return "error", "payee-bundle-shape"
+    # The seller's agreement signature pins the bundle; the runtime copy is
+    # unsigned and must equal it too (XN-5). Both use the DACS-1 hash scope.
+    bundle_hash = digest(bundle_scope(bundle))
     if (
         seller.get("bundleHash") != bundle_hash
         or v.get("runtime", {}).get("payee", {}).get("bundleHash") != bundle_hash
         or bundle.get("presentedBy") != seller.get("primaryClaim")
+        or bundle["presentedBy"] not in {claim["ref"] for claim in bundle["claims"]}
     ):
         return "fail", "payee-bundle"
     chain = selection_eip155_chain(network)
     applicable = [
         claim["ref"] for claim in bundle["claims"]
-        if chain is not None and isinstance(claim, dict) and claim_eip155_chain(claim.get("ref")) == chain
+        if chain is not None and claim_eip155_chain(claim["ref"]) == chain
     ]
     if not applicable:
         return None
@@ -1366,12 +1426,23 @@ def payee_destination_defect(v, seller, network, pay_to):
             continue
     if not naming:
         return "fail", "payee-destination"
-    decisions = {v.get("payeeLinkage", {}).get(ref) for ref in naming}
+    linkage = v.get("payeeLinkage")
+    if not isinstance(linkage, dict):
+        return "error", "payee-linkage-error"
+    # A claim with no decision is unresolved; a value outside the resolver's
+    # decisions is a malformed resolver answer, so `error`.
+    decisions = [linkage.get(ref, "indeterminate") for ref in naming]
+    if any(not isinstance(decision, str) or decision not in LINKAGE_DECISIONS
+           for decision in decisions):
+        return "error", "payee-linkage-error"
     if "pass" in decisions:
         return None
     if "error" in decisions:
         return "error", "payee-linkage-error"
-    return "indeterminate", "payee-linkage-unresolved"
+    if "indeterminate" in decisions:
+        return "indeterminate", "payee-linkage-unresolved"
+    # Every claim naming the payout resolved not controlled: no tier binds it.
+    return "fail", "payee-destination"
 
 
 def selection_amount(price, selection):
@@ -1427,14 +1498,14 @@ def native_event_matches(event, network, transaction):
         # SB-1: chainId and logIndex are safe integers, so every reader renders
         # the same key.
         return (
-            int(evm.group(1)) <= SAFE_INT and int(evm.group(3)) <= SAFE_INT
+            safe_decimal(evm.group(1)) is not None and safe_decimal(evm.group(3)) is not None
             and network == f"eip155:{evm.group(1)}" and transaction == evm.group(2)
         )
     solana = SOLANA_EVENT.fullmatch(event)
     if solana:
         # SB-1: the signature decodes to exactly 64 bytes.
         return (
-            int(solana.group(3)) <= SAFE_INT
+            safe_decimal(solana.group(3)) is not None
             and base58_decoded_length(solana.group(2)) == 64
             and SOLANA_NETWORK_CLUSTERS.get(network) == solana.group(1)
             and transaction == solana.group(2)
@@ -2323,7 +2394,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 self.assertTrue(buyer_payment_control(vector, buyer, selection))
                 self.assertEqual(
                     buyer["bundleHash"],
-                    digest(buyer_bundle_scope(vector["buyerBundle"])),
+                    digest(bundle_scope(vector["buyerBundle"])),
                 )
 
         tampered = copy.deepcopy(self.by_name["protocol-v2-exact-success"])
@@ -2407,7 +2478,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         self.assertEqual(by_reason["challenge-match"], {"counterparty"})
         self.assertEqual(by_reason["unpaid-request-transient"], {"transient"})
         self.assertEqual(by_reason["paid-request-payload"], {"permanent"})
-        self.assertEqual(pinned, 154)
+        # §9.5.1 PB failure modes, classed as in the static PB corpus.
+        self.assertEqual(by_reason["payee-destination"], {"counterparty"})
+        self.assertEqual(by_reason["payee-linkage-unresolved"], {"substrate"})
+        self.assertEqual(by_reason["payee-linkage-error"], {"permanent"})
+        self.assertEqual(by_reason["payee-bundle"], {"permanent"})
+        self.assertEqual(by_reason["payee-bundle-shape"], {"permanent"})
+        self.assertEqual(pinned, 170)
 
     def test_resolution_inputs_are_inside_real_agreement_signatures(self):
         original = self.by_name["protocol-v2-exact-success"]
@@ -2623,7 +2700,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 selection = vector["agreement"]["terms"]["rail"]["parameters"]["selection"]
                 self.assertTrue(buyer_payment_control(vector, buyer, selection))
                 vector["buyerBundle"]["claims"][1]["metadata"]["algorithm"] = wrong
-                bundle_hash = digest(buyer_bundle_scope(vector["buyerBundle"]))
+                bundle_hash = digest(bundle_scope(vector["buyerBundle"]))
                 buyer["bundleHash"] = vector["runtime"]["payer"]["bundleHash"] = bundle_hash
                 self.assertFalse(buyer_payment_control(vector, buyer, selection))
 
@@ -2944,7 +3021,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # Every stored-record verdict a verifier gives leaves the payment to the
         # ledger, after the wallet call and on retry alike.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
-        self.assertEqual(len(records), 60)
+        self.assertEqual(len(records), 61)
         for vector in records:
             for operation in ("execute", "retry"):
                 with self.subTest(record=vector["name"], operation=operation):
@@ -3194,13 +3271,14 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 effects = {}
                 verdict, _ = evaluate(copy.deepcopy(vector), effects)
                 # Every record case is a rejection except the JSON-null
-                # preimage, the two sound-shape successes and the record
-                # judged apart from the paid request.
+                # preimage, the two sound-shape successes, the record
+                # judged apart from the paid request and the tier-2 payout.
                 self.assertEqual(verdict == "pass", vector["name"] in {
                     "record-over-unreceived-response-verifies",
                     "verify-evidence-response-without-payer",
                     "verify-evidence-without-extensions",
                     "verify-evidence-ignores-paid-request-payload",
+                    "pb2-verify-evidence-controlled-claim-binds-payout",
                 })
                 self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
         for name, want in (("protocol-v2-exact-success", ("pass", None)),
@@ -4162,6 +4240,16 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "pb2-negotiated-chain-linkage-error-stays-error": ("error", "payee-linkage-error"),
             "pb2-payee-bundle-not-pinned": ("fail", "payee-bundle"),
             "pb2-runtime-payee-bundle-hash-not-signed": ("fail", "payee-bundle"),
+            "pb2-runtime-pin-matches-unsigned-bundle": ("fail", "payee-bundle"),
+            "pb2-payee-bundle-hash-over-presentation": ("fail", "payee-bundle"),
+            "pb2-payee-bundle-presented-by-other-claim": ("fail", "payee-bundle"),
+            "pb2-payee-claim-not-object": ("error", "payee-bundle-shape"),
+            "pb2-payee-claim-ref-not-string": ("error", "payee-bundle-shape"),
+            "pb2-payee-bundle-presentation-absent": ("error", "payee-bundle-shape"),
+            "pb2-payee-bundle-presented-at-absent": ("error", "payee-bundle-shape"),
+            "pb2-negotiated-chain-linkage-fail-refuses": ("fail", "payee-destination"),
+            "pb2-negotiated-chain-linkage-malformed-is-error": ("error", "payee-linkage-error"),
+            "pb2-payee-linkage-not-object": ("error", "payee-linkage-error"),
         }
         for name, want in refused.items():
             with self.subTest(vector=name):
@@ -4184,12 +4272,99 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                      "pb2-other-chain-claim-leaves-tier3",
                      "pb2-name-style-subchain-claim-leaves-tier3",
                      "pb2-leading-zero-chain-claim-leaves-tier3",
+                     "pb2-oversized-chain-claim-leaves-tier3",
                      "pb2-solana-selection-evm-claim-leaves-tier3",
                      "pb2-challenge-chain-cannot-make-tier2-applicable"):
             with self.subTest(vector=name):
                 effects = {}
                 self.assertEqual(evaluate(copy.deepcopy(self.by_name[name]), effects), ("pass", None))
                 self.assertEqual(effects["walletAuthorizationCalls"], 1)
+
+    def test_pb2_payee_bundle_is_a_pinned_dacs1_bundle(self):
+        """PB-2 reads the payee bundle only once it is a DACS-1 bundle that both pins name.
+
+        Each pin has a vector that it alone refuses, so an implementation that
+        drops any one of them (trusting the unsigned runtime copy, say) pays.
+        """
+        def pins(vector):
+            bundle = vector["payeeBundle"]
+            presented = digest(bundle_scope(bundle))
+            seller = [p for p in vector["agreement"]["parties"] if p["role"] == "seller"][0]
+            return {
+                "signed": seller["bundleHash"] == presented,
+                "runtime": vector["runtime"]["payee"]["bundleHash"] == presented,
+                "presentedBy": bundle["presentedBy"] == seller["primaryClaim"],
+            }
+        alone = {
+            "signed": "pb2-runtime-pin-matches-unsigned-bundle",
+            "runtime": "pb2-runtime-payee-bundle-hash-not-signed",
+            "presentedBy": "pb2-payee-bundle-presented-by-other-claim",
+        }
+        for pin, name in alone.items():
+            with self.subTest(pin=pin):
+                held = pins(self.by_name[name])
+                self.assertEqual({check for check, ok in held.items() if not ok}, {pin})
+        # The signed-pin case: the seller signed a claim binding another
+        # address, which the presented bundle drops.
+        stripped = self.by_name["pb2-runtime-pin-matches-unsigned-bundle"]
+        self.assertEqual([claim["ref"] for claim in stripped["payeeBundle"]["claims"]],
+                         [stripped["runtime"]["payee"]["primaryClaim"]])
+        # Every other vector's bundle is complete and pinned by all three, with
+        # its presentation outside the hash (DACS-1 §6.3.2).
+        for vector in self.vectors:
+            if vector["name"] in set(alone.values()) or vector["name"] in {
+                "pb2-payee-bundle-not-pinned", "pb2-payee-bundle-hash-over-presentation",
+            } or vector.get("expectedReason") == "payee-bundle-shape":
+                continue
+            with self.subTest(vector=vector["name"]):
+                self.assertTrue(all(pins(vector).values()))
+                self.assertTrue(payee_bundle_shape_ok(vector["payeeBundle"]))
+                self.assertEqual(vector["payeeBundle"]["presentation"]["kind"], "per-claim")
+        over = self.by_name["pb2-payee-bundle-hash-over-presentation"]
+        self.assertEqual(over["runtime"]["payee"]["bundleHash"], digest(over["payeeBundle"]))
+        # The seller's key signs each presentation over the hashed scope.
+        positive = self.by_name["pb2-negotiated-chain-controlled-claim-binds-payout"]
+        envelope = positive["payeeBundle"]["presentation"]["signatures"][0]
+        self.assertEqual(envelope["ref"], positive["payeeBundle"]["presentedBy"])
+        Ed25519PublicKey.from_public_bytes(b64u_decode(positive["keys"]["seller"])).verify(
+            b64u_decode(envelope["signature"]),
+            ("dacs-bundle-presentation:v1:" + digest(bundle_scope(positive["payeeBundle"]))).encode("ascii"),
+        )
+
+    def test_pb2_malformed_payee_inputs_are_errors_not_exceptions(self):
+        """A malformed payee bundle or linkage answer is `error` before the wallet, never a crash."""
+        base = self.by_name["pb2-negotiated-chain-controlled-claim-binds-payout"]
+        seller = [p for p in base["agreement"]["parties"] if p["role"] == "seller"][0]
+        pay_to = adapter_address("eip155:8453", base["runtime"]["payee"]["payeeAddress"])
+        payout_claim = base["payeeBundle"]["claims"][1]["ref"]
+        for label, change, want in (
+            ("bundle-not-object", lambda v: v.update({"payeeBundle": []}), ("error", "payee-bundle-shape")),
+            ("bundle-absent", lambda v: v.pop("payeeBundle"), ("error", "payee-bundle-shape")),
+            ("version-other", lambda v: v["payeeBundle"].update({"bundleVersion": "2"}),
+             ("error", "payee-bundle-shape")),
+            ("claims-empty", lambda v: v["payeeBundle"].update({"claims": []}),
+             ("error", "payee-bundle-shape")),
+            ("presented-by-not-string", lambda v: v["payeeBundle"].update({"presentedBy": 7}),
+             ("error", "payee-bundle-shape")),
+            ("presentation-kind-unknown", lambda v: v["payeeBundle"]["presentation"].update({"kind": "x"}),
+             ("error", "payee-bundle-shape")),
+            ("linkage-list", lambda v: v.update({"payeeLinkage": []}), ("error", "payee-linkage-error")),
+            ("linkage-object-value", lambda v: v["payeeLinkage"].update({payout_claim: {}}),
+             ("error", "payee-linkage-error")),
+            ("linkage-unknown-decision", lambda v: v["payeeLinkage"].update({payout_claim: "ok"}),
+             ("error", "payee-linkage-error")),
+            ("linkage-fail", lambda v: v["payeeLinkage"].update({payout_claim: "fail"}),
+             ("fail", "payee-destination")),
+        ):
+            with self.subTest(change=label):
+                vector = copy.deepcopy(base)
+                change(vector)
+                self.assertEqual(payee_destination_defect(vector, seller, "eip155:8453", pay_to), want)
+        # A presentation is outside bundleHash: replacing it keeps the pin.
+        vector = copy.deepcopy(base)
+        vector["payeeBundle"]["presentation"] = {"kind": "sr1-root", "rootClaim": seller["primaryClaim"],
+                                                 "aggregateSignature": "AA"}
+        self.assertIsNone(payee_destination_defect(vector, seller, "eip155:8453", pay_to))
 
     def test_pb2_claim_profile_matches_the_static_rail_corpus(self):
         """The negotiated arm reads a cci-xm claim's chain exactly as the static-rail PB-2 corpus does."""
@@ -4200,19 +4375,42 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         )
         claims = {vector["claim"] for vector in json.loads(
             STATIC_VECTORS.read_text(encoding="utf-8"))["vectors"]}
-        claims |= {claim["ref"] for vector in self.vectors
-                   for claim in vector["payeeBundle"]["claims"]}
+        claims |= {claim["ref"] if isinstance(claim, dict) else claim for vector in self.vectors
+                   for claim in vector["payeeBundle"].get("claims", [])}
+        # Past Python's 4,300-digit int() limit the static rule compares text;
+        # the negotiated one must give the same None, not raise.
         claims |= {f"cci-xm:evm:{2**53 - 1}:0xab", f"cci-xm:evm:{2**53}:0xab", "cci-xm:evm:1:",
-                   "cci-xm:evm:1:?p=1", "CCI-XM:evm:1:0xab", "cci-xm:EVM:1:0xab", 7}
+                   "cci-xm:evm:1:?p=1", "CCI-XM:evm:1:0xab", "cci-xm:EVM:1:0xab", 7,
+                   "cci-xm:evm:" + "9" * 5000 + ":0xab", "cci-xm:evm:" + "1" * 4300 + ":0xab",
+                   "cci-xm:evm:" + "0" * 17 + "1:0xab", "cci-xm:evm:1" + "0" * 15 + ":0xab"}
+        self.assertTrue(any(isinstance(claim, str) and len(claim) > 4300 for claim in claims))
         for claim in claims:
-            with self.subTest(claim=claim):
+            with self.subTest(claim=claim if not isinstance(claim, str) else claim[:40]):
                 self.assertEqual(claim_eip155_chain(claim), static_claim_chain(claim))
         for network, want in (("eip155:8453", "eip155:8453"), ("eip155:08453", None),
                               ("eip155:0", None), (f"eip155:{2**53}", None),
                               (f"eip155:{2**53 - 1}", f"eip155:{2**53 - 1}"),
+                              ("eip155:" + "9" * 5000, None), ("eip155:1" + "0" * 16, None),
                               ("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", None)):
-            with self.subTest(network=network):
+            with self.subTest(network=network[:40]):
                 self.assertEqual(selection_eip155_chain(network), want)
+
+    def test_event_key_integers_never_reach_an_unbounded_int(self):
+        """SB-1: an event-key chain ID or index of any length is judged, never an int() crash."""
+        tx = "ab" * 32
+        for event, network in (
+            ("evm:" + "9" * 5000 + ":" + tx + ":0", "eip155:8453"),
+            ("evm:8453:" + tx + ":" + "9" * 5000, "eip155:8453"),
+            (f"evm:8453:{tx}:{2**53}", "eip155:8453"),
+            ("solana:devnet:" + "1" * 64 + ":" + "9" * 5000, "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"),
+        ):
+            with self.subTest(event=event[:40]):
+                self.assertFalse(native_event_matches(event, network, tx))
+        self.assertTrue(native_event_matches(f"evm:8453:{tx}:{2**53 - 1}", "eip155:8453", tx))
+        for text, want in (("9007199254740991", SAFE_INT), ("9007199254740992", None),
+                           ("1" * 17, None), ("9" * 5000, None), ("0", 0)):
+            with self.subTest(text=text[:20]):
+                self.assertEqual(safe_decimal(text), want)
 
     def test_a_paid_protocol_job_is_held_out_of_current_use(self):
         """RD-7/CUR-4/CUR-5: a pay-x402 success outside a finality-bound copy holds current use.
@@ -4245,6 +4443,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "every name under `.localhost` are never public.",
             "An IPv6 address that embeds an IPv4 address is not public when an address it carries is not.",
             "The local-use NAT64 prefix `64:ff9b:1::/48` is never public.",
+            # XN-8: the verifier's PB-2 duty the pb2-verify-evidence-* vectors witness.
+            "It MUST also apply PB-2 (§9.5.1) to the payout, as the payer did before paying",
             "Each received object MUST first pass CORE §B.2 CF-5 raw JSON admission over its exact received bytes",
             "A challenge that CF-5 refuses is malformed and yields `error` before authorization.",
             "needs no ledger data, so it is `error` even while that data is unavailable or not final.",
@@ -4687,9 +4887,13 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                      "decoded-response-size bounds", "owed by an adapter suite",
                      "XN-10 superseding disabled `x402:default` revision",
                      "owed by the registry-resolution and RAV corpora",
-                     "RD-7 consequence", "owed by the DACS-5 current-use corpus"):
+                     "RD-7 consequence", "owed by the DACS-5 current-use corpus",
+                     "does not yet read the `x402-protocol` evidence arm"):
             with self.subTest(owed=owed):
                 self.assertIn(owed, row)
+        # That disclosure stays true until the reference consumer reads the arm.
+        consumer = (ROOT / "tests/dacs5_reference.py").read_text(encoding="utf-8")
+        self.assertNotIn("x402-protocol", consumer)
         self.assertIn("definition-with-consumer-finality-profile", self.by_name)
         self.assertTrue(any(name.startswith("bounded-fetch-") for name in self.by_name))
 

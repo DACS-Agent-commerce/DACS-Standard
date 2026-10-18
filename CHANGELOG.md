@@ -340,12 +340,21 @@ The format used per release:
   is bound only when that claim names it and its linkage resolves; another
   address is `fail`, unresolved linkage `indeterminate` and a resolver error
   `error`, each with no wallet call and no fall-through to the co-signed
-  payout binding. A claim for another chain, a name-style or non-minimal
-  subchain, a Solana selection, and a chain offered only by the challenge all
-  leave tier 3. The stored record's `paymentAmount` with a third member is
-  `error`, and a finality record with another `scheme`, or a missing or
-  non-string `bindingProfile`, or none at all, is `fail`; execute and retry
-  rebuild such a record.
+  payout binding. A claim for another chain, a name-style, non-minimal or
+  above-safe-integer subchain, a Solana selection, and a chain offered only by
+  the challenge all leave tier 3. The payee bundle is a complete DACS-1
+  `IdentityBundle`, and both pins hash it without `presentation`, as for the
+  buyer (DACS-1 §6.3.2). Each pin has a vector it alone refuses, including the
+  seller's signed `bundleHash` against an unsigned runtime copy that pins a
+  stripped bundle. A bundle that is not an `IdentityBundle` (a claim that is
+  not an object, a `ref` that is not a string, or a missing `presentation` or
+  `presentedAt`) is `error`. So is a linkage decision outside the `VerifyResult`
+  decisions. A payout claim whose linkage resolves `fail` is `fail`. The PB
+  refusals carry the static PB corpus's error classes, and XN-8 now states
+  that a verifier applies PB-2 too. The stored record's `paymentAmount` with
+  a third member is `error`, and a finality record with another `scheme`, or
+  a missing or non-string `bindingProfile`, or none at all, is `fail`;
+  execute and retry rebuild such a record.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

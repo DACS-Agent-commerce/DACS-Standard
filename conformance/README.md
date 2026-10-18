@@ -52,10 +52,15 @@ kept, and compares them with this checkout or with a revision of it:
 
 ```sh
 python3 scripts/check_vendored_vectors.py path/to/vendored/vectors
-python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev v0.4
+python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev 4bb9e48a1095ab32c06c25b7c0b52018d3ce4091
 python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --json
 python3 scripts/check_vendored_vectors.py path/to/vendored/sets --sets-only
 ```
+
+`--rev` takes any revision the checkout can resolve. The commit above is
+the v0.4 release; a tag name such as `v0.4` resolves only once the tag
+has been fetched (`git fetch --tags`), which a shallow or single-branch
+clone may not have done.
 
 Point the tool at the directory holding vector sets, such as `vectors/`,
 rather than a copy of the whole `conformance/` tree. Incomplete set objects

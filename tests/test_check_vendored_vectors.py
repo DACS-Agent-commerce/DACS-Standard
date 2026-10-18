@@ -638,6 +638,12 @@ class RepositoryVectorSetTests(unittest.TestCase):
             "python3 scripts/check_vendored_vectors.py" in readme,
             "conformance/README.md does not show how to run the drift checker",
         )
+        # A tag ref may be absent from a clone that has the commit, so the
+        # example uses the v0.4 commit and says how to make the tag resolve.
+        self.assertIn(f"--rev {V04_COMMIT}\n", readme)
+        self.assertIn(f"--rev {V04_COMMIT}\n", SCRIPT_PATH.read_text(encoding="utf-8"))
+        self.assertNotIn("--rev v0.4", readme)
+        self.assertIn("(`git fetch --tags`)", readme)
 
 
 if __name__ == "__main__":

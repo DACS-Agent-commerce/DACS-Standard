@@ -5,7 +5,7 @@ An implementation that copies this repository's vector sets into its own tree
 can run this checker to see which copies no longer match:
 
     python3 scripts/check_vendored_vectors.py path/to/vendored/vectors
-    python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev v0.4
+    python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev 4bb9e48a1095ab32c06c25b7c0b52018d3ce4091
     python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --json
     python3 scripts/check_vendored_vectors.py path/to/vendored/sets --sets-only
 

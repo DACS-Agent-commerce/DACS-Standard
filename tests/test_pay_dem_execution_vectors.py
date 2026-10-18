@@ -708,6 +708,15 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                    "text": "e\u0301", "10": 10, "2": 2}
         serialized = '{"2":2,"10":10,"z":1e-7,"a":1,"tiny":0.000001,"negativeZero":0,"text":"e\u0301"}'
         self.assertEqual(serialized, stringify(content))
+        # 4294967294 is the largest array index; 4294967295 and longer decimal names keep insertion order.
+        long_name = "9" * 4301
+        for value, spelling in (
+            ({"n": None, "t": True, "f": False}, '{"n":null,"t":true,"f":false}'),
+            ({"4294967295": 1, "a": 2, "4294967294": 3, "0": 4}, '{"0":4,"4294967294":3,"4294967295":1,"a":2}'),
+            ({long_name: 1, "1": 2}, '{"1":2,"' + long_name + '":1}'),
+        ):
+            with self.subTest(value=spelling[:40]):
+                self.assertEqual(spelling, stringify(value))
         for number, spelling in ((1e-7, "1e-7"), (1.0, "1"), (1e-6, "0.000001"), (-0.0, "0")):
             with self.subTest(number=number):
                 body = generator.send_content(nonce=generator.NONCE, amount=generator.AMOUNT_OS, extra=number)

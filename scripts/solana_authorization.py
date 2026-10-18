@@ -71,7 +71,7 @@ def on_curve(raw):
 
 def program_address(seeds, program):
     """find_program_address: the highest-bump off-curve address."""
-    for bump in range(255, -1, -1):
+    for bump in range(255, 0, -1):
         candidate = hashlib.sha256(b"".join(seeds) + bytes([bump]) + program
                                    + b"ProgramDerivedAddress").digest()
         if not on_curve(candidate):

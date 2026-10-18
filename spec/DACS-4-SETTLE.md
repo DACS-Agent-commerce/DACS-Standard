@@ -1206,7 +1206,7 @@ historical evidence.
    plus only the `PAYMENT-SIGNATURE` header (XN-6).
 4. Decode the `PAYMENT-RESPONSE` settlement-response header, retain the complete
    response object, compute both XN-7 hashes, and reconcile its version,
-   network, transaction, payer, and exact-scheme amount with the selected
+   network, transaction, and payer with the selected
    requirement and agreement. A response defect is recorded under XN-11; it
    does not decide the outcome.
 5. Reconcile the retained authorization identity against authenticated ledger
@@ -1386,7 +1386,7 @@ The paid request's `PAYMENT-SIGNATURE` value (XN-6) is the base64 encoding of an
   - exactly two required signers, the sponsor and then the payer, and no address lookup table;
   - exactly one `TransferChecked` (instruction 12) of the token program that owns `asset`. Its accounts MUST be exactly the payer's associated token account for `asset`, `asset`, the associated token account of `payTo` for `asset`, and the payer as authority, both associated token accounts derived under that token program. Its amount MUST equal the XN-5 atomic amount, with no overpayment, and its decimals `assetDecimals`;
   - exactly one SPL Memo (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`) instruction with no accounts. Its data is `extra.memo` as UTF-8 when present, and otherwise upstream's random nonce: 32 to 256 lower-case hexadecimal digits;
-  - at most one Compute Budget `SetComputeUnitLimit` of at most 400,000 units and at most one `SetComputeUnitPrice` of at most 5,000,000 micro-lamports per unit, the pinned scheme's reference bounds;
+  - at most one Compute Budget `SetComputeUnitLimit` of at most 400,000 units (the pinned `scheme_exact_svm.md` §2.2.1 maximum) and at most one `SetComputeUnitPrice` of at most 5,000,000 micro-lamports per unit (§3.1's static cap, `MAX_COMPUTE_UNIT_PRICE_MICROLAMPORTS` in the pinned `typescript/packages/mechanisms/svm/src/constants.ts`);
   - no other instruction.
 - The adapter's trusted asset metadata (XN-5) MUST name the token program that owns a Solana `asset`: SPL Token (`TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`) or Token-2022 (`TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb`). Metadata that names no such program fails the asset-metadata check before authorization. XN-8 then establishes the transfer outcome and its finality from authenticated ledger data; client signing alone proves neither.
 

@@ -309,6 +309,150 @@ class PreReviewGateTests(unittest.TestCase):
                 self._run_temporary_evidence(body)
         self.assertLess(time.monotonic() - started, 3)
 
+    def test_failed_selected_test_reports_assertion(self):
+        with self.assertRaisesRegex(
+            self.gate.GateError, "selected assertion must be visible"
+        ):
+            self._run_temporary_evidence(
+                "import unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        self.fail('selected assertion must be visible')\n"
+            )
+
+    def _assert_signal_kills_selected_test_group_and_releases_lock(
+        self, signum: int
+    ):
+        import fcntl
+        import signal
+        import subprocess
+        import sys
+
+        with tempfile.TemporaryDirectory() as temporary:
+            lock_path = Path(temporary) / "selected.lock"
+            ready_path = Path(temporary) / "selected.ready"
+            test_path = Path(temporary) / "test_selected.py"
+            lock_path.touch()
+            child = (
+                "import fcntl, os, time\n"
+                f"lock = open({str(lock_path)!r}, 'r+')\n"
+                "fcntl.flock(lock, fcntl.LOCK_EX)\n"
+                f"open({str(ready_path)!r}, 'w').write(str(os.getpid()))\n"
+                "time.sleep(60)\n"
+            )
+            test_path.write_text(
+                "import subprocess, sys, time, unittest\n"
+                f"CHILD = {child!r}\n"
+                f"READY = {str(ready_path)!r}\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        subprocess.Popen([sys.executable, '-c', CHILD])\n"
+                "        deadline = time.monotonic() + 5\n"
+                "        while not __import__('os').path.exists(READY):\n"
+                "            if time.monotonic() >= deadline:\n"
+                "                self.fail('selected runner did not start child')\n"
+                "            time.sleep(0.01)\n"
+                "        time.sleep(60)\n",
+                encoding="utf-8",
+            )
+            harness = (
+                "import importlib.util, pathlib, sys\n"
+                f"spec = importlib.util.spec_from_file_location('gate', {str(SCRIPT)!r})\n"
+                "gate = importlib.util.module_from_spec(spec)\n"
+                "spec.loader.exec_module(gate)\n"
+                f"gate._within_test_root = lambda _: pathlib.Path({str(test_path)!r})\n"
+                "gate._run_python_evidence([{'id': 'signal-probe', 'file': "
+                "'tests/test_selected.py', 'test': 'ExitProbeTests.test_probe'}], "
+                "'review evidence')\n"
+            )
+            gate_process = subprocess.Popen(
+                [sys.executable, "-c", harness],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+            try:
+                ready_deadline = time.monotonic() + 10
+                while not ready_path.exists() and time.monotonic() < ready_deadline:
+                    if gate_process.poll() is not None:
+                        self.fail("gate exited before the selected runner acquired its lock")
+                    time.sleep(0.01)
+                self.assertTrue(ready_path.exists(), "selected runner did not acquire its lock")
+                os.kill(gate_process.pid, signum)
+                gate_process.wait(timeout=5)
+                self.assertEqual(gate_process.returncode, -signum)
+                with lock_path.open("r+") as lock:
+                    release_deadline = time.monotonic() + 2
+                    while True:
+                        try:
+                            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                            break
+                        except BlockingIOError:
+                            if time.monotonic() >= release_deadline:
+                                self.fail(
+                                    f"{signal.Signals(signum).name} left selected runner "
+                                    "holding its lock"
+                                )
+                            time.sleep(0.01)
+            finally:
+                if gate_process.poll() is None:
+                    gate_process.kill()
+                    gate_process.wait(timeout=5)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
+    def test_sigterm_kills_selected_test_group_and_releases_lock(self):
+        import signal
+        self._assert_signal_kills_selected_test_group_and_releases_lock(
+            signal.SIGTERM
+        )
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
+    def test_sigterm_during_abnormal_cleanup_is_deferred_until_reaped(self):
+        import signal
+        import subprocess
+
+        entry = self.manifest["independentReviewEvidence"][0]
+        for interruption in (subprocess.TimeoutExpired("runner", 1), KeyboardInterrupt()):
+            with self.subTest(interruption=type(interruption).__name__):
+                process = mock.Mock(pid=424242)
+                process.communicate.side_effect = interruption
+                events = []
+
+                def interrupt_cleanup(*_args, **_kwargs):
+                    events.append("killpg")
+                    os.kill(os.getpid(), signal.SIGTERM)
+                    os.kill(os.getpid(), signal.SIGTERM)
+
+                def reap(*_args, **_kwargs):
+                    os.kill(os.getpid(), signal.SIGTERM)
+                    events.append("reaped")
+
+                def terminate(pid, signum):
+                    self.assertEqual(events, ["killpg", "reaped"])
+                    self.assertEqual((pid, signum), (os.getpid(), signal.SIGTERM))
+                    raise SystemExit(143)
+
+                real_kill = os.kill
+
+                def deliver(pid, signum):
+                    if signal.getsignal(signal.SIGTERM) == signal.SIG_DFL:
+                        terminate(pid, signum)
+                    else:
+                        real_kill(pid, signum)
+
+                process.wait.side_effect = reap
+                with mock.patch.object(
+                    self.gate.subprocess, "Popen", return_value=process
+                ), mock.patch.object(
+                    self.gate.os, "killpg", side_effect=interrupt_cleanup
+                ), mock.patch.object(self.gate.os, "kill", side_effect=deliver):
+                    with self.assertRaises(SystemExit) as raised:
+                        self.gate._run_python_evidence([entry], "review evidence")
+                self.assertEqual(raised.exception.code, 143)
+                process.wait.assert_called_once_with(
+                    timeout=self.gate.SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS
+                )
+
     def _assert_timeout_releases_descendant_lock(self, parent_tail: str):
         import fcntl
         import signal

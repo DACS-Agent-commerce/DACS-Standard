@@ -22,14 +22,24 @@ The format used per release:
 - Native-send conformance isolates the transaction type, exact recipient account,
   signed OS-string amounts and fees, phase DEM-to-OS conversion, and record shape.
   Raw Demos references derive canonical SB-1 IDs before SB-2 collision grouping.
-  The corpora contain 158 pay-dem and 170 settlement-finality cases.
+  Record and applied-transfer decimals compare by canonical spelling, so an
+  oversized amount, send argument or debit yields a decision instead of
+  aborting the verifier. The corpora contain 167 pay-dem and 173
+  settlement-finality cases.
 - The DEM-1 signed transaction must be the complete demosdk 4.0.16 native-send
   envelope that the pinned node admits. It carries a positive integer
   `timestamp`, `from_ed25519_address`, a fee object with exactly `network_fee`,
   `rpc_fee`, `additional_fee` and `rpc_address` in node order, and the four
   native-send `gcr_edits` the node regenerates. The passing broadcast vector
   now carries that envelope, and negative vectors cover each missing or
-  misshaped member.
+  misshaped member: each MUST of the DEMOS-MAPPING §A.2 *Signed transaction*
+  paragraph names a refusing vector, including a missing or mismatched
+  `from_ed25519_address`, a non-string `rpc_address`, a zero, negative or
+  string `timestamp`, and a signature in upper-case or unprefixed hex or
+  with an extra member.
+- The DEMOS-MAPPING §A.2 node pin names one commit built from an unmodified
+  tree. The undefined "later release that declares the same semantics"
+  clause is removed; another release needs a profile revision.
 - DEM-7 SB-2 derives the SB-1 identifier of every admitted reference before
   comparing, collapsing verified legacy spellings. An admitted reference
   without an identifier is `error`, never skipped. Only an FV-5-authenticated
@@ -1109,7 +1119,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 158-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 167-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-broadcast gate with phase and payment authority and signed-envelope
@@ -1122,7 +1132,7 @@ The format used per release:
   (head `4e7419f`, draft hash `da86e204…`), has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
   set is identified by its `hash`, not by its name alone. In
-  `settlement-finality-verification` (170 cases), transaction inclusion and
+  `settlement-finality-verification` (173 cases), transaction inclusion and
   execution-result authentication are verified separately. The fixture uses
   independently pinned threshold result signatures over the full Demos record,
   network, block identity, transaction reference and committed payment debit
@@ -1148,7 +1158,8 @@ The format used per release:
   satisfy DEM-1. Its record comparison must use the native-send projection,
   neither raw JSON types nor a looser normalization such as case-folding.
   Existing `pay-dem` evidence bytes are unchanged and are not relabelled;
-  re-verification under DEM-7 returns `fail` for a bound failed record and
+  re-verification under DEM-7 returns `fail` for an FV-5-authenticated bound
+  failed record, `indeterminate` for a plain RPC read of one, and
   `indeterminate` without a bound confirmed record and applied-payment authority. No artifact shape,
   signature domain, rail definition or registry entry changes. This
   correction is part of the unreleased DACS-4 v0.8 candidate and allocates

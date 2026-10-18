@@ -274,6 +274,13 @@ def resume(
     )
 
 
+def dem_spelling(amount_os: str) -> str:
+    """The DEM decimal of an OS amount (10^9 OS per DEM), without trailing zeros."""
+    whole, fraction = divmod(int(amount_os), 10**9)
+    fraction_digits = f"{fraction:09d}".rstrip("0")
+    return f"{whole}.{fraction_digits}" if fraction_digits else str(whole)
+
+
 def phase(**changes: Any) -> dict[str, Any]:
     """Authenticated agreement and phase context."""
     return _apply(
@@ -888,6 +895,22 @@ def build_vectors() -> list[dict[str, Any]]:
             "Only an ed25519 signature by the sender key is verified under the profile.",
             signed_transaction=_apply(signed(), {"signature": {"type": "falcon", "data": signed()["signature"]["data"]}}),
         ),
+        # The signature verifies once respelled, so only the exact form refuses it.
+        gate(
+            "broadcast-signature-uppercase-hex", "fail", "DEM-1", ["signed-signature-form", "signed-transaction-authentic"],
+            "The signature data is 0x and 128 lower-case hexadecimal digits.",
+            signed_transaction=_apply(signed(), {"signature": {"type": "ed25519", "data": "0x" + signed()["signature"]["data"][2:].upper()}}),
+        ),
+        gate(
+            "broadcast-signature-unprefixed-hex", "fail", "DEM-1", ["signed-signature-form", "signed-transaction-authentic"],
+            "The signature data carries the 0x prefix.",
+            signed_transaction=_apply(signed(), {"signature": {"type": "ed25519", "data": signed()["signature"]["data"][2:]}}),
+        ),
+        gate(
+            "broadcast-signature-extra-member", "fail", "DEM-1", ["signed-signature-form", "signed-transaction-authentic"],
+            "The signature object has exactly the members type and data.",
+            signed_transaction=_apply(signed(), {"signature": dict(signed()["signature"], encoding="hex")}),
+        ),
         gate(
             "broadcast-hash-retained-for-another-phase", "fail", "DEM-1/DEM-6", ["no-cross-phase-reuse"],
             "One signed transfer cannot be retained for, and pay, two phases.",
@@ -911,6 +934,7 @@ def build_vectors() -> list[dict[str, Any]]:
                 payerPayingKey=live_confirmed["sender"],
                 payeeAddress=live_confirmed["recipient"],
                 amountOs=live_confirmed["amountOs"],
+                amount={"amount": dem_spelling(live_confirmed["amountOs"]), "currency": "DEM"},
             ),
         ),
         admit(
@@ -1092,6 +1116,21 @@ def build_vectors() -> list[dict[str, Any]]:
          {"omit": ("timestamp",)}),
         ("fractional-timestamp", "signed-timestamp", "A fractional timestamp is not a BigInt value.",
          {"timestamp": TIMESTAMP + 0.5}),
+        ("timestamp-zero", "signed-timestamp", "sign() replaces a zero timestamp with Date.now(); zero is not positive.",
+         {"timestamp": 0}),
+        ("negative-timestamp", "signed-timestamp", "A negative timestamp is not positive.",
+         {"timestamp": -TIMESTAMP}),
+        ("string-timestamp", "signed-timestamp", "The signed timestamp is a JSON integer; BigInt would accept a decimal string, the profile does not.",
+         {"timestamp": str(TIMESTAMP)}),
+        ("numeric-rpc-address", "signed-fee-members", "rpc_address is null or a string, never a number.",
+         {"transaction_fee": dict(SDK_FEES, rpc_address=0)}),
+        # The edits name F = content.from, as an implementation that defaults
+        # the missing member to the sender would regenerate them.
+        ("ed25519-address-missing", "signed-ed25519-address",
+         "sign() always adds from_ed25519_address and the SDK edit generator dereferences it; a send without it is never broadcast.",
+         {"omit": ("from_ed25519_address",)}),
+        ("ed25519-address-mismatch", "decode-address", "from_ed25519_address, the debited account, must project to the signing sender.",
+         {"from_ed25519_address": "0x" + OTHER_KEY}),
         ("edits-missing", "signed-native-edits", "sign() always regenerates gcr_edits; the node refuses a send without them.",
          {"omit": ("gcr_edits",)}),
         ("edits-credit-differs", "signed-native-edits", "The node regenerates the edits and refuses a credit other than the send amount.",

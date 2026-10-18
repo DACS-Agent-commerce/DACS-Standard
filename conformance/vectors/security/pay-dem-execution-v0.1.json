@@ -17,8 +17,8 @@
     "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) for every otherwise admitted pay-dem record; derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error",
     "guards": "checks whose removal makes this vector fail"
   },
-  "count": 158,
-  "hash": "38e7c92a56a4f103e0ec3fb1005812f9e8c4cbe06ace279a9813c2e757b08653",
+  "count": 167,
+  "hash": "3d82d0b02c146d0f6c3b5852d712687b68c694f568124f3014137c2c4adf69be",
   "vectors": [
     {
       "name": "included-confirmed",
@@ -6390,6 +6390,325 @@
       "note": "Only an ed25519 signature by the sender key is verified under the profile."
     },
     {
+      "name": "broadcast-signature-uppercase-hex",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35E0C47D6E3443BFFE7BB7BE71C32F0650828FAE48855AA65A4928A03A171DB7FB3482B554F6849D3A9255664298B5B08D0A374B6357B46234D736F461627F0D"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "signed-signature-form",
+        "signed-transaction-authentic"
+      ],
+      "note": "The signature data is 0x and 128 lower-case hexadecimal digits."
+    },
+    {
+      "name": "broadcast-signature-unprefixed-hex",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "signed-signature-form",
+        "signed-transaction-authentic"
+      ],
+      "note": "The signature data carries the 0x prefix."
+    },
+    {
+      "name": "broadcast-signature-extra-member",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d",
+            "encoding": "hex"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "signed-signature-form",
+        "signed-transaction-authentic"
+      ],
+      "note": "The signature object has exactly the members type and data."
+    },
+    {
       "name": "broadcast-hash-retained-for-another-phase",
       "operation": "broadcast-gate",
       "protocolInput": {
@@ -6590,7 +6909,7 @@
           "payeeAddress": "706b89f5e2d56498a90bc3a209842b0bd0e22ce06bb4df7c27805e655614e5f1",
           "amountOs": "9500000000",
           "amount": {
-            "amount": "1.5",
+            "amount": "9.5",
             "currency": "DEM"
           }
         },
@@ -10498,6 +10817,641 @@
         "signed-transfer-matches-retention"
       ],
       "note": "A fractional timestamp is not a BigInt value."
+    },
+    {
+      "name": "broadcast-signed-timestamp-zero",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 0,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "0853f5f005d892c138eeb75caffe3228673a6801d639f58308fc73c9fd58686e",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x8bfc01dc6f5af4e5f433650c05ea0856cacc3140db9e98c9133764b00ce434bfe7f7d2210dcb8d3906b6883f0d1709797df42f4f091fd3733000f35c599c880d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "0853f5f005d892c138eeb75caffe3228673a6801d639f58308fc73c9fd58686e",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "signed-timestamp",
+        "signed-transfer-matches-retention"
+      ],
+      "note": "sign() replaces a zero timestamp with Date.now(); zero is not positive."
+    },
+    {
+      "name": "broadcast-signed-negative-timestamp",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": -1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2e4bec0479ebffb2f64f4c53191bba5366f005d636779b76a3edad4564f53111",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x6d4a8fb01d7a27223c8a21a9a6196d788aba226c07559ac1b3036345d46df222b8bde3e4cbd5315bc185883deb9f2cab0822fba81fb50070f3a00e99012a4c05"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2e4bec0479ebffb2f64f4c53191bba5366f005d636779b76a3edad4564f53111",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "signed-timestamp",
+        "signed-transfer-matches-retention"
+      ],
+      "note": "A negative timestamp is not positive."
+    },
+    {
+      "name": "broadcast-signed-string-timestamp",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": "1791649642726",
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "69b20d4514888560e66923a0524ad0ee7e6ebda53d1268a97255a6bafdad32e4",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x7afb16de2dedfef2bd1a85cbea64c28d9103a2c575f35f10d530996babd31e7a5fa46e0c48a7b8e91516f0863498b230d8992253618b85838dbf936608d2f80a"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "69b20d4514888560e66923a0524ad0ee7e6ebda53d1268a97255a6bafdad32e4",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "signed-timestamp",
+        "signed-transfer-matches-retention"
+      ],
+      "note": "The signed timestamp is a JSON integer; BigInt would accept a decimal string, the profile does not."
+    },
+    {
+      "name": "broadcast-signed-numeric-rpc-address",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": 0
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "b34e0f49cceee15e5352318a52f8bc0226966a33d1bd3cb1b85c3ca0ca71e4c3",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x22dcc6d18f87c3fdb40d044d21eb8876e7aa15b22a4e27b5585e687efbe41b59c49752743a1bfea7738902f40a971e215b881f1727131683166e3f5b4c2baa02"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "b34e0f49cceee15e5352318a52f8bc0226966a33d1bd3cb1b85c3ca0ca71e4c3",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "signed-fee-members",
+        "signed-transfer-matches-retention"
+      ],
+      "note": "rpc_address is null or a string, never a number."
+    },
+    {
+      "name": "broadcast-signed-ed25519-address-missing",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "11bf0df0f6c90923ccc659973f5d4a272c8d192d0db47109a44632cd67b1c2ba",
+          "signature": {
+            "type": "ed25519",
+            "data": "0xfdcc931f78176a554f2561c972c2029236a404509343182c82b4657c2b0583a88384b302ae663b313196673b001beb79185a8bb738077eea62e1897a109f2a02"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "11bf0df0f6c90923ccc659973f5d4a272c8d192d0db47109a44632cd67b1c2ba",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "signed-ed25519-address",
+        "signed-transfer-matches-retention"
+      ],
+      "note": "sign() always adds from_ed25519_address and the SDK edit generator dereferences it; a send without it is never broadcast."
+    },
+    {
+      "name": "broadcast-signed-ed25519-address-mismatch",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0x443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0x443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0x443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0x443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "669ed97855f0e68048ed2ece879fa41b1ed6350425fb992b1ff106d08f6a2310",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x76b24f9e64eabf8f0ce83ab02b99f0148cff3d463d794795b3aa82fdf4b3d200289994512b169d9cc6bea5f9deb54b6b49bd686b4db21aef521ca1ca9ca9eb03"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "669ed97855f0e68048ed2ece879fa41b1ed6350425fb992b1ff106d08f6a2310",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "decode-address",
+        "signed-transfer-matches-retention"
+      ],
+      "note": "from_ed25519_address, the debited account, must project to the signing sender."
     },
     {
       "name": "broadcast-signed-edits-missing",

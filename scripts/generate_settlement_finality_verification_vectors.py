@@ -343,6 +343,8 @@ class FixtureFactory:
         }
         self.sign_chain_authority(observation)
         if record is not None:
+            amount = record["content"]["amount"]
+            amount_os = amount if isinstance(amount, str) else str(int(amount))
             observation["executionResult"] = {
                 "kind": "fixture-independent-results-v1",
                 "networkId": profile["networkId"], "genesisHash": profile["genesisHash"],
@@ -354,8 +356,8 @@ class FixtureFactory:
                     "txHash": record["hash"], "blockNumber": record["blockNumber"],
                     "sender": record["content"]["from"].removeprefix("0x").lower(),
                     "recipient": record["content"]["to"].removeprefix("0x").lower(),
-                    "payerDebitOs": str(int(record["content"]["amount"])),
-                    "payeeCreditOs": str(int(record["content"]["amount"])),
+                    "payerDebitOs": amount_os,
+                    "payeeCreditOs": amount_os,
                 },
             }
             self.sign_execution_result(observation)
@@ -1612,6 +1614,18 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         vectors.append(case("fv-bft-final-" + name, "fail", "deterministic result contradiction precedes withheld finality", value))
     vectors.append(case("fv-bft-final-record-ed25519-address-mismatch", "indeterminate", "the debited key must be the sender",
                         demos_record(from_ed25519_address="0x" + other_key)))
+    # Canonical decimals longer than Python's int() digit limit (4300) are
+    # compared by spelling, so each returns its decision instead of raising.
+    oversized = "9" * 4301
+    vectors.append(case("fv-bft-final-record-oversized-amount", "fail", "an authentic native send of an oversized OS amount contradicts the phase amount",
+                        demos_record(amount=oversized, data=send(payee_key, oversized))))
+    vectors.append(case("fv-bft-final-record-oversized-send-argument", "indeterminate", "an oversized send argument differs from content.amount, so the record does not decode",
+                        demos_record(data=send(payee_key, oversized))))
+    oversized_debit = demos_record(gcr_edits=[])
+    oversized_debit["context"]["observation"]["executionResult"]["appliedTransfer"]["payerDebitOs"] = oversized
+    factory.sign_execution_result(oversized_debit["context"]["observation"])
+    vectors.append(case("fv-bft-final-applied-transfer-oversized-debit", "fail", "an authenticated oversized applied debit contradicts the phase amount",
+                        oversized_debit))
     for name, mutate, expected in (
         ("record-not-object", lambda o: o["executionResult"].__setitem__("record", []), "indeterminate"),
         ("record-content-not-object", lambda o: o["executionResult"]["record"].__setitem__("content", []), "indeterminate"),

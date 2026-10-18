@@ -39,7 +39,6 @@ PROVIDER_ATTESTATION_DOMAIN = "dacs-finality-fixture-provider-response:v1:"
 # DEMOS-MAPPING §A.2: the node source whose execution-record semantics the
 # verifier pins for a `pay-dem` record.
 DEMOS_RECORD_PROFILE = "kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f45578"
-DEMOS_OS_PER_DEM = 10**9
 
 POSITION_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
@@ -925,14 +924,22 @@ def _demos_key(value: Any) -> str | None:
     return match.group(1) if match else None
 
 
-def _demos_integer(value: Any) -> int | None:
-    """A safe JSON integer or a canonical decimal string (DEMOS-MAPPING §A.2)."""
+def _demos_decimal(value: Any) -> str | None:
+    """A safe JSON integer or a canonical decimal string (DEMOS-MAPPING §A.2),
+    as its canonical decimal spelling. A canonical spelling is unique, so
+    values compare as spellings; an untrusted string is never passed to
+    int(), which raises above Python's integer-string digit limit."""
     if (isinstance(value, (int, float)) and not isinstance(value, bool)
             and 0 <= value <= 2**53 - 1 and value == int(value)):
-        return int(value)
+        return str(int(value))
     if isinstance(value, str) and POSITION_RE.match(value):
-        return int(value)
+        return value
     return None
+
+
+def _demos_os_spelling(amount: re.Match) -> str:
+    """The canonical OS decimal of a DEM_AMOUNT_RE match (10^9 OS per DEM)."""
+    return (amount.group(1) + (amount.group(2) or "").ljust(9, "0")).lstrip("0") or "0"
 
 
 def _demos_native_send(record: Any) -> dict | None:
@@ -941,15 +948,15 @@ def _demos_native_send(record: Any) -> dict | None:
         return None
     content = record["content"]
     tx_hash = record.get("hash")
-    nonce = _demos_integer(content.get("nonce"))
-    amount = _demos_integer(content.get("amount"))
+    nonce = _demos_decimal(content.get("nonce"))
+    amount = _demos_decimal(content.get("amount"))
     sender = _demos_key(content.get("from"))
     recipient = _demos_key(content.get("to"))
     data = content.get("data")
     if not (
         isinstance(tx_hash, str) and SHA256_RE.match(tx_hash)
         and not isinstance(record.get("blockNumber"), (str, bool))
-        and _demos_integer(record.get("blockNumber")) is not None
+        and _demos_decimal(record.get("blockNumber")) is not None
         and isinstance(record.get("status"), str)
         and content.get("type") == "native"
         and None not in (nonce, amount, sender, recipient)
@@ -959,8 +966,7 @@ def _demos_native_send(record: Any) -> dict | None:
         and data[1]["nativeOperation"] == "send"
         and isinstance(data[1]["args"], list) and len(data[1]["args"]) == 2
         and _demos_key(data[1]["args"][0]) == recipient
-        and isinstance(data[1]["args"][1], str) and POSITION_RE.match(data[1]["args"][1])
-        and int(data[1]["args"][1]) == amount
+        and isinstance(data[1]["args"][1], str) and data[1]["args"][1] == amount
     ):
         return None
     return {
@@ -1042,7 +1048,7 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
     payee = _party_demos_key(trusted, expected.get("payee"))
     if amount is None or payer is None or payee is None:
         return "error", "phase lacks a DEM amount or Demos party keys"
-    amount_os = int(amount.group(1)) * DEMOS_OS_PER_DEM + int((amount.group(2) or "").ljust(9, "0"))
+    amount_os = _demos_os_spelling(amount)
     if (
         projection["txHash"] != reference.get("txHash")
         or projection["blockNumber"] != reference.get("blockNumber")
@@ -1063,8 +1069,8 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
         return "indeterminate", "Demos applied transfer does not decode (DEM-7)"
     if (any(applied_transfer[k] != projection[k] for k in ("txHash", "blockNumber", "sender", "recipient"))
             or not _safe_integer(applied_transfer["blockNumber"])
-            or int(applied_transfer["payerDebitOs"]) != amount_os
-            or int(applied_transfer["payeeCreditOs"]) != amount_os):
+            or applied_transfer["payerDebitOs"] != amount_os
+            or applied_transfer["payeeCreditOs"] != amount_os):
         return "fail", "authenticated Demos applied transfer contradicts the native send (DEM-7)"
     return "pass", "authenticated Demos record binds a confirmed native send"
 

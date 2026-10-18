@@ -46,9 +46,11 @@ GUARDS = frozenset({
     "retained-amount-is-phase-amount",
     "signed-transfer-matches-retention",
     "signed-transaction-authentic",
+    "signed-signature-form",
     "signed-os-strings",
     "signed-fee-members",
     "signed-timestamp",
+    "signed-ed25519-address",
     "signed-native-edits",
     "no-cross-phase-reuse",
     # DEM-2 and the DEMOS-MAPPING §A.2 native-send record profile
@@ -149,11 +151,14 @@ FEE_MEMBERS = [*FEE_AMOUNTS, "rpc_address"]
 GAS_OS = "1000000000"  # demosdk 4.0.16 gas edit: 1 DEM, serialized in OS
 
 
-def regenerated_edits(content):
+def regenerated_edits(content, off=frozenset()):
     """The native-send `gcr_edits` the pinned node regenerates at admission
     (demosdk 4.0.16 GCRGeneration, serialized post-fork), or None."""
     data = content.get("data")
     sender = content.get("from_ed25519_address")
+    if sender is None and "signed-ed25519-address" in off:
+        # The wrong implementation defaults the debited account to the sender.
+        sender = content.get("from")
     if not (isinstance(data, list) and len(data) == 2 and isinstance(data[1], dict)
             and isinstance(data[1].get("args"), list) and len(data[1]["args"]) == 2
             and isinstance(data[1]["args"][0], str) and isinstance(sender, str)):
@@ -169,9 +174,9 @@ def regenerated_edits(content):
     ]
 
 
-def edits_match(content) -> bool:
+def edits_match(content, off=frozenset()) -> bool:
     """The node blanks each `txhash` and compares the serialized lists."""
-    edits, expected = content.get("gcr_edits"), regenerated_edits(content)
+    edits, expected = content.get("gcr_edits"), regenerated_edits(content, off)
     if expected is None or not (isinstance(edits, list) and all(isinstance(e, dict) for e in edits)):
         return False
     try:
@@ -265,7 +270,9 @@ def decode(transaction, off, *, executed: bool = True):
         timestamp = content.get("timestamp")
         if not (_safe_integer(timestamp) and timestamp > 0):
             return None
-    if not executed and "signed-native-edits" not in off and not edits_match(content):
+    if not executed and "signed-ed25519-address" not in off and "from_ed25519_address" not in content:
+        return None
+    if not executed and "signed-native-edits" not in off and not edits_match(content, off):
         return None
     if "from_ed25519_address" in content and "decode-address" not in off:
         if _address(content["from_ed25519_address"], off) != sender:
@@ -293,7 +300,7 @@ def decode(transaction, off, *, executed: bool = True):
     return projection
 
 
-def authentic(transaction) -> bool:
+def authentic(transaction, off=frozenset()) -> bool:
     """DEMOS-MAPPING §A.2 signed transaction: the demosdk 4.0.16 `hash` is the
     SHA-256 of `JSON.stringify(content)` and the ed25519 signature by
     `content.from` covers the UTF-8 hash."""
@@ -307,6 +314,9 @@ def authentic(transaction) -> bool:
     if tx_hash != hashlib.sha256(serialized.encode("utf-8")).hexdigest():
         return False
     signature = transaction.get("signature")
+    if "signed-signature-form" in off and isinstance(signature, dict) and isinstance(signature.get("data"), str):
+        # A lenient implementation: any hex case, optional 0x, other members ignored.
+        signature = {"type": signature.get("type"), "data": "0x" + signature["data"].removeprefix("0x").lower()}
     sender = _address(transaction["content"].get("from"), frozenset())
     if not (
         isinstance(signature, dict)
@@ -496,7 +506,7 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
         if guard not in off and transfer.get(field) != (phase_os if field == "amountOs" else phase[authority]):
             return refused
     if "signed-transaction-authentic" not in off and not authentic(
-        protocol_input["signedTransaction"]
+        protocol_input["signedTransaction"], off
     ):
         return refused
     if "signed-transfer-matches-retention" not in off:
@@ -838,15 +848,25 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             "broadcast-signed-by-another-key",
             "broadcast-signature-type-not-ed25519",
         }
+        # Valid signatures in another spelling: only the exact form refuses them.
+        respelled = {
+            "broadcast-signature-uppercase-hex",
+            "broadcast-signature-unprefixed-hex",
+            "broadcast-signature-extra-member",
+        }
         for vector in self.data["vectors"]:
             if vector["operation"] != "broadcast-gate":
                 continue
             with self.subTest(name=vector["name"]):
                 signed_tx = vector["protocolInput"]["signedTransaction"]
-                self.assertEqual(vector["name"] not in forged, authentic(signed_tx))
+                self.assertEqual(vector["name"] not in forged | respelled, authentic(signed_tx))
                 if vector["name"] in forged:
                     # Every other DEM-1 value agrees, so only authentication refuses it.
                     self.assertEqual(["signed-transaction-authentic"], vector["guards"])
+                    self.assertEqual("fail", vector["expected"])
+                if vector["name"] in respelled:
+                    self.assertTrue(authentic(signed_tx, {"signed-signature-form"}))
+                    self.assertEqual(["signed-signature-form", "signed-transaction-authentic"], vector["guards"])
                     self.assertEqual("fail", vector["expected"])
         # The live node2 records carry demosdk signatures in the same scheme.
         for name in ("node2-confirmed-record", "node2-included-failed-record"):
@@ -889,8 +909,14 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             ("fee-members-reordered", "signed-fee-members"),
             ("rpc-address-omitted", "signed-fee-members"),
             ("extra-fee-member", "signed-fee-members"),
+            ("numeric-rpc-address", "signed-fee-members"),
             ("timestamp-missing", "signed-timestamp"),
             ("fractional-timestamp", "signed-timestamp"),
+            ("timestamp-zero", "signed-timestamp"),
+            ("negative-timestamp", "signed-timestamp"),
+            ("string-timestamp", "signed-timestamp"),
+            ("ed25519-address-missing", "signed-ed25519-address"),
+            ("ed25519-address-mismatch", "decode-address"),
             ("edits-missing", "signed-native-edits"),
             ("edits-credit-differs", "signed-native-edits"),
             ("edits-extra-credit", "signed-native-edits"),
@@ -901,6 +927,69 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(case))
                 self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(case, {guard}))
                 self.assertEqual(evaluate(control), evaluate(control, {guard}))
+
+    def test_every_signed_transaction_must_has_a_rejecting_vector(self):
+        # Each MUST of DEMOS-MAPPING §A.2 *Signed transaction* names vectors
+        # that are refused and pass once the named guard alone is removed. A
+        # new MUST there without a witness fails the count.
+        demos = DEMOS.read_text(encoding="utf-8")
+        start = demos.index("*Signed transaction.*")
+        section = demos[start:demos.index("*Applied payment authority.*", start)]
+        os_strings = [("broadcast-signed-" + name, "signed-os-strings") for name in (
+            "numeric-os-amount", "numeric-os-fee", "numeric-rpc-fee", "numeric-additional-fee", "noncanonical-fee-string")]
+        timestamp = [("broadcast-signed-" + name, "signed-timestamp") for name in (
+            "timestamp-missing", "fractional-timestamp", "timestamp-zero", "negative-timestamp", "string-timestamp")]
+        address = [("broadcast-signed-ed25519-address-missing", "signed-ed25519-address")]
+        edits = [("broadcast-signed-" + name, "signed-native-edits") for name in (
+            "edits-missing", "edits-credit-differs", "edits-extra-credit")]
+        witnesses = {
+            "MUST be canonical OS decimal strings": os_strings,
+            "The fee object and those three members MUST be present": [
+                ("broadcast-signed-fee-object-missing", "signed-os-strings"),
+                ("broadcast-signed-fee-member-missing", "signed-os-strings"),
+            ],
+            "The fee object MUST have exactly the members": [("broadcast-signed-" + name, "signed-fee-members") for name in (
+                "fee-members-reordered", "rpc-address-omitted", "extra-fee-member", "numeric-rpc-address")],
+            "The content MUST also carry the members": [timestamp[0], *address, edits[0]],
+            "`timestamp` MUST be a positive JSON integer": timestamp,
+            "`content.from_ed25519_address` MUST be present": address,
+            "`gcr_edits` MUST equal the four edits": edits,
+            "`hash` MUST be the lower-case hexadecimal SHA-256": [
+                ("broadcast-hash-not-over-content", "signed-transaction-authentic")],
+            "`signature` MUST be `{\"type\": \"ed25519\"": [
+                ("broadcast-unsigned-transaction", "signed-transaction-authentic"),
+                ("broadcast-signature-type-not-ed25519", "signed-transaction-authentic"),
+                ("broadcast-signed-by-another-key", "signed-transaction-authentic"),
+                ("broadcast-signature-uppercase-hex", "signed-signature-form"),
+                ("broadcast-signature-unprefixed-hex", "signed-signature-form"),
+                ("broadcast-signature-extra-member", "signed-signature-form"),
+            ],
+        }
+        self.assertEqual(section.count("MUST"), len(witnesses))
+        control = self.cases["first-broadcast-after-durable-retention"]
+        for phrase, cases in witnesses.items():
+            self.assertIn(phrase, section)
+            for name, guard in cases:
+                with self.subTest(name=name):
+                    vector = self.cases[name]
+                    self.assertEqual(("broadcast-gate", "fail"), (vector["operation"], vector["expected"]))
+                    self.assertIn(guard, vector["guards"])
+                    self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(vector, {guard}))
+                    self.assertEqual(evaluate(control), evaluate(control, {guard}))
+
+    def test_phase_os_amount_is_the_conversion_of_its_dem_amount(self):
+        # DEM-1 converts phase.amount and DEM-7 reads phase.amountOs; both
+        # describe one authenticated phase, so they must agree in every vector.
+        for vector in self.data["vectors"]:
+            phase = vector["protocolInput"].get("phase")
+            if phase is None:
+                continue
+            with self.subTest(name=vector["name"]):
+                self.assertEqual("DEM", phase["amount"]["currency"])
+                whole, _, fraction = phase["amount"]["amount"].partition(".")
+                self.assertEqual(phase["amountOs"], str(int(whole) * 10**9 + int(fraction.ljust(9, "0"))))
+        live = self.cases["consumer-node2-confirmed-refused"]["protocolInput"]["phase"]
+        self.assertEqual({"amount": "9.5", "currency": "DEM"}, live["amount"])
 
     def test_admitted_legacy_spellings_collapse_before_sb2(self):
         base = self.cases["delivery-hash-admitted-for-another-job"]
@@ -1034,6 +1123,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("requires a revision of this profile", demos)
         self.assertIn("DEM-2 and DEM-3", demos)
         self.assertIn("61b8e75aa8db5e408c49e1c3a89db4d673f45578", demos)
+        # The node pin names one commit; a later release needs a profile revision.
+        self.assertIn("a build of exactly that commit from an unmodified tree", demos)
+        self.assertNotIn("declares the same semantics", demos)
         self.assertIn("**Native-send record profile (normative).**", demos)
         self.assertIn("generate_pay_dem_execution_vectors.py --check", workflow)
         profile = self.data["demosProfile"]

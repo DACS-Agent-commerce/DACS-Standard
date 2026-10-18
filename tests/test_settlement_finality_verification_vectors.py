@@ -32,7 +32,9 @@ from frozen_dacs5_v05_reader import (  # noqa: E402
     pointer_type as frozen_pointer_type,
 )
 from scripts.jcs import canonicalize  # noqa: E402
-from scripts.settlement_finality_reference import verify_finality, _demos_native_send  # noqa: E402
+from scripts.settlement_finality_reference import (  # noqa: E402
+    DEM_AMOUNT_RE, verify_finality, _demos_native_send, _demos_os_spelling,
+)
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 import dacs5_reference as D5  # noqa: E402
 import scripts.generate_settlement_finality_verification_vectors as finality_fixtures  # noqa: E402
@@ -167,7 +169,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(170, self.data["count"])
+        self.assertEqual(173, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -367,6 +369,27 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             with self.subTest(value=value):
                 record["content"]["nonce"] = value
                 self.assertIsNone(_demos_native_send(record))
+
+    def test_oversized_demos_decimals_return_a_decision(self):
+        # Canonical decimals longer than Python's int() digit limit (4300)
+        # compare by spelling: each read path decides and none raises.
+        oversized = "9" * 4301
+        for name, expected, reason in (
+            ("fv-bft-final-record-oversized-amount", "fail", "contradicts the signed reference or phase"),
+            ("fv-bft-final-record-oversized-send-argument", "indeterminate", "does not decode as a native send"),
+            ("fv-bft-final-applied-transfer-oversized-debit", "fail", "applied transfer contradicts the native send"),
+        ):
+            with self.subTest(name=name):
+                result = self.evaluate_case(self.cases[name])
+                self.assertEqual(expected, result["decision"])
+                self.assertIn(reason, result["reason"])
+        record = copy.deepcopy(self.cases["fv-bft-final-canonical-success"]["input"]["context"]["observation"]["executionResult"]["record"])
+        record["content"]["nonce"] = oversized
+        self.assertEqual(oversized, _demos_native_send(record)["nonce"])
+        for spelling, amount_os in (("9" * 4301 + ".5", "9" * 4301 + "500000000"), ("1.5", "1500000000"),
+                                    ("0.000000001", "1"), ("5", "5000000000"), ("0", "0")):
+            with self.subTest(amount=spelling[:12]):
+                self.assertEqual(amount_os, _demos_os_spelling(DEM_AMOUNT_RE.match(spelling)))
 
     def test_execution_result_policy_counts_distinct_keys(self):
         # A malformed trusted policy is rejected before any result is read.

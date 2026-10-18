@@ -69,7 +69,10 @@ NEGATIVE_KINDS = {"R", "I"}
 PROCESS_RULES = {"DRG-2", "DRC-10", "DRC-11"}
 CANDIDATE_REF_RE = re.compile(r"\bDR[A-Z]*-\d+\b")
 INLINE_CODE_RE = re.compile(r"`[^`]*`")
-KEYWORD_RE = re.compile(r"\b(MUST NOT|MUST|SHALL NOT|SHALL|SHOULD NOT|SHOULD|REQUIRED|MAY)\b")
+# The RFC 2119 keywords plus RFC 8174's NOT RECOMMENDED.
+KEYWORD_RE = re.compile(
+    r"\b(MUST NOT|MUST|SHALL NOT|SHALL|SHOULD NOT|SHOULD|NOT RECOMMENDED|RECOMMENDED|REQUIRED|MAY|OPTIONAL)\b"
+)
 NO_MAY_RE = re.compile(r"\bNo\b[^.;]*\bMAY\b")
 MAY_ONLY_RE = re.compile(r"\bMAY\b[^.;]*\bonly\b")
 # Any code line that looks like a signing payload; it must then match SIGNING_DOMAIN_RE.

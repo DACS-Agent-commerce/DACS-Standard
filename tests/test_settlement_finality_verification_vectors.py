@@ -32,7 +32,7 @@ from frozen_dacs5_v05_reader import (  # noqa: E402
     pointer_type as frozen_pointer_type,
 )
 from scripts.jcs import canonicalize  # noqa: E402
-from scripts.settlement_finality_reference import verify_finality  # noqa: E402
+from scripts.settlement_finality_reference import verify_finality, _demos_native_send  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 import dacs5_reference as D5  # noqa: E402
 import scripts.generate_settlement_finality_verification_vectors as finality_fixtures  # noqa: E402
@@ -167,7 +167,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(160, self.data["count"])
+        self.assertEqual(170, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -235,6 +235,9 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             "fv-bft-final-record-send-recipient-mismatch": undecodable,
             "fv-bft-final-record-send-amount-mismatch": undecodable,
             "fv-bft-final-record-not-native-send": undecodable,
+            "fv-bft-final-record-non-native-type": undecodable,
+            "fv-bft-final-record-uppercase-recipient": undecodable,
+            "fv-bft-final-record-uppercase-send-argument": undecodable,
             "fv-bft-final-record-unpinned-node": ("indeterminate", "semantics are not pinned (DEM-7)"),
         }
         demos_cases = {
@@ -336,6 +339,34 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 result = self.evaluate_case(self.cases["fv-bft-final-" + suffix])
                 self.assertEqual("error", result["decision"])
                 self.assertIn(reason, result["reason"])
+
+    def test_confirmed_record_requires_authenticated_committed_payment(self):
+        for suffix, expected in (("missing", "indeterminate"), ("zero-credit", "fail"),
+                                 ("zero-debit", "fail"), ("wrong-hash", "fail"), ("wrong-block", "fail"),
+                                 ("wrong-sender", "fail"), ("wrong-recipient", "fail")):
+            with self.subTest(suffix=suffix):
+                case = self.cases["fv-bft-final-applied-transfer-" + suffix]
+                record = case["input"]["context"]["observation"]["executionResult"]["record"]
+                self.assertEqual("confirmed", record["status"])
+                self.assertEqual([], record["content"]["gcr_edits"])
+                self.assertEqual(expected, self.evaluate_case(case)["decision"])
+        control = copy.deepcopy(self.cases["fv-bft-final-canonical-success"])
+        control["input"]["context"]["observation"]["executionResult"]["appliedTransfer"]["payeeCreditOs"] = "0"
+        result = self.evaluate_case(control)
+        self.assertEqual("fail", result["decision"])
+        self.assertIn("signature does not verify", result["reason"])
+
+    def test_native_record_json_numbers_are_compared_by_integral_value(self):
+        record = copy.deepcopy(self.cases["fv-bft-final-canonical-success"]["input"]["context"]["observation"]["executionResult"]["record"])
+        projection = _demos_native_send(record)
+        record["content"]["nonce"] = 7.0
+        record["content"]["amount"] = float(record["content"]["amount"])
+        record["blockNumber"] = float(record["blockNumber"])
+        self.assertEqual(projection, _demos_native_send(record))
+        for value in (True, 7.5, -1, float("inf"), float("nan"), 2**53):
+            with self.subTest(value=value):
+                record["content"]["nonce"] = value
+                self.assertIsNone(_demos_native_send(record))
 
     def test_execution_result_policy_counts_distinct_keys(self):
         # A malformed trusted policy is rejected before any result is read.

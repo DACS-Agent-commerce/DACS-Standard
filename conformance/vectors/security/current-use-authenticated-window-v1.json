@@ -4,7 +4,7 @@
   "status": "candidate-unallocated-stage-minor",
   "fixturePolicy": "Synthetic signed native outcome observations are fixture-only; no production Demos outcome event, proof codec, or completeness oracle is claimed.",
   "count": 15,
-  "hash": "f827132258a751b2160533d1b3ba4aad0839a5752730bdc92fdcd2f32beebe1a",
+  "hash": "f486da4eda2bf58b010d94de18a07bda129ac3205a5cb0c38d5987b523028952",
   "vectors": [
     {
       "name": "combined-block-depth",
@@ -3224,16 +3224,24 @@
                             ]
                           }
                         },
+                        "appliedTransfer": {
+                          "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                          "blockNumber": 100,
+                          "sender": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                          "recipient": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                          "payerDebitOs": "5000000000",
+                          "payeeCreditOs": "5000000000"
+                        },
                         "attestations": [
                           {
                             "authorityRef": "execution-a",
                             "algorithm": "ed25519",
-                            "value": "qNavU5jTX_8d4ONvFIivlBN7fOo7iBTXv-7B-LlV22O3YIaM8KEaxDG6pZza6xRECzqHf2zej4bV86VroGsOCw"
+                            "value": "9X3UBvV_YxM-Ae6NT77tK8sCrVLWTCk3VOdfetE4ZwZf211Nb1UGQ07orNRC3ENkHHwrDD_LcR8x-tx7sjjzDA"
                           },
                           {
                             "authorityRef": "execution-b",
                             "algorithm": "ed25519",
-                            "value": "CVKyqh4KYo6mZYhhyGgVQ9YSlf0z2OpqG-iUgAW1s-ylwPGpiuS213CbKXYZJJXdbS65NYMwmUwPgibRSyr9BQ"
+                            "value": "k_VYJ0oI3pvFEV6YV02r5Gdy40pVGgr9wCfNJBBHKppc274NJCEzzBBA6cCMt-3TicMPkoGbN8ks_QYDvReYBg"
                           }
                         ]
                       },
@@ -15802,16 +15810,24 @@
                             ]
                           }
                         },
+                        "appliedTransfer": {
+                          "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                          "blockNumber": 100,
+                          "sender": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                          "recipient": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                          "payerDebitOs": "5000000000",
+                          "payeeCreditOs": "5000000000"
+                        },
                         "attestations": [
                           {
                             "authorityRef": "execution-a",
                             "algorithm": "ed25519",
-                            "value": "qNavU5jTX_8d4ONvFIivlBN7fOo7iBTXv-7B-LlV22O3YIaM8KEaxDG6pZza6xRECzqHf2zej4bV86VroGsOCw"
+                            "value": "9X3UBvV_YxM-Ae6NT77tK8sCrVLWTCk3VOdfetE4ZwZf211Nb1UGQ07orNRC3ENkHHwrDD_LcR8x-tx7sjjzDA"
                           },
                           {
                             "authorityRef": "execution-b",
                             "algorithm": "ed25519",
-                            "value": "CVKyqh4KYo6mZYhhyGgVQ9YSlf0z2OpqG-iUgAW1s-ylwPGpiuS213CbKXYZJJXdbS65NYMwmUwPgibRSyr9BQ"
+                            "value": "k_VYJ0oI3pvFEV6YV02r5Gdy40pVGgr9wCfNJBBHKppc274NJCEzzBBA6cCMt-3TicMPkoGbN8ks_QYDvReYBg"
                           }
                         ]
                       },
@@ -23398,16 +23414,24 @@
                             ]
                           }
                         },
+                        "appliedTransfer": {
+                          "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                          "blockNumber": 100,
+                          "sender": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                          "recipient": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                          "payerDebitOs": "5000000000",
+                          "payeeCreditOs": "5000000000"
+                        },
                         "attestations": [
                           {
                             "authorityRef": "execution-a",
                             "algorithm": "ed25519",
-                            "value": "qNavU5jTX_8d4ONvFIivlBN7fOo7iBTXv-7B-LlV22O3YIaM8KEaxDG6pZza6xRECzqHf2zej4bV86VroGsOCw"
+                            "value": "9X3UBvV_YxM-Ae6NT77tK8sCrVLWTCk3VOdfetE4ZwZf211Nb1UGQ07orNRC3ENkHHwrDD_LcR8x-tx7sjjzDA"
                           },
                           {
                             "authorityRef": "execution-b",
                             "algorithm": "ed25519",
-                            "value": "CVKyqh4KYo6mZYhhyGgVQ9YSlf0z2OpqG-iUgAW1s-ylwPGpiuS213CbKXYZJJXdbS65NYMwmUwPgibRSyr9BQ"
+                            "value": "k_VYJ0oI3pvFEV6YV02r5Gdy40pVGgr9wCfNJBBHKppc274NJCEzzBBA6cCMt-3TicMPkoGbN8ks_QYDvReYBg"
                           }
                         ]
                       },

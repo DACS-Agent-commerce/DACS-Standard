@@ -927,7 +927,8 @@ def _demos_key(value: Any) -> str | None:
 
 def _demos_integer(value: Any) -> int | None:
     """A safe JSON integer or a canonical decimal string (DEMOS-MAPPING §A.2)."""
-    if _safe_integer(value):
+    if (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and 0 <= value <= 2**53 - 1 and value == int(value)):
         return int(value)
     if isinstance(value, str) and POSITION_RE.match(value):
         return int(value)
@@ -947,7 +948,8 @@ def _demos_native_send(record: Any) -> dict | None:
     data = content.get("data")
     if not (
         isinstance(tx_hash, str) and SHA256_RE.match(tx_hash)
-        and _safe_integer(record.get("blockNumber"))
+        and not isinstance(record.get("blockNumber"), (str, bool))
+        and _demos_integer(record.get("blockNumber")) is not None
         and isinstance(record.get("status"), str)
         and content.get("type") == "native"
         and None not in (nonce, amount, sender, recipient)
@@ -991,7 +993,7 @@ def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -
     proof = observation.get("executionResult")
     if proof is None:
         return "indeterminate", "independent Demos execution result unavailable", None
-    if not _exact_object(proof, {"kind", "networkId", "genesisHash", "blockId", "transactionRef", "record", "attestations"}):
+    if not _exact_object(proof, {"kind", "networkId", "genesisHash", "blockId", "transactionRef", "record", "attestations"}, {"appliedTransfer"}):
         return "error", "malformed Demos execution result", None
     if proof["kind"] != policy["kind"] or not isinstance(proof["attestations"], list):
         return "error", "malformed Demos execution result attestations", None
@@ -1016,10 +1018,11 @@ def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -
             or proof["blockId"] != inclusion.get("id")
             or canonical_bytes(proof["transactionRef"]) != canonical_bytes(reference)):
         return "fail", "authenticated Demos execution result binds another block, network or transaction", None
-    return "pass", "independent execution result authenticated", proof["record"]
+    return "pass", "independent execution result authenticated", proof
 
 
-def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: dict) -> tuple[str, str]:
+def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: dict,
+                         applied_transfer: Any = None) -> tuple[str, str]:
     """DACS-4 §9.5.9 DEM-7 under FV-5 for an authenticated `pay-dem` record."""
     if trusted.get("demosRecordProfile") != DEMOS_RECORD_PROFILE:
         return "indeterminate", "Demos execution-record semantics are not pinned (DEM-7)"
@@ -1052,6 +1055,17 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
         return "fail", "authenticated Demos transaction record failed execution (DEM-7)"
     if projection["status"] != "confirmed":
         return "indeterminate", "authenticated Demos record status is not an execution result (DEM-7)"
+    if applied_transfer is None:
+        return "indeterminate", "independently authenticated Demos applied transfer unavailable (DEM-7)"
+    if not (_exact_object(applied_transfer, {"txHash", "blockNumber", "sender", "recipient", "payerDebitOs", "payeeCreditOs"})
+            and all(isinstance(applied_transfer[k], str) and POSITION_RE.fullmatch(applied_transfer[k])
+                    for k in ("payerDebitOs", "payeeCreditOs"))):
+        return "indeterminate", "Demos applied transfer does not decode (DEM-7)"
+    if (any(applied_transfer[k] != projection[k] for k in ("txHash", "blockNumber", "sender", "recipient"))
+            or not _safe_integer(applied_transfer["blockNumber"])
+            or int(applied_transfer["payerDebitOs"]) != amount_os
+            or int(applied_transfer["payeeCreditOs"]) != amount_os):
+        return "fail", "authenticated Demos applied transfer contradicts the native send (DEM-7)"
     return "pass", "authenticated Demos record binds a confirmed native send"
 
 
@@ -1112,9 +1126,10 @@ def _verify_chain_observation(
         return _result(economics_decision, economics_reason), None
     record_decision, record_reason = "pass", ""
     if native_send:
-        record_decision, record_reason, record = _verify_demos_execution(observation, reference, trusted)
+        record_decision, record_reason, execution = _verify_demos_execution(observation, reference, trusted)
         if record_decision == "pass":
-            record_decision, record_reason = _verify_demos_record(record, reference, expected, trusted)
+            record_decision, record_reason = _verify_demos_record(
+                execution["record"], reference, expected, trusted, execution.get("appliedTransfer"))
         if record_decision in {"error", "fail"}:
             return _result(record_decision, record_reason), None
 

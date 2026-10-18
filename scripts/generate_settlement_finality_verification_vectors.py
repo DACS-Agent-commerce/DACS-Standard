@@ -348,6 +348,15 @@ class FixtureFactory:
                 "networkId": profile["networkId"], "genesisHash": profile["genesisHash"],
                 "blockId": inclusion_id, "transactionRef": copy.deepcopy(reference),
                 "record": copy.deepcopy(record),
+                # Synthetic, independently observed committed state transition;
+                # production authorities must verify it, never infer it from status.
+                "appliedTransfer": {
+                    "txHash": record["hash"], "blockNumber": record["blockNumber"],
+                    "sender": record["content"]["from"].removeprefix("0x").lower(),
+                    "recipient": record["content"]["to"].removeprefix("0x").lower(),
+                    "payerDebitOs": str(int(record["content"]["amount"])),
+                    "payeeCreditOs": str(int(record["content"]["amount"])),
+                },
             }
             self.sign_execution_result(observation)
         if profile["kind"] == "bft-final":
@@ -1535,8 +1544,31 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-bft-final-record-send-recipient-mismatch", "indeterminate", "the native send argument must credit the same key as content.to", demos_record(data=send(other_key, "5000000000"))),
         case("fv-bft-final-record-send-amount-mismatch", "indeterminate", "the native send argument must carry the same OS amount as content.amount", demos_record(data=send(payee_key, "6000000000"))),
         case("fv-bft-final-record-not-native-send", "indeterminate", "only a native send moves the payment", demos_record(data=["native", {"nativeOperation": "burn", "args": [payee_key, "5000000000"]}])),
+        case("fv-bft-final-record-non-native-type", "indeterminate", "send-shaped data in another transaction type is not payment", demos_record(type="escrow")),
+        case("fv-bft-final-record-uppercase-recipient", "indeterminate", "recipient keys are exact lower-case account identifiers", demos_record(to="0x" + payee_key.upper())),
+        case("fv-bft-final-record-uppercase-send-argument", "indeterminate", "the send argument must use the exact lower-case payee account", demos_record(data=send(payee_key.upper(), "5000000000"))),
         case("fv-bft-final-record-unpinned-node", "indeterminate", "a verifier that does not pin the profile's execution-record semantics cannot rely on confirmed", factory.model_input("bft-final"), trusted_overrides={"demosRecordProfile": "kynesyslabs/node@ac8f45f02fc9c25082ce9b83595c2e3916b49c5a"}),
     ])
+
+    for suffix, replacement, expected in (
+        ("missing", None, "indeterminate"),
+        ("zero-credit", {"payeeCreditOs": "0"}, "fail"),
+        ("zero-debit", {"payerDebitOs": "0"}, "fail"),
+        ("wrong-hash", {"txHash": "ee" * 32}, "fail"),
+        ("wrong-block", {"blockNumber": 101}, "fail"),
+        ("wrong-sender", {"sender": other_key}, "fail"),
+        ("wrong-recipient", {"recipient": other_key}, "fail"),
+    ):
+        value = demos_record(gcr_edits=[])
+        observation = value["context"]["observation"]
+        proof = observation["executionResult"]
+        if replacement is None:
+            proof.pop("appliedTransfer")
+        else:
+            proof["appliedTransfer"].update(replacement)
+        factory.sign_execution_result(observation)
+        vectors.append(case("fv-bft-final-applied-transfer-" + suffix, expected,
+                            "confirmed and empty edits cannot substitute for an authenticated applied debit and payee credit", value))
 
     # Raw body binding: each contradiction is inside a freshly authenticated block.
     class BodyVariant(FixtureFactory):

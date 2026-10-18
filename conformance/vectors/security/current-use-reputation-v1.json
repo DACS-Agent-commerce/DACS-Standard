@@ -5,7 +5,7 @@
   "fixturePolicy": "Synthetic signed native proofs for offline conformance only; no production Demos native cryptographic codec is claimed. Trust roots are verifier configuration.",
   "replayPolicy": "Every vector embeds the complete executable replay input: the exact request, its full authenticated dependency closure, the verifier configuration with public keys, the trusted query context, and the expected outcome. The set hash is computed over these complete replay inputs; mutating any authority, receipt, finality, or historical-evidence member of the bound payload yields a non-pass.",
   "count": 13,
-  "hash": "d0119ccbe9206adb5d9242a7c18e3627438c40f2c9372f3b5c79be1b6baf8026",
+  "hash": "8f031716f97586849ce91114d6ffc77460d064e6e4e6fc300ce430a68a58bfda",
   "vectors": [
     {
       "name": "current-use-block-depth",
@@ -3051,16 +3051,24 @@
                             ]
                           }
                         },
+                        "appliedTransfer": {
+                          "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                          "blockNumber": 100,
+                          "sender": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                          "recipient": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                          "payerDebitOs": "5000000000",
+                          "payeeCreditOs": "5000000000"
+                        },
                         "attestations": [
                           {
                             "authorityRef": "execution-a",
                             "algorithm": "ed25519",
-                            "value": "qNavU5jTX_8d4ONvFIivlBN7fOo7iBTXv-7B-LlV22O3YIaM8KEaxDG6pZza6xRECzqHf2zej4bV86VroGsOCw"
+                            "value": "9X3UBvV_YxM-Ae6NT77tK8sCrVLWTCk3VOdfetE4ZwZf211Nb1UGQ07orNRC3ENkHHwrDD_LcR8x-tx7sjjzDA"
                           },
                           {
                             "authorityRef": "execution-b",
                             "algorithm": "ed25519",
-                            "value": "CVKyqh4KYo6mZYhhyGgVQ9YSlf0z2OpqG-iUgAW1s-ylwPGpiuS213CbKXYZJJXdbS65NYMwmUwPgibRSyr9BQ"
+                            "value": "k_VYJ0oI3pvFEV6YV02r5Gdy40pVGgr9wCfNJBBHKppc274NJCEzzBBA6cCMt-3TicMPkoGbN8ks_QYDvReYBg"
                           }
                         ]
                       },

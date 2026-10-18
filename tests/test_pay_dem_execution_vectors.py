@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import generate_pay_dem_execution_vectors as generator  # noqa: E402
 from jcs import canonicalize  # noqa: E402
 from demos_json import stringify  # noqa: E402
+from settlement_finality_reference import DEMOS_RECORD_PROFILE  # noqa: E402
 
 
 VECTORS = ROOT / "conformance/vectors/security/pay-dem-execution-v0.1.json"
@@ -45,13 +46,16 @@ GUARDS = frozenset({
     "retained-amount-is-phase-amount",
     "signed-transfer-matches-retention",
     "signed-transaction-authentic",
+    "signed-os-strings",
     "no-cross-phase-reuse",
     # DEM-2 and the DEMOS-MAPPING §A.2 native-send record profile
     "node-profile-pinned",
     "decode-hash",
+    "decode-block",
     "decode-nonce",
     "decode-amount",
     "decode-address",
+    "decode-type",
     "decode-native-send",
     "bind-hash",
     "bind-nonce",
@@ -65,6 +69,7 @@ GUARDS = frozenset({
     "success-authorizes-no-delivery",
     "success-requires-record",
     "success-requires-exact-confirmed",
+    "success-requires-applied-transfer",
     # DEM-4
     "failure-is-permanent",
     "failure-requires-binding",
@@ -90,6 +95,10 @@ GUARDS = frozenset({
     "delivery-requires-pb",
     "delivery-sb2-own-admissions",
     "sb2-same-tuple-idempotent",
+    "sb1-demos-id",
+    "sb1-demos-canonical",
+    "sb1-demos-shape",
+    "sb2-group-raw-references",
 })
 
 # The expected PC-4 result of each handler class, written out here rather
@@ -180,11 +189,14 @@ def decode(transaction, off, *, executed: bool = True):
         return None
     projection["txHash"] = tx_hash
     if executed:
-        if not _safe_integer(transaction.get("blockNumber")):
+        block = transaction.get("blockNumber")
+        if "decode-block" in off:
+            block = _lenient_integer(block)
+        if not _safe_integer(block):
             return None
         if not isinstance(transaction.get("status"), str):
             return None
-        projection["blockNumber"] = int(transaction["blockNumber"])
+        projection["blockNumber"] = int(block)
         projection["status"] = transaction["status"]
     if "nonce" in content or "decode-nonce" not in off:
         nonce = _integer(content.get("nonce"), "decode-nonce", off)
@@ -196,14 +208,22 @@ def decode(transaction, off, *, executed: bool = True):
     recipient = _address(content.get("to"), off)
     if amount is None or sender is None or recipient is None:
         return None
+    if not executed and "signed-os-strings" not in off:
+        fee = content.get("transaction_fee")
+        if not (isinstance(content.get("amount"), str) and DECIMAL.fullmatch(content["amount"])
+                and isinstance(fee, dict)
+                and all(isinstance(fee.get(k), str) and DECIMAL.fullmatch(fee[k])
+                        for k in ("network_fee", "rpc_fee", "additional_fee"))):
+            return None
     if "from_ed25519_address" in content and "decode-address" not in off:
         if _address(content["from_ed25519_address"], off) != sender:
             return None
+    if "decode-type" not in off and content.get("type") != "native":
+        return None
     if "decode-native-send" not in off:
         data = content.get("data")
         if not (
-            content.get("type") == "native"
-            and isinstance(data, list)
+            isinstance(data, list)
             and len(data) == 2
             and data[0] == "native"
             and isinstance(data[1], dict)
@@ -290,6 +310,25 @@ def is_confirmed(status, off) -> bool:
     return status == "confirmed"
 
 
+def applied(read, projection, off) -> str:
+    if "success-requires-applied-transfer" in off:
+        return "pass"
+    proof = read.get("appliedTransfer")
+    if not (
+        read.get("appliedTransferAuthenticated") is True
+        and isinstance(proof, dict)
+        and set(proof) == {"txHash", "blockNumber", "sender", "recipient", "payerDebitOs", "payeeCreditOs"}
+        and all(isinstance(proof[k], str) and DECIMAL.fullmatch(proof[k])
+                for k in ("payerDebitOs", "payeeCreditOs"))
+    ):
+        return "indeterminate"
+    if (not _safe_integer(proof["blockNumber"])
+            or any(proof[k] != projection[k] for k in ("txHash", "blockNumber", "sender", "recipient"))
+            or any(int(proof[k]) != projection["amountOs"] for k in ("payerDebitOs", "payeeCreditOs"))):
+        return "fail"
+    return "pass"
+
+
 def handler_result(expected: str, protocol_input: dict, off) -> tuple[str, dict]:
     want = dict(HANDLER_WANT[expected])
     if expected == "pass" and "success-authorizes-no-delivery" in off:
@@ -326,7 +365,7 @@ def classify(protocol_input: dict, off) -> tuple[str, dict]:
         protocol_input["inclusionObservation"],
         off,
     )
-    if is_bound and is_confirmed(status, off) and "success-branch" not in off:
+    if is_bound and is_confirmed(status, off) and applied(read, projection, off) == "pass" and "success-branch" not in off:
         return handler_result("pass", protocol_input, off)
     if status == "failed" and (is_bound or "failure-requires-binding" in off):
         if "failure-is-permanent" not in off:
@@ -391,19 +430,25 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
         transfer.get("jobId"), transfer.get("phaseIndex")
     ) != (phase["jobId"], phase["phaseIndex"]):
         return refused
+    amount = phase.get("amount", {})
+    spelling = amount.get("amount")
+    match = re.fullmatch(r"(0|[1-9][0-9]*)(?:\.([0-9]{1,9}))?", spelling) if isinstance(spelling, str) else None
+    if amount.get("currency") != "DEM" or match is None:
+        return "error", {"broadcastPermitted": False}
+    phase_os = str(int(match[1]) * 10**9 + int((match[2] or "").ljust(9, "0")))
     for guard, field, authority in (
         ("retained-sender-is-payer", "sender", "payerPayingKey"),
         ("retained-recipient-is-payee", "recipient", "payeeAddress"),
         ("retained-amount-is-phase-amount", "amountOs", "amountOs"),
     ):
-        if guard not in off and transfer.get(field) != phase[authority]:
+        if guard not in off and transfer.get(field) != (phase_os if field == "amountOs" else phase[authority]):
             return refused
     if "signed-transaction-authentic" not in off and not authentic(
         protocol_input["signedTransaction"]
     ):
         return refused
     if "signed-transfer-matches-retention" not in off:
-        projection = decode(protocol_input["signedTransaction"], frozenset(), executed=False)
+        projection = decode(protocol_input["signedTransaction"], off, executed=False)
         if projection is None or any(
             projection[field] != (
                 _lenient_integer(transfer.get(field)) if field == "amountOs" else transfer.get(field)
@@ -448,6 +493,9 @@ def dem7(protocol_input: dict, off) -> str:
     )
     status = projection["status"]
     if is_bound and is_confirmed(status, off):
+        decision = applied(read, projection, off)
+        if decision != "pass":
+            return "indeterminate" if "consumer-authenticated-contradiction-fails" in off else decision
         return "indeterminate" if "consumer-admits-confirmed" in off else "pass"
     if is_bound and status == "failed":
         return "indeterminate" if "consumer-failed-refutes" in off else "fail"
@@ -492,11 +540,50 @@ def admit_for_delivery(protocol_input: dict, off) -> tuple[str, dict]:
     }
     others = [
         admitted for admitted in protocol_input["consumerAdmissions"]
-        if admitted != tuple_ or "sb2-same-tuple-idempotent" in off
+        if demos_id(admitted["txRef"], off) == demos_id(protocol_input["signedEvidence"]["txRef"], off)
+        and ({k: admitted[k] for k in tuple_} != tuple_ or "sb2-same-tuple-idempotent" in off)
     ]
     if others and "delivery-sb2-own-admissions" not in off:
         return result("indeterminate")
     return result("pass")
+
+
+def demos_id(reference, off, *, legacy=False):
+    if not (isinstance(reference, dict) and set(reference) == {"kind", "txHash", "blockNumber"}
+            and reference["kind"] == "demos" and _safe_integer(reference["blockNumber"])):
+        return None
+    value = reference["txHash"]
+    if not isinstance(value, str):
+        return None
+    if "sb1-demos-shape" in off:
+        return "demos:" + value
+    if legacy or "sb1-demos-canonical" in off:
+        value = value.removeprefix("0x").lower()
+    if not HASH.fullmatch(value):
+        return None
+    return "demos:" + (str(reference["blockNumber"]) if "sb1-demos-id" in off else value)
+
+
+def project_id(protocol_input, off):
+    key = demos_id(protocol_input["txRef"], off, legacy=protocol_input.get("legacy", False))
+    return ("pass" if key else "error"), {"settlementTxId": key}
+
+
+def resolve_group(protocol_input, off):
+    records = protocol_input["records"]
+    keys = [demos_id(record["txRef"], off, legacy=record.get("legacy", False)) for record in records]
+    if None in keys:
+        return "error", {"records": []}
+    groups = {}
+    for record, key in zip(records, keys):
+        group = (key, record["jobId"]) if "sb2-group-raw-references" in off else key
+        groups.setdefault(group, set()).add((record["jobId"], record["phaseIndex"]))
+    decisions = [
+        "indeterminate" if len(groups[(key, record["jobId"]) if "sb2-group-raw-references" in off else key]) > 1 else "pass"
+        for record, key in zip(records, keys)
+    ]
+    return ("indeterminate" if "indeterminate" in decisions else "pass"), {
+        "records": [{"settlementTxId": key, "decision": decision} for key, decision in zip(keys, decisions)]}
 
 
 OPERATIONS = {
@@ -505,6 +592,8 @@ OPERATIONS = {
     "broadcast-gate": broadcast_gate,
     "admit-evidence": admit,
     "admit-for-delivery": admit_for_delivery,
+    "project-settlement-id": project_id,
+    "resolve-settlement-group": resolve_group,
 }
 
 
@@ -607,7 +696,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertEqual(defined, cited)
 
     def test_live_node2_records_classify_by_their_recorded_status(self):
-        self.assertEqual("pass", evaluate(self.cases["node2-confirmed-record"])[0])
+        self.assertEqual("indeterminate", evaluate(self.cases["node2-confirmed-record"])[0])
         self.assertEqual("fail", evaluate(self.cases["node2-included-failed-record"])[0])
         self.assertEqual("included", self.cases["node2-included-failed-record"]["protocolInput"]["statusIndex"])
         # The same live records, retained in raw wire types instead of the
@@ -625,7 +714,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
 
     def test_inclusion_alone_never_succeeds_or_authorizes(self):
         for vector in self.data["vectors"]:
-            if vector["operation"] == "broadcast-gate":
+            if vector["operation"] in {"broadcast-gate", "project-settlement-id", "resolve-settlement-group"}:
                 continue
             read = vector["protocolInput"]["recordRead"]
             record = read.get("record") if read.get("state") == "found" else None
@@ -649,6 +738,15 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             protocol_input = self.cases[name]["protocolInput"]
             self.assertIs(True, protocol_input["recordRead"]["authenticated"])
             self.assertEqual({"fv": "pass", "sb1": "pass", "pb": "pass"}, protocol_input["otherGates"])
+
+    def test_raw_demos_references_group_before_any_member_counts(self):
+        collision = self.cases["sb2-demos-two-job-collision"]
+        self.assertEqual("indeterminate", evaluate(collision)[0])
+        self.assertEqual(["indeterminate", "indeterminate"],
+                         [record["decision"] for record in evaluate(collision)[1]["records"]])
+        reverse = dict(collision, protocolInput={"records": list(reversed(collision["protocolInput"]["records"]))})
+        self.assertEqual(evaluate(collision), evaluate(reverse))
+        self.assertEqual("pass", evaluate(self.cases["sb2-demos-distinct-hash-control"])[0])
 
     def test_handler_success_authorizes_no_delivery_or_accounting(self):
         # DEM-3 success is the payer's result; delivery and settlement
@@ -794,6 +892,13 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("61b8e75aa8db5e408c49e1c3a89db4d673f45578", demos)
         self.assertIn("**Native-send record profile (normative).**", demos)
         self.assertIn("generate_pay_dem_execution_vectors.py --check", workflow)
+        profile = self.data["demosProfile"]
+        self.assertEqual(DEMOS_RECORD_PROFILE + " (stabilisation)", profile["nodeSource"])
+        self.assertIn(DEMOS_RECORD_PROFILE.split("@", 1)[1], demos)
+        sdk, integrity = profile["sdk"].split(" ")
+        self.assertIn(sdk.removeprefix("@kynesyslabs/demosdk@"), demos)
+        self.assertIn(integrity, demos)
+        self.assertIn("authenticate the committed native-send state transition independently", demos)
 
 
 if __name__ == "__main__":

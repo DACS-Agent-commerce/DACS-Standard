@@ -13,6 +13,17 @@ The format used per release:
 
 ## [Unreleased]
 
+### Changed — native DEM applied-payment verification
+
+- DACS-4 DEM-3/DEM-7 and FV-5 require independently authenticated committed
+  payment debit and payee credit, bound to the same network, block, transaction,
+  parties and OS amount. A confirmed RPC record alone remains indeterminate.
+  The fixture-only independent-result signatures now cover this applied transfer.
+- Native-send conformance isolates the transaction type, exact recipient account,
+  signed OS-string amounts and fees, phase DEM-to-OS conversion, and record shape.
+  Raw Demos references derive canonical SB-1 IDs before SB-2 collision grouping.
+  The corpora contain 141 pay-dem and 170 settlement-finality cases.
+
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
 - **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened
@@ -1079,14 +1090,14 @@ The format used per release:
   semantics to `kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f45578`
   and the SDK to `@kynesyslabs/demosdk` 4.0.16. A record from a node not
   pinned to those semantics (for example the `testnet` branch, which stores
-  every included transaction as `confirmed`) is unbound. The pin includes the
-  node's refusal of `gcr_edits` that differ from the `send` arguments, which
-  is why the profile ignores them. A DEM-1 signed transaction is the
+  every included transaction as `confirmed`) is unbound. The node semantics pin does not prove application: success additionally
+  requires independent committed debit and payee-credit authority; the edit
+  list alone supplies no such proof. A DEM-1 signed transaction is the
   demosdk `sign()` result: its `hash` is SHA-256 over `JSON.stringify(content)`
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 100-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 141-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-broadcast gate with phase and payment authority and signed-envelope
@@ -1099,10 +1110,11 @@ The format used per release:
   has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
   set is identified by its `hash`, not by its name alone. In
-  `settlement-finality-verification` (160 cases), transaction inclusion and
+  `settlement-finality-verification` (170 cases), transaction inclusion and
   execution-result authentication are verified separately. The fixture uses
   independently pinned threshold result signatures over the full Demos record,
-  network, block identity and transaction reference; BFT inclusion does not
+  network, block identity, transaction reference and committed payment debit
+  and payee credit; BFT inclusion does not
   authenticate the later RPC execution status. Missing result authority is
   `indeterminate`. The result threshold counts distinct keys: a policy whose
   threshold is zero or above its keys, or that lists one key under two names,
@@ -1125,7 +1137,7 @@ The format used per release:
   neither raw JSON types nor a looser normalization such as case-folding.
   Existing `pay-dem` evidence bytes are unchanged and are not relabelled;
   re-verification under DEM-7 returns `fail` for a bound failed record and
-  `indeterminate` without a bound confirmed record. No artifact shape,
+  `indeterminate` without a bound confirmed record and applied-payment authority. No artifact shape,
   signature domain, rail definition or registry entry changes. This
   correction is part of the unreleased DACS-4 v0.8 candidate and allocates
   no new version.

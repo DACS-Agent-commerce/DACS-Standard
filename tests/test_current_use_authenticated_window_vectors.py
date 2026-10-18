@@ -22,6 +22,7 @@ from dacs5_reference import (  # noqa: E402
     replay_current_use_authenticated_window,
     require_current_use_authenticated_window_derivation,
 )
+from scripts.generate_settlement_finality_verification_vectors import FixtureFactory  # noqa: E402
 
 VECTORS = ROOT / "conformance/vectors/security/current-use-authenticated-window-v1.json"
 
@@ -268,6 +269,29 @@ class CurrentUseAuthenticatedWindowTests(unittest.TestCase):
             "currentUseAuthenticatedWindowDerivationVersion": "1",
             "futureDerivationVersion": "1",
         })["ok"])
+
+    def test_native_window_requires_applied_payment_authority(self):
+        replay = copy.deepcopy(self.cases["combined-bft-final"]["replay"])
+        factory = FixtureFactory()
+
+        def remove_transition(value):
+            changed = 0
+            if isinstance(value, dict):
+                if "executionResult" in value:
+                    value["executionResult"].pop("appliedTransfer", None)
+                    factory.sign_execution_result(value)
+                    changed += 1
+                for child in value.values():
+                    changed += remove_transition(child)
+            elif isinstance(value, list):
+                for child in value:
+                    changed += remove_transition(child)
+            return changed
+
+        self.assertGreater(remove_transition(replay["dependencies"]), 0)
+        result, _, _, _ = execute(replay)
+        self.assertEqual("indeterminate", result["decision"], result["reason"])
+        self.assertIsNone(result["derivation"])
 
     def test_provider_capture_remains_provisional(self):
         case = self.cases["combined-provider-receipt"]

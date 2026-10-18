@@ -151,11 +151,24 @@ def record(status: str, content: dict[str, Any] | None = None, **changes: Any) -
 
 
 def found(
-    value: dict[str, Any], *, authenticated: bool | None = None, node: str = "pinned"
+    value: dict[str, Any], *, authenticated: bool | None = None, node: str = "pinned",
+    applied: bool = True,
 ) -> dict[str, Any]:
     read: dict[str, Any] = {"state": "found", "nodeProfile": node, "record": value}
+    if node == "unpinned":
+        read["selfReportedCommit"] = "61b8e75aa8db5e408c49e1c3a89db4d673f45578"
     if authenticated is not None:
         read["authenticated"] = authenticated
+    if applied:
+        # Synthetic state-transition authority, separate from the RPC record.
+        content = value["content"]
+        read["appliedTransferAuthenticated"] = True
+        read["appliedTransfer"] = {
+            "txHash": value["hash"].removeprefix("0x").lower(), "blockNumber": int(value["blockNumber"]),
+            "sender": content["from"].removeprefix("0x").lower(),
+            "recipient": content["to"].removeprefix("0x").lower(),
+            "payerDebitOs": str(int(content["amount"])), "payeeCreditOs": str(int(content["amount"])),
+        }
     return read
 
 
@@ -199,7 +212,7 @@ def _vector(name, operation, protocol_input, expected, want, rule, guards, note)
         "expected": expected,
         "want": want,
         "rule": "DACS-4 §9.5.9 " + rule,
-        "guards": guards,
+        "guards": sorted(guards),
         "note": note,
     }
 
@@ -270,6 +283,7 @@ def phase(**changes: Any) -> dict[str, Any]:
             "payerPayingKey": PAYER_KEY,
             "payeeAddress": PAYEE_KEY,
             "amountOs": AMOUNT_OS,
+            "amount": {"amount": "1.5", "currency": "DEM"},
         },
         changes,
     )
@@ -293,6 +307,12 @@ def signed(
     other content than the transaction carries (a forged hash)."""
     if content is None:
         content = send_content(nonce=NONCE, amount=AMOUNT_OS)
+    content = copy.deepcopy(content)
+    fees = {"network_fee": "1000000000", "rpc_fee": "1000000000", "additional_fee": "0", "rpc_address": None}
+    content.setdefault("transaction_fee", fees)
+    if signed_content is not None:
+        signed_content = copy.deepcopy(signed_content)
+        signed_content.setdefault("transaction_fee", fees)
     tx_hash = content_hash(content if signed_content is None else signed_content)
     return {
         "content": content,
@@ -406,7 +426,10 @@ def deliver(
         found(record("confirmed"), authenticated=True) if read is None else read, "included"
     )
     protocol_input["otherGates"] = _apply(ALL_GATES_PASS, gates or {})
-    protocol_input["consumerAdmissions"] = admissions or []
+    protocol_input["consumerAdmissions"] = [
+        dict(admission, txRef={"kind": "demos", "txHash": TX_HASH, "blockNumber": BLOCK})
+        for admission in (admissions or [])
+    ]
     return _vector(
         name, "admit-for-delivery", protocol_input, expected,
         {
@@ -436,7 +459,7 @@ def build_vectors() -> list[dict[str, Any]]:
     live_confirmed, live_confirmed_block = _live(NODE2_CONFIRMED)
     live_failed, live_failed_block = _live(NODE2_FAILED)
     payload = send_content()
-    return [
+    vectors = [
         # Handler classification: the bound record decides, never the index.
         classify(
             "included-confirmed", "pass", "DEM-3", ["success-authorizes-no-delivery", "success-branch"],
@@ -444,9 +467,9 @@ def build_vectors() -> list[dict[str, Any]]:
             read=found(record("confirmed")),
         ),
         classify(
-            "node2-confirmed-record", "pass", "DEM-2/DEM-3", ["success-authorizes-no-delivery", "success-branch"],
-            "A live node2 getTxByHash record (string nonce, numeric amount, 0x parties, unprefixed send argument) binds after projection.",
-            read=found(copy.deepcopy(NODE2_CONFIRMED)), transfer=live_confirmed, inclusion=live_confirmed_block,
+            "node2-confirmed-record", "indeterminate", "DEM-2/DEM-3", ["success-requires-applied-transfer"] + unresolved,
+            "The live confirmed RPC record has no independent applied-transfer authority.",
+            read=found(copy.deepcopy(NODE2_CONFIRMED), applied=False), transfer=live_confirmed, inclusion=live_confirmed_block,
         ),
         classify(
             "confirmed-integer-nonce-binds", "pass", "DEM-2/DEM-3", ["success-authorizes-no-delivery", "success-branch"],
@@ -787,12 +810,12 @@ def build_vectors() -> list[dict[str, Any]]:
             transfer=retained(txHash=OTHER_TX_HASH),
         ),
         gate(
-            "broadcast-signed-pre-fork-amount", "fail", "DEM-1", ["signed-transfer-matches-retention"],
+            "broadcast-signed-pre-fork-amount", "fail", "DEM-1", ["decode-native-send", "signed-transfer-matches-retention"],
             "A send signed in the pre-osDenomination form (numeric amount argument) does not decode, so it is never broadcast.",
             **consistent(send_content(nonce=NONCE, amount=AMOUNT_OS, data=["native", {"nativeOperation": "send", "args": [PAYEE_KEY, int(AMOUNT_OS)]}])),
         ),
         gate(
-            "broadcast-signed-uppercase-recipient", "fail", "DEM-1", ["signed-transfer-matches-retention"],
+            "broadcast-signed-uppercase-recipient", "fail", "DEM-1", ["decode-address", "signed-transfer-matches-retention"],
             "demosdk accepts an upper-case recipient, but it does not decode under the profile, so it is never broadcast.",
             **consistent(send_content(nonce=NONCE, amount=AMOUNT_OS, to="0x" + PAYEE_KEY.upper(), data=["native", {"nativeOperation": "send", "args": [PAYEE_KEY.upper(), AMOUNT_OS]}])),
         ),
@@ -828,9 +851,9 @@ def build_vectors() -> list[dict[str, Any]]:
             read=found(record("confirmed")),
         ),
         admit(
-            "consumer-node2-confirmed-gate-passes", "pass", "DEM-7", ["consumer-admits-confirmed"],
-            "The live node2 confirmed record binds to its evidence and phase after projection.",
-            read=found(copy.deepcopy(NODE2_CONFIRMED)),
+            "consumer-node2-confirmed-refused", "indeterminate", "DEM-7", ["success-requires-applied-transfer", "consumer-requires-confirmed-record"],
+            "The live confirmed record cannot replace independently authenticated applied payment authority.",
+            read=found(copy.deepcopy(NODE2_CONFIRMED), applied=False),
             signed_evidence={
                 "outcome": "success",
                 "txRef": {"kind": "demos", "txHash": NODE2_CONFIRMED["hash"], "blockNumber": NODE2_CONFIRMED["blockNumber"]},
@@ -952,6 +975,109 @@ def build_vectors() -> list[dict[str, Any]]:
             admissions=[{"jobId": JOB_ID, "phaseIndex": PHASE_INDEX}],
         ),
     ]
+    for name, content, guard in (
+        ("non-native-type", send_content(type="escrow"), "decode-type"),
+        ("uppercase-recipient", send_content(to="0x" + PAYEE_KEY.upper()), "decode-address"),
+        ("uppercase-send-argument", send_content(data=["native", {"nativeOperation": "send", "args": [PAYEE_KEY.upper(), AMOUNT_OS]}]), "decode-address"),
+        ("non-native-tag", send_content(data=["escrow", payload["data"][1]]), "decode-native-send"),
+        ("extra-send-member", send_content(data=["native", dict(payload["data"][1], extra=True)]), "decode-native-send"),
+        ("extra-send-argument", send_content(data=["native", {"nativeOperation": "send", "args": [PAYEE_KEY, AMOUNT_OS, "extra"]}]), "decode-native-send"),
+    ):
+        guards = [guard] + (["decode-native-send"] if name == "uppercase-send-argument" else [])
+        vectors.append(classify("confirmed-" + name, "indeterminate", unbound, guards + unresolved,
+                                "Every native-send profile member is checked exactly.", read=found(record("confirmed", content))))
+    vectors.append(admit("consumer-non-native-type-refused", "indeterminate", "DEM-7",
+                         ["decode-type", "consumer-requires-confirmed-record"], "A non-native type never settles.",
+                         read=found(record("confirmed", send_content(type="escrow")))))
+    vectors.append(gate("broadcast-signed-non-native-type", "fail", "DEM-1",
+                        ["decode-type", "signed-transfer-matches-retention"], "A send-shaped escrow transaction is not a native transfer.",
+                        **consistent(send_content(nonce=NONCE, amount=AMOUNT_OS, type="escrow"))))
+    vectors.append(gate("broadcast-signed-numeric-os-amount", "fail", "DEM-1",
+                        ["signed-os-strings", "signed-transfer-matches-retention"],
+                        "Post-fork signed amounts use canonical OS strings, never DEM-interpreted JSON numbers.",
+                        **consistent(send_content(nonce=NONCE, amount=int(AMOUNT_OS)))))
+    vectors.append(gate("broadcast-signed-numeric-os-fee", "fail", "DEM-1",
+                        ["signed-os-strings", "signed-transfer-matches-retention"],
+                        "Post-fork signed fee amounts use canonical OS strings.",
+                        **consistent(send_content(nonce=NONCE, amount=AMOUNT_OS, transaction_fee={
+                            "network_fee": 1_000_000_000, "rpc_fee": "1000000000", "additional_fee": "0", "rpc_address": None}))))
+    vectors.append(gate("broadcast-dem-os-misconversion", "fail", "DEM-1",
+                        ["retained-amount-is-phase-amount"], "1.5 DEM is 1500000000 OS, not 1500000001.",
+                        **consistent(send_content(nonce=NONCE, amount=OTHER_AMOUNT_OS, amount_os=OTHER_AMOUNT_OS), amountOs=OTHER_AMOUNT_OS)))
+    vectors.append(classify("confirmed-string-block-number", "indeterminate", unbound,
+                            ["decode-block"] + unresolved, "blockNumber must be a JSON number, never a string.",
+                            read=found(record("confirmed", blockNumber=str(BLOCK)))))
+    for suffix, changes in (("missing", {}), ("empty", {"gcr_edits": []}), ("malformed", {"gcr_edits": {}})):
+        read = found(record("confirmed", send_content(**changes)), applied=False)
+        vectors.append(classify("confirmed-unproven-" + suffix + "-edits", "indeterminate", "DEM-3/DEM-5",
+                                ["success-requires-applied-transfer"] + unresolved,
+                                "Confirmed is not proof of a committed payment state transition.", read=read))
+        vectors.append(admit("consumer-unproven-" + suffix + "-edits", "indeterminate", "DEM-7",
+                             ["consumer-requires-confirmed-record", "success-requires-applied-transfer"],
+                             "No applied payee credit authority means no settlement.", read=read))
+    vectors.append(deliver("delivery-confirmed-without-applied-payment", "indeterminate", "DEM-7/FV-5",
+                           ["consumer-requires-confirmed-record", "delivery-requires-dem7", "success-requires-applied-transfer"],
+                           "All other gates passing cannot authorize delivery without proof of applied payment.",
+                           read=found(record("confirmed", send_content(gcr_edits=[])), authenticated=True, applied=False),
+                           dem7_passed=False))
+    for suffix, changes in (
+        ("unauthenticated", {"appliedTransferAuthenticated": False}),
+        ("zero-credit", {"payeeCreditOs": "0"}),
+        ("zero-debit", {"payerDebitOs": "0"}),
+        ("wrong-hash", {"txHash": OTHER_TX_HASH}),
+        ("wrong-block", {"blockNumber": BLOCK + 1}),
+        ("wrong-sender", {"sender": OTHER_KEY}),
+        ("wrong-recipient", {"recipient": OTHER_KEY}),
+    ):
+        read = found(record("confirmed"))
+        if suffix == "unauthenticated":
+            read.update(changes)
+        else:
+            read["appliedTransfer"].update(changes)
+        vectors.append(classify("confirmed-applied-transfer-" + suffix, "indeterminate", "DEM-3/DEM-5",
+                                ["success-requires-applied-transfer"] + unresolved,
+                                "Applied payment authority must authenticate this exact native send.", read=read))
+        vectors.append(admit("consumer-applied-transfer-" + suffix,
+                             "indeterminate" if suffix == "unauthenticated" else "fail", "DEM-7/FV-5",
+                             ["consumer-requires-confirmed-record", "success-requires-applied-transfer"]
+                             + ([] if suffix == "unauthenticated" else ["consumer-authenticated-contradiction-fails"]),
+                             "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate.", read=read))
+
+    ref = {"kind": "demos", "txHash": TX_HASH, "blockNumber": BLOCK}
+    for name, value, legacy, expected in (
+        ("canonical", TX_HASH, False, "pass"),
+        ("legacy-spelling", "0x" + TX_HASH.upper(), True, "pass"),
+        ("current-prefixed", "0x" + TX_HASH, False, "error"),
+        ("current-uppercase", TX_HASH.upper(), False, "error"),
+        ("malformed", "gg" * 32, False, "error"),
+        ("short", TX_HASH[:-1], False, "error"),
+    ):
+        vectors.append(_vector("sb1-demos-" + name, "project-settlement-id",
+                               {"txRef": dict(ref, txHash=value), "legacy": legacy}, expected,
+                               {"settlementTxId": "demos:" + TX_HASH if expected == "pass" else None},
+                               "DEM-7/SB-1", [], "Project a verified raw Demos ChainTxRef to the byte-identical settlement ID."))
+    for name, second_ref, expected in (
+        ("two-job-collision", dict(ref, blockNumber=BLOCK + 1), "indeterminate"),
+        ("distinct-hash-control", dict(ref, txHash=OTHER_TX_HASH), "pass"),
+    ):
+        refs = [ref, second_ref]
+        vectors.append(_vector("sb2-demos-" + name, "resolve-settlement-group",
+                               {"records": [{"jobId": job, "phaseIndex": PHASE_INDEX, "txRef": item}
+                                            for job, item in zip((JOB_ID, OTHER_JOB_ID), refs)]}, expected,
+                               {"records": [{"settlementTxId": "demos:" + item["txHash"], "decision": expected} for item in refs]},
+                               "DEM-7/SB-1/SB-2", [], "Derive keys before grouping; no job or block coordinate may split one transfer."))
+    for vector in vectors:
+        if vector["operation"] == "project-settlement-id":
+            name = vector["name"]
+            vector["guards"] = (
+                ["sb1-demos-id"] if name.endswith("-canonical") else
+                ["sb1-demos-id", "sb1-demos-shape"] if name.endswith("-legacy-spelling") else
+                ["sb1-demos-canonical", "sb1-demos-shape"] if name.endswith(("-current-prefixed", "-current-uppercase")) else
+                ["sb1-demos-shape"]
+            )
+        elif vector["operation"] == "resolve-settlement-group":
+            vector["guards"] = ["sb1-demos-id"] + (["sb2-group-raw-references"] if vector["expected"] == "indeterminate" else [])
+    return vectors
 
 
 def document() -> dict[str, Any]:
@@ -964,7 +1090,7 @@ def document() -> dict[str, Any]:
             "Inclusion does not prove execution. Only a getTxByHash record from a "
             "pinned node that decodes under the native-send record profile and binds "
             "the retained hash, nonce, block, sender, recipient and OS amount with "
-            "status confirmed succeeds; a bound failed record is a permanent failure; "
+            "status confirmed and independent applied-payment authority succeeds; a bound failed record is a permanent failure; "
             "anything else is a substrate result without a second broadcast."
         ),
         "demosProfile": {
@@ -976,9 +1102,9 @@ def document() -> dict[str, Any]:
         "fixtureVocabulary": {
             "statusIndex": "getTransactionStatus state for the retained hash (included, pending or unknown); never decisive",
             "inclusionObservation": "block identified for the retained hash, or null",
-            "recordRead": "getTxByHash read: found (with the record and whether the node is pinned to the profile), not-found (the node's error result) or unavailable",
+            "recordRead": "getTxByHash read: found (record and node pin), not-found or unavailable; appliedTransfer and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived in production from status or edits",
             "otherGates": "verdicts of the FV, SB-1 and PB checks that compose with DEM-7 before delivery",
-            "consumerAdmissions": "(jobId, phaseIndex) tuples for which this consumer already admitted the same demos:{txHash}",
+            "consumerAdmissions": "raw txRef and (jobId, phaseIndex) for every otherwise admitted pay-dem record; derive SB-1 IDs before grouping",
             "guards": "checks whose removal makes this vector fail",
         },
         "count": len(vectors),

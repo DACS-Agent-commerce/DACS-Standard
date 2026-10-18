@@ -346,12 +346,19 @@ The format used per release:
   `IdentityBundle`, and both pins hash it without `presentation`, as for the
   buyer (DACS-1 §6.3.2). Each pin has a vector it alone refuses, including the
   seller's signed `bundleHash` against an unsigned runtime copy that pins a
-  stripped bundle. A bundle that is not an `IdentityBundle` (a claim that is
-  not an object, a `ref` that is not a string, or a missing `presentation` or
-  `presentedAt`) is `error`. So is a linkage decision outside the `VerifyResult`
-  decisions. A payout claim whose linkage resolves `fail` is `fail`. The PB
-  refusals carry the static PB corpus's error classes, and XN-8 now states
-  that a verifier applies PB-2 too. The stored record's `paymentAmount` with
+  stripped bundle. `presentedBy` resolves by CF-3 identity to exactly one
+  canonical-distinct claim, for the buyer and the payee alike (DACS-1 §6.3.2);
+  a presenter outside the claims, or two distinct matches, is `fail`. A bundle
+  that is not an `IdentityBundle` (a claim that is not an object, a `ref` that
+  is not a string, a missing `presentation` or `presentedAt`, a presentation
+  without its kind's members, or a hashed scope that CORE cannot canonicalize)
+  is `error`, never an exception. `presentedAt` is any CORE number. A linkage
+  decision outside the `VerifyResult` decisions is `error`, while no linkage
+  answer at all is unresolved, an ST-7 pause. A payout claim whose
+  linkage resolves `fail` is `fail`, and only the applicable claims naming the
+  payout decide. The PB refusals carry the static PB corpus's error classes,
+  and XN-8 now states the verifier's PB-2 outcomes as the gate applies them.
+  The stored record's `paymentAmount` with
   a third member is `error`, and a finality record with another `scheme`, or
   a missing or non-string `bindingProfile`, or none at all, is `fail`;
   execute and retry rebuild such a record.

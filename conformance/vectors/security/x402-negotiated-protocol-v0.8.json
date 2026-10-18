@@ -483,8 +483,8 @@
       }
     }
   },
-  "count": 731,
-  "hash": "4644d8656f247e6e5c40450f016e527e01da0c4fef1e5c75530106f827f490eb",
+  "count": 739,
+  "hash": "65a715eacce67aad7b265b14d7c380350bcbfb4b9b64ab8af88c0e9879dbf370",
   "vectors": [
     {
       "name": "protocol-v2-exact-success",
@@ -93340,6 +93340,646 @@
         }
       ],
       "expectedReason": "payee-destination"
+    },
+    {
+      "name": "pb2-payee-linkage-map-absent-pauses",
+      "expected": "indeterminate",
+      "rule": "PB-2",
+      "operation": "execute",
+      "note": "the adapter has no linkage answer yet, so the applicable claim is unresolved: an ST-7 pause (substrate), not a resolver error",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "payeeLinkage"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            1,
+            "bundleHash"
+          ],
+          "value": "2ae00db68057d1a4693074b0089c78e83213a99995ee1e6388f425e1a90ca88e"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "RH5G5zzeLeMgIp1echq3A6Fy5s8JZBHulmpP7V_EjrCZgSnwd7ZYOgRMOPaa1xo4WjkyAsALqc9bvLTPS8bxDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "crGKU5f5gOzkq07OO3H1YI5-zLCx9OlofUF7koGJ1obv0STW1nE9EPL-i_rtvpOI0LLBMn5xm8d2Zsj8_7fvBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "claims"
+          ],
+          "value": [
+            {
+              "ref": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "AEITZ50qCd0s1ug7_yL8R2mcdJKIrKqIulB3aEtlbi5SThtotZ6rqgV-OviXh6vpFWPnKoGVHF5sOAq1a9lGBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "bundleHash"
+          ],
+          "value": "2ae00db68057d1a4693074b0089c78e83213a99995ee1e6388f425e1a90ca88e"
+        }
+      ],
+      "expectedReason": "payee-linkage-unresolved",
+      "expectedErrorClass": "substrate"
+    },
+    {
+      "name": "pb2-verify-evidence-linkage-map-absent-is-indeterminate",
+      "expected": "indeterminate",
+      "rule": "PB-2/XN-8",
+      "operation": "verify-evidence",
+      "note": "a verifier with no linkage answer yet cannot establish the tier-2 binding, which is temporarily unavailable data, so the record is indeterminate",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "payeeLinkage"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            1,
+            "bundleHash"
+          ],
+          "value": "2ae00db68057d1a4693074b0089c78e83213a99995ee1e6388f425e1a90ca88e"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "RH5G5zzeLeMgIp1echq3A6Fy5s8JZBHulmpP7V_EjrCZgSnwd7ZYOgRMOPaa1xo4WjkyAsALqc9bvLTPS8bxDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "crGKU5f5gOzkq07OO3H1YI5-zLCx9OlofUF7koGJ1obv0STW1nE9EPL-i_rtvpOI0LLBMn5xm8d2Zsj8_7fvBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "claims"
+          ],
+          "value": [
+            {
+              "ref": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "AEITZ50qCd0s1ug7_yL8R2mcdJKIrKqIulB3aEtlbi5SThtotZ6rqgV-OviXh6vpFWPnKoGVHF5sOAq1a9lGBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "bundleHash"
+          ],
+          "value": "2ae00db68057d1a4693074b0089c78e83213a99995ee1e6388f425e1a90ca88e"
+        }
+      ],
+      "expectedReason": "payee-linkage-unresolved"
+    },
+    {
+      "name": "pb2-payee-bundle-presenter-not-in-claims",
+      "expected": "fail",
+      "rule": "PB-2",
+      "operation": "execute",
+      "note": "the seller signs and both pins name a bundle whose claims omit its presentedBy, so presentedBy resolves to no claim (DACS-1 §6.3.2) and it is not the seller's bundle",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            1,
+            "bundleHash"
+          ],
+          "value": "338ebf0e51b983ee7f79ca838534874a73a22b47a6873c774d45b9e54e836fb3"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "gyKrwuO0ETeiaK6L-pBr9zJBjWKBK0TcDe27ZpRema4NsnOWyH7yAJgVHbumBUelR0cvhlqPZvYxu5u6VzJUBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "vdlUQjZn7RfKS8VAUyeBym1DrqaFrsJRIHqxrrUsAXSq7w833s8RI-Wdc2MZhgbw-paDuAuSsyImm1VVjTwDDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "claims",
+            0,
+            "ref"
+          ],
+          "value": "cci-xm:evm:1:0x2222222222222222222222222222222222222222"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "Jy5zFy5W4hHXcbX6ge3ocdvIJgnDILMmDOOliDUXxVCOsUjGDNda9SSJSPCAu8omgYkfGD9DjgEBsdF_H5dIDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "bundleHash"
+          ],
+          "value": "338ebf0e51b983ee7f79ca838534874a73a22b47a6873c774d45b9e54e836fb3"
+        }
+      ],
+      "expectedReason": "payee-bundle",
+      "expectedErrorClass": "permanent"
+    },
+    {
+      "name": "pb2-payee-bundle-presenter-cf3-match-binds-payout",
+      "expected": "pass",
+      "rule": "PB-2",
+      "operation": "execute",
+      "note": "presentedBy resolves by CF-3 (Scheme, Identifier) identity, so a claim that differs only in parameters is the presented claim",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            1,
+            "bundleHash"
+          ],
+          "value": "8eef9ed295d959a2759a52a49eb0b58492995078ee0fa45edb71f98297dc70f0"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "dpH05oRz9PLSFlmUFAjrfZWH77MEl_wK1KvdHJwPbhFkWQNCvOxL9IDdT3UPvNgNkp9jcz0jj7nddoLUsARGDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "FCO3xUh7CO7iPz5FdnhJvHWTpJH2NdpQ8kiywKh-K4gy4kpTyRiJIW2LNRgqOsrs6LE0kGJ4trH8FIF7N9grBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "claims"
+          ],
+          "value": [
+            {
+              "ref": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222?role=payee"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "X7YEKtv6LSkolxn-lDiTpeWfbZ_cREftMU6kQf1DZZcA2X-V1dHLxYHHkj5WpehqcuofL4qZz5fQwiCMuJrrCQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "payeeLinkage",
+            "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+          ],
+          "value": "pass"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "bundleHash"
+          ],
+          "value": "8eef9ed295d959a2759a52a49eb0b58492995078ee0fa45edb71f98297dc70f0"
+        }
+      ],
+      "expectedReason": null
+    },
+    {
+      "name": "pb2-payee-bundle-presenter-ambiguous",
+      "expected": "fail",
+      "rule": "PB-2",
+      "operation": "execute",
+      "note": "two canonical-distinct claims share presentedBy's CF-3 identity, so it resolves no presented claim (DACS-1 §6.3.2) and array order does not pick one",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            1,
+            "bundleHash"
+          ],
+          "value": "7cb9f7a824e498fea858e4bff88f3d07ed2d77f2ba69ee917dad8bc6082096c0"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "eNMQcFs1jd-bnmCTXNCqBk3e95nY25x7O_g_HtZhw8Q7WzCWbmHgEFwthRL8eS-tkWTIio_If3u2b6RjWfEwBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "fq26vxtqTUBfpC-9r4jgWfeKSazJqDU-Bgwmj90EESeY4NjCZzXLM1D2FjREBAz2GWlI5WOByS-9u3UE7EmFCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "claims"
+          ],
+          "value": [
+            {
+              "ref": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+            },
+            {
+              "ref": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222?role=payee"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "bj1P8233ag7YFmNGJKQWN9lfd7K35QkamvKnZ64vEX50cfBaEwshadmI8MjbqccjNS4vGQzzUba7OPvrx7jXCw"
+        },
+        {
+          "op": "add",
+          "path": [
+            "payeeLinkage",
+            "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+          ],
+          "value": "pass"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "bundleHash"
+          ],
+          "value": "7cb9f7a824e498fea858e4bff88f3d07ed2d77f2ba69ee917dad8bc6082096c0"
+        }
+      ],
+      "expectedReason": "payee-bundle",
+      "expectedErrorClass": "permanent"
+    },
+    {
+      "name": "pb2-payee-presentation-signatures-absent",
+      "expected": "error",
+      "rule": "PB-2",
+      "operation": "execute",
+      "note": "a per-claim presentation has signatures (DACS-1 §6.3.2); the presentation is outside bundleHash, so only the bundle's shape refuses one without them",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "payeeBundle",
+            "presentation",
+            "signatures"
+          ]
+        }
+      ],
+      "expectedReason": "payee-bundle-shape",
+      "expectedErrorClass": "permanent"
+    },
+    {
+      "name": "pb2-payee-bundle-presented-at-fractional",
+      "expected": "pass",
+      "rule": "PB-2",
+      "operation": "execute",
+      "note": "presentedAt is a diagnostic CORE number (DACS-1 §6.3.2): a fractional value is admitted and gates nothing",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            1,
+            "bundleHash"
+          ],
+          "value": "4ca7a9d657056bb1fc99ef05339817ef47f49e9934bcbc590fa0935922e09693"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "y5xxmUuTwpROLu_Vd1L8yKk1U9iwO_ZieH8T8XEXIK4m_gOs3XmL0z60CtJA4xZyYj0TKR6JIINhQZzCH22wBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "PDYwVp9MdUAFWJMKeADbMZ2gCYXXnIzJcP5_cTizoHBkmKkHg8hvCsk7InKJ1iX66nRgspxPTTYHFuhSFcjQBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "claims"
+          ],
+          "value": [
+            {
+              "ref": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "eAH0W0WXYl2eJ0HjSqOz0QuAX85qmLinjcenkT6XS9rC19wn0qakxX-RWLZ2bCEpV7KrFJDsvVlN-SKjLyLkAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "presentedAt"
+          ],
+          "value": 1787443199000.5
+        },
+        {
+          "op": "add",
+          "path": [
+            "payeeLinkage",
+            "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+          ],
+          "value": "pass"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "bundleHash"
+          ],
+          "value": "4ca7a9d657056bb1fc99ef05339817ef47f49e9934bcbc590fa0935922e09693"
+        }
+      ],
+      "expectedReason": null
+    },
+    {
+      "name": "pb2-negotiated-chain-claim-naming-payout-passes-beside-unresolved",
+      "expected": "pass",
+      "rule": "PB-2",
+      "operation": "execute",
+      "note": "of two applicable claims, the one naming the payout resolves control-proven, so tier 2 binds it; the other claim, unresolved, names no payout and decides nothing",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            1,
+            "bundleHash"
+          ],
+          "value": "ed4afb442a281f113b55c971e376c39e791ab0597058689c244cc0ce0d8d15fc"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "U47qfEcCVEvQt8nvyf11cYZaeLqVeeuPVtB3BGzhBsF6QsECvDhkTeHlHs7dGS1UZn26N49gp1cpdZXCwlnJAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "9oA4q-LX0aG1My_3ZhSvF5xM5CmTupWKCcrS2jWcY8rc42cT-6jQ75dcirdYsOd5sU6u6lKkM9djYV54w0FtDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "claims"
+          ],
+          "value": [
+            {
+              "ref": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x9999999999999999999999999999999999999999"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "payeeBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "xrw4TL62b-0DST6UfliQMivt1CKexoWA8HxQ4m2Uk_Ij1idwx4Mwe_euleUY9y7ixvDT4iZ2mnilFh4dC792DQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "payeeLinkage",
+            "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+          ],
+          "value": "pass"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "bundleHash"
+          ],
+          "value": "ed4afb442a281f113b55c971e376c39e791ab0597058689c244cc0ce0d8d15fc"
+        }
+      ],
+      "expectedReason": null
     },
     {
       "name": "verify-evidence-record-evidence-version-2",

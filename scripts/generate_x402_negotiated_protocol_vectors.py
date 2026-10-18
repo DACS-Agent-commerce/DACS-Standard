@@ -421,8 +421,9 @@ def buyer_bundle(network: str, address: str, *, presented_by_payment_key: bool =
     }
 
 
-def payee_bundle(*claims: str, presented_by: str = SELLER_CLAIM) -> dict:
-    """The seller's presented DACS-1 bundle (PB-2): its primary claim, then `claims`.
+def payee_bundle(*claims: str, presented_by: str = SELLER_CLAIM,
+                 primary: tuple = (SELLER_CLAIM,), presented_at=1787443199000) -> dict:
+    """The seller's presented DACS-1 bundle (PB-2): its `primary` claims, then `claims`.
 
     A complete `IdentityBundle`: the seller's key signs the per-claim
     presentation over the bundle without `presentation`, the scope its
@@ -431,8 +432,8 @@ def payee_bundle(*claims: str, presented_by: str = SELLER_CLAIM) -> dict:
     body = {
         "bundleVersion": "1",
         "presentedBy": presented_by,
-        "presentedAt": 1787443199000,
-        "claims": [{"ref": SELLER_CLAIM}] + [{"ref": claim} for claim in claims],
+        "presentedAt": presented_at,
+        "claims": [{"ref": claim} for claim in (*primary, *claims)],
     }
     payload = ("dacs-bundle-presentation:v1:" + digest(body)).encode("ascii")
     return {
@@ -3991,9 +3992,9 @@ def add_payee_destination_cases(vectors, solana_exact):
         v["agreement"]["parties"][1]["bundleHash"] = bundle_hash
         v["runtime"]["payee"]["bundleHash"] = bundle_hash
 
-    def payee_claims(*claims, linkage=None, rebind=True, presented_by=SELLER_CLAIM):
+    def payee_claims(*claims, linkage=None, rebind=True, **bundle):
         def mutate(v):
-            v["payeeBundle"] = payee_bundle(*claims, presented_by=presented_by)
+            v["payeeBundle"] = payee_bundle(*claims, **bundle)
             v["payeeLinkage"] = dict(linkage or {})
             if rebind:
                 pin_payee_bundle(v)
@@ -4123,6 +4124,45 @@ def add_payee_destination_cases(vectors, solana_exact):
              "a verifier applies the same PB-2 gate to a stored success record",
              payee_claims(other_claim, linkage={other_claim: "pass"}), operation="verify-evidence",
              reason="payee-destination")
+
+    def linkage_unanswered(v):
+        v.pop("payeeLinkage")
+    add_case(vectors, "pb2-payee-linkage-map-absent-pauses", "indeterminate", "PB-2",
+             "the adapter has no linkage answer yet, so the applicable claim is unresolved: an ST-7 "
+             "pause (substrate), not a resolver error",
+             then(payee_claims(payout_claim), linkage_unanswered), reason="payee-linkage-unresolved")
+    add_case(vectors, "pb2-verify-evidence-linkage-map-absent-is-indeterminate", "indeterminate",
+             "PB-2/XN-8", "a verifier with no linkage answer yet cannot establish the tier-2 binding, "
+             "which is temporarily unavailable data, so the record is indeterminate",
+             then(payee_claims(payout_claim), linkage_unanswered), operation="verify-evidence",
+             reason="payee-linkage-unresolved")
+    add_case(vectors, "pb2-payee-bundle-presenter-not-in-claims", "fail", "PB-2",
+             "the seller signs and both pins name a bundle whose claims omit its presentedBy, so "
+             "presentedBy resolves to no claim (DACS-1 §6.3.2) and it is not the seller's bundle",
+             payee_claims("cci-xm:evm:1:" + SELLER_ADDRESS, primary=()), reason="payee-bundle")
+    seller_qualified = SELLER_CLAIM + "?role=payee"
+    add_case(vectors, "pb2-payee-bundle-presenter-cf3-match-binds-payout", "pass", "PB-2",
+             "presentedBy resolves by CF-3 (Scheme, Identifier) identity, so a claim that differs "
+             "only in parameters is the presented claim",
+             payee_claims(payout_claim, linkage={payout_claim: "pass"}, primary=(seller_qualified,)))
+    add_case(vectors, "pb2-payee-bundle-presenter-ambiguous", "fail", "PB-2",
+             "two canonical-distinct claims share presentedBy's CF-3 identity, so it resolves no "
+             "presented claim (DACS-1 §6.3.2) and array order does not pick one",
+             payee_claims(payout_claim, linkage={payout_claim: "pass"},
+                          primary=(SELLER_CLAIM, seller_qualified)), reason="payee-bundle")
+    add_case(vectors, "pb2-payee-presentation-signatures-absent", "error", "PB-2",
+             "a per-claim presentation has signatures (DACS-1 §6.3.2); the presentation is outside "
+             "bundleHash, so only the bundle's shape refuses one without them",
+             reshape_payee_bundle(lambda b: b["presentation"].pop("signatures")),
+             reason="payee-bundle-shape")
+    add_case(vectors, "pb2-payee-bundle-presented-at-fractional", "pass", "PB-2",
+             "presentedAt is a diagnostic CORE number (DACS-1 §6.3.2): a fractional value is "
+             "admitted and gates nothing",
+             payee_claims(payout_claim, linkage={payout_claim: "pass"}, presented_at=1787443199000.5))
+    add_case(vectors, "pb2-negotiated-chain-claim-naming-payout-passes-beside-unresolved", "pass",
+             "PB-2", "of two applicable claims, the one naming the payout resolves control-proven, "
+             "so tier 2 binds it; the other claim, unresolved, names no payout and decides nothing",
+             payee_claims(payout_claim, other_claim, linkage={payout_claim: "pass"}))
 
 
 def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, response_lost,

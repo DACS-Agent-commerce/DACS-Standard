@@ -170,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(274, self.data["count"])
+        self.assertEqual(292, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -293,10 +293,14 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         source = (ROOT / "scripts" / "settlement_finality_reference.py").read_text(encoding="utf-8")
 
         def mutant(old, new, count):
-            self.assertEqual(count, source.count(old), old)
+            # A tuple of olds and news edits several places in one mutant.
+            changed = source
+            for each_old, each_new in zip(*((old, new) if isinstance(old, tuple) else ((old,), (new,)))):
+                self.assertEqual(count, source.count(each_old), each_old)
+                changed = changed.replace(each_old, each_new)
             module = types.ModuleType("settlement_finality_guard_mutant")
             module.__file__ = SFV.__file__
-            exec(compile(source.replace(old, new), SFV.__file__, "exec"), module.__dict__)
+            exec(compile(changed, SFV.__file__, "exec"), module.__dict__)
             return module
 
         guards = [
@@ -346,14 +350,34 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
              '"keccak256": lambda preimage: hashlib.sha3_256(preimage).hexdigest(),', 1, "pass", [
                  "fv-htlc-keccak256-hashlock-is-sha3-256",
              ]),
-            # Registering sha3-256 leaves only the HTLC-6 chain-native guard.
-            ('"keccak256": lambda preimage: keccak256(preimage).hex(),',
-             '"keccak256": lambda preimage: keccak256(preimage).hex(),\n    "sha3-256": lambda preimage: hashlib.sha3_256(preimage).hexdigest(),',
-             1, "fail", ["fv-htlc-hash-algorithm-sha3-256-unregistered"]),
-            # HTLC-6: a registered identifier that is not the leg chain's hash.
-            ('        parameters["sourceHashAlgorithm"] != _chain_native_hash(profile["source"]["networkId"])\n'
-             '        or parameters["destinationHashAlgorithm"] != _chain_native_hash(profile["destination"]["networkId"])\n',
-             "        False\n", 1, "pass", ["fv-htlc-evm-leg-sha256-hashlock"]),
+            # Registering sha3-256 as an EVM-native identifier leaves no guard.
+            (('"keccak256": lambda preimage: keccak256(preimage).hex(),',
+              '"eip155": frozenset({"keccak256", "sha256"}),'),
+             ('"keccak256": lambda preimage: keccak256(preimage).hex(),\n    "sha3-256": lambda preimage: hashlib.sha3_256(preimage).hexdigest(),',
+              '"eip155": frozenset({"keccak256", "sha256", "sha3-256"}),'),
+             1, "pass", ["fv-htlc-hash-algorithm-sha3-256-unregistered"]),
+            # HTLC-6: EVM computes sha256 natively; a table without it
+            # rejects the genuine sha256 EVM legs.
+            ('"eip155": frozenset({"keccak256", "sha256"}),', '"eip155": frozenset({"keccak256"}),', 1, "error", [
+                "fv-htlc-evm-leg-sha256-hashlock", "fv-htlc-evm-legs-share-sha256-hashlock",
+            ]),
+            # FV-10: a missing validator-set checkpoint defers only after the
+            # certificate-only checks.
+            ('            and _nonempty_string(signature.get("validatorId"))\n', "", 1, "indeterminate", [
+                "fv-bft-validator-set-absent-signer-id-not-string",
+            ]),
+            ('if signature["validatorId"] in seen or signature.get("algorithm") != "ed25519":', "if False:", 1, "indeterminate", [
+                "fv-bft-validator-set-absent-duplicate-signer", "fv-bft-validator-set-absent-algorithm-unsupported",
+            ]),
+            ('if not _signature_encoding(signature.get("value")):\n                return "fail", "BFT certificate signature does not verify"',
+             "if False:\n                pass", 1, "indeterminate", [
+                 "fv-bft-validator-set-absent-signature-noncanonical",
+                 "fv-ap2-sr3-bft-validator-set-absent-signature-noncanonical",
+                 "fv-tank-coordinator-bft-validator-set-absent-signature-noncanonical",
+             ]),
+            ('        if not signatures:\n            return "fail", "BFT signed weight is below the pinned quorum"\n', "", 1, "indeterminate", [
+                "fv-bft-validator-set-absent-signatures-empty",
+            ]),
             # HTLC-8: the destination lock follows pinned source-lock finality.
             ('if destination_mined < source_mined + parameters["sourceFinalitySec"] * 1000:',
              "if destination_mined < source_mined:", 1, "pass", [
@@ -661,36 +685,70 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertIn("ancestry link does not extend the authenticated path", result["reason"])
 
     def test_htlc_legs_hash_under_their_own_chain_native_algorithm(self):
-        """HTLC-6: legs MUST NOT be forced to share one hash function.
+        """HTLC-6: legs MAY differ or share a hash, each native to its chain.
 
-        The fixture codec registers only EVM HTLC legs, so the mixed
-        sha256/keccak256 route is checked under a chain table in which the
-        source chain is sha256-native.  The same bytes fail under the real
-        table, where both legs are EVM.
+        The registered HTLC txRef kinds name a numeric EVM chainId, so the
+        corpus can carry only EVM legs; the other table entries are pinned
+        here on the signed-rail check.
         """
-        case = self.cases["fv-htlc-evm-leg-sha256-hashlock"]
-        self.assertEqual("fail", self.evaluate_case(case)["decision"])
-        parameters = case["input"]["rail"]["parameters"]
-        self.assertEqual(
-            ("sha256", "keccak256"),
-            (parameters["sourceHashAlgorithm"], parameters["destinationHashAlgorithm"]),
-        )
-        native = SFV._chain_native_hash
-        with patch.object(
-            SFV, "_chain_native_hash",
-            lambda network: "sha256" if network == "eip155:1" else native(network),
+        for name, hashes in (
+            ("fv-htlc-reveal-canonical-success", ("keccak256", "keccak256")),
+            ("fv-htlc-evm-leg-sha256-hashlock", ("sha256", "keccak256")),
+            ("fv-htlc-evm-legs-share-sha256-hashlock", ("sha256", "sha256")),
         ):
-            result = verify_finality(copy.deepcopy(case["input"]), self.trust)
-        self.assertEqual("pass", result["decision"], result["reason"])
+            case = self.cases[name]
+            parameters = case["input"]["rail"]["parameters"]
+            with self.subTest(case=name):
+                self.assertEqual(hashes, (parameters["sourceHashAlgorithm"], parameters["destinationHashAlgorithm"]))
+                self.assertEqual("pass", self.evaluate_case(case)["decision"])
+        self.assertEqual({
+            "eip155": {"keccak256", "sha256"},
+            "solana": {"keccak256", "sha256"},
+            "bip122": {"sha256"},
+        }, {chain: set(hashes) for chain, hashes in SFV.HTLC_CHAIN_NATIVE_HASHES.items()})
 
-        # A leg chain the HTLC-6 table does not register needs a registry
-        # entry first: `error`, not a chain-native mismatch.
-        control = self.cases["fv-htlc-reveal-canonical-success"]["input"]
-        self.assertEqual("pass", verify_finality(copy.deepcopy(control), self.trust)["decision"])
-        with patch.dict(SFV.HTLC_CHAIN_NATIVE_HASH, {}, clear=True):
-            result = verify_finality(copy.deepcopy(control), self.trust)
-        self.assertEqual("error", result["decision"], result["reason"])
-        self.assertIn("no registered native hash", result["reason"])
+        def selection(source, destination, source_hash, destination_hash):
+            profile = {"source": {"networkId": source}, "destination": {"networkId": destination}}
+            parameters = {"sourceHashAlgorithm": source_hash, "destinationHashAlgorithm": destination_hash}
+            return SFV._htlc_hash_selection(profile, parameters)
+
+        bitcoin = "bip122:000000000019d6689c085ae165831e93"
+        for row in (
+            ("eip155:1", "solana:mainnet", "sha256", "keccak256"),
+            ("solana:mainnet", bitcoin, "keccak256", "sha256"),
+            ("eip155:1", bitcoin, "keccak256", "sha256"),
+        ):
+            with self.subTest(row=row):
+                self.assertIsNone(selection(*row))
+        # A selection the leg chain cannot compute, a chain without an
+        # entry, or an unregistered identifier is error, never fail.
+        for row, reason in (
+            (("eip155:1", bitcoin, "keccak256", "keccak256"), "HTLC rail hash algorithm is not native to its leg chain"),
+            (("cosmos:cosmoshub-4", "eip155:1", "sha256", "keccak256"), "HTLC leg chain has no registered native hash"),
+            (("eip155:1", "eip155:8453", "keccak256", "sha3-256"), "HTLC rail selects an unsupported hash algorithm"),
+        ):
+            with self.subTest(row=row):
+                self.assertEqual({"decision": "error", "reason": reason}, {
+                    key: selection(*row)[key] for key in ("decision", "reason")
+                })
+
+    def test_htlc_evidence_binds_only_evm_legs(self):
+        """A non-EVM leg's evidence cannot be named by the EVM chainId txRefs.
+
+        The leg chain has a native-hash entry, and the evidence names the EVM
+        chainId equal to the leg's reference; it is error, not a network
+        mismatch.
+        """
+        factory = finality_fixtures.FixtureFactory()
+        for network in ("solana:8453", "bip122:8453"):
+            value = copy.deepcopy(self.cases["fv-htlc-reveal-canonical-success"]["input"])
+            value["rail"]["parameters"]["destinationHashAlgorithm"] = "sha256"
+            value["rail"]["consumerFinalityProfile"]["destination"]["networkId"] = network
+            factory.rebind_rail(value)
+            with self.subTest(network=network):
+                result = verify_finality(value, self.trust)
+                self.assertEqual("error", result["decision"], result["reason"])
+                self.assertEqual("HTLC signed evidence lacks four unambiguous transaction references", result["reason"])
 
     def test_missing_htlc_and_tank_arms_never_pass(self):
         models = {

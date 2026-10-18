@@ -977,11 +977,33 @@ def _verify_bft_certificate(observation: dict, profile: dict, trusted: dict) -> 
     set_hash = profile["validatorSetRef"]["contentHash"]
     if certificate.get("validatorSetHash") != set_hash or certificate.get("blockId") != observation["inclusionBlock"]["id"]:
         return "fail", "BFT certificate binds the wrong block or validator set"
+    signatures = certificate.get("signatures")
+    if not isinstance(signatures, list):
+        return "error", "BFT signatures are not an array"
+    for signature in signatures:
+        if not (
+            _exact_object(signature, {"validatorId", "algorithm", "value"})
+            and _nonempty_string(signature.get("validatorId"))
+        ):
+            return "error", "malformed BFT signature"
     validator_sets = trusted.get("validatorSets")
     if validator_sets is not None and not isinstance(validator_sets, dict):
         return "error", "malformed trusted validator-set map"
     validator_set = (validator_sets or {}).get(set_hash)
     if validator_set is None:
+        # FV-10: a missing checkpoint defers only after every check the
+        # certificate supports alone. A pinned set is non-empty with positive
+        # weights and the quorum numerator is positive, so an empty signature
+        # list can never meet it.
+        seen = set()
+        for signature in signatures:
+            if signature["validatorId"] in seen or signature.get("algorithm") != "ed25519":
+                return "fail", "BFT signer is substituted, duplicate, or unsupported"
+            if not _signature_encoding(signature.get("value")):
+                return "fail", "BFT certificate signature does not verify"
+            seen.add(signature["validatorId"])
+        if not signatures:
+            return "fail", "BFT signed weight is below the pinned quorum"
         return "indeterminate", "trusted validator set unavailable"
     if not isinstance(validator_set, dict) or hash_value(validator_set) != set_hash:
         return "error", "malformed trusted validator-set checkpoint"
@@ -1001,14 +1023,9 @@ def _verify_bft_certificate(observation: dict, profile: dict, trusted: dict) -> 
             return "error", "malformed trusted validator set member"
         by_id[validator["validatorId"]] = validator
         total += validator["weight"]
-    signatures = certificate.get("signatures")
-    if not isinstance(signatures, list):
-        return "error", "BFT signatures are not an array"
     signed = 0
     seen = set()
     for signature in signatures:
-        if not _exact_object(signature, {"validatorId", "algorithm", "value"}):
-            return "error", "malformed BFT signature"
         validator_id = signature.get("validatorId")
         validator = by_id.get(validator_id)
         if validator is None or validator_id in seen or signature.get("algorithm") != "ed25519":
@@ -1438,15 +1455,25 @@ def _expected_economics(session: dict, agreement_terms: dict) -> dict:
     }
 
 
+HTLC_PARAMETERS = {
+    "sourceContract", "destinationContract", "sourceHashAlgorithm", "destinationHashAlgorithm",
+    "timelockSourceSec", "timelockDestSec", "sourceFinalitySec", "safetyWindowSec",
+}
+
+
+def _evm_chain(network_id: str) -> str | None:
+    """The registered HTLC txRef kinds name a numeric EVM chainId."""
+    return network_id.split(":", 1)[1] if network_id.startswith("eip155:") else None
+
+
 def _find_htlc_refs(refs: list, rail: dict) -> dict | None:
     parameters = rail.get("parameters")
-    if not _exact_object(parameters, {
-        "sourceContract", "destinationContract", "sourceHashAlgorithm", "destinationHashAlgorithm",
-        "timelockSourceSec", "timelockDestSec", "sourceFinalitySec", "safetyWindowSec",
-    }):
+    if not _exact_object(parameters, HTLC_PARAMETERS):
         return None
-    source_chain = rail.get("consumerFinalityProfile", {}).get("source", {}).get("networkId", "").split(":")[-1]
-    destination_chain = rail.get("consumerFinalityProfile", {}).get("destination", {}).get("networkId", "").split(":")[-1]
+    source_chain = _evm_chain(rail.get("consumerFinalityProfile", {}).get("source", {}).get("networkId", ""))
+    destination_chain = _evm_chain(rail.get("consumerFinalityProfile", {}).get("destination", {}).get("networkId", ""))
+    if source_chain is None or destination_chain is None:
+        return None
     result = {}
     for ref in refs:
         if not isinstance(ref, dict):
@@ -1536,18 +1563,44 @@ def _hash_preimage(algorithm: str, preimage: bytes) -> str | None:
     return None if function is None else function(preimage)
 
 
-# HTLC-6: each leg's hashlock is its chain's native hash.
-HTLC_CHAIN_NATIVE_HASH = {"eip155": "keccak256", "solana": "sha256", "bip122": "sha256"}
+# HTLC-6: the registered identifiers each leg chain computes natively. EVM
+# has the KECCAK256 opcode and the SHA-256 precompile (0x02); Solana the
+# sol_keccak256 and sol_sha256 syscalls; Bitcoin script OP_SHA256.
+HTLC_CHAIN_NATIVE_HASHES = {
+    "eip155": frozenset({"keccak256", "sha256"}),
+    "solana": frozenset({"keccak256", "sha256"}),
+    "bip122": frozenset({"sha256"}),
+}
 
 
-def _chain_native_hash(network_id: str) -> str | None:
-    return HTLC_CHAIN_NATIVE_HASH.get(network_id.split(":", 1)[0])
+def _chain_native_hashes(network_id: str) -> frozenset | None:
+    return HTLC_CHAIN_NATIVE_HASHES.get(network_id.split(":", 1)[0])
+
+
+def _htlc_hash_selection(profile: dict, parameters: dict) -> dict | None:
+    """HTLC-6 on the signed rail alone. A selection the leg chain cannot
+    compute is a structural impossibility (error), never a mismatch."""
+    for leg, field in (("source", "sourceHashAlgorithm"), ("destination", "destinationHashAlgorithm")):
+        algorithm = parameters[field]
+        if algorithm not in HTLC_HASH_ALGORITHMS:
+            return _result("error", "HTLC rail selects an unsupported hash algorithm")
+        native = _chain_native_hashes(profile[leg]["networkId"])
+        if native is None:
+            return _result("error", "HTLC leg chain has no registered native hash")
+        if algorithm not in native:
+            return _result("error", "HTLC rail hash algorithm is not native to its leg chain")
+    return None
 
 
 def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, trusted: dict) -> dict:
     context = input_value.get("context")
     if not _exact_object(context, {"kind", "sourceLock", "sourceClaim", "destinationLock", "destinationReveal"}) or context.get("kind") != "htlc":
         return _result("error", "malformed HTLC finality context")
+    if not _exact_object(rail.get("parameters"), HTLC_PARAMETERS):
+        return _result("error", "malformed signed HTLC parameters")
+    selection = _htlc_hash_selection(profile, rail["parameters"])
+    if selection is not None:
+        return selection
     refs = _find_htlc_refs(input_value["evidence"]["paymentTxRefs"], rail)
     if refs is None:
         return _result("error", "HTLC signed evidence lacks four unambiguous transaction references")
@@ -1586,18 +1639,6 @@ def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, t
         return _result("fail", "HTLC claim and reveal use different preimages")
     source_hash = _hash_preimage(parameters["sourceHashAlgorithm"], source_preimage)
     destination_hash = _hash_preimage(parameters["destinationHashAlgorithm"], source_preimage)
-    if source_hash is None or destination_hash is None:
-        return _result("error", "HTLC rail selects an unsupported hash algorithm")
-    if None in (
-        _chain_native_hash(profile["source"]["networkId"]),
-        _chain_native_hash(profile["destination"]["networkId"]),
-    ):
-        return _result("error", "HTLC leg chain has no registered native hash")
-    if (
-        parameters["sourceHashAlgorithm"] != _chain_native_hash(profile["source"]["networkId"])
-        or parameters["destinationHashAlgorithm"] != _chain_native_hash(profile["destination"]["networkId"])
-    ):
-        return _result("fail", "HTLC rail hash algorithm is not its leg's chain-native hash")
     if (
         events["sourceLock"].get("hashAlgorithm") != parameters["sourceHashAlgorithm"]
         or events["sourceClaim"].get("hashAlgorithm") != parameters["sourceHashAlgorithm"]

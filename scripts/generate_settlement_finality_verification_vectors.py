@@ -2008,6 +2008,10 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-trusted-provider-authority-keys-unavailable", "indeterminate", "no trusted provider authority key map is configured", factory.model_input("provider-receipt"), trusted_overrides={"providerAuthorityKeys": None}),
         case("fv-trusted-party-keys-malformed", "error", "the trusted party key map is a list", depth, trusted_overrides={"partyKeys": []}),
         case("fv-trusted-party-key-value-malformed", "error", "a trusted party key is not a 32-byte Base64URL value", depth, trusted_overrides={"partyKeys": {CLAIMS["orchestrator"]: "not-a-key"}}),
+        case("fv-trusted-steward-key-value-malformed", "error", "the trusted steward key is not a 32-byte Base64URL value", depth, trusted_overrides={"stewardKeys": {CLAIMS["steward"]: "not-a-key"}}),
+        case("fv-trusted-observation-authority-key-value-malformed", "error", "a trusted observation authority key is not a 32-byte Base64URL value", depth, trusted_overrides={"observationAuthorityKeys": {"rpc-a": "not-a-key"}}),
+        case("fv-trusted-provider-authority-key-value-malformed", "error", "the trusted provider authority key is not a 32-byte Base64URL value", factory.model_input("provider-receipt"), trusted_overrides={"providerAuthorityKeys": {CLAIMS["provider"]: "not-a-key"}}),
+        case("fv-trusted-validator-set-map-malformed", "error", "the trusted validator-set map is a list", factory.model_input("bft-final"), trusted_overrides={"validatorSets": []}),
     ])
 
     # FV entry: a present map that lacks the key of a signer trusted authority
@@ -2165,14 +2169,57 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
     factory.rebind_rail(sha3_rail)
     destination_commits_sha3(sha3_rail, "sha3-256")
     vectors.append(case("fv-htlc-hash-algorithm-sha3-256-unregistered", "error", "the signed HTLC rail selects FIPS SHA3-256, which is not a registered hash identifier; the destination events commit it consistently", sha3_rail))
-    # HTLC-6: the registered identifier must also be the leg chain's native
-    # hash; sha256 is registered, but not for an EVM leg.
-    evm_sha256 = factory.model_input("htlc-reveal")
-    evm_sha256["rail"]["parameters"]["sourceHashAlgorithm"] = "sha256"
-    factory.rebind_rail(evm_sha256)
-    for arm in ("sourceLock", "sourceClaim"):
-        factory.rebuild_observation_event(evm_sha256, (arm,), lambda event: event.update({"hashAlgorithm": "sha256", "hashlock": hashlib.sha256(preimage).hexdigest()}))
-    vectors.append(case("fv-htlc-evm-leg-sha256-hashlock", "fail", "the signed HTLC rail selects sha256 for its eip155:1 source leg and both source events commit it consistently; EVM's chain-native hash is keccak256", evm_sha256))
+    # HTLC-6: each identifier must be native to its leg chain. EVM computes
+    # sha256 natively (precompile 0x02) as well as keccak256, so legs may
+    # differ or share sha256.
+    def sha256_legs(arms):
+        value = factory.model_input("htlc-reveal")
+        for field in {"source": ("sourceHashAlgorithm",), "both": ("sourceHashAlgorithm", "destinationHashAlgorithm")}[arms]:
+            value["rail"]["parameters"][field] = "sha256"
+        factory.rebind_rail(value)
+        names = ("sourceLock", "sourceClaim") + (("destinationLock", "destinationReveal") if arms == "both" else ())
+        for arm in names:
+            factory.rebuild_observation_event(value, (arm,), lambda event: event.update({"hashAlgorithm": "sha256", "hashlock": hashlib.sha256(preimage).hexdigest()}))
+        return value
+
+    vectors.append(case("fv-htlc-evm-leg-sha256-hashlock", "pass", "the signed HTLC rail selects sha256 for its eip155:1 source leg and keccak256 for its eip155:8453 destination leg; every event commits its leg's recomputed hashlock", sha256_legs("source")))
+    vectors.append(case("fv-htlc-evm-legs-share-sha256-hashlock", "pass", "both EVM legs select sha256, which EVM computes natively; legs MAY share one hash function", sha256_legs("both")))
+    # A leg chain the HTLC-6 table lists no native hash for is error, even
+    # when its chain reference equals an EVM chainId.
+    rail("fv-htlc-leg-chain-without-native-hash", "the signed HTLC rail's destination leg is on cosmos:8453, which the HTLC-6 row lists no native hash for; the evidence names EVM chainId 8453", "htlc-reveal", lambda r: r["consumerFinalityProfile"]["destination"].update({"networkId": "cosmos:8453", "genesisHash": hashlib.sha256(b"genesis:cosmos:8453").hexdigest()}))
+    rail("fv-htlc-hash-algorithm-parameter-missing", "the signed HTLC rail omits sourceHashAlgorithm, which the §9.14 row requires", "htlc-reveal", lambda r: r["parameters"].pop("sourceHashAlgorithm"))
+
+    # FV-10: a missing validator-set checkpoint defers only after every check
+    # the presented certificate supports alone, on each BFT path.
+    def certificate_without_set(name, expected, note, value, path, mutate):
+        node = value["context"]
+        for segment in path:
+            node = node[segment]
+        mutate(node["finalityCertificate"]["signatures"], node["finalityCertificate"])
+        vectors.append(case(name, expected, note, value, trusted_overrides={"validatorSets": None}))
+
+    def duplicate_signer(signatures, certificate):
+        signatures[1] = copy.deepcopy(signatures[0])
+
+    def noncanonical_value(signatures, certificate):
+        signatures[0]["value"] = "==not base64url=="
+
+    def unsupported_algorithm(signatures, certificate):
+        signatures[0]["algorithm"] = "secp256k1"
+
+    bft_paths = (
+        ("fv-bft", lambda: factory.model_input("bft-final"), ("observation",)),
+        ("fv-ap2-sr3-bft", factory.provider_sr3_value, ("receiptTransactionObservation",)),
+        ("fv-tank-coordinator-bft", lambda: factory.model_input("liquidity-tank"), ("coordinator",)),
+    )
+    for prefix, build, path in bft_paths:
+        certificate_without_set(prefix + "-validator-set-absent-signatures-not-array", "error", "the pinned validator set is not configured and the BFT signatures are an object", build(), path, lambda s, c: c.__setitem__("signatures", {}))
+        certificate_without_set(prefix + "-validator-set-absent-signature-noncanonical", "fail", "the pinned validator set is not configured and a BFT signature value is not canonical Base64URL", build(), path, noncanonical_value)
+    certificate_without_set("fv-bft-validator-set-absent-signature-malformed", "error", "the pinned validator set is not configured and a BFT signature lacks its algorithm", factory.model_input("bft-final"), ("observation",), lambda s, c: s[0].pop("algorithm"))
+    certificate_without_set("fv-bft-validator-set-absent-signer-id-not-string", "error", "the pinned validator set is not configured and a BFT signature names its validator by a number", factory.model_input("bft-final"), ("observation",), lambda s, c: s[0].__setitem__("validatorId", 7))
+    certificate_without_set("fv-bft-validator-set-absent-duplicate-signer", "fail", "the pinned validator set is not configured and one validator signs twice", factory.model_input("bft-final"), ("observation",), duplicate_signer)
+    certificate_without_set("fv-bft-validator-set-absent-algorithm-unsupported", "fail", "the pinned validator set is not configured and a BFT signature names secp256k1", factory.model_input("bft-final"), ("observation",), unsupported_algorithm)
+    certificate_without_set("fv-bft-validator-set-absent-signatures-empty", "fail", "the pinned validator set is not configured and the certificate carries no signature, which no positive quorum admits", factory.model_input("bft-final"), ("observation",), lambda s, c: s.clear())
 
     # HTLC-8: the destination lock is mined no earlier than the source lock's
     # mined instant plus the pinned sourceFinalitySec.  Each schedule keeps

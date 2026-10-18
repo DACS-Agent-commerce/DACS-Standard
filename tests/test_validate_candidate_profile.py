@@ -19,6 +19,8 @@ DOC = ROOT / "docs" / "delivery-or-remedy-candidate.md"
 MATRIX = ROOT / "conformance" / "candidates" / "delivery-or-remedy" / "rule-case-matrix.json"
 SR2_REFERENCE_PATH = ROOT / "scripts" / "sr2_resolution_reference.py"
 SR2_VECTORS = ROOT / "conformance" / "vectors" / "security" / "sr2-logical-native-resolution-v0.1.json"
+# A labelled spec rule: `- (ID) ...` or the bold form `- **(ID) Title.** ...` / `- **(ID)** ...`.
+SPEC_RULE_LABEL_RE = re.compile(r"^- (?:\*\*)?\(([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)\)")
 
 
 def shallow_checkout() -> bool:
@@ -206,6 +208,12 @@ class CandidateProfileValidationTests(unittest.TestCase):
             "with the DRA-20 and DRA-22 extensions",
             "regenerate every existing Demos-anchored vector whose `blockRef.timestamp` is not a whole multiple of 1000",
             "amend CORE CF-3, or narrow DRW-5 to the DRA-6 and DRA-7 collision checks",
+            # Sweep 9: envelope, address spelling, budget spelling, and bytes32 inputs are explicit.
+            "which replaces the DACS-4 `RailDefinition.signature` envelope for this type",
+            "`token`, `recipient`, `asset.contract`)",
+            "A `budgetBaseUnits` that is not in minimal unsigned decimal form.",
+            "MUST have type `bytes32`, which the section 8.1 mapping fills",
+            "A `deliverable` or `reason` input that is not `bytes32`.",
         ):
             self.assertIn(anchor, self.text)
         for removed in (
@@ -227,6 +235,7 @@ class CandidateProfileValidationTests(unittest.TestCase):
             "MUST apply RAV-R1 through RAV-R5 unchanged",
             "any other authenticated binding mismatch are `permanent`",
             "Neither policy authorizes",
+            "a `disabled`, `failed`, or `mocked` rail selected",
         ):
             self.assertNotIn(removed, self.text)
 
@@ -291,21 +300,42 @@ class CandidateProfileValidationTests(unittest.TestCase):
         self.assertEqual(r42["expected"], ["fail"])
         self.assertLessEqual({"DRP-17", "DRA-20"}, set(r42["rules"]))
 
-    # Sweep 8: every spec rule that verifies or reads a `dacs-rail:v1:` record is one DRR-2
-    # adapts; otherwise LRR-2/LRR-3 reject every correctly signed job-escrow rail.
-    @unittest.skipIf(SHALLOW, SHALLOW_REASON)
-    def test_every_rail_domain_rule_is_adapted_for_the_job_escrow_rail(self):
+    def spec_rules_at_pin(self) -> dict[str, str]:
+        """Every labelled spec rule at the pin, `- (ID)` or `- **(ID)**`, with its wrapped lines."""
         pin = self.validator.checked_against(self.text)
         files = git("ls-tree", "--name-only", f"{pin}:spec").stdout.split()
-        label = re.compile(r"^- \(([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)\)")
-        named = set()
+        rules: dict[str, str] = {}
         for name in (f for f in files if f.endswith(".md")):
+            current = None
             for line in self.spec_at_pin(f"spec/{name}").splitlines():
-                match = label.match(line)
-                if match and "dacs-rail:v1:" in line:
-                    named.add(match.group(1))
+                match = SPEC_RULE_LABEL_RE.match(line)
+                if match:
+                    current = match.group(1)
+                    rules[current] = line
+                elif current and line.startswith("  ") and line.strip():
+                    rules[current] += " " + line.strip()
+                else:
+                    current = None
+        return rules
+
+    def test_spec_rule_label_matches_plain_and_bold_labels(self):
+        self.assertEqual(SPEC_RULE_LABEL_RE.match("- (RD-1) sign the rail").group(1), "RD-1")
+        self.assertEqual(SPEC_RULE_LABEL_RE.match("- **(FV-1) Exact rail authority.** A").group(1), "FV-1")
+        self.assertEqual(SPEC_RULE_LABEL_RE.match("- **(MTR-5)** a transacting reader").group(1), "MTR-5")
+        self.assertIsNone(SPEC_RULE_LABEL_RE.match("See (FV-1) for details."))
+
+    # Sweeps 8 and 9: every spec rule that verifies or reads a rail definition's steward
+    # signature is one DRR-2 adapts, whatever its label form or wording; otherwise LRR-2,
+    # LRR-3 or FV-1 rejects every correctly signed job-escrow rail.
+    @unittest.skipIf(SHALLOW, SHALLOW_REASON)
+    def test_every_rail_domain_rule_is_adapted_for_the_job_escrow_rail(self):
+        steward = re.compile(r"steward signature|steward-signed rail")
+        named = {
+            rule_id for rule_id, text in self.spec_rules_at_pin().items()
+            if "dacs-rail:v1:" in text or (steward.search(text) and re.search(r"\brail", text))
+        }
         # A new reader of the rail record at a later pin must be added to DRR-2 (DRG-2 re-audit).
-        self.assertEqual(named, {"RD-1", "LRR-2", "LRR-3", "RAV-R5"})
+        self.assertEqual(named, {"RD-1", "LRR-2", "LRR-3", "RAV-R5", "FV-1"})
         rules = {r["id"]: r["text"] for r in self.validator.parse_rules(self.text)}
         self.assertTrue(rules["DRR-2"].startswith("RD-1 through RD-7 apply"))
         for rule_id in named - {"RD-1"}:
@@ -317,6 +347,133 @@ class CandidateProfileValidationTests(unittest.TestCase):
         self.assertIn('a `JobEscrowRailDefinition` signed under `"dacs-rail:v1:"`', r21["description"])
         self.assertIn("fail", r21["expected"])
         self.assertIn("DRR-2", r21["rules"])
+
+    # Sweep 9: FV-1 and FV-2 read finality-bound evidence members that the job-escrow
+    # artifacts do not carry, so DRF-9 must say what each one means for this profile.
+    @unittest.skipIf(SHALLOW, SHALLOW_REASON)
+    def test_fv1_and_fv2_members_are_mapped_for_job_escrow_evidence(self):
+        spec_rules = self.spec_rules_at_pin()
+        rules = {r["id"]: r["text"] for r in self.validator.parse_rules(self.text)}
+        self.assertIn("FV-1 through FV-10", rules["DRF-8"])
+        for member, rule_id in (
+            ("`finalityBoundEvidenceVersion`", "FV-1"),
+            ("`railDefinitionRef`", "FV-1"),
+            ("`evidence.phase`", "FV-1"),
+            ("steward signature", "FV-1"),
+            ("`settlementFinality", "FV-2"),
+        ):
+            self.assertIn(member, spec_rules[rule_id], (rule_id, member))
+            self.assertIn(member, rules["DRF-9"], member)
+        for mapping in (
+            "by the artifact's own version member under DRV-8",
+            "Its `railDefinitionRef` is the overlay's `railDefinitionRef`",
+            'under the DRR-2 domain `"dacs-x-job-escrow-rail:v1:"`',
+            "the resolved `phaseHandler` MUST equal `x-job-escrow`",
+            "the artifact's `finality` member",
+        ):
+            self.assertIn(mapping, rules["DRF-9"])
+        cases = {c["id"]: c for c in self.validator.parse_cases(self.text)}
+        self.assertIn("DRF-9", cases["R21"]["rules"])
+        self.assertIn("other than the overlay's `railDefinitionRef`", cases["R21"]["description"])
+        self.assertIn("DRF-9", cases["I1"]["rules"])
+
+    # Sweep 9: the candidate's commit step is none of the five DACS-3 commitment kinds,
+    # so every DACS-3 rule that reads the agreement commitment phase must be adapted.
+    @unittest.skipIf(SHALLOW, SHALLOW_REASON)
+    def test_every_commitment_phase_reader_is_adapted_for_the_commit_step(self):
+        readers = {
+            rule_id for rule_id, text in self.spec_rules_at_pin().items()
+            if re.search(r"agreement commitment phase", text, re.I)
+        }
+        # A new reader at a later pin must be added to DRP-18 (DRG-2 re-audit).
+        self.assertEqual(readers, {"PS-2", "CA-1", "MTR-5", "RFQ-3", "SE-8"})
+        rules = {r["id"]: r["text"] for r in self.validator.parse_rules(self.text)}
+        for rule_id in readers:
+            self.assertIn(rule_id, rules["DRP-18"])
+        # The §8.5.2 validation before check 1 is unlabelled prose with the same five-kind gate.
+        negotiate = self.spec_at_pin("spec/DACS-3-NEGOTIATE.md")
+        self.assertIn("exactly one recognized negotiation phase and exactly one\nof the five agreement commitment phases",
+                      negotiate)
+        for clause in (
+            "the §8.5.2 validation before check 1, check 9",
+            "MUST treat the one `x-commit-delivery-or-remedy-agreement` step as that phase",
+            "the commit step MUST immediately follow the single `negotiate-*` step",
+        ):
+            self.assertIn(clause, rules["DRP-18"])
+        sketch = self.text.split("```text\n", 2)[1]
+        self.assertTrue(sketch.startswith("negotiate-*\nx-commit-delivery-or-remedy-agreement "), sketch)
+        r20 = {c["id"]: c for c in self.validator.parse_cases(self.text)}["R20"]
+        self.assertIn("DRP-18", r20["rules"])
+        self.assertIn("a commit step that does not immediately follow the negotiation", r20["description"])
+
+    @staticmethod
+    def cited_rules(text: str) -> set[str]:
+        """Candidate rule IDs a text cites, with every "X through Y" range expanded."""
+        cited = set(re.findall(r"\bDR[A-Z]+-\d+\b", text))
+        for start, end in re.findall(r"\b(DR[A-Z]+-\d+) through (DR[A-Z]+-\d+)\b", text):
+            family, first = start.rsplit("-", 1)
+            if end.rsplit("-", 1)[0] == family:
+                cited |= {f"{family}-{n}" for n in range(int(first), int(end.rsplit("-", 1)[1]) + 1)}
+        return cited
+
+    def implementation_duties_outside_the_gate(self, text: str) -> list[str]:
+        """Rules that bind the selected implementation but are not in the capabilityProfile."""
+        rules = {r["id"]: r["text"] for r in self.validator.parse_rules(text)}
+        meaning = re.search(r"`capabilityProfile` `dacs-delivery-gate-v1` means ([^.]+)\.", rules["DRC-14"])
+        self.assertIsNotNone(meaning, rules["DRC-14"])
+        gate = self.cited_rules(meaning.group(1))
+        # A duty that a gate member restates by citing it is gated too.
+        cited = {ref for member in gate for ref in self.cited_rules(rules.get(member, ""))}
+        duty = re.compile(r"\b[Ss]elected (implementation|contract) MUST\b")
+        return sorted(rule_id for rule_id, body in rules.items()
+                      if duty.search(body) and rule_id not in gate | cited)
+
+    # Sweep 9: an obligation on the selected implementation is a deployment capability, so
+    # an eligible deployment must prove it; DRD-13's status-bound `reject` was left out.
+    def test_every_implementation_duty_is_in_the_capability_gate(self):
+        self.assertEqual(self.implementation_duties_outside_the_gate(self.text), [])
+        ungated = mutate(self.text, "means DRC-1 through DRC-13, DRC-22, and DREB-24.",
+                         "means DRC-1 through DRC-13 and DREB-24.")
+        self.assertEqual(self.implementation_duties_outside_the_gate(ungated), ["DRC-22", "DRD-13"])
+        # §8.4 and §12 state the same eligibility range, which reaches the last DRC rule.
+        last = max(int(r["id"].rsplit("-", 1)[1]) for r in self.validator.parse_rules(self.text)
+                   if r["id"].startswith("DRC-"))
+        ranges = re.findall(r"(?:independently prove|satisfying) DRC-1 through DRC-(\d+) and DREB-24", self.text)
+        self.assertEqual(ranges, [str(last), str(last)])
+        self.assertIn("with no expected prior status, so a pre-submission rejection can execute after a native "
+                      "`submit` (DRD-13, DRC-22)", self.text)
+        cases = {c["id"]: c for c in self.validator.parse_cases(self.text)}
+        self.assertIn("DRC-22", cases["R10"]["rules"])
+        self.assertIn("executes against `Submitted` for a decision issued against `Funded`", cases["R10"]["description"])
+
+    # Sweep 9: DRR-5 imports RAV-R2, which forbids `mocked` only for a production session
+    # and lets trusted local policy configure non-production use.
+    @unittest.skipIf(SHALLOW, SHALLOW_REASON)
+    def test_mocked_rail_case_follows_the_rav_r2_production_split(self):
+        rav_r2 = self.spec_rules_at_pin()["RAV-R2"]
+        self.assertIn("For a new production session, it additionally MUST NOT select a rail with availability `mocked`",
+                      rav_r2)
+        r37 = {c["id"]: c for c in self.validator.parse_cases(self.text)}["R37"]
+        self.assertNotIn("`mocked` rail selected, or", r37["description"])
+        self.assertNotIn("`failed`, or `mocked`", r37["description"])
+        self.assertIn("A `mocked` rail selected for a production session", r37["description"])
+        self.assertIn("instead of trusted local policy (RAV-R2)", r37["description"])
+        self.assertIn("DRR-5", r37["rules"])
+
+    # DRG-3: every registry name the candidate introduces uses the CORE §B.6 `x-` form.
+    def test_candidate_registry_names_use_the_x_form(self):
+        literals = re.findall(r'^\s+(?:railType|phaseHandler): ("[^"]+")', self.text, re.M)
+        for name, lines in self.validator.type_bodies(self.text):
+            if name.endswith("PhaseStep"):
+                literals += re.findall(r'^\s+kind: ("[^"]+")', "\n".join(lines), re.M)
+        self.assertEqual(len(literals), 4, literals)
+        for literal in literals:
+            self.assertTrue(literal.startswith('"x-'), literal)
+        addresses = dict(self.validator.sections(self.text))["6.5 Candidate logical addresses"]
+        rows = re.findall(r"^\| `[A-Za-z]+` \| `([^`]+)` \|$", addresses, re.M)
+        self.assertEqual(len(rows), 9)
+        for address in rows:
+            self.assertTrue(address.startswith("dacs4:x-job-escrow:"), address)
 
     # Sweep 8: an unsupported version of any signed artifact is `error` before hashing.
     def test_every_signed_version_member_has_a_refusal_rule_and_case(self):
@@ -597,6 +754,61 @@ class CandidateProfileValidationTests(unittest.TestCase):
                    "ERCs/blob/a078cab/ERCS/erc-55.md"),
             "external pin https://github.com/ethereum/ERCs/blob/a078cab/ERCS/erc-55.md does not link to a 40-hex commit",
         )
+
+    # Sweep 9: a wrapped item continues the list, so links after it are still checked.
+    def test_wrapped_external_pin_item_does_not_end_the_list(self):
+        wrapped = mutate(self.text, "- EIP-1271 at [`ethereum/ERCs@a078cab`]", "- EIP-1271 at\n  [`ethereum/ERCs@a078cab`]")
+        self.assertEqual(self.validator.external_pin_errors(wrapped.splitlines()), [])
+        unpinned = mutate(wrapped, "ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-2771.md",
+                          "ERCs/blob/master/ERCS/erc-2771.md")
+        self.assert_structural(
+            unpinned,
+            "external pin https://github.com/ethereum/ERCs/blob/master/ERCS/erc-2771.md does not link to a 40-hex commit",
+        )
+        wrapped_link = mutate(self.text, "- EIP-1271 at [`ethereum/ERCs@a078cab`](https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-1271.md);",
+                              "- EIP-1271 at\n  [`ethereum/ERCs@master`](https://github.com/ethereum/ERCs/blob/master/ERCS/erc-1271.md);")
+        self.assert_structural(
+            wrapped_link,
+            "external pin https://github.com/ethereum/ERCs/blob/master/ERCS/erc-1271.md does not link to a 40-hex commit",
+        )
+
+    # Sweep 9: the ABI-pin literal, the External pins entry, and the §8 link name one ERC-8183 text.
+    def test_canonical_erc_revision_must_match_the_erc8183_pin(self):
+        self.assertEqual(self.validator.erc8183_revision_errors(self.text), [])
+        other = "1" * 40
+        self.assert_structural(
+            mutate(self.text, 'canonicalErcRevision: "ethereum/ERCs@a078cab5cc8e9581c15f76c091ed96eed28f02f7"',
+                   f'canonicalErcRevision: "ethereum/ERCs@{other}"'),
+            f"ERC-8183 links and canonicalErcRevision name different commits: {other}, "
+            "a078cab5cc8e9581c15f76c091ed96eed28f02f7",
+        )
+        section8 = "The first binding composes the canonical ERC-8183 interface at [`ethereum/ERCs@a078cab`](https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-8183.md)."
+        self.assert_structural(
+            mutate(self.text, section8, section8.replace("a078cab5cc8e9581c15f76c091ed96eed28f02f7", other)),
+            "ERC-8183 links and canonicalErcRevision name different commits",
+        )
+        self.assert_structural(
+            mutate(self.text, '  canonicalErcRevision: "ethereum/ERCs@a078cab5cc8e9581c15f76c091ed96eed28f02f7"\n', ""),
+            "expected exactly one canonicalErcRevision literal, found 0",
+        )
+        self.assertEqual(
+            self.validator.erc8183_revision_errors(self.text.replace("/ERCS/erc-8183.md", "/ERCS/erc-8183-draft.md")),
+            ["no commit-pinned link to canonical ERC-8183 (ethereum/ERCs .../ERCS/erc-8183.md)"],
+        )
+
+    # Sweep 9: both validators treat ``` and ~~~ fences, indented or not, as code.
+    def test_tilde_and_indented_fences_are_code(self):
+        for fence in ("~~~", "  ```", "   ~~~"):
+            fenced = f"{fence}text\n- (DRZ-1) A fenced line MUST NOT count.\n{fence}\n"
+            self.assertEqual(self.validator.parse_rules(fenced), [], fence)
+            self.assertEqual(self.validator.split_lines(fenced)[1][2], True, fence)
+        text = mutate(self.text, "### 6.5 Candidate logical addresses\n",
+                      "~~~text\n- (DRZ-1) An example inside a tilde fence MUST NOT count.\n~~~\n\n"
+                      "### 6.5 Candidate logical addresses\n")
+        self.assertNotIn("DRZ-1", [r["id"] for r in self.validator.parse_rules(text)])
+        self.assertEqual(self.structural_errors(text), [])
+        for line, expected in (("```", True), ("~~~text", True), ("    ```", True), ("text ```", False), ("- ~", False)):
+            self.assertEqual(self.validator.validate_rule_ids.is_fence(line), expected, line)
 
     def test_missing_or_empty_external_pin_list(self):
         self.assert_structural(

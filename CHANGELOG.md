@@ -165,7 +165,7 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   checks. A pinned witness shows each of the six named cases passes a
   verifier that skips only that guard. Reach is measured by line-tracing
   every committed vector through `verify_finality`, as the corpus test calls
-  it. With the cases below, 31 of the reference's 315 `return` statements
+  it. With the cases below, 34 of the reference's 342 `return` statements
   stay unreached; the base was 161 of 304.
 - **Pre-review gate self-tests** (`scripts/pre_review_gate.py`) — the gate's
   own tests now reject a manifest missing a code-pinned regression, a matrix
@@ -223,10 +223,12 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   as used by EVM). Any other identifier, including FIPS `sha3-256`, is
   `error`. The reference implements keccak256 and checks it against known
   digests and, with SHA3 padding, against `hashlib.sha3_256`. The HTLC
-  fixture's EVM leg now uses keccak256, so the HTLC cases in
+  fixture's destination leg used the now-unregistered `sha3-256`; both
+  fixture legs now use keccak256, so the HTLC cases in
   `settlement-finality-verification`, `current-use-reputation-v1` and
   `current-use-authenticated-window-v1` are regenerated with unchanged
-  verdicts. Two new cases cover a keccak256 rail whose events commit the
+  verdicts. An EVM leg on `sha256`, the base fixture's source leg, still
+  verifies. Two new cases cover a keccak256 rail whose events commit the
   SHA3-256 digest (`fail`) and a `sha3-256` rail (`error`).
 - **AP2 protocol version** (DACS-4 §9.5.6 step 6; normative clarification) — a
   verifier applies the rules of the carried `protocolVersion`, and a version
@@ -334,14 +336,34 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
 
 ### Conformance coverage and reference alignment
 
-- **HTLC hash and epoch checks** (DACS-4 HTLC-6, HTLC-8). A registered hash
-  identifier that is not the leg chain's native hash (for example `sha256` on
-  an EVM leg) is `fail`; the canonical EVM legs now use `keccak256`. A
-  destination lock mined before the source lock's mined instant plus the
-  pinned `sourceFinalitySec` is `fail`; the HTLC-8 text now states that
-  schedule check (normative clarification). Settlement finality 269 → 274:
-  an EVM leg on `sha256`, destination locks 1s and 1ms before and exactly at
-  the pinned source finality, and a rail without `sourceFinalitySec`.
+- **HTLC hash and epoch checks** (DACS-4 HTLC-6, HTLC-8). Each leg's
+  registered hash identifier must be one its chain computes natively:
+  `keccak256` or `sha256` on EVM (opcode and SHA-256 precompile) and Solana
+  (syscalls), and `sha256` on Bitcoin. An EVM leg on `sha256`, the usual
+  choice when one hashlock must match a Solana, Bitcoin or Lightning leg,
+  verifies as at the merge base. A pair outside that set and a leg chain
+  without an entry are `error` on the signed rail, never `fail`. HTLC
+  evidence names only `eip155` legs, because the registered txRef kinds carry
+  a numeric EVM `chainId`. A destination lock mined before the source lock's
+  mined instant plus the pinned `sourceFinalitySec` is `fail`; the HTLC-8
+  text now states that schedule check (normative clarification). Settlement
+  finality 269 → 277:
+  - an EVM source leg on `sha256` and two EVM legs sharing `sha256` (`pass`);
+  - a `cosmos:8453` leg whose evidence names EVM chainId 8453 (`error`);
+  - a rail without `sourceHashAlgorithm` (`error`);
+  - destination locks 1s and 1ms before and exactly at the pinned source
+    finality, and a rail without `sourceFinalitySec`.
+- **Validator checkpoint deferral** (DACS-4 FV-10). A missing validator-set
+  checkpoint no longer hides the certificate's own checks: a non-array
+  signature list or malformed member is `error`, and an unsupported
+  algorithm, a duplicate signer, a non-canonical value or an empty list is
+  `fail`. Settlement finality 277 → 288: one case per check on the chain BFT
+  path, and the non-array and non-canonical cases on the `ap2-sr3` and tank
+  coordinator paths.
+- **Malformed trusted maps** (DACS-4 FV entry). Settlement finality
+  288 → 292 adds one `error` case each for a malformed steward,
+  observation-authority and provider-authority key, and a list-valued
+  validator-set map; only the party map had such cases.
 - **FRC-8 typed metadata and projection.** A signed `transportMetadata` that
   is not a JSON object is malformed (`error`), and which sufficient set of
   authority signatures accompanies a verified view is not finality meaning,

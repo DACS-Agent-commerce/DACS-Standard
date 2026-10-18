@@ -92,7 +92,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **SIWD (Sign-In With Demos).** Demos-wallet authentication pattern; EIP-4361-style envelope. Used for bundle presentation signatures.
 - **SR-1..5.** Substrate requirements: SR-1 cross-substrate identity aggregation; SR-2 anchored immutable storage; SR-3 consensus-backed proxy attestation; SR-4 identity-keyed private coordination; SR-5 multi-chain coordinated atomic settlement. Defined in §5 (front matter).
 - **Stor-backed credential.** A DACS-1 claim scheme whose verification result is anchored as a Storage Program. §6.3.1.
-- **Storage Program.** The Demos implementation of SR-2 — content-addressed anchored key-value storage. 1 MB substrate cap; DACS applies a 128 KB soft limit.
+- **Storage Program.** The Demos implementation of SR-2 — anchored key-value storage at a `stor-` address derived from the deployer and program name, not from the content. 1 MB substrate cap; DACS applies a 128 KB soft limit.
 - **Substrate.** The underlying blockchain or protocol stack that hosts a DACS implementation. Demos is the v0.1 reference substrate.
 - **Substrate-validator-set claim.** A ClaimReference identifying a substrate validator-set epoch; used as the signer for consensus-backed-proxy attestations. §7.5.
 - **supersedesEvidenceRef.** SettlementEvidence field on an ST-8 `:resolved` success record pointing to the interim failure record it supersedes; a same-phase supersession, not a refund amendment. §9.7 / ST-8.

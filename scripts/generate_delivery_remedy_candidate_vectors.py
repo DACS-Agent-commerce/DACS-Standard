@@ -2193,12 +2193,14 @@ def build_vector_pack() -> dict[str, Any]:
         ("decision", "escrowDecisionVersion", "release"),
         ("terminal", "escrowTerminalEvidenceVersion", "release"),
     )
+    # DRV-8 names each version member but the DACS-4 DeliveryEvidence's.
     for name, field, lifecycle in versioned:
         fixtures[f"{name}-version-2"] = make_base(lifecycle, hooks={name: put(field, "2")})
         fixtures[f"{name}-version-missing"] = make_base(lifecycle, hooks={name: drop(field)})
+        unsupported, missing = ("DRV-2", "DRV-3") if name == "delivery" else ("DRV-8", "DRV-8")
         vectors += [
-            vector(f"{name}-version-unsupported", f"{name}-version-2", "error", "DRV-2", f"an unsupported {field} fails before action, though signed and bound"),
-            vector(f"{name}-version-missing", f"{name}-version-missing", "error", "DRV-3", f"a {name} without {field} is malformed"),
+            vector(f"{name}-version-unsupported", f"{name}-version-2", "error", unsupported, f"an unsupported {field} fails before action, though signed and bound"),
+            vector(f"{name}-version-missing", f"{name}-version-missing", "error", missing, f"a {name} without {field} is malformed"),
         ]
     alias = BUYER + "?role=evaluator"
     other_events = [
@@ -2247,12 +2249,14 @@ def build_vector_pack() -> dict[str, Any]:
         return apply
     fixtures.update({
         "overlay-version-2": make_base("release", hooks={"agreement": put("deliveryOrRemedyAgreementVersion", "2")}),
+        "overlay-version-missing": make_base("release", hooks={"agreement": drop("deliveryOrRemedyAgreementVersion")}),
         "bilateral-version-2": make_base("release", hooks={"bilateral": put("payeeBoundAgreementVersion", "2")}),
         "bilateral-plain-agreement": make_base("release", hooks={"bilateral": each(
             drop("payeeBoundAgreementVersion"), put("agreementVersion", "1"),
         )}),
         # The rail: DRR-6 discriminators, DRC-14 literals, DRC-17 pins.
         "rail-version-2": make_base("release", hooks={"rail": put("jobEscrowRailVersion", "2")}),
+        "rail-version-missing": make_base("release", hooks={"rail": drop("jobEscrowRailVersion")}),
         "rail-type-unprefixed": make_base("release", hooks={"rail": put("railType", "evm-erc8183")}),
         "rail-phase-handler-other": make_base("release", hooks={"rail": put("phaseHandler", "pay-evm-erc20")}),
         "rail-capability-profile-other": make_base("release", hooks={"rail": rail_param("capabilityProfile", "other-gate-v9")}),
@@ -2453,12 +2457,14 @@ def build_vector_pack() -> dict[str, Any]:
     rail_value = release["artifacts"]["railDefinition"]
     foreign_rail_signature = steward_signature(rail_value, SEEDS["orchestrator"])
     vectors += [
-        vector("agreement-overlay-version-unsupported", "overlay-version-2", "error", "DRV-2", "an unsupported overlay version fails before action, though all three roles signed it"),
+        vector("agreement-overlay-version-unsupported", "overlay-version-2", "error", "DRV-8", "an unsupported overlay version fails before action, though all three roles signed it"),
+        vector("agreement-overlay-version-missing", "overlay-version-missing", "error", "DRV-8", "an overlay without deliveryOrRemedyAgreementVersion fails before action, though all three roles signed it"),
         vector("resolver-evidence-version-unsupported", "release", "error", "DRV-2", "an unsupported resolver evidence version fails before action, though the pinned resolver signed it", [{"op": "replace", "path": ["resolverEvidence"], "value": resolver_version_2["resolverEvidence"]}]),
         vector("bilateral-agreement-version-unsupported", "bilateral-version-2", "error", "DRV-2", "an unsupported payee-bound agreement version fails before action"),
         vector("bilateral-agreement-not-payee-bound", "bilateral-plain-agreement", "error", "DRV-2", "the payee-bound commit selects a PayeeBoundAgreementDocument, not an AgreementDocument"),
-        vector("rail-version-unsupported", "rail-version-2", "error", "DRR-6", "an unsupported jobEscrowRailVersion fails before action"),
-        vector("rail-type-unprefixed", "rail-type-unprefixed", "error", "DRR-6", "DRG-3: the rail type is x-evm-erc8183; the unprefixed name is unsupported", rules=["DRG-3", "DRR-6"]),
+        vector("rail-version-unsupported", "rail-version-2", "error", "DRR-6", "an unsupported jobEscrowRailVersion fails before action", rules=["DRR-6", "DRV-8"]),
+        vector("rail-version-missing", "rail-version-missing", "error", "DRR-6", "a rail without jobEscrowRailVersion fails before action", rules=["DRR-6", "DRV-8"]),
+        vector("rail-type-unprefixed", "rail-type-unprefixed", "error", "DRR-6", "DRG-3: the rail type is x-evm-erc8183; the unprefixed name is unsupported", rules=["DRG-3", "DRR-6", "DRV-8"]),
         vector("rail-phase-handler-other", "rail-phase-handler-other", "error", "DRR-6", "a phaseHandler other than x-job-escrow is unsupported (§11.2 R21)", rules=["DRR-2", "DRR-6"]),
         vector("rail-capability-profile-unsupported", "rail-capability-profile-other", "error", "DRC-14", "the capability profile is a DRC-14 literal"),
         vector("rail-decision-ordering-profile-superseded", "rail-decision-ordering-profile-superseded", "error", "DRC-14", "the decision-ordering profile is the DRC-14 literal anchor-final-before-terminal-v1, not the superseded fixture profile"),
@@ -2871,11 +2877,12 @@ FOLLOW_ON_FINDINGS: dict[str, tuple[str, str]] = {
     "decision-address-of-another-job": ("fail", "DRT-1"),
     "decision-address-of-other-stage": ("fail", "DRT-1"),
     "decision-reference-anchor-kind-unregistered": ("fail", "DRT-1"),
-    # A missing version discriminator is not the supported one either.
-    **{
-        f"{name}-version-missing": ("error", "DRV-2")
-        for name in ("job", "funding", "delivery", "evaluation", "disputeCase", "dispute", "decision", "terminal")
-    },
+    # A missing DeliveryEvidence version is not the supported one either.
+    # DRV-8 decides the other artifacts' missing and unsupported versions at
+    # one guard, so theirs are isolated.
+    "delivery-version-missing": ("error", "DRV-2"),
+    # A rail with no version member is not a JobEscrowRailDefinition's shape.
+    "rail-version-missing": ("error", "DRV-3"),
     # An AgreementDocument has no payee-bound members.
     "bilateral-agreement-not-payee-bound": ("error", "DRV-3"),
     # The rail fee is copied into the resolved native state.

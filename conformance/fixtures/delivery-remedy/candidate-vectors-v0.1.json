@@ -24,7 +24,7 @@
     "dacs": {
       "checkedAgainst": "df7bc202ebdc179a59d61a8221072f33f482b933",
       "documents": {
-        "docs/delivery-or-remedy-candidate.md": "4ab96c3168a5cefeb75005aecf450ab216b80fcb7c5e868df41702ddc0464089",
+        "docs/delivery-or-remedy-candidate.md": "6dccb4ba2496d23134db414c2be893f4a89206e3e7ae775df3bbd3c79310b4dc",
         "spec/CORE.md": "113b10f1b152add2a976269fcb0131bf466826f8c6e7ddcbb93da7c76f070203",
         "spec/DACS-1-IDENTIFY.md": "5476dc34a306e2b9268d218d328f00987583e857fd5383ea671c22ec024ec3b6",
         "spec/DACS-2-VET.md": "0bdf4da1b1b703752824048833fbdf6bc00ae61e149da8040bf93057342247ae",
@@ -36,8 +36,8 @@
     }
   },
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "8c73653431fe1728904dee5b9f35d5ee98d1a0aefcf9fcf3e4033d56ce68a4ee",
-  "count": 496,
+  "hash": "c38b23c0450ede5a19efbe721633f86ef178b442bd5411f3d4a498af7d08751e",
+  "count": 498,
   "fixtures": {
     "release": {
       "candidateProfile": "delivery-or-remedy-v1",
@@ -317185,6 +317185,1708 @@
         }
       }
     },
+    "overlay-version-missing": {
+      "candidateProfile": "delivery-or-remedy-v1",
+      "fixtureOnly": true,
+      "pipeline": [
+        {
+          "kind": "x-commit-delivery-or-remedy-agreement",
+          "parameters": {
+            "agreementPhase": "commit-payee-bound-agreement"
+          }
+        },
+        {
+          "kind": "x-job-escrow",
+          "parameters": {
+            "action": "fund",
+            "rail": "x-evm-erc8183:8453:FXT"
+          }
+        },
+        {
+          "kind": "deliver-storage-program"
+        },
+        {
+          "kind": "x-job-escrow",
+          "parameters": {
+            "action": "terminal",
+            "rail": "x-evm-erc8183:8453:FXT"
+          }
+        },
+        {
+          "kind": "rate"
+        }
+      ],
+      "executionContext": {
+        "acceptedRails": [
+          {
+            "railId": "x-evm-erc8183:8453:FXT",
+            "railVersion": 1
+          }
+        ],
+        "commitmentReceipts": {
+          "agreement": {
+            "status": "finalized",
+            "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "contentHash": "ec0392beb8db4fa34eff6ddd8447becfa94040ac1e633d7c9c51487401731ca2"
+          },
+          "overlay": {
+            "status": "finalized",
+            "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "contentHash": "8e1c424311208e487548cde46bf36d1aedb1e3795932561b83d69b9391de8ae2"
+          }
+        },
+        "fundingFinalizedBeforeDelivery": true,
+        "terminalGate": "delivery-returned",
+        "lateDeliveryDisabled": true,
+        "dacs5PurchaseCount": 0
+      },
+      "artifacts": {
+        "bilateralAgreement": {
+          "payeeBoundAgreementVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "listingRef": {
+            "listingId": "fixture-listing-01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "version": 1,
+            "contentHash": "7951c77fc061ef07fa880876d214c9df838335dae82dfc44d457266b0165e602"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "6e8776fd41135c8fa559b9ac965099522ca306941c76a77a84bac20be35dcab6",
+              "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "fixture:vet:01J8ME0SXKQ4T9V2RC5HJ6WX7D:buyer"
+                },
+                "contentHash": "28489ce27b9654c65d5cba9d5ab678a08b0fd83ee2d9f1c2fc788b998b0dd7e8"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "6271ba452280f7dd52c8dbef2c246d6f18901765397536dbe38c695381467885",
+              "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "fixture:vet:01J8ME0SXKQ4T9V2RC5HJ6WX7D:seller"
+                },
+                "contentHash": "6e6ea65179a6a4e277905f39496569171a241950fc01ff74ef974b73a0a64dfd"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "storage-program",
+              "hash": "c8186796b7efb007b66ce08f66427cef341400b4511df93f100eca44ac625d82"
+            },
+            "price": {
+              "amount": "1",
+              "currency": "FXT"
+            },
+            "rail": {
+              "railId": "x-evm-erc8183:8453:FXT",
+              "railVersion": 1
+            },
+            "deadline": 1800010000000,
+            "payoutBindings": [
+              {
+                "railId": "x-evm-erc8183:8453:FXT",
+                "phaseIndex": 1,
+                "payeeAddress": "0x2222222222222222222222222222222222222222"
+              }
+            ]
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1799980000000,
+          "signatures": [
+            {
+              "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "algorithm": "ed25519",
+              "value": "5KRGmISxSe-pwVMzwN4dNlpOvtdNJOL0lrhFrjE8k7vOo0-TTuWTuVSlYjunC--NZ-vLOGgMVQX0f6rUC1O0BA"
+            },
+            {
+              "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+              "algorithm": "ed25519",
+              "value": "oBijlN7RyLLStLw9ACWY743WkHi10ocbS5guVcQ342KE7Qo7gBGYS8Tu3aFkR-P-WvABYm1QoHchU8leVENTDw"
+            }
+          ]
+        },
+        "railDefinition": {
+          "jobEscrowRailVersion": "1",
+          "railVersion": 1,
+          "railId": "x-evm-erc8183:8453:FXT",
+          "railType": "x-evm-erc8183",
+          "asset": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x5555555555555555555555555555555555555555",
+            "symbol": "FXT",
+            "decimals": 6
+          },
+          "network": {
+            "kind": "evm",
+            "chainId": 8453,
+            "rpcAttestation": "evm-rpc"
+          },
+          "phaseHandler": "x-job-escrow",
+          "parameters": {
+            "canonicalErcRevision": "ethereum/ERCs@a078cab5cc8e9581c15f76c091ed96eed28f02f7",
+            "implementationRevision": "dacs-fixtures/delivery-gate@4e946bd95747e47fc7daaa1916967dde15e5a7f6",
+            "entrypoints": [
+              {
+                "name": "createJob",
+                "signature": "createJob(address,address,uint256,uint256,string,address)",
+                "selector": "0xb6dbb0b8",
+                "inputs": [
+                  {
+                    "name": "provider",
+                    "type": "address"
+                  },
+                  {
+                    "name": "evaluator",
+                    "type": "address"
+                  },
+                  {
+                    "name": "expiredAt",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "submissionCutoff",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "description",
+                    "type": "string"
+                  },
+                  {
+                    "name": "hook",
+                    "type": "address"
+                  }
+                ]
+              },
+              {
+                "name": "fund",
+                "signature": "fund(uint256,uint256)",
+                "selector": "0xa65e2cfd",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "expectedBudget",
+                    "type": "uint256"
+                  }
+                ]
+              },
+              {
+                "name": "submit",
+                "signature": "submit(uint256,bytes32)",
+                "selector": "0x2ecea788",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "deliverable",
+                    "type": "bytes32"
+                  }
+                ]
+              },
+              {
+                "name": "complete",
+                "signature": "complete(uint256,bytes32)",
+                "selector": "0xcd56b1b6",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "reason",
+                    "type": "bytes32"
+                  }
+                ]
+              },
+              {
+                "name": "reject",
+                "signature": "reject(uint256,bytes32,uint8)",
+                "selector": "0x78ad7198",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "reason",
+                    "type": "bytes32"
+                  },
+                  {
+                    "name": "expectedStatus",
+                    "type": "uint8"
+                  }
+                ]
+              },
+              {
+                "name": "claimRefund",
+                "signature": "claimRefund(uint256)",
+                "selector": "0x5b7baf64",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256"
+                  }
+                ]
+              }
+            ],
+            "events": [
+              {
+                "name": "JobCreated",
+                "signature": "JobCreated(uint256,address,address,address,uint256,address)",
+                "topic0": "0xb0f0239bfdd96453e24733e18bfc24b70d8fadf123dd977473518dd577ee79b9",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "client",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "provider",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "evaluator",
+                    "type": "address",
+                    "indexed": false
+                  },
+                  {
+                    "name": "expiredAt",
+                    "type": "uint256",
+                    "indexed": false
+                  },
+                  {
+                    "name": "hook",
+                    "type": "address",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobConfigured",
+                "signature": "JobConfigured(uint256,uint256,bytes32)",
+                "topic0": "0x0c60d31bebe150985dec532d14e68673759d5888cd8540aa7f187651288cebb6",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "submissionCutoff",
+                    "type": "uint256",
+                    "indexed": false
+                  },
+                  {
+                    "name": "preSubmissionRefundPolicy",
+                    "type": "bytes32",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobFunded",
+                "signature": "JobFunded(uint256,address,uint256)",
+                "topic0": "0xe3fbcc1ea1bdc559ec7f0347efde7655e58b5f45a30b0e4470a583c3ef5496b3",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "client",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "amount",
+                    "type": "uint256",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobSubmitted",
+                "signature": "JobSubmitted(uint256,address,bytes32)",
+                "topic0": "0x80c17db79857f338a6a6df68a6883ecc0ce78e2202fe61ed979733573f40538e",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "provider",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "deliverable",
+                    "type": "bytes32",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobCompleted",
+                "signature": "JobCompleted(uint256,address,bytes32)",
+                "topic0": "0x0fd54bd364fa9e67f17b091aefe930932c09fe7651cf5ad02c71a418f3341444",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "evaluator",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "reason",
+                    "type": "bytes32",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "PaymentReleased",
+                "signature": "PaymentReleased(uint256,address,uint256)",
+                "topic0": "0x21d71db5be59bb9fa133895586b7404307dd33fb93b16db09dc6f1d9d7d231b0",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "provider",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "amount",
+                    "type": "uint256",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobRejected",
+                "signature": "JobRejected(uint256,address,bytes32)",
+                "topic0": "0xae7362b1af91f4492868987b9c73990d780060811551b58728fbe96fd1bab275",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "rejector",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "reason",
+                    "type": "bytes32",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "Refunded",
+                "signature": "Refunded(uint256,address,uint256)",
+                "topic0": "0x7ca5472b7ea78c2c0141c5a12ee6d170cf4ce8ed06be3d22c8252ddfc7a6a2c4",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "client",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "amount",
+                    "type": "uint256",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobExpired",
+                "signature": "JobExpired(uint256)",
+                "topic0": "0x97237956f8810192811e2c3f273fd02c5d6295206fdd9c62e6fe2bfc19ba9232",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  }
+                ]
+              }
+            ],
+            "configurationEvidence": {
+              "eventTopic0": "0x0c60d31bebe150985dec532d14e68673759d5888cd8540aa7f187651288cebb6",
+              "submissionCutoffInput": 1,
+              "preSubmissionPolicyInput": 2,
+              "preSubmissionPolicyValue": "0x6576616c7561746f722d72656a656374696f6e00000000000000000000000000"
+            },
+            "nativeStatusMap": [
+              {
+                "nativeValue": 0,
+                "nativeStatus": "Open"
+              },
+              {
+                "nativeValue": 1,
+                "nativeStatus": "Funded"
+              },
+              {
+                "nativeValue": 2,
+                "nativeStatus": "Submitted"
+              },
+              {
+                "nativeValue": 3,
+                "nativeStatus": "Completed"
+              },
+              {
+                "nativeValue": 4,
+                "nativeStatus": "Rejected"
+              },
+              {
+                "nativeValue": 5,
+                "nativeStatus": "Expired"
+              }
+            ],
+            "chainId": 8453,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "runtimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+            "paymentToken": "0x5555555555555555555555555555555555555555",
+            "paymentTokenRuntimeBytecodeHash": "0x2561db1e6c25bf3254dea4025373815dcfd2b004b4a8a38ac5a5666559ab3f25",
+            "tokenDecimals": 6,
+            "finalityBlocks": 64,
+            "minimumEvaluationWindowSec": 3600,
+            "hook": "0x0000000000000000000000000000000000000000",
+            "deadlineProfile": "separate-submission-cutoff-v1",
+            "decisionOrderingProfile": "anchor-final-before-terminal-v1",
+            "maxCrossSubstrateSkewMs": 2000,
+            "platformFeeBP": 0,
+            "evaluatorFeeBP": 0,
+            "capabilityProfile": "dacs-delivery-gate-v1"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "genesisHash": "0x452dbc7d2c3e473bc31c9de1859436c5607cae0fb20a27eba1405d36f33efcd1",
+              "requiredDepth": 64,
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999"
+                ],
+                "threshold": 1,
+                "maxHeadAgeSec": 60
+              }
+            }
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:agent:9898989898989898989898989898989898989898989898989898989898989898",
+            "acceptedAt": 1799000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:9898989898989898989898989898989898989898989898989898989898989898",
+            "value": "yUp7XK8PcuWXgYtMXDGeCj0A7lFi0CTp1Du28XjTkME9apoI60c2eG-Jn83tuCj7yaBo6dNky6a9oUEZK8KMDA"
+          }
+        },
+        "agreement": {
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "agreementRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs3:agreement:01J8ME0SXKQ4T9V2RC5HJ6WX7D"
+            },
+            "contentHash": "ec0392beb8db4fa34eff6ddd8447becfa94040ac1e633d7c9c51487401731ca2"
+          },
+          "agreementHash": "ec0392beb8db4fa34eff6ddd8447becfa94040ac1e633d7c9c51487401731ca2",
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "fixture:rail:x-evm-erc8183:8453:FXT:1"
+            },
+            "contentHash": "87e2897ccda20202abb95ec02d94de564c48ab98899a0174d6c443e09e9d0053"
+          },
+          "fundPhaseIndex": 1,
+          "deliveryPhaseIndex": 2,
+          "terminalPhaseIndex": 3,
+          "buyer": {
+            "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "bundleHash": "6e8776fd41135c8fa559b9ac965099522ca306941c76a77a84bac20be35dcab6",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "fixture:vet:01J8ME0SXKQ4T9V2RC5HJ6WX7D:buyer"
+              },
+              "contentHash": "28489ce27b9654c65d5cba9d5ab678a08b0fd83ee2d9f1c2fc788b998b0dd7e8"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111"
+          },
+          "seller": {
+            "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "bundleHash": "6271ba452280f7dd52c8dbef2c246d6f18901765397536dbe38c695381467885",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "fixture:vet:01J8ME0SXKQ4T9V2RC5HJ6WX7D:seller"
+              },
+              "contentHash": "6e6ea65179a6a4e277905f39496569171a241950fc01ff74ef974b73a0a64dfd"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+          },
+          "evaluator": {
+            "primaryClaim": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "bundleHash": "2987db5ad3c1d052608f6fd12a00525eca66516d411e9b7f5ca6665ea0c0f57e",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "fixture:vet:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluator"
+              },
+              "contentHash": "152b172968947066bc90a2fafc67f83b1ca4d8731ceadfe212379babc73ce86f"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x3333333333333333333333333333333333333333",
+            "requirement": {
+              "op": "all",
+              "of": [
+                {
+                  "claimType": "demos-agent",
+                  "verificationRequired": true
+                },
+                {
+                  "claimType": "cci-xm",
+                  "verificationRequired": true
+                }
+              ]
+            },
+            "requirementHash": "9744dcd5b9a65ba0c43d74e206d089f90bf3178c56b20db709e9c08ab8729b4e"
+          },
+          "budgetBaseUnits": "1000000",
+          "submissionCutoffSec": 1800000000,
+          "evaluationDeadlineSec": 1800007200,
+          "preSubmissionRefundPolicy": "evaluator-rejection",
+          "disclosurePolicy": "public-evidence-only",
+          "evaluationRuleRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluation-rule"
+            },
+            "contentHash": "916c74cc91eda0d45d7ad1fa35003ce237844ba538df7673b045f343395c54f9"
+          },
+          "signatures": [
+            {
+              "role": "buyer",
+              "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "algorithm": "ed25519",
+              "value": "GkYIDDPiRcBBNkMlKNSD2rSWzFptPlG6MVistUPOLdJ0iT6N1p4YOWj5GByODS8U8KOtBxrgk-GD_SkyYsztAg"
+            },
+            {
+              "role": "seller",
+              "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+              "algorithm": "ed25519",
+              "value": "1KbXVDDq_MxKQWto1AzlnAZbPn2mp9I0tBrppCgaAYHr44YBq-DEoNsomraNz11LSFFgz7YG_CbI-SYgtkqaBA"
+            },
+            {
+              "role": "evaluator",
+              "party": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+              "algorithm": "ed25519",
+              "value": "GNztpQx9Pgxay_aT9WP2G57ctPzjxO7vIRWNuTkM644-Rq7SQ4E2zdAPILy50F653vDKcxuOkM5DodQWWh0HBQ"
+            }
+          ]
+        },
+        "evaluationRule": {
+          "evaluationRuleVersion": "1",
+          "ruleKind": "evaluator-judgement-v1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "criteria": [
+            {
+              "criterionId": "deliverable-matches-specification",
+              "statement": "The delivered payload matches the agreed deliverable specification."
+            },
+            {
+              "criterionId": "deliverable-is-complete",
+              "statement": "The delivered payload is complete."
+            }
+          ]
+        },
+        "job": {
+          "escrowJobRefVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "8e1c424311208e487548cde46bf36d1aedb1e3795932561b83d69b9391de8ae2",
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "fixture:rail:x-evm-erc8183:8453:FXT:1"
+            },
+            "contentHash": "87e2897ccda20202abb95ec02d94de564c48ab98899a0174d6c443e09e9d0053"
+          },
+          "chainId": 8453,
+          "contractAddress": "0x8181818181818181818181818181818181818181",
+          "runtimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+          "nativeJobId": "1",
+          "creationEvent": {
+            "kind": "evm-event",
+            "chainId": 8453,
+            "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+            "logIndex": 0
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "Ct0X0x2r53BvDfftUb6fbng8rF_rTJKiDBzZ_CNVQhd56w63mUKf1BbVnZI02TGjru4kdrdTNswhXfPuyyPlBg"
+          }
+        },
+        "funding": {
+          "escrowFundingEvidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "8e1c424311208e487548cde46bf36d1aedb1e3795932561b83d69b9391de8ae2",
+          "escrowJobRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job"
+            },
+            "contentHash": "63861614c3d5bc56b93e03e6959d4318bf4b013b50006680f33cc959e535716b"
+          },
+          "fundPhaseIndex": 1,
+          "token": "0x5555555555555555555555555555555555555555",
+          "amountBaseUnits": "1000000",
+          "fundingEventRefs": [
+            {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+              "logIndex": 1
+            }
+          ],
+          "finality": {
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990126000
+          },
+          "observedAt": 1799990126000,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "fRlReqBUdwbsHZTmgqKm0o9kfJAwtOvTt0hmM_luTP0wKdmvMmuJDypKRDSZNuSRgU1K7aQnuaG40o07Rl4iCA"
+          }
+        },
+        "delivery": {
+          "deliveryEvidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "phaseIndex": 2,
+          "phase": "deliver-storage-program",
+          "outcome": "success",
+          "deliverableContentHash": "bbd23927e66decd4ec365403d302dfc448fbe8057853a83e42261d57cad45d00",
+          "deliverableAnchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:deliverable:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+          },
+          "observedAt": 1799994800000,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "ExeSFaZdFBEo8enGmUAV7RYaIA98xEwYbak_xzAi7Fcn9WC-uWayFiBafp6MSlTFgaAv6uJ6b1Q_fFtMCalKDQ"
+          }
+        },
+        "deliveryRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:delivery:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+          },
+          "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+        },
+        "evaluation": {
+          "executionEvaluationVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "evaluationSeq": 0,
+          "deliveryOrRemedyAgreementHash": "8e1c424311208e487548cde46bf36d1aedb1e3795932561b83d69b9391de8ae2",
+          "escrowJobRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job"
+            },
+            "contentHash": "63861614c3d5bc56b93e03e6959d4318bf4b013b50006680f33cc959e535716b"
+          },
+          "deliveryEvidenceRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:delivery:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+            },
+            "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+          },
+          "criterionResults": [
+            {
+              "criterionId": "deliverable-matches-specification",
+              "outcome": "satisfied"
+            },
+            {
+              "criterionId": "deliverable-is-complete",
+              "outcome": "satisfied"
+            }
+          ],
+          "result": "accept",
+          "finding": {
+            "classification": "seller-fulfilled",
+            "rationaleCode": "fixture-criteria-met"
+          },
+          "subjectEvidenceRefs": [
+            {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:delivery:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+              },
+              "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+            }
+          ],
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "value": "sAl8y_XlCcBbrCAHmTLkaEJMF8qxb1Pkcw1Pa-T6G_4Uky0d3ih0JJuG1VQPqw5o-ytA1sWxJmidXu2Y0eODBA"
+          }
+        },
+        "evaluationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluation:0"
+          },
+          "contentHash": "0d5f2bb11ee9fed3281faeeb12faa797981a6e80f7c345189ed81f54037dba39"
+        },
+        "decision": {
+          "escrowDecisionVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "8e1c424311208e487548cde46bf36d1aedb1e3795932561b83d69b9391de8ae2",
+          "escrowJobRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job"
+            },
+            "contentHash": "63861614c3d5bc56b93e03e6959d4318bf4b013b50006680f33cc959e535716b"
+          },
+          "decisionStage": "post-submission",
+          "deliveryEvidenceRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:delivery:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+            },
+            "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+          },
+          "basisRef": {
+            "kind": "execution-evaluation",
+            "ref": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluation:0"
+              },
+              "contentHash": "0d5f2bb11ee9fed3281faeeb12faa797981a6e80f7c345189ed81f54037dba39"
+            }
+          },
+          "disposition": "release-to-provider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "value": "hWM3EtoaUJJ4F0vMLZku4J3P9y1W_YKWu3QmOI29BCjHzcQ9-B6K4728Dz11G4JpPPZS8_0bw1uGZQLDTiVwBQ"
+          }
+        },
+        "decisionRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission"
+          },
+          "contentHash": "d74c90c8c89f7e68784ba3874dcc02d671f29ab60b87cfdb088ad7fdaf11c58b"
+        },
+        "terminal": {
+          "escrowTerminalEvidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "8e1c424311208e487548cde46bf36d1aedb1e3795932561b83d69b9391de8ae2",
+          "escrowJobRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job"
+            },
+            "contentHash": "63861614c3d5bc56b93e03e6959d4318bf4b013b50006680f33cc959e535716b"
+          },
+          "fundingEvidenceRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding"
+            },
+            "contentHash": "b705e1fb7aef45b46f1c48cbb00e6dbde7170fb3739f3056f764b3b8fc2c73b3"
+          },
+          "terminalPhaseIndex": 3,
+          "terminalState": "released",
+          "disposition": "release-to-provider",
+          "token": "0x5555555555555555555555555555555555555555",
+          "amountBaseUnits": "1000000",
+          "recipient": "0x2222222222222222222222222222222222222222",
+          "terminalEventRefs": [
+            {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 2
+            },
+            {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 3
+            }
+          ],
+          "finality": {
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001126000
+          },
+          "observedAt": 1800001126000,
+          "decisionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission"
+            },
+            "contentHash": "d74c90c8c89f7e68784ba3874dcc02d671f29ab60b87cfdb088ad7fdaf11c58b"
+          },
+          "deliveryEvidenceRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:delivery:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+            },
+            "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "qrxJAKGKBIhjOUSSAMcMb4yIyZfTpB9sfeiBx5geLatK8YilvTx1bnJqCQGjyafUGmyz1ndue6UEW3Wo7x7UBQ"
+          }
+        }
+      },
+      "publicKeys": {
+        "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111": "NpV3UpHN1Wn6wTGbe62QzmZbbQKHHeTv5C-ALgJzqos",
+        "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222": "cMQiiygaNrR6K2x4-qCMLn4yEzp8b7_oTGm_f-Gi-HE",
+        "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333": "a-n25Q_Ld7U2Di8MT2HdYh9mCR43rbd2eboqTcBHXiE",
+        "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444": "wYM0ddCjKwBOvoMONnWHPGV0Nv-pVOFq1NHRYvi_4YA"
+      },
+      "orchestratorClaim": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+      "bundleRequiredSigners": [
+        "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+      ],
+      "evaluatorVetResult": "pass",
+      "profileParameters": {
+        "canonicalErcRevision": "ethereum/ERCs@a078cab5cc8e9581c15f76c091ed96eed28f02f7",
+        "implementationRevision": "dacs-fixtures/delivery-gate@4e946bd95747e47fc7daaa1916967dde15e5a7f6",
+        "entrypoints": [
+          {
+            "name": "createJob",
+            "signature": "createJob(address,address,uint256,uint256,string,address)",
+            "selector": "0xb6dbb0b8",
+            "inputs": [
+              {
+                "name": "provider",
+                "type": "address"
+              },
+              {
+                "name": "evaluator",
+                "type": "address"
+              },
+              {
+                "name": "expiredAt",
+                "type": "uint256"
+              },
+              {
+                "name": "submissionCutoff",
+                "type": "uint256"
+              },
+              {
+                "name": "description",
+                "type": "string"
+              },
+              {
+                "name": "hook",
+                "type": "address"
+              }
+            ]
+          },
+          {
+            "name": "fund",
+            "signature": "fund(uint256,uint256)",
+            "selector": "0xa65e2cfd",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256"
+              },
+              {
+                "name": "expectedBudget",
+                "type": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "submit",
+            "signature": "submit(uint256,bytes32)",
+            "selector": "0x2ecea788",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256"
+              },
+              {
+                "name": "deliverable",
+                "type": "bytes32"
+              }
+            ]
+          },
+          {
+            "name": "complete",
+            "signature": "complete(uint256,bytes32)",
+            "selector": "0xcd56b1b6",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256"
+              },
+              {
+                "name": "reason",
+                "type": "bytes32"
+              }
+            ]
+          },
+          {
+            "name": "reject",
+            "signature": "reject(uint256,bytes32,uint8)",
+            "selector": "0x78ad7198",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256"
+              },
+              {
+                "name": "reason",
+                "type": "bytes32"
+              },
+              {
+                "name": "expectedStatus",
+                "type": "uint8"
+              }
+            ]
+          },
+          {
+            "name": "claimRefund",
+            "signature": "claimRefund(uint256)",
+            "selector": "0x5b7baf64",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256"
+              }
+            ]
+          }
+        ],
+        "events": [
+          {
+            "name": "JobCreated",
+            "signature": "JobCreated(uint256,address,address,address,uint256,address)",
+            "topic0": "0xb0f0239bfdd96453e24733e18bfc24b70d8fadf123dd977473518dd577ee79b9",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "client",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "provider",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "evaluator",
+                "type": "address",
+                "indexed": false
+              },
+              {
+                "name": "expiredAt",
+                "type": "uint256",
+                "indexed": false
+              },
+              {
+                "name": "hook",
+                "type": "address",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobConfigured",
+            "signature": "JobConfigured(uint256,uint256,bytes32)",
+            "topic0": "0x0c60d31bebe150985dec532d14e68673759d5888cd8540aa7f187651288cebb6",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "submissionCutoff",
+                "type": "uint256",
+                "indexed": false
+              },
+              {
+                "name": "preSubmissionRefundPolicy",
+                "type": "bytes32",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobFunded",
+            "signature": "JobFunded(uint256,address,uint256)",
+            "topic0": "0xe3fbcc1ea1bdc559ec7f0347efde7655e58b5f45a30b0e4470a583c3ef5496b3",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "client",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobSubmitted",
+            "signature": "JobSubmitted(uint256,address,bytes32)",
+            "topic0": "0x80c17db79857f338a6a6df68a6883ecc0ce78e2202fe61ed979733573f40538e",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "provider",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "deliverable",
+                "type": "bytes32",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobCompleted",
+            "signature": "JobCompleted(uint256,address,bytes32)",
+            "topic0": "0x0fd54bd364fa9e67f17b091aefe930932c09fe7651cf5ad02c71a418f3341444",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "evaluator",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "reason",
+                "type": "bytes32",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "PaymentReleased",
+            "signature": "PaymentReleased(uint256,address,uint256)",
+            "topic0": "0x21d71db5be59bb9fa133895586b7404307dd33fb93b16db09dc6f1d9d7d231b0",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "provider",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobRejected",
+            "signature": "JobRejected(uint256,address,bytes32)",
+            "topic0": "0xae7362b1af91f4492868987b9c73990d780060811551b58728fbe96fd1bab275",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "rejector",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "reason",
+                "type": "bytes32",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "Refunded",
+            "signature": "Refunded(uint256,address,uint256)",
+            "topic0": "0x7ca5472b7ea78c2c0141c5a12ee6d170cf4ce8ed06be3d22c8252ddfc7a6a2c4",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "client",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobExpired",
+            "signature": "JobExpired(uint256)",
+            "topic0": "0x97237956f8810192811e2c3f273fd02c5d6295206fdd9c62e6fe2bfc19ba9232",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              }
+            ]
+          }
+        ],
+        "configurationEvidence": {
+          "eventTopic0": "0x0c60d31bebe150985dec532d14e68673759d5888cd8540aa7f187651288cebb6",
+          "submissionCutoffInput": 1,
+          "preSubmissionPolicyInput": 2,
+          "preSubmissionPolicyValue": "0x6576616c7561746f722d72656a656374696f6e00000000000000000000000000"
+        },
+        "nativeStatusMap": [
+          {
+            "nativeValue": 0,
+            "nativeStatus": "Open"
+          },
+          {
+            "nativeValue": 1,
+            "nativeStatus": "Funded"
+          },
+          {
+            "nativeValue": 2,
+            "nativeStatus": "Submitted"
+          },
+          {
+            "nativeValue": 3,
+            "nativeStatus": "Completed"
+          },
+          {
+            "nativeValue": 4,
+            "nativeStatus": "Rejected"
+          },
+          {
+            "nativeValue": 5,
+            "nativeStatus": "Expired"
+          }
+        ],
+        "chainId": 8453,
+        "contractAddress": "0x8181818181818181818181818181818181818181",
+        "runtimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+        "paymentToken": "0x5555555555555555555555555555555555555555",
+        "paymentTokenRuntimeBytecodeHash": "0x2561db1e6c25bf3254dea4025373815dcfd2b004b4a8a38ac5a5666559ab3f25",
+        "tokenDecimals": 6,
+        "finalityBlocks": 64,
+        "minimumEvaluationWindowSec": 3600,
+        "hook": "0x0000000000000000000000000000000000000000",
+        "deadlineProfile": "separate-submission-cutoff-v1",
+        "decisionOrderingProfile": "anchor-final-before-terminal-v1",
+        "maxCrossSubstrateSkewMs": 2000,
+        "platformFeeBP": 0,
+        "evaluatorFeeBP": 0,
+        "capabilityProfile": "dacs-delivery-gate-v1"
+      },
+      "mappingSources": {
+        "agreementHash": "8e1c424311208e487548cde46bf36d1aedb1e3795932561b83d69b9391de8ae2",
+        "deliveryHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+        "decisionHash": "d74c90c8c89f7e68784ba3874dcc02d671f29ab60b87cfdb088ad7fdaf11c58b"
+      },
+      "native": {
+        "chainId": 8453,
+        "contractAddress": "0x8181818181818181818181818181818181818181",
+        "runtimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+        "client": "0x1111111111111111111111111111111111111111",
+        "provider": "0x2222222222222222222222222222222222222222",
+        "evaluator": "0x3333333333333333333333333333333333333333",
+        "token": "0x5555555555555555555555555555555555555555",
+        "payoutReceiver": "0x2222222222222222222222222222222222222222",
+        "amountBaseUnits": "1000000",
+        "fundedAtSec": 1799990000,
+        "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+        "reason": "0xd74c90c8c89f7e68784ba3874dcc02d671f29ab60b87cfdb088ad7fdaf11c58b",
+        "submissionCutoffSec": 1800000000,
+        "expiredAt": 1800007200,
+        "terminalState": "released",
+        "terminalAction": "complete",
+        "portableStateHistory": [
+          "created",
+          "funded",
+          "submitted",
+          "released"
+        ]
+      },
+      "resolverEvidence": {
+        "transactions": [
+          {
+            "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+            "entrypoint": "0xb6dbb0b8",
+            "calldata": {
+              "provider": "0x2222222222222222222222222222222222222222",
+              "evaluator": "0x3333333333333333333333333333333333333333",
+              "expiredAt": "1800007200",
+              "submissionCutoff": "1800000000",
+              "description": "dacs-x-delivery-remedy:v1:8e1c424311208e487548cde46bf36d1aedb1e3795932561b83d69b9391de8ae2",
+              "hook": "0x0000000000000000000000000000000000000000"
+            },
+            "nativeCaller": "0x1111111111111111111111111111111111111111",
+            "outerSubmitter": "0x1111111111111111111111111111111111111111",
+            "nativeCallerAccountType": "eoa",
+            "priorNativeStatus": null,
+            "nativeStatusAfter": 0
+          },
+          {
+            "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+            "entrypoint": "0xa65e2cfd",
+            "calldata": {
+              "jobId": "1",
+              "expectedBudget": "1000000"
+            },
+            "nativeCaller": "0x1111111111111111111111111111111111111111",
+            "outerSubmitter": "0x1111111111111111111111111111111111111111",
+            "nativeCallerAccountType": "eoa",
+            "priorNativeStatus": 0,
+            "nativeStatusAfter": 1
+          },
+          {
+            "txHash": "0xf8bf81b097da6629bb4a41d656f2272e26d655c2ebaac3a648a47d58a8cca761",
+            "entrypoint": "0x2ecea788",
+            "calldata": {
+              "jobId": "1",
+              "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+            },
+            "nativeCaller": "0x2222222222222222222222222222222222222222",
+            "outerSubmitter": "0x2222222222222222222222222222222222222222",
+            "nativeCallerAccountType": "eoa",
+            "priorNativeStatus": 1,
+            "nativeStatusAfter": 2
+          },
+          {
+            "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+            "entrypoint": "0xcd56b1b6",
+            "calldata": {
+              "jobId": "1",
+              "reason": "0xd74c90c8c89f7e68784ba3874dcc02d671f29ab60b87cfdb088ad7fdaf11c58b"
+            },
+            "nativeCaller": "0x3333333333333333333333333333333333333333",
+            "outerSubmitter": "0x3333333333333333333333333333333333333333",
+            "nativeCallerAccountType": "eoa",
+            "priorNativeStatus": 2,
+            "nativeStatusAfter": 3
+          }
+        ],
+        "priorTerminals": [],
+        "nativeState": {
+          "submissionCutoffEnforced": true,
+          "expiryRecoveryAtSec": 1800007200,
+          "preterminalProviderPayoutBaseUnits": "0",
+          "platformFeeBP": 0,
+          "evaluatorFeeBP": 0,
+          "evaluatorBindingMode": "direct",
+          "evaluatorAdapter": null,
+          "escrowRuntimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+          "paymentTokenRuntimeBytecodeHash": "0x2561db1e6c25bf3254dea4025373815dcfd2b004b4a8a38ac5a5666559ab3f25",
+          "implementationAddress": null
+        },
+        "deliveryDigestAnchor": {
+          "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+          "blockNumber": 20002450,
+          "blockTimestampSec": 1799994900
+        },
+        "decisionAnchor": {
+          "substrate": "demos",
+          "finalizedBlockTimestampSec": 1800000900
+        },
+        "statuses": {
+          "agreementResolution": "verified",
+          "railResolution": "verified",
+          "codeResolution": "verified",
+          "authorityResolution": "verified",
+          "fundingFinality": "verified",
+          "deliveryFinality": "verified",
+          "decisionFinality": "verified",
+          "terminalFinality": "verified",
+          "transitionResolution": "verified",
+          "nativeStateResolution": "verified"
+        },
+        "resolverEvidenceVersion": "1",
+        "resolver": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+        "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+        "railDefinitionHash": "87e2897ccda20202abb95ec02d94de564c48ab98899a0174d6c443e09e9d0053",
+        "chainId": 8453,
+        "contractAddress": "0x8181818181818181818181818181818181818181",
+        "nativeJobId": "1",
+        "eventObservationsHash": "76f09046cc1647968840c132d9b3855914bbd02e076e0de34897a67bf0b23107",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+          "value": "SEBM1l1DZ1BxN0w8lfBe_Et2C5MNy7MvtKA60FfF3U67OgOqDl-7ENG4B7A56UsywEUuxxQJR60MgnNcoCqwAw"
+        }
+      },
+      "deliveryBinding": {
+        "nativeSubmissionEvent": {
+          "kind": "evm-event",
+          "chainId": 8453,
+          "txHash": "0xf8bf81b097da6629bb4a41d656f2272e26d655c2ebaac3a648a47d58a8cca761",
+          "logIndex": 0
+        }
+      },
+      "reproductionInputs": {
+        "publicTestSeedHex": {
+          "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111": "df39e375ecc12c4f875aff23000a9e112e9dceec44e9a0b8d6d09e0f48e90f66",
+          "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222": "fea104be48be49f011d74db054c1850aabf45f6145a7f2e5e3cac600998b573b",
+          "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333": "656fb97ab3351ee666aaecf376b3b7c2030b7cfb009ac13632e5b2905d9ea42e",
+          "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444": "1a59503ed8a0d34fba0b349342271c932e71d0880340e21c9d5e70a8474ef0b7"
+        },
+        "roleBundles": {
+          "buyer": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "claims": [
+              "cci-xm:evm:8453:0x1111111111111111111111111111111111111111"
+            ]
+          },
+          "seller": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "claims": [
+              "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+            ]
+          },
+          "evaluator": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "claims": [
+              "cci-xm:evm:8453:0x3333333333333333333333333333333333333333"
+            ]
+          }
+        },
+        "vetRecords": {
+          "buyer": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "bundleHash": "6e8776fd41135c8fa559b9ac965099522ca306941c76a77a84bac20be35dcab6",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000
+          },
+          "seller": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "bundleHash": "6271ba452280f7dd52c8dbef2c246d6f18901765397536dbe38c695381467885",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000
+          },
+          "evaluator": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "bundleHash": "2987db5ad3c1d052608f6fd12a00525eca66516d411e9b7f5ca6665ea0c0f57e",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000,
+            "requirementHash": "9744dcd5b9a65ba0c43d74e206d089f90bf3178c56b20db709e9c08ab8729b4e"
+          }
+        },
+        "deliveredArtifact": {
+          "payloadUtf8": "deliverable:01J8ME0SXKQ4T9V2RC5HJ6WX7D"
+        },
+        "runtimeBytecode": {
+          "encoding": "hex",
+          "value": "73796e74686574696320444143532064656c697665727920676174652072756e74696d65207631"
+        },
+        "nativeEventInputs": [
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+              "logIndex": 0
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999500,
+            "blockHash": "0xa2d44636b87e43c3e547d983e27c78a9e6c705f039fc79aae907af259c9a4f15",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:19999500:1799989000",
+            "blockTimestampSec": 1799989000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "JobCreated",
+            "topic0": "0xb0f0239bfdd96453e24733e18bfc24b70d8fadf123dd977473518dd577ee79b9",
+            "indexedArguments": [
+              "1",
+              "0x1111111111111111111111111111111111111111",
+              "0x2222222222222222222222222222222222222222"
+            ],
+            "dataArguments": [
+              "0x3333333333333333333333333333333333333333",
+              "1800007200",
+              "0x0000000000000000000000000000000000000000"
+            ],
+            "finalityBlock": {
+              "blockNumber": 19999563,
+              "blockHash": "0x0b5158b6c9d75fddbf16c696a14bf1a0371cdf1c85b19c5d13f59b5711c5ca68",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:19999563:1799989126",
+              "blockTimestampSec": 1799989126
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+              "logIndex": 1
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999500,
+            "blockHash": "0xa2d44636b87e43c3e547d983e27c78a9e6c705f039fc79aae907af259c9a4f15",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:19999500:1799989000",
+            "blockTimestampSec": 1799989000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "JobConfigured",
+            "topic0": "0x0c60d31bebe150985dec532d14e68673759d5888cd8540aa7f187651288cebb6",
+            "indexedArguments": [
+              "1"
+            ],
+            "dataArguments": [
+              "1800000000",
+              "0x6576616c7561746f722d72656a656374696f6e00000000000000000000000000"
+            ],
+            "finalityBlock": {
+              "blockNumber": 19999563,
+              "blockHash": "0x0b5158b6c9d75fddbf16c696a14bf1a0371cdf1c85b19c5d13f59b5711c5ca68",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:19999563:1799989126",
+              "blockTimestampSec": 1799989126
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+              "logIndex": 1
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xe732db3a9f2d963dd41b6f03acc15dfae55955231fb6e961c79b1f935c479e8b",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "JobFunded",
+            "topic0": "0xe3fbcc1ea1bdc559ec7f0347efde7655e58b5f45a30b0e4470a583c3ef5496b3",
+            "indexedArguments": [
+              "1",
+              "0x1111111111111111111111111111111111111111"
+            ],
+            "dataArguments": [
+              "1000000"
+            ],
+            "finalityBlock": {
+              "blockNumber": 20000063,
+              "blockHash": "0xdb0cfb52d0b784964e2e03b727751e832cc03f66ba6a050193c2f57a329f3396",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:20000063:1799990126",
+              "blockTimestampSec": 1799990126
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0xf8bf81b097da6629bb4a41d656f2272e26d655c2ebaac3a648a47d58a8cca761",
+              "logIndex": 0
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+            "blockNumber": 20002500,
+            "blockHash": "0xe2612a6691a37c6313200549f359f80dd20154815bff8cb2b13409b03b10c89c",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:20002500:1799995000",
+            "blockTimestampSec": 1799995000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "JobSubmitted",
+            "topic0": "0x80c17db79857f338a6a6df68a6883ecc0ce78e2202fe61ed979733573f40538e",
+            "indexedArguments": [
+              "1",
+              "0x2222222222222222222222222222222222222222"
+            ],
+            "dataArguments": [
+              "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+            ],
+            "finalityBlock": {
+              "blockNumber": 20002563,
+              "blockHash": "0xa8548f6bbe69696a3a83658230ef50657dc304e8b26451a115dbc2844d116c99",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:20002563:1799995126",
+              "blockTimestampSec": 1799995126
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 2
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20005500,
+            "blockHash": "0xf9a3cccbd97d8ee25b9567e8a9265c5e13d658e052fa6cc4555355ad92dda26a",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:20005500:1800001000",
+            "blockTimestampSec": 1800001000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "JobCompleted",
+            "topic0": "0x0fd54bd364fa9e67f17b091aefe930932c09fe7651cf5ad02c71a418f3341444",
+            "indexedArguments": [
+              "1",
+              "0x3333333333333333333333333333333333333333"
+            ],
+            "dataArguments": [
+              "0xd74c90c8c89f7e68784ba3874dcc02d671f29ab60b87cfdb088ad7fdaf11c58b"
+            ],
+            "finalityBlock": {
+              "blockNumber": 20005563,
+              "blockHash": "0x80ea01799cd0e1e0e21b17b68f56bfd33bc946ecd5537ea0232d957fb41272a8",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:20005563:1800001126",
+              "blockTimestampSec": 1800001126
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 3
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20005500,
+            "blockHash": "0xf9a3cccbd97d8ee25b9567e8a9265c5e13d658e052fa6cc4555355ad92dda26a",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:20005500:1800001000",
+            "blockTimestampSec": 1800001000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "PaymentReleased",
+            "topic0": "0x21d71db5be59bb9fa133895586b7404307dd33fb93b16db09dc6f1d9d7d231b0",
+            "indexedArguments": [
+              "1",
+              "0x2222222222222222222222222222222222222222"
+            ],
+            "dataArguments": [
+              "1000000"
+            ],
+            "finalityBlock": {
+              "blockNumber": 20005563,
+              "blockHash": "0x80ea01799cd0e1e0e21b17b68f56bfd33bc946ecd5537ea0232d957fb41272a8",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:20005563:1800001126",
+              "blockTimestampSec": 1800001126
+            }
+          }
+        ]
+      },
+      "reputationProjection": {
+        "buyerAnchoredOutcome": "completed",
+        "sellerAnchoredOutcome": "completed",
+        "faultedParty": "none",
+        "releaseAloneEstablishesNonFinancialCompletion": false
+      },
+      "submittedBeforeCutoff": true,
+      "canonicalRecords": {
+        "agreement": {
+          "canonicalUtf8Hex": "7b2261677265656d656e7448617368223a2265633033393262656238646234666133346566663664646438343437626563666139343034306163316536333364376339633531343837343031373331636132222c2261677265656d656e74526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373333a61677265656d656e743a30314a384d453053584b513454395632524335484a3657583744227d2c22636f6e74656e7448617368223a2265633033393262656238646234666133346566663664646438343437626563666139343034306163316536333364376339633531343837343031373331636132227d2c2262756467657442617365556e697473223a2231303030303030222c226275796572223a7b2262756e646c6548617368223a2236653837373666643431313335633866613535396239616339363530393935323263613330363934316337366137376138346261633230626533356463616236222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307831313131313131313131313131313131313131313131313131313131313131313131313131313131222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131222c227665745265636f7264526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a30314a384d453053584b513454395632524335484a36575837443a6275796572227d2c22636f6e74656e7448617368223a2232383438396365323762393635346336356435636261396435616236373861303862306664383365653264396631633266633738386239393862306464376538227d7d2c2264656c69766572795068617365496e646578223a322c22646973636c6f73757265506f6c696379223a227075626c69632d65766964656e63652d6f6e6c79222c226576616c756174696f6e446561646c696e65536563223a313830303030373230302c226576616c756174696f6e52756c65526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a782d6a6f622d657363726f773a30314a384d453053584b513454395632524335484a36575837443a6576616c756174696f6e2d72756c65227d2c22636f6e74656e7448617368223a2239313663373463633931656461306434356437616431666133353030336365323337383434626135333864663736373362303435663334333339356335346639227d2c226576616c7561746f72223a7b2262756e646c6548617368223a2232393837646235616433633164303532363038663666643132613030353235656361363635313664343131653962376635636136363635656130633066353765222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307833333333333333333333333333333333333333333333333333333333333333333333333333333333222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333222c22726571756972656d656e74223a7b226f66223a5b7b22636c61696d54797065223a2264656d6f732d6167656e74222c22766572696669636174696f6e5265717569726564223a747275657d2c7b22636c61696d54797065223a226363692d786d222c22766572696669636174696f6e5265717569726564223a747275657d5d2c226f70223a22616c6c227d2c22726571756972656d656e7448617368223a2239373434646364356239613635626130633433643734653230366430383966393062663331373863353662323064623730396539633038616238373239623465222c227665745265636f7264526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a30314a384d453053584b513454395632524335484a36575837443a6576616c7561746f72227d2c22636f6e74656e7448617368223a2231353262313732393638393437303636626339306132666166633637663833623163613464383733316365616466653231323337396261626337336365383666227d7d2c2266756e645068617365496e646578223a312c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744222c227072655375626d697373696f6e526566756e64506f6c696379223a226576616c7561746f722d72656a656374696f6e222c227261696c446566696e6974696f6e526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7261696c3a782d65766d2d657263383138333a383435333a4658543a31227d2c22636f6e74656e7448617368223a2238376532383937636364613230323032616262393565633032643934646535363463343861623938383939613031373464366334343365303965396430303533227d2c2273656c6c6572223a7b2262756e646c6548617368223a2236323731626134353232383066376464353263386462656632633234366436663138393031373635333937353336646265333863363935333831343637383835222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307832323232323232323232323232323232323232323232323232323232323232323232323232323232222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232222c227665745265636f7264526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a30314a384d453053584b513454395632524335484a36575837443a73656c6c6572227d2c22636f6e74656e7448617368223a2236653665613635313739613661346532373739303566333934393635363931373161323431393530666330316666373465663937346237336130613634646664227d7d2c227375626d697373696f6e4375746f6666536563223a313830303030303030302c227465726d696e616c5068617365496e646578223a337d",
+          "contentHash": "8e1c424311208e487548cde46bf36d1aedb1e3795932561b83d69b9391de8ae2",
+          "mappedNativeValue": "dacs-x-delivery-remedy:v1:8e1c424311208e487548cde46bf36d1aedb1e3795932561b83d69b9391de8ae2"
+        },
+        "delivery": {
+          "canonicalUtf8Hex": "7b2264656c6976657261626c65416e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a64656c6976657261626c653a30314a384d453053584b513454395632524335484a36575837443a32227d2c2264656c6976657261626c65436f6e74656e7448617368223a2262626432333932376536366465636434656333363534303364333032646663343438666265383035373835336138336534323236316435376361643435643030222c2264656c697665727945766964656e636556657273696f6e223a2231222c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744222c226f627365727665644174223a313739393939343830303030302c226f7574636f6d65223a2273756363657373222c227068617365223a2264656c697665722d73746f726167652d70726f6772616d222c227068617365496e646578223a327d",
+          "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+          "mappedNativeValue": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+        },
+        "decision": {
+          "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22657865637574696f6e2d6576616c756174696f6e222c22726566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a782d6a6f622d657363726f773a30314a384d453053584b513454395632524335484a36575837443a6576616c756174696f6e3a30227d2c22636f6e74656e7448617368223a2230643566326262313165653966656433323831666165656231326661613739373938316136653830663763333435313839656438316635343033376462613339227d7d2c226465636973696f6e5374616765223a22706f73742d7375626d697373696f6e222c2264656c697665727945766964656e6365526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a64656c69766572793a30314a384d453053584b513454395632524335484a36575837443a32227d2c22636f6e74656e7448617368223a2239646133373064333165663930313137623238306530343961653365656461643930383733313332663766356431353963343839383430613630393339653935227d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2238653163343234333131323038653438373534386364653436626633366431616564623165333739353933323536316238336436396239333931646538616532222c22646973706f736974696f6e223a2272656c656173652d746f2d70726f7669646572222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a782d6a6f622d657363726f773a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c22636f6e74656e7448617368223a2236333836313631346333643562633536623933653033653639353964343331386266346230313362353030303636383066333363633935396535333537313662227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
+          "contentHash": "d74c90c8c89f7e68784ba3874dcc02d671f29ab60b87cfdb088ad7fdaf11c58b",
+          "mappedNativeValue": "0xd74c90c8c89f7e68784ba3874dcc02d671f29ab60b87cfdb088ad7fdaf11c58b"
+        }
+      }
+    },
     "bilateral-version-2": {
       "candidateProfile": "delivery-or-remedy-v1",
       "fixtureOnly": true,
@@ -322291,6 +323993,1708 @@
           "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22657865637574696f6e2d6576616c756174696f6e222c22726566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a782d6a6f622d657363726f773a30314a384d453053584b513454395632524335484a36575837443a6576616c756174696f6e3a30227d2c22636f6e74656e7448617368223a2230623333643962323166383236616561373333346430373561656130333834376232653862626462653066653266306331346230343636666432326261323933227d7d2c226465636973696f6e5374616765223a22706f73742d7375626d697373696f6e222c2264656c697665727945766964656e6365526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a64656c69766572793a30314a384d453053584b513454395632524335484a36575837443a32227d2c22636f6e74656e7448617368223a2239646133373064333165663930313137623238306530343961653365656461643930383733313332663766356431353963343839383430613630393339653935227d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2234636632636236313738353830613765643635386134636566393934396232363864613633396466303262623563313131323234346433376633363031663265222c22646973706f736974696f6e223a2272656c656173652d746f2d70726f7669646572222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a782d6a6f622d657363726f773a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c22636f6e74656e7448617368223a2263633139666565363837393461336332383162376639363131666531366364663338303635666539346363663531376237316435653736343265636533633837227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
           "contentHash": "b5c71f6faa931531e83c16739265c4c253abe9c5c4968d19c9c37bbcdb38a66c",
           "mappedNativeValue": "0xb5c71f6faa931531e83c16739265c4c253abe9c5c4968d19c9c37bbcdb38a66c"
+        }
+      }
+    },
+    "rail-version-missing": {
+      "candidateProfile": "delivery-or-remedy-v1",
+      "fixtureOnly": true,
+      "pipeline": [
+        {
+          "kind": "x-commit-delivery-or-remedy-agreement",
+          "parameters": {
+            "agreementPhase": "commit-payee-bound-agreement"
+          }
+        },
+        {
+          "kind": "x-job-escrow",
+          "parameters": {
+            "action": "fund",
+            "rail": "x-evm-erc8183:8453:FXT"
+          }
+        },
+        {
+          "kind": "deliver-storage-program"
+        },
+        {
+          "kind": "x-job-escrow",
+          "parameters": {
+            "action": "terminal",
+            "rail": "x-evm-erc8183:8453:FXT"
+          }
+        },
+        {
+          "kind": "rate"
+        }
+      ],
+      "executionContext": {
+        "acceptedRails": [
+          {
+            "railId": "x-evm-erc8183:8453:FXT",
+            "railVersion": 1
+          }
+        ],
+        "commitmentReceipts": {
+          "agreement": {
+            "status": "finalized",
+            "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "contentHash": "ec0392beb8db4fa34eff6ddd8447becfa94040ac1e633d7c9c51487401731ca2"
+          },
+          "overlay": {
+            "status": "finalized",
+            "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "contentHash": "c83b1f57f6d9c47cd2302c3b29f04a1ed3a2cacb70aa8d655dfda93f3a42705b"
+          }
+        },
+        "fundingFinalizedBeforeDelivery": true,
+        "terminalGate": "delivery-returned",
+        "lateDeliveryDisabled": true,
+        "dacs5PurchaseCount": 0
+      },
+      "artifacts": {
+        "bilateralAgreement": {
+          "payeeBoundAgreementVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "listingRef": {
+            "listingId": "fixture-listing-01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+            "version": 1,
+            "contentHash": "7951c77fc061ef07fa880876d214c9df838335dae82dfc44d457266b0165e602"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "6e8776fd41135c8fa559b9ac965099522ca306941c76a77a84bac20be35dcab6",
+              "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "fixture:vet:01J8ME0SXKQ4T9V2RC5HJ6WX7D:buyer"
+                },
+                "contentHash": "28489ce27b9654c65d5cba9d5ab678a08b0fd83ee2d9f1c2fc788b998b0dd7e8"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "6271ba452280f7dd52c8dbef2c246d6f18901765397536dbe38c695381467885",
+              "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "fixture:vet:01J8ME0SXKQ4T9V2RC5HJ6WX7D:seller"
+                },
+                "contentHash": "6e6ea65179a6a4e277905f39496569171a241950fc01ff74ef974b73a0a64dfd"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "storage-program",
+              "hash": "c8186796b7efb007b66ce08f66427cef341400b4511df93f100eca44ac625d82"
+            },
+            "price": {
+              "amount": "1",
+              "currency": "FXT"
+            },
+            "rail": {
+              "railId": "x-evm-erc8183:8453:FXT",
+              "railVersion": 1
+            },
+            "deadline": 1800010000000,
+            "payoutBindings": [
+              {
+                "railId": "x-evm-erc8183:8453:FXT",
+                "phaseIndex": 1,
+                "payeeAddress": "0x2222222222222222222222222222222222222222"
+              }
+            ]
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1799980000000,
+          "signatures": [
+            {
+              "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "algorithm": "ed25519",
+              "value": "5KRGmISxSe-pwVMzwN4dNlpOvtdNJOL0lrhFrjE8k7vOo0-TTuWTuVSlYjunC--NZ-vLOGgMVQX0f6rUC1O0BA"
+            },
+            {
+              "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+              "algorithm": "ed25519",
+              "value": "oBijlN7RyLLStLw9ACWY743WkHi10ocbS5guVcQ342KE7Qo7gBGYS8Tu3aFkR-P-WvABYm1QoHchU8leVENTDw"
+            }
+          ]
+        },
+        "railDefinition": {
+          "railVersion": 1,
+          "railId": "x-evm-erc8183:8453:FXT",
+          "railType": "x-evm-erc8183",
+          "asset": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x5555555555555555555555555555555555555555",
+            "symbol": "FXT",
+            "decimals": 6
+          },
+          "network": {
+            "kind": "evm",
+            "chainId": 8453,
+            "rpcAttestation": "evm-rpc"
+          },
+          "phaseHandler": "x-job-escrow",
+          "parameters": {
+            "canonicalErcRevision": "ethereum/ERCs@a078cab5cc8e9581c15f76c091ed96eed28f02f7",
+            "implementationRevision": "dacs-fixtures/delivery-gate@4e946bd95747e47fc7daaa1916967dde15e5a7f6",
+            "entrypoints": [
+              {
+                "name": "createJob",
+                "signature": "createJob(address,address,uint256,uint256,string,address)",
+                "selector": "0xb6dbb0b8",
+                "inputs": [
+                  {
+                    "name": "provider",
+                    "type": "address"
+                  },
+                  {
+                    "name": "evaluator",
+                    "type": "address"
+                  },
+                  {
+                    "name": "expiredAt",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "submissionCutoff",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "description",
+                    "type": "string"
+                  },
+                  {
+                    "name": "hook",
+                    "type": "address"
+                  }
+                ]
+              },
+              {
+                "name": "fund",
+                "signature": "fund(uint256,uint256)",
+                "selector": "0xa65e2cfd",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "expectedBudget",
+                    "type": "uint256"
+                  }
+                ]
+              },
+              {
+                "name": "submit",
+                "signature": "submit(uint256,bytes32)",
+                "selector": "0x2ecea788",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "deliverable",
+                    "type": "bytes32"
+                  }
+                ]
+              },
+              {
+                "name": "complete",
+                "signature": "complete(uint256,bytes32)",
+                "selector": "0xcd56b1b6",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "reason",
+                    "type": "bytes32"
+                  }
+                ]
+              },
+              {
+                "name": "reject",
+                "signature": "reject(uint256,bytes32,uint8)",
+                "selector": "0x78ad7198",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256"
+                  },
+                  {
+                    "name": "reason",
+                    "type": "bytes32"
+                  },
+                  {
+                    "name": "expectedStatus",
+                    "type": "uint8"
+                  }
+                ]
+              },
+              {
+                "name": "claimRefund",
+                "signature": "claimRefund(uint256)",
+                "selector": "0x5b7baf64",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256"
+                  }
+                ]
+              }
+            ],
+            "events": [
+              {
+                "name": "JobCreated",
+                "signature": "JobCreated(uint256,address,address,address,uint256,address)",
+                "topic0": "0xb0f0239bfdd96453e24733e18bfc24b70d8fadf123dd977473518dd577ee79b9",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "client",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "provider",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "evaluator",
+                    "type": "address",
+                    "indexed": false
+                  },
+                  {
+                    "name": "expiredAt",
+                    "type": "uint256",
+                    "indexed": false
+                  },
+                  {
+                    "name": "hook",
+                    "type": "address",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobConfigured",
+                "signature": "JobConfigured(uint256,uint256,bytes32)",
+                "topic0": "0x0c60d31bebe150985dec532d14e68673759d5888cd8540aa7f187651288cebb6",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "submissionCutoff",
+                    "type": "uint256",
+                    "indexed": false
+                  },
+                  {
+                    "name": "preSubmissionRefundPolicy",
+                    "type": "bytes32",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobFunded",
+                "signature": "JobFunded(uint256,address,uint256)",
+                "topic0": "0xe3fbcc1ea1bdc559ec7f0347efde7655e58b5f45a30b0e4470a583c3ef5496b3",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "client",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "amount",
+                    "type": "uint256",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobSubmitted",
+                "signature": "JobSubmitted(uint256,address,bytes32)",
+                "topic0": "0x80c17db79857f338a6a6df68a6883ecc0ce78e2202fe61ed979733573f40538e",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "provider",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "deliverable",
+                    "type": "bytes32",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobCompleted",
+                "signature": "JobCompleted(uint256,address,bytes32)",
+                "topic0": "0x0fd54bd364fa9e67f17b091aefe930932c09fe7651cf5ad02c71a418f3341444",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "evaluator",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "reason",
+                    "type": "bytes32",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "PaymentReleased",
+                "signature": "PaymentReleased(uint256,address,uint256)",
+                "topic0": "0x21d71db5be59bb9fa133895586b7404307dd33fb93b16db09dc6f1d9d7d231b0",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "provider",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "amount",
+                    "type": "uint256",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobRejected",
+                "signature": "JobRejected(uint256,address,bytes32)",
+                "topic0": "0xae7362b1af91f4492868987b9c73990d780060811551b58728fbe96fd1bab275",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "rejector",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "reason",
+                    "type": "bytes32",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "Refunded",
+                "signature": "Refunded(uint256,address,uint256)",
+                "topic0": "0x7ca5472b7ea78c2c0141c5a12ee6d170cf4ce8ed06be3d22c8252ddfc7a6a2c4",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  },
+                  {
+                    "name": "client",
+                    "type": "address",
+                    "indexed": true
+                  },
+                  {
+                    "name": "amount",
+                    "type": "uint256",
+                    "indexed": false
+                  }
+                ]
+              },
+              {
+                "name": "JobExpired",
+                "signature": "JobExpired(uint256)",
+                "topic0": "0x97237956f8810192811e2c3f273fd02c5d6295206fdd9c62e6fe2bfc19ba9232",
+                "inputs": [
+                  {
+                    "name": "jobId",
+                    "type": "uint256",
+                    "indexed": true
+                  }
+                ]
+              }
+            ],
+            "configurationEvidence": {
+              "eventTopic0": "0x0c60d31bebe150985dec532d14e68673759d5888cd8540aa7f187651288cebb6",
+              "submissionCutoffInput": 1,
+              "preSubmissionPolicyInput": 2,
+              "preSubmissionPolicyValue": "0x6576616c7561746f722d72656a656374696f6e00000000000000000000000000"
+            },
+            "nativeStatusMap": [
+              {
+                "nativeValue": 0,
+                "nativeStatus": "Open"
+              },
+              {
+                "nativeValue": 1,
+                "nativeStatus": "Funded"
+              },
+              {
+                "nativeValue": 2,
+                "nativeStatus": "Submitted"
+              },
+              {
+                "nativeValue": 3,
+                "nativeStatus": "Completed"
+              },
+              {
+                "nativeValue": 4,
+                "nativeStatus": "Rejected"
+              },
+              {
+                "nativeValue": 5,
+                "nativeStatus": "Expired"
+              }
+            ],
+            "chainId": 8453,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "runtimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+            "paymentToken": "0x5555555555555555555555555555555555555555",
+            "paymentTokenRuntimeBytecodeHash": "0x2561db1e6c25bf3254dea4025373815dcfd2b004b4a8a38ac5a5666559ab3f25",
+            "tokenDecimals": 6,
+            "finalityBlocks": 64,
+            "minimumEvaluationWindowSec": 3600,
+            "hook": "0x0000000000000000000000000000000000000000",
+            "deadlineProfile": "separate-submission-cutoff-v1",
+            "decisionOrderingProfile": "anchor-final-before-terminal-v1",
+            "maxCrossSubstrateSkewMs": 2000,
+            "platformFeeBP": 0,
+            "evaluatorFeeBP": 0,
+            "capabilityProfile": "dacs-delivery-gate-v1"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "genesisHash": "0x452dbc7d2c3e473bc31c9de1859436c5607cae0fb20a27eba1405d36f33efcd1",
+              "requiredDepth": 64,
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999"
+                ],
+                "threshold": 1,
+                "maxHeadAgeSec": 60
+              }
+            }
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:agent:9898989898989898989898989898989898989898989898989898989898989898",
+            "acceptedAt": 1799000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:9898989898989898989898989898989898989898989898989898989898989898",
+            "value": "kIjQjFBM8MeMPkwkfBoSw_8LacvJGzb1O_14l3U6sWINeAhkg48g8Q3AYpV4kyeeL7P7reHo460M5M8fyuCuBg"
+          }
+        },
+        "agreement": {
+          "deliveryOrRemedyAgreementVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "agreementRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs3:agreement:01J8ME0SXKQ4T9V2RC5HJ6WX7D"
+            },
+            "contentHash": "ec0392beb8db4fa34eff6ddd8447becfa94040ac1e633d7c9c51487401731ca2"
+          },
+          "agreementHash": "ec0392beb8db4fa34eff6ddd8447becfa94040ac1e633d7c9c51487401731ca2",
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "fixture:rail:x-evm-erc8183:8453:FXT:1"
+            },
+            "contentHash": "00f9bb07e87b52fdb970e882e28cdf8f73cc6772d737d95b534225044c5af62f"
+          },
+          "fundPhaseIndex": 1,
+          "deliveryPhaseIndex": 2,
+          "terminalPhaseIndex": 3,
+          "buyer": {
+            "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "bundleHash": "6e8776fd41135c8fa559b9ac965099522ca306941c76a77a84bac20be35dcab6",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "fixture:vet:01J8ME0SXKQ4T9V2RC5HJ6WX7D:buyer"
+              },
+              "contentHash": "28489ce27b9654c65d5cba9d5ab678a08b0fd83ee2d9f1c2fc788b998b0dd7e8"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111"
+          },
+          "seller": {
+            "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "bundleHash": "6271ba452280f7dd52c8dbef2c246d6f18901765397536dbe38c695381467885",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "fixture:vet:01J8ME0SXKQ4T9V2RC5HJ6WX7D:seller"
+              },
+              "contentHash": "6e6ea65179a6a4e277905f39496569171a241950fc01ff74ef974b73a0a64dfd"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+          },
+          "evaluator": {
+            "primaryClaim": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "bundleHash": "2987db5ad3c1d052608f6fd12a00525eca66516d411e9b7f5ca6665ea0c0f57e",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "fixture:vet:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluator"
+              },
+              "contentHash": "152b172968947066bc90a2fafc67f83b1ca4d8731ceadfe212379babc73ce86f"
+            },
+            "evmAccountClaim": "cci-xm:evm:8453:0x3333333333333333333333333333333333333333",
+            "requirement": {
+              "op": "all",
+              "of": [
+                {
+                  "claimType": "demos-agent",
+                  "verificationRequired": true
+                },
+                {
+                  "claimType": "cci-xm",
+                  "verificationRequired": true
+                }
+              ]
+            },
+            "requirementHash": "9744dcd5b9a65ba0c43d74e206d089f90bf3178c56b20db709e9c08ab8729b4e"
+          },
+          "budgetBaseUnits": "1000000",
+          "submissionCutoffSec": 1800000000,
+          "evaluationDeadlineSec": 1800007200,
+          "preSubmissionRefundPolicy": "evaluator-rejection",
+          "disclosurePolicy": "public-evidence-only",
+          "evaluationRuleRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluation-rule"
+            },
+            "contentHash": "916c74cc91eda0d45d7ad1fa35003ce237844ba538df7673b045f343395c54f9"
+          },
+          "signatures": [
+            {
+              "role": "buyer",
+              "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "algorithm": "ed25519",
+              "value": "Cnagkv060zW6G4fJ53Txc1s454PUjH2IYO2_EQdpqDGqjH__EMw9QDWNDMxU9fa2CtK0hRH1zoiG24B1DPqBCg"
+            },
+            {
+              "role": "seller",
+              "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+              "algorithm": "ed25519",
+              "value": "KFbetNy9sqGs4ntHfa-KGCxUdX_cI6jMn8fwDZbKU-M9wiXtiMI5g--BEMj38iUbSe6NWjJhUlp7hyVvOpNNAA"
+            },
+            {
+              "role": "evaluator",
+              "party": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+              "algorithm": "ed25519",
+              "value": "vLPPVjZLji3IpWLZ-geT7qagJ_h3bWv5ndix-NlyxXtSOBL9w4j9Umbe9UGzECBwSGVNCLG_eQacnVppLlbHBA"
+            }
+          ]
+        },
+        "evaluationRule": {
+          "evaluationRuleVersion": "1",
+          "ruleKind": "evaluator-judgement-v1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "criteria": [
+            {
+              "criterionId": "deliverable-matches-specification",
+              "statement": "The delivered payload matches the agreed deliverable specification."
+            },
+            {
+              "criterionId": "deliverable-is-complete",
+              "statement": "The delivered payload is complete."
+            }
+          ]
+        },
+        "job": {
+          "escrowJobRefVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "c83b1f57f6d9c47cd2302c3b29f04a1ed3a2cacb70aa8d655dfda93f3a42705b",
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "fixture:rail:x-evm-erc8183:8453:FXT:1"
+            },
+            "contentHash": "00f9bb07e87b52fdb970e882e28cdf8f73cc6772d737d95b534225044c5af62f"
+          },
+          "chainId": 8453,
+          "contractAddress": "0x8181818181818181818181818181818181818181",
+          "runtimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+          "nativeJobId": "1",
+          "creationEvent": {
+            "kind": "evm-event",
+            "chainId": 8453,
+            "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+            "logIndex": 0
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "bNYE36DYPrf74mJJr2lQllcVvH72coT2UFjiO8eHHXtyC05lkX0yLjAQjBnDHqS5VJF4X19ntvLPAYljET0jAw"
+          }
+        },
+        "funding": {
+          "escrowFundingEvidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "c83b1f57f6d9c47cd2302c3b29f04a1ed3a2cacb70aa8d655dfda93f3a42705b",
+          "escrowJobRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job"
+            },
+            "contentHash": "5fa6d13f80105e94fb29c9c65207a4eb4bc0f1d487f7c0de4e4bb11c0af92510"
+          },
+          "fundPhaseIndex": 1,
+          "token": "0x5555555555555555555555555555555555555555",
+          "amountBaseUnits": "1000000",
+          "fundingEventRefs": [
+            {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+              "logIndex": 1
+            }
+          ],
+          "finality": {
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990126000
+          },
+          "observedAt": 1799990126000,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "GKdMn1o9QmVZRJITk6tPlnxJVo4C1nnI0NlpXafmcKuewSktUqiS_mvBLPoLRxq1VmcZ77lsdU2m8lJS0k90Bw"
+          }
+        },
+        "delivery": {
+          "deliveryEvidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "phaseIndex": 2,
+          "phase": "deliver-storage-program",
+          "outcome": "success",
+          "deliverableContentHash": "bbd23927e66decd4ec365403d302dfc448fbe8057853a83e42261d57cad45d00",
+          "deliverableAnchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:deliverable:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+          },
+          "observedAt": 1799994800000,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "ExeSFaZdFBEo8enGmUAV7RYaIA98xEwYbak_xzAi7Fcn9WC-uWayFiBafp6MSlTFgaAv6uJ6b1Q_fFtMCalKDQ"
+          }
+        },
+        "deliveryRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:delivery:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+          },
+          "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+        },
+        "evaluation": {
+          "executionEvaluationVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "evaluationSeq": 0,
+          "deliveryOrRemedyAgreementHash": "c83b1f57f6d9c47cd2302c3b29f04a1ed3a2cacb70aa8d655dfda93f3a42705b",
+          "escrowJobRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job"
+            },
+            "contentHash": "5fa6d13f80105e94fb29c9c65207a4eb4bc0f1d487f7c0de4e4bb11c0af92510"
+          },
+          "deliveryEvidenceRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:delivery:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+            },
+            "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+          },
+          "criterionResults": [
+            {
+              "criterionId": "deliverable-matches-specification",
+              "outcome": "satisfied"
+            },
+            {
+              "criterionId": "deliverable-is-complete",
+              "outcome": "satisfied"
+            }
+          ],
+          "result": "accept",
+          "finding": {
+            "classification": "seller-fulfilled",
+            "rationaleCode": "fixture-criteria-met"
+          },
+          "subjectEvidenceRefs": [
+            {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:delivery:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+              },
+              "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+            }
+          ],
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "value": "RpQlmi2HgXrSE-kvzGgrAisf5wIn1Uj-eFGJIQJL90R5chYj5h4fETw-KN9ysAqL3nBYZnoYozZphUrm6wJhDA"
+          }
+        },
+        "evaluationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluation:0"
+          },
+          "contentHash": "c2bac45bd4aa7b9af815edc732b399477bbf652911debe544dad5d2961cc5438"
+        },
+        "decision": {
+          "escrowDecisionVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "c83b1f57f6d9c47cd2302c3b29f04a1ed3a2cacb70aa8d655dfda93f3a42705b",
+          "escrowJobRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job"
+            },
+            "contentHash": "5fa6d13f80105e94fb29c9c65207a4eb4bc0f1d487f7c0de4e4bb11c0af92510"
+          },
+          "decisionStage": "post-submission",
+          "deliveryEvidenceRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:delivery:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+            },
+            "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+          },
+          "basisRef": {
+            "kind": "execution-evaluation",
+            "ref": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evaluation:0"
+              },
+              "contentHash": "c2bac45bd4aa7b9af815edc732b399477bbf652911debe544dad5d2961cc5438"
+            }
+          },
+          "disposition": "release-to-provider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "value": "7OBANxKYO1zp8CV2UHUVnXomzk5q-4dVyIOExOaH5paWOhY-6-a4CZkwbhZbORGT2LKJPFxV3zZF_1DZQLpKAA"
+          }
+        },
+        "decisionRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission"
+          },
+          "contentHash": "a7e09ba4472abf22880a04fc8adc6a5182c3f8a3d6f03e450ee676cd578899da"
+        },
+        "terminal": {
+          "escrowTerminalEvidenceVersion": "1",
+          "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+          "deliveryOrRemedyAgreementHash": "c83b1f57f6d9c47cd2302c3b29f04a1ed3a2cacb70aa8d655dfda93f3a42705b",
+          "escrowJobRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:job"
+            },
+            "contentHash": "5fa6d13f80105e94fb29c9c65207a4eb4bc0f1d487f7c0de4e4bb11c0af92510"
+          },
+          "fundingEvidenceRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding"
+            },
+            "contentHash": "b6ec631e5781c107956c6640d43b673d177c3631affe88266ee8e93081ee5c1b"
+          },
+          "terminalPhaseIndex": 3,
+          "terminalState": "released",
+          "disposition": "release-to-provider",
+          "token": "0x5555555555555555555555555555555555555555",
+          "amountBaseUnits": "1000000",
+          "recipient": "0x2222222222222222222222222222222222222222",
+          "terminalEventRefs": [
+            {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 2
+            },
+            {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 3
+            }
+          ],
+          "finality": {
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001126000
+          },
+          "observedAt": 1800001126000,
+          "decisionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:x-job-escrow:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision:post-submission"
+            },
+            "contentHash": "a7e09ba4472abf22880a04fc8adc6a5182c3f8a3d6f03e450ee676cd578899da"
+          },
+          "deliveryEvidenceRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:delivery:01J8ME0SXKQ4T9V2RC5HJ6WX7D:2"
+            },
+            "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+            "value": "xPyZB7KqvgT9WK_fKrvwXgWMva6q0J1C7zBoN4SErC0bTG9aeymaXtFmC9OKahuTKXGzz_755Ktlx05xRB68Dg"
+          }
+        }
+      },
+      "publicKeys": {
+        "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111": "NpV3UpHN1Wn6wTGbe62QzmZbbQKHHeTv5C-ALgJzqos",
+        "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222": "cMQiiygaNrR6K2x4-qCMLn4yEzp8b7_oTGm_f-Gi-HE",
+        "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333": "a-n25Q_Ld7U2Di8MT2HdYh9mCR43rbd2eboqTcBHXiE",
+        "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444": "wYM0ddCjKwBOvoMONnWHPGV0Nv-pVOFq1NHRYvi_4YA"
+      },
+      "orchestratorClaim": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+      "bundleRequiredSigners": [
+        "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+      ],
+      "evaluatorVetResult": "pass",
+      "profileParameters": {
+        "canonicalErcRevision": "ethereum/ERCs@a078cab5cc8e9581c15f76c091ed96eed28f02f7",
+        "implementationRevision": "dacs-fixtures/delivery-gate@4e946bd95747e47fc7daaa1916967dde15e5a7f6",
+        "entrypoints": [
+          {
+            "name": "createJob",
+            "signature": "createJob(address,address,uint256,uint256,string,address)",
+            "selector": "0xb6dbb0b8",
+            "inputs": [
+              {
+                "name": "provider",
+                "type": "address"
+              },
+              {
+                "name": "evaluator",
+                "type": "address"
+              },
+              {
+                "name": "expiredAt",
+                "type": "uint256"
+              },
+              {
+                "name": "submissionCutoff",
+                "type": "uint256"
+              },
+              {
+                "name": "description",
+                "type": "string"
+              },
+              {
+                "name": "hook",
+                "type": "address"
+              }
+            ]
+          },
+          {
+            "name": "fund",
+            "signature": "fund(uint256,uint256)",
+            "selector": "0xa65e2cfd",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256"
+              },
+              {
+                "name": "expectedBudget",
+                "type": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "submit",
+            "signature": "submit(uint256,bytes32)",
+            "selector": "0x2ecea788",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256"
+              },
+              {
+                "name": "deliverable",
+                "type": "bytes32"
+              }
+            ]
+          },
+          {
+            "name": "complete",
+            "signature": "complete(uint256,bytes32)",
+            "selector": "0xcd56b1b6",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256"
+              },
+              {
+                "name": "reason",
+                "type": "bytes32"
+              }
+            ]
+          },
+          {
+            "name": "reject",
+            "signature": "reject(uint256,bytes32,uint8)",
+            "selector": "0x78ad7198",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256"
+              },
+              {
+                "name": "reason",
+                "type": "bytes32"
+              },
+              {
+                "name": "expectedStatus",
+                "type": "uint8"
+              }
+            ]
+          },
+          {
+            "name": "claimRefund",
+            "signature": "claimRefund(uint256)",
+            "selector": "0x5b7baf64",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256"
+              }
+            ]
+          }
+        ],
+        "events": [
+          {
+            "name": "JobCreated",
+            "signature": "JobCreated(uint256,address,address,address,uint256,address)",
+            "topic0": "0xb0f0239bfdd96453e24733e18bfc24b70d8fadf123dd977473518dd577ee79b9",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "client",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "provider",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "evaluator",
+                "type": "address",
+                "indexed": false
+              },
+              {
+                "name": "expiredAt",
+                "type": "uint256",
+                "indexed": false
+              },
+              {
+                "name": "hook",
+                "type": "address",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobConfigured",
+            "signature": "JobConfigured(uint256,uint256,bytes32)",
+            "topic0": "0x0c60d31bebe150985dec532d14e68673759d5888cd8540aa7f187651288cebb6",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "submissionCutoff",
+                "type": "uint256",
+                "indexed": false
+              },
+              {
+                "name": "preSubmissionRefundPolicy",
+                "type": "bytes32",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobFunded",
+            "signature": "JobFunded(uint256,address,uint256)",
+            "topic0": "0xe3fbcc1ea1bdc559ec7f0347efde7655e58b5f45a30b0e4470a583c3ef5496b3",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "client",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobSubmitted",
+            "signature": "JobSubmitted(uint256,address,bytes32)",
+            "topic0": "0x80c17db79857f338a6a6df68a6883ecc0ce78e2202fe61ed979733573f40538e",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "provider",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "deliverable",
+                "type": "bytes32",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobCompleted",
+            "signature": "JobCompleted(uint256,address,bytes32)",
+            "topic0": "0x0fd54bd364fa9e67f17b091aefe930932c09fe7651cf5ad02c71a418f3341444",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "evaluator",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "reason",
+                "type": "bytes32",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "PaymentReleased",
+            "signature": "PaymentReleased(uint256,address,uint256)",
+            "topic0": "0x21d71db5be59bb9fa133895586b7404307dd33fb93b16db09dc6f1d9d7d231b0",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "provider",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobRejected",
+            "signature": "JobRejected(uint256,address,bytes32)",
+            "topic0": "0xae7362b1af91f4492868987b9c73990d780060811551b58728fbe96fd1bab275",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "rejector",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "reason",
+                "type": "bytes32",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "Refunded",
+            "signature": "Refunded(uint256,address,uint256)",
+            "topic0": "0x7ca5472b7ea78c2c0141c5a12ee6d170cf4ce8ed06be3d22c8252ddfc7a6a2c4",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              },
+              {
+                "name": "client",
+                "type": "address",
+                "indexed": true
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false
+              }
+            ]
+          },
+          {
+            "name": "JobExpired",
+            "signature": "JobExpired(uint256)",
+            "topic0": "0x97237956f8810192811e2c3f273fd02c5d6295206fdd9c62e6fe2bfc19ba9232",
+            "inputs": [
+              {
+                "name": "jobId",
+                "type": "uint256",
+                "indexed": true
+              }
+            ]
+          }
+        ],
+        "configurationEvidence": {
+          "eventTopic0": "0x0c60d31bebe150985dec532d14e68673759d5888cd8540aa7f187651288cebb6",
+          "submissionCutoffInput": 1,
+          "preSubmissionPolicyInput": 2,
+          "preSubmissionPolicyValue": "0x6576616c7561746f722d72656a656374696f6e00000000000000000000000000"
+        },
+        "nativeStatusMap": [
+          {
+            "nativeValue": 0,
+            "nativeStatus": "Open"
+          },
+          {
+            "nativeValue": 1,
+            "nativeStatus": "Funded"
+          },
+          {
+            "nativeValue": 2,
+            "nativeStatus": "Submitted"
+          },
+          {
+            "nativeValue": 3,
+            "nativeStatus": "Completed"
+          },
+          {
+            "nativeValue": 4,
+            "nativeStatus": "Rejected"
+          },
+          {
+            "nativeValue": 5,
+            "nativeStatus": "Expired"
+          }
+        ],
+        "chainId": 8453,
+        "contractAddress": "0x8181818181818181818181818181818181818181",
+        "runtimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+        "paymentToken": "0x5555555555555555555555555555555555555555",
+        "paymentTokenRuntimeBytecodeHash": "0x2561db1e6c25bf3254dea4025373815dcfd2b004b4a8a38ac5a5666559ab3f25",
+        "tokenDecimals": 6,
+        "finalityBlocks": 64,
+        "minimumEvaluationWindowSec": 3600,
+        "hook": "0x0000000000000000000000000000000000000000",
+        "deadlineProfile": "separate-submission-cutoff-v1",
+        "decisionOrderingProfile": "anchor-final-before-terminal-v1",
+        "maxCrossSubstrateSkewMs": 2000,
+        "platformFeeBP": 0,
+        "evaluatorFeeBP": 0,
+        "capabilityProfile": "dacs-delivery-gate-v1"
+      },
+      "mappingSources": {
+        "agreementHash": "c83b1f57f6d9c47cd2302c3b29f04a1ed3a2cacb70aa8d655dfda93f3a42705b",
+        "deliveryHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+        "decisionHash": "a7e09ba4472abf22880a04fc8adc6a5182c3f8a3d6f03e450ee676cd578899da"
+      },
+      "native": {
+        "chainId": 8453,
+        "contractAddress": "0x8181818181818181818181818181818181818181",
+        "runtimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+        "client": "0x1111111111111111111111111111111111111111",
+        "provider": "0x2222222222222222222222222222222222222222",
+        "evaluator": "0x3333333333333333333333333333333333333333",
+        "token": "0x5555555555555555555555555555555555555555",
+        "payoutReceiver": "0x2222222222222222222222222222222222222222",
+        "amountBaseUnits": "1000000",
+        "fundedAtSec": 1799990000,
+        "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+        "reason": "0xa7e09ba4472abf22880a04fc8adc6a5182c3f8a3d6f03e450ee676cd578899da",
+        "submissionCutoffSec": 1800000000,
+        "expiredAt": 1800007200,
+        "terminalState": "released",
+        "terminalAction": "complete",
+        "portableStateHistory": [
+          "created",
+          "funded",
+          "submitted",
+          "released"
+        ]
+      },
+      "resolverEvidence": {
+        "transactions": [
+          {
+            "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+            "entrypoint": "0xb6dbb0b8",
+            "calldata": {
+              "provider": "0x2222222222222222222222222222222222222222",
+              "evaluator": "0x3333333333333333333333333333333333333333",
+              "expiredAt": "1800007200",
+              "submissionCutoff": "1800000000",
+              "description": "dacs-x-delivery-remedy:v1:c83b1f57f6d9c47cd2302c3b29f04a1ed3a2cacb70aa8d655dfda93f3a42705b",
+              "hook": "0x0000000000000000000000000000000000000000"
+            },
+            "nativeCaller": "0x1111111111111111111111111111111111111111",
+            "outerSubmitter": "0x1111111111111111111111111111111111111111",
+            "nativeCallerAccountType": "eoa",
+            "priorNativeStatus": null,
+            "nativeStatusAfter": 0
+          },
+          {
+            "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+            "entrypoint": "0xa65e2cfd",
+            "calldata": {
+              "jobId": "1",
+              "expectedBudget": "1000000"
+            },
+            "nativeCaller": "0x1111111111111111111111111111111111111111",
+            "outerSubmitter": "0x1111111111111111111111111111111111111111",
+            "nativeCallerAccountType": "eoa",
+            "priorNativeStatus": 0,
+            "nativeStatusAfter": 1
+          },
+          {
+            "txHash": "0xf8bf81b097da6629bb4a41d656f2272e26d655c2ebaac3a648a47d58a8cca761",
+            "entrypoint": "0x2ecea788",
+            "calldata": {
+              "jobId": "1",
+              "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+            },
+            "nativeCaller": "0x2222222222222222222222222222222222222222",
+            "outerSubmitter": "0x2222222222222222222222222222222222222222",
+            "nativeCallerAccountType": "eoa",
+            "priorNativeStatus": 1,
+            "nativeStatusAfter": 2
+          },
+          {
+            "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+            "entrypoint": "0xcd56b1b6",
+            "calldata": {
+              "jobId": "1",
+              "reason": "0xa7e09ba4472abf22880a04fc8adc6a5182c3f8a3d6f03e450ee676cd578899da"
+            },
+            "nativeCaller": "0x3333333333333333333333333333333333333333",
+            "outerSubmitter": "0x3333333333333333333333333333333333333333",
+            "nativeCallerAccountType": "eoa",
+            "priorNativeStatus": 2,
+            "nativeStatusAfter": 3
+          }
+        ],
+        "priorTerminals": [],
+        "nativeState": {
+          "submissionCutoffEnforced": true,
+          "expiryRecoveryAtSec": 1800007200,
+          "preterminalProviderPayoutBaseUnits": "0",
+          "platformFeeBP": 0,
+          "evaluatorFeeBP": 0,
+          "evaluatorBindingMode": "direct",
+          "evaluatorAdapter": null,
+          "escrowRuntimeBytecodeHash": "0x84d062c1f44b5325d0c7992beb1f3855437f2bfeaac498c53d9fd0a1cbe583b2",
+          "paymentTokenRuntimeBytecodeHash": "0x2561db1e6c25bf3254dea4025373815dcfd2b004b4a8a38ac5a5666559ab3f25",
+          "implementationAddress": null
+        },
+        "deliveryDigestAnchor": {
+          "deliverable": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+          "blockNumber": 20002450,
+          "blockTimestampSec": 1799994900
+        },
+        "decisionAnchor": {
+          "substrate": "demos",
+          "finalizedBlockTimestampSec": 1800000900
+        },
+        "statuses": {
+          "agreementResolution": "verified",
+          "railResolution": "verified",
+          "codeResolution": "verified",
+          "authorityResolution": "verified",
+          "fundingFinality": "verified",
+          "deliveryFinality": "verified",
+          "decisionFinality": "verified",
+          "terminalFinality": "verified",
+          "transitionResolution": "verified",
+          "nativeStateResolution": "verified"
+        },
+        "resolverEvidenceVersion": "1",
+        "resolver": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+        "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+        "railDefinitionHash": "00f9bb07e87b52fdb970e882e28cdf8f73cc6772d737d95b534225044c5af62f",
+        "chainId": 8453,
+        "contractAddress": "0x8181818181818181818181818181818181818181",
+        "nativeJobId": "1",
+        "eventObservationsHash": "19afafe0c248f4a533c1796e9e6bfb547863c0ada6c2f46ebffa2e6e043a97ef",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999",
+          "value": "QX6Hk1w5VOXukDzEKJSHJzArx7SWIO6mT8_1JMXsyXI5M7M8KLhseyXPNzuQoX3eGW2XeuCuschW3Y-uYtvnCw"
+        }
+      },
+      "deliveryBinding": {
+        "nativeSubmissionEvent": {
+          "kind": "evm-event",
+          "chainId": 8453,
+          "txHash": "0xf8bf81b097da6629bb4a41d656f2272e26d655c2ebaac3a648a47d58a8cca761",
+          "logIndex": 0
+        }
+      },
+      "reproductionInputs": {
+        "publicTestSeedHex": {
+          "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111": "df39e375ecc12c4f875aff23000a9e112e9dceec44e9a0b8d6d09e0f48e90f66",
+          "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222": "fea104be48be49f011d74db054c1850aabf45f6145a7f2e5e3cac600998b573b",
+          "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333": "656fb97ab3351ee666aaecf376b3b7c2030b7cfb009ac13632e5b2905d9ea42e",
+          "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444": "1a59503ed8a0d34fba0b349342271c932e71d0880340e21c9d5e70a8474ef0b7"
+        },
+        "roleBundles": {
+          "buyer": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "claims": [
+              "cci-xm:evm:8453:0x1111111111111111111111111111111111111111"
+            ]
+          },
+          "seller": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "claims": [
+              "cci-xm:evm:8453:0x2222222222222222222222222222222222222222"
+            ]
+          },
+          "evaluator": {
+            "fixtureRecordVersion": "1",
+            "kind": "role-bundle-input",
+            "primaryClaim": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "claims": [
+              "cci-xm:evm:8453:0x3333333333333333333333333333333333333333"
+            ]
+          }
+        },
+        "vetRecords": {
+          "buyer": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "bundleHash": "6e8776fd41135c8fa559b9ac965099522ca306941c76a77a84bac20be35dcab6",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000
+          },
+          "seller": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "bundleHash": "6271ba452280f7dd52c8dbef2c246d6f18901765397536dbe38c695381467885",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000
+          },
+          "evaluator": {
+            "fixtureRecordVersion": "1",
+            "kind": "vet-record-input",
+            "subject": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
+            "bundleHash": "2987db5ad3c1d052608f6fd12a00525eca66516d411e9b7f5ca6665ea0c0f57e",
+            "result": "pass",
+            "validFromSec": 1799900000,
+            "validUntilSec": 1800010000,
+            "requirementHash": "9744dcd5b9a65ba0c43d74e206d089f90bf3178c56b20db709e9c08ab8729b4e"
+          }
+        },
+        "deliveredArtifact": {
+          "payloadUtf8": "deliverable:01J8ME0SXKQ4T9V2RC5HJ6WX7D"
+        },
+        "runtimeBytecode": {
+          "encoding": "hex",
+          "value": "73796e74686574696320444143532064656c697665727920676174652072756e74696d65207631"
+        },
+        "nativeEventInputs": [
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+              "logIndex": 0
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999500,
+            "blockHash": "0xa2d44636b87e43c3e547d983e27c78a9e6c705f039fc79aae907af259c9a4f15",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:19999500:1799989000",
+            "blockTimestampSec": 1799989000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "JobCreated",
+            "topic0": "0xb0f0239bfdd96453e24733e18bfc24b70d8fadf123dd977473518dd577ee79b9",
+            "indexedArguments": [
+              "1",
+              "0x1111111111111111111111111111111111111111",
+              "0x2222222222222222222222222222222222222222"
+            ],
+            "dataArguments": [
+              "0x3333333333333333333333333333333333333333",
+              "1800007200",
+              "0x0000000000000000000000000000000000000000"
+            ],
+            "finalityBlock": {
+              "blockNumber": 19999563,
+              "blockHash": "0x0b5158b6c9d75fddbf16c696a14bf1a0371cdf1c85b19c5d13f59b5711c5ca68",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:19999563:1799989126",
+              "blockTimestampSec": 1799989126
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x3a671ee06fe7d1a5a1d8081b92b1d7bb5f74b0a2ea99aaa9476c02c42f9afc98",
+              "logIndex": 1
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999500,
+            "blockHash": "0xa2d44636b87e43c3e547d983e27c78a9e6c705f039fc79aae907af259c9a4f15",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:19999500:1799989000",
+            "blockTimestampSec": 1799989000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "JobConfigured",
+            "topic0": "0x0c60d31bebe150985dec532d14e68673759d5888cd8540aa7f187651288cebb6",
+            "indexedArguments": [
+              "1"
+            ],
+            "dataArguments": [
+              "1800000000",
+              "0x6576616c7561746f722d72656a656374696f6e00000000000000000000000000"
+            ],
+            "finalityBlock": {
+              "blockNumber": 19999563,
+              "blockHash": "0x0b5158b6c9d75fddbf16c696a14bf1a0371cdf1c85b19c5d13f59b5711c5ca68",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:19999563:1799989126",
+              "blockTimestampSec": 1799989126
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x88e89e223e9119563f466f9897b782dbebb8e914c42834ee41da2241e0a7ce46",
+              "logIndex": 1
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xe732db3a9f2d963dd41b6f03acc15dfae55955231fb6e961c79b1f935c479e8b",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "JobFunded",
+            "topic0": "0xe3fbcc1ea1bdc559ec7f0347efde7655e58b5f45a30b0e4470a583c3ef5496b3",
+            "indexedArguments": [
+              "1",
+              "0x1111111111111111111111111111111111111111"
+            ],
+            "dataArguments": [
+              "1000000"
+            ],
+            "finalityBlock": {
+              "blockNumber": 20000063,
+              "blockHash": "0xdb0cfb52d0b784964e2e03b727751e832cc03f66ba6a050193c2f57a329f3396",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:20000063:1799990126",
+              "blockTimestampSec": 1799990126
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0xf8bf81b097da6629bb4a41d656f2272e26d655c2ebaac3a648a47d58a8cca761",
+              "logIndex": 0
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+            "blockNumber": 20002500,
+            "blockHash": "0xe2612a6691a37c6313200549f359f80dd20154815bff8cb2b13409b03b10c89c",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:20002500:1799995000",
+            "blockTimestampSec": 1799995000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "JobSubmitted",
+            "topic0": "0x80c17db79857f338a6a6df68a6883ecc0ce78e2202fe61ed979733573f40538e",
+            "indexedArguments": [
+              "1",
+              "0x2222222222222222222222222222222222222222"
+            ],
+            "dataArguments": [
+              "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+            ],
+            "finalityBlock": {
+              "blockNumber": 20002563,
+              "blockHash": "0xa8548f6bbe69696a3a83658230ef50657dc304e8b26451a115dbc2844d116c99",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:20002563:1799995126",
+              "blockTimestampSec": 1799995126
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 2
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20005500,
+            "blockHash": "0xf9a3cccbd97d8ee25b9567e8a9265c5e13d658e052fa6cc4555355ad92dda26a",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:20005500:1800001000",
+            "blockTimestampSec": 1800001000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "JobCompleted",
+            "topic0": "0x0fd54bd364fa9e67f17b091aefe930932c09fe7651cf5ad02c71a418f3341444",
+            "indexedArguments": [
+              "1",
+              "0x3333333333333333333333333333333333333333"
+            ],
+            "dataArguments": [
+              "0xa7e09ba4472abf22880a04fc8adc6a5182c3f8a3d6f03e450ee676cd578899da"
+            ],
+            "finalityBlock": {
+              "blockNumber": 20005563,
+              "blockHash": "0x80ea01799cd0e1e0e21b17b68f56bfd33bc946ecd5537ea0232d957fb41272a8",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:20005563:1800001126",
+              "blockTimestampSec": 1800001126
+            }
+          },
+          {
+            "eventRef": {
+              "kind": "evm-event",
+              "chainId": 8453,
+              "txHash": "0x744456b3943511a6e81c73da5eff9a2733fa8271b4f81b4dfd7b328db959fcd1",
+              "logIndex": 3
+            },
+            "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20005500,
+            "blockHash": "0xf9a3cccbd97d8ee25b9567e8a9265c5e13d658e052fa6cc4555355ad92dda26a",
+            "blockHashPreimageUtf8": "fixture-evm:8453:block:20005500:1800001000",
+            "blockTimestampSec": 1800001000,
+            "contractAddress": "0x8181818181818181818181818181818181818181",
+            "eventName": "PaymentReleased",
+            "topic0": "0x21d71db5be59bb9fa133895586b7404307dd33fb93b16db09dc6f1d9d7d231b0",
+            "indexedArguments": [
+              "1",
+              "0x2222222222222222222222222222222222222222"
+            ],
+            "dataArguments": [
+              "1000000"
+            ],
+            "finalityBlock": {
+              "blockNumber": 20005563,
+              "blockHash": "0x80ea01799cd0e1e0e21b17b68f56bfd33bc946ecd5537ea0232d957fb41272a8",
+              "blockHashPreimageUtf8": "fixture-evm:8453:block:20005563:1800001126",
+              "blockTimestampSec": 1800001126
+            }
+          }
+        ]
+      },
+      "reputationProjection": {
+        "buyerAnchoredOutcome": "completed",
+        "sellerAnchoredOutcome": "completed",
+        "faultedParty": "none",
+        "releaseAloneEstablishesNonFinancialCompletion": false
+      },
+      "submittedBeforeCutoff": true,
+      "canonicalRecords": {
+        "agreement": {
+          "canonicalUtf8Hex": "7b2261677265656d656e7448617368223a2265633033393262656238646234666133346566663664646438343437626563666139343034306163316536333364376339633531343837343031373331636132222c2261677265656d656e74526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373333a61677265656d656e743a30314a384d453053584b513454395632524335484a3657583744227d2c22636f6e74656e7448617368223a2265633033393262656238646234666133346566663664646438343437626563666139343034306163316536333364376339633531343837343031373331636132227d2c2262756467657442617365556e697473223a2231303030303030222c226275796572223a7b2262756e646c6548617368223a2236653837373666643431313335633866613535396239616339363530393935323263613330363934316337366137376138346261633230626533356463616236222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307831313131313131313131313131313131313131313131313131313131313131313131313131313131222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131222c227665745265636f7264526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a30314a384d453053584b513454395632524335484a36575837443a6275796572227d2c22636f6e74656e7448617368223a2232383438396365323762393635346336356435636261396435616236373861303862306664383365653264396631633266633738386239393862306464376538227d7d2c2264656c69766572794f7252656d65647941677265656d656e7456657273696f6e223a2231222c2264656c69766572795068617365496e646578223a322c22646973636c6f73757265506f6c696379223a227075626c69632d65766964656e63652d6f6e6c79222c226576616c756174696f6e446561646c696e65536563223a313830303030373230302c226576616c756174696f6e52756c65526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a782d6a6f622d657363726f773a30314a384d453053584b513454395632524335484a36575837443a6576616c756174696f6e2d72756c65227d2c22636f6e74656e7448617368223a2239313663373463633931656461306434356437616431666133353030336365323337383434626135333864663736373362303435663334333339356335346639227d2c226576616c7561746f72223a7b2262756e646c6548617368223a2232393837646235616433633164303532363038663666643132613030353235656361363635313664343131653962376635636136363635656130633066353765222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307833333333333333333333333333333333333333333333333333333333333333333333333333333333222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333222c22726571756972656d656e74223a7b226f66223a5b7b22636c61696d54797065223a2264656d6f732d6167656e74222c22766572696669636174696f6e5265717569726564223a747275657d2c7b22636c61696d54797065223a226363692d786d222c22766572696669636174696f6e5265717569726564223a747275657d5d2c226f70223a22616c6c227d2c22726571756972656d656e7448617368223a2239373434646364356239613635626130633433643734653230366430383966393062663331373863353662323064623730396539633038616238373239623465222c227665745265636f7264526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a30314a384d453053584b513454395632524335484a36575837443a6576616c7561746f72227d2c22636f6e74656e7448617368223a2231353262313732393638393437303636626339306132666166633637663833623163613464383733316365616466653231323337396261626337336365383666227d7d2c2266756e645068617365496e646578223a312c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744222c227072655375626d697373696f6e526566756e64506f6c696379223a226576616c7561746f722d72656a656374696f6e222c227261696c446566696e6974696f6e526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7261696c3a782d65766d2d657263383138333a383435333a4658543a31227d2c22636f6e74656e7448617368223a2230306639626230376538376235326664623937306538383265323863646638663733636336373732643733376439356235333432323530343463356166363266227d2c2273656c6c6572223a7b2262756e646c6548617368223a2236323731626134353232383066376464353263386462656632633234366436663138393031373635333937353336646265333863363935333831343637383835222c2265766d4163636f756e74436c61696d223a226363692d786d3a65766d3a383435333a307832323232323232323232323232323232323232323232323232323232323232323232323232323232222c227072696d617279436c61696d223a226469643a64656d6f733a6167656e743a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232222c227665745265636f7264526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a7665743a30314a384d453053584b513454395632524335484a36575837443a73656c6c6572227d2c22636f6e74656e7448617368223a2236653665613635313739613661346532373739303566333934393635363931373161323431393530666330316666373465663937346237336130613634646664227d7d2c227375626d697373696f6e4375746f6666536563223a313830303030303030302c227465726d696e616c5068617365496e646578223a337d",
+          "contentHash": "c83b1f57f6d9c47cd2302c3b29f04a1ed3a2cacb70aa8d655dfda93f3a42705b",
+          "mappedNativeValue": "dacs-x-delivery-remedy:v1:c83b1f57f6d9c47cd2302c3b29f04a1ed3a2cacb70aa8d655dfda93f3a42705b"
+        },
+        "delivery": {
+          "canonicalUtf8Hex": "7b2264656c6976657261626c65416e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a64656c6976657261626c653a30314a384d453053584b513454395632524335484a36575837443a32227d2c2264656c6976657261626c65436f6e74656e7448617368223a2262626432333932376536366465636434656333363534303364333032646663343438666265383035373835336138336534323236316435376361643435643030222c2264656c697665727945766964656e636556657273696f6e223a2231222c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744222c226f627365727665644174223a313739393939343830303030302c226f7574636f6d65223a2273756363657373222c227068617365223a2264656c697665722d73746f726167652d70726f6772616d222c227068617365496e646578223a327d",
+          "contentHash": "9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95",
+          "mappedNativeValue": "0x9da370d31ef90117b280e049ae3eedad90873132f7f5d159c489840a60939e95"
+        },
+        "decision": {
+          "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22657865637574696f6e2d6576616c756174696f6e222c22726566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a782d6a6f622d657363726f773a30314a384d453053584b513454395632524335484a36575837443a6576616c756174696f6e3a30227d2c22636f6e74656e7448617368223a2263326261633435626434616137623961663831356564633733326233393934373762626636353239313164656265353434646164356432393631636335343338227d7d2c226465636973696f6e5374616765223a22706f73742d7375626d697373696f6e222c2264656c697665727945766964656e6365526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a64656c69766572793a30314a384d453053584b513454395632524335484a36575837443a32227d2c22636f6e74656e7448617368223a2239646133373064333165663930313137623238306530343961653365656461643930383733313332663766356431353963343839383430613630393339653935227d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2263383362316635376636643963343763643233303263336232396630346131656433613263616362373061613864363535646664613933663361343237303562222c22646973706f736974696f6e223a2272656c656173652d746f2d70726f7669646572222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22616e63686f72223a7b226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373343a782d6a6f622d657363726f773a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c22636f6e74656e7448617368223a2235666136643133663830313035653934666232396339633635323037613465623462633066316434383766376330646534653462623131633061663932353130227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
+          "contentHash": "a7e09ba4472abf22880a04fc8adc6a5182c3f8a3d6f03e450ee676cd578899da",
+          "mappedNativeValue": "0xa7e09ba4472abf22880a04fc8adc6a5182c3f8a3d6f03e450ee676cd578899da"
         }
       }
     },
@@ -519652,9 +523056,9 @@
       "name": "job-version-unsupported",
       "base": "job-version-2",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-2"
+        "DRV-8"
       ],
       "note": "an unsupported escrowJobRefVersion fails before action, though signed and bound",
       "patch": []
@@ -519663,9 +523067,9 @@
       "name": "job-version-missing",
       "base": "job-version-missing",
       "expected": "error",
-      "expectedRule": "DRV-3",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-3"
+        "DRV-8"
       ],
       "note": "a job without escrowJobRefVersion is malformed",
       "patch": []
@@ -519674,9 +523078,9 @@
       "name": "funding-version-unsupported",
       "base": "funding-version-2",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-2"
+        "DRV-8"
       ],
       "note": "an unsupported escrowFundingEvidenceVersion fails before action, though signed and bound",
       "patch": []
@@ -519685,9 +523089,9 @@
       "name": "funding-version-missing",
       "base": "funding-version-missing",
       "expected": "error",
-      "expectedRule": "DRV-3",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-3"
+        "DRV-8"
       ],
       "note": "a funding without escrowFundingEvidenceVersion is malformed",
       "patch": []
@@ -519718,9 +523122,9 @@
       "name": "evaluation-version-unsupported",
       "base": "evaluation-version-2",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-2"
+        "DRV-8"
       ],
       "note": "an unsupported executionEvaluationVersion fails before action, though signed and bound",
       "patch": []
@@ -519729,9 +523133,9 @@
       "name": "evaluation-version-missing",
       "base": "evaluation-version-missing",
       "expected": "error",
-      "expectedRule": "DRV-3",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-3"
+        "DRV-8"
       ],
       "note": "a evaluation without executionEvaluationVersion is malformed",
       "patch": []
@@ -519740,9 +523144,9 @@
       "name": "disputeCase-version-unsupported",
       "base": "disputeCase-version-2",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-2"
+        "DRV-8"
       ],
       "note": "an unsupported disputeCaseVersion fails before action, though signed and bound",
       "patch": []
@@ -519751,9 +523155,9 @@
       "name": "disputeCase-version-missing",
       "base": "disputeCase-version-missing",
       "expected": "error",
-      "expectedRule": "DRV-3",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-3"
+        "DRV-8"
       ],
       "note": "a disputeCase without disputeCaseVersion is malformed",
       "patch": []
@@ -519762,9 +523166,9 @@
       "name": "dispute-version-unsupported",
       "base": "dispute-version-2",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-2"
+        "DRV-8"
       ],
       "note": "an unsupported disputeOutcomeVersion fails before action, though signed and bound",
       "patch": []
@@ -519773,9 +523177,9 @@
       "name": "dispute-version-missing",
       "base": "dispute-version-missing",
       "expected": "error",
-      "expectedRule": "DRV-3",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-3"
+        "DRV-8"
       ],
       "note": "a dispute without disputeOutcomeVersion is malformed",
       "patch": []
@@ -519784,9 +523188,9 @@
       "name": "decision-version-unsupported",
       "base": "decision-version-2",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-2"
+        "DRV-8"
       ],
       "note": "an unsupported escrowDecisionVersion fails before action, though signed and bound",
       "patch": []
@@ -519795,9 +523199,9 @@
       "name": "decision-version-missing",
       "base": "decision-version-missing",
       "expected": "error",
-      "expectedRule": "DRV-3",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-3"
+        "DRV-8"
       ],
       "note": "a decision without escrowDecisionVersion is malformed",
       "patch": []
@@ -519806,9 +523210,9 @@
       "name": "terminal-version-unsupported",
       "base": "terminal-version-2",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-2"
+        "DRV-8"
       ],
       "note": "an unsupported escrowTerminalEvidenceVersion fails before action, though signed and bound",
       "patch": []
@@ -519817,9 +523221,9 @@
       "name": "terminal-version-missing",
       "base": "terminal-version-missing",
       "expected": "error",
-      "expectedRule": "DRV-3",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-3"
+        "DRV-8"
       ],
       "note": "a terminal without escrowTerminalEvidenceVersion is malformed",
       "patch": []
@@ -519828,11 +523232,22 @@
       "name": "agreement-overlay-version-unsupported",
       "base": "overlay-version-2",
       "expected": "error",
-      "expectedRule": "DRV-2",
+      "expectedRule": "DRV-8",
       "rules": [
-        "DRV-2"
+        "DRV-8"
       ],
       "note": "an unsupported overlay version fails before action, though all three roles signed it",
+      "patch": []
+    },
+    {
+      "name": "agreement-overlay-version-missing",
+      "base": "overlay-version-missing",
+      "expected": "error",
+      "expectedRule": "DRV-8",
+      "rules": [
+        "DRV-8"
+      ],
+      "note": "an overlay without deliveryOrRemedyAgreementVersion fails before action, though all three roles signed it",
       "patch": []
     },
     {
@@ -519988,9 +523403,22 @@
       "expected": "error",
       "expectedRule": "DRR-6",
       "rules": [
-        "DRR-6"
+        "DRR-6",
+        "DRV-8"
       ],
       "note": "an unsupported jobEscrowRailVersion fails before action",
+      "patch": []
+    },
+    {
+      "name": "rail-version-missing",
+      "base": "rail-version-missing",
+      "expected": "error",
+      "expectedRule": "DRR-6",
+      "rules": [
+        "DRR-6",
+        "DRV-8"
+      ],
+      "note": "a rail without jobEscrowRailVersion fails before action",
       "patch": []
     },
     {
@@ -520000,7 +523428,8 @@
       "expectedRule": "DRR-6",
       "rules": [
         "DRG-3",
-        "DRR-6"
+        "DRR-6",
+        "DRV-8"
       ],
       "note": "DRG-3: the rail type is x-evm-erc8183; the unprefixed name is unsupported",
       "patch": []

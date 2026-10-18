@@ -10,7 +10,7 @@ The pack turns the pre-normative
 into executable review evidence. Every result is one of the candidate's four
 verification results: `pass`, `fail`, `indeterminate`, or `error` (§9).
 
-- `candidate-vectors-v0.1.json` holds 496 lifecycle and mapping vectors over
+- `candidate-vectors-v0.1.json` holds 498 lifecycle and mapping vectors over
   deterministic, signed synthetic lifecycles: full release, evaluator
   rejection and refund before or after submission, a dispute-outcome release
   and refund, pre-submission expiry, and post-submission expiry. The
@@ -134,10 +134,13 @@ that terminal still takes part in its own replay comparison, so its replay
 on copies are all uncertainty (DRC-15, DRD-10), a conflict with it over the
 first use of a decision or a native job (DRD-8, DRL-4) is `indeterminate`
 for the other terminal, never `pass` or `fail`, even when its own replay
-comparison fails, since it is recorded whatever that comparison decides. One
-terminal event claimed by two native jobs (DRT-4), or a second evidence
-record for one terminal (DRT-16), is still `fail` for the other terminal.
-The DRW-4 bound on the terminal side of the DRC-15 sums reads no copy and
+comparison fails, since it is recorded whatever that comparison decides. When
+a finding on its copy is an `error` or `fail` (the anchor-side DRW-4, DRD-11,
+DRV-6), it takes no part in DRD-8 or DRL-4: a failed copy never takes a
+decision's or a native job's first use. Whatever its findings on copies, its
+job, event and evidence are authenticated, so one terminal event claimed by
+two native jobs (DRT-4), or a second evidence record for one terminal
+(DRT-16), is still `fail` for the other terminal. The DRW-4 bound on the terminal side of the DRC-15 sums reads no copy and
 stays `error`.
 
 The protocol verifier requires the finality records embedded in signed funding
@@ -217,20 +220,27 @@ pack error; they do not judge its lifecycles one by one.
 The verifier reports malformed input (candidate §9 step 2) under DRV-3, the
 malformed-encoding rule: nothing is repaired before hashing or comparison.
 DRV-2 keeps unavailable or inconsistent RPC data `indeterminate`, as for an
-unavailable `agreementResolution`. The candidate names no rule for an
-unsupported §9 step-1 artifact discriminator (a phase kind; an overlay,
-bilateral-agreement, escrow-job, funding, delivery-evidence, evaluation,
-dispute-case, dispute, decision, terminal, resolver-evidence, or
+unavailable `agreementResolution`. DRV-8 names the version member of each
+signed artifact of candidate sections 2 through 7. A missing overlay,
+escrow-job, funding, evaluation, dispute-case, dispute, decision, or terminal
+version, or any value but `"1"`, is `error` under DRV-8. A missing or
+unsupported rail version, and a rail type other than `x-evm-erc8183`, is
+`error` under DRR-6; R45 cites both rules, so those vectors carry DRV-8 too.
+A duplicated member cannot be expressed here: the pack is parsed JSON, in
+which a repeated name keeps its last value. The candidate names no rule for
+the other unsupported §9 step-1 discriminators (a phase kind; a
+bilateral-agreement, delivery-evidence, resolver-evidence, or
 deployment-manifest version; or a deployment capability profile), nor for the
 identity-bound commit and the implementation ABIs this pack does not model, so
 those `error` cases keep the fixture label `DRV-2`. Where the candidate names
-the rule, the result cites it: a rail version, type, or phase handler
-(DRR-6), a profile literal such as the capability or decision-ordering profile
-(DRC-14), an evaluation rule version or kind (DRE-9), and an `agreementPhase`
-outside DRP-14's two values (DRP-14). The overlay, the bilateral agreement, or
-an escrow artifact with no version discriminator is malformed input (DRV-3); a
-rail or rule without one is unsupported under DRR-6 or DRE-9. The step-1 label
-is pending #371's named §9 step-1 rule. An unsupported `deliver-*` kind as the
+the rule, the result cites it: an artifact version (DRV-8), a rail version,
+type, or phase handler (DRR-6), a profile literal such as the capability or
+decision-ordering profile (DRC-14), an evaluation rule version or kind
+(DRE-9), and an `agreementPhase` outside DRP-14's two values (DRP-14). The
+bilateral agreement or the delivery evidence with no version discriminator is
+malformed input (DRV-3); a rail or rule without one is unsupported under DRR-6
+or DRE-9. The step-1 label is pending #371's named §9 step-1 rule. An
+unsupported `deliver-*` kind as the
 one delivery is not such a case: DRP-3 requires a supported delivery step, so
 it is `fail` under DRP-3. The pack supports only the `deliver-storage-program`
 kind it models, so a `deliver-entitlement` or `deliver-attested-payload` step
@@ -366,8 +376,10 @@ once two writes are known at that copy's address. Until then its terminal is
 compared but not recorded: its own replay `fail` decides first, and while its
 findings on copies are all uncertainty (DRC-15, DRD-10), a DRD-8 or DRL-4
 conflict that would `fail` the other terminal is `indeterminate` instead,
-because that terminal may not have been authorized. A DRT-4 or DRT-16
-conflict with it is `fail`, as with a recorded terminal.
+because that terminal may not have been authorized; while one of them is an
+`error` or `fail`, it takes no part in DRD-8 or DRL-4. A DRT-4 or DRT-16
+conflict with it is `fail` whatever its findings on copies, as with a
+recorded terminal.
 Verifying the same terminal again is idempotent, and it reproduces one
 terminal evidence hash: a second, distinct evidence record for that terminal
 is `fail` for both (DRT-16). Two different terminals
@@ -515,7 +527,7 @@ Each negative is a consistent signed lifecycle plus one edit. The generator
 checks, before it writes or checks the pack, that each negative passes once
 the guard that decides it is removed. Any other outcome, including an
 exception, fails the check, with two listed exceptions.
-`FOLLOW_ON_FINDINGS` lists 111 negatives whose single defect reaches one exact
+`FOLLOW_ON_FINDINGS` lists 105 negatives whose single defect reaches one exact
 second finding once its guard is removed. Some of those defects break a
 second rule. For a record that was not supplied, a later check finds the
 lifecycle inconsistent instead. `STRUCTURAL_NEGATIVES` lists 30 negatives

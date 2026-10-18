@@ -1027,9 +1027,10 @@ def _amount_valid(value: Any) -> bool:
 # `error`; DRV-3, the malformed-encoding rule, forbids repairing it, so those
 # results cite DRV-3, or the §3.1 wire rule (DRW-1 to DRW-4) the encoding
 # breaks.  §9 step 1 makes an unsupported discriminator `error`; where the
-# candidate names the rule (DRR-6 for the rail, DRE-9 for the evaluation rule,
-# DRP-14 for the commit phase, DRC-14 for a profile literal) the result cites
-# it, and the other discriminators (phase kind, artifact, overlay,
+# candidate names the rule (DRV-8 for the version member of a section 2-7
+# artifact, DRR-6 for the rail, DRE-9 for the evaluation rule, DRP-14 for the
+# commit phase, DRC-14 for a profile literal) the result cites it, and the
+# other discriminators (phase kind, delivery-evidence, bilateral-agreement,
 # resolver-evidence or manifest version, implementation ABI) keep the fixture
 # label DRV-2, pending a named §9 step-1 rule in #371.  Otherwise DRV-2 is
 # unavailable RPC data, which stays `indeterminate`.
@@ -1200,13 +1201,28 @@ class DecisionLedger:
         `_terminal_replay_check`).  Its own replay `fail` leaves it listed:
         it would be recorded, whatever that comparison decides, once its
         copies are unselectable.  A pending terminal with a standing
-        `error` or `fail` takes no part.
+        `error` or `fail` is not listed: it takes part in DRT-4 and DRT-16
+        only (see `pending`).
         """
         return tuple(sorted({
             entry.pending for _, entry in self.held()
             if entry.pending is not None and (standing := self.standing(entry))
             and all(finding["result"] == "indeterminate" for finding in standing)
         }, key=_terminal_order))
+
+    def pending(self) -> tuple[TerminalRecord, ...]:
+        """Every held terminal not yet recorded, whatever its standing findings.
+
+        Such a terminal passed every check that reads no copy, so its job,
+        event and evidence are authenticated even when its decision ordering
+        failed.  One event claimed by two native jobs (DRT-4), or a second
+        evidence record for it (DRT-16), is `fail` against it, as against a
+        recorded terminal; a failed copy never takes the first use of a
+        decision or a native job (DRD-8, DRL-4).
+        """
+        return tuple(sorted(
+            {entry.pending for _, entry in self.held() if entry.pending is not None}, key=_terminal_order,
+        ))
 
     def issued(self, terminal: TerminalRecord) -> dict[str, str] | None:
         """The verdict last issued for the lifecycle that recorded ``terminal``."""
@@ -1499,10 +1515,12 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
     job_id = agreement.get("jobId")
     if not isinstance(job_id, str) or JID_RE.fullmatch(job_id) is None:
         return result("error", "DRAA-1", "jobId is not canonical JID form")
-    if "deliveryOrRemedyAgreementVersion" not in agreement:
-        return result("error", "DRV-3", "agreement overlay has no deliveryOrRemedyAgreementVersion discriminator")
-    if agreement["deliveryOrRemedyAgreementVersion"] != "1":
-        return result("error", "DRV-2", "unsupported agreement overlay version")
+    # DRV-8: a missing version member, or any value but "1", is `error`.
+    if agreement.get("deliveryOrRemedyAgreementVersion") != "1":
+        return result("error", "DRV-8", (
+            "unsupported agreement overlay version" if "deliveryOrRemedyAgreementVersion" in agreement
+            else "agreement overlay has no deliveryOrRemedyAgreementVersion discriminator"
+        ))
     # PDE-1: a historical delivery-shaped SettlementEvidence carries
     # `evidenceVersion`; this profile requires current DeliveryEvidence (DRP-7).
     delivery = artifacts.get("delivery")
@@ -1512,10 +1530,17 @@ def _artifact_shape_check(artifacts: dict[str, Any]) -> dict[str, str] | None:
         artifact = artifacts.get(name)
         if artifact is None:
             continue
-        if field not in artifact:
-            return result("error", "DRV-3", f"{name} has no {field} discriminator")
-        if artifact.get(field) != "1":
-            return result("error", "DRV-2", f"unsupported {name} version")
+        # DRV-8 names every version member here but DeliveryEvidence's, a
+        # DACS-4 type: one `error` for a missing member or any value but "1".
+        if name == "delivery":
+            if field not in artifact:
+                return result("error", "DRV-3", f"{name} has no {field} discriminator")
+            if artifact.get(field) != "1":
+                return result("error", "DRV-2", f"unsupported {name} version")
+        elif artifact.get(field) != "1":
+            return result("error", "DRV-8", (
+                f"unsupported {name} version" if field in artifact else f"{name} has no {field} discriminator"
+            ))
         # §9 step 2.  A missing signature is decided by the signature stage.
         if not REQUIRED_ARTIFACT_MEMBERS[name] <= set(artifact):
             return result("error", "DRV-3", f"{name} is missing a required member")
@@ -1688,7 +1713,7 @@ def _abi_pin_issue(params: dict[str, Any]) -> dict[str, str] | None:
 def _rail_check(value: dict[str, Any]) -> dict[str, str] | None:
     """Authenticate the selected `JobEscrowRailDefinition` (candidate §2.2, §8.4).
 
-    Its discriminators first (DRR-6), then its encodings, the DRC-14 literals
+    Its discriminators first (DRR-6, which R45 cites with DRV-8), then its encodings, the DRC-14 literals
     and the DRC-17 pins, then the registry steward's signature (DRR-2) and
     the bindings between its members (DRR-1, DRR-4, DRR-5, DRR-7, DRC-16).
     """
@@ -3799,11 +3824,14 @@ def _terminal_replay_check(
     earlier one: the resolver's records then contradict each other.  One
     event claimed by two native jobs (DRT-4), or one terminal with two
     evidence records (DRT-16), is a conflict whichever came first, and
-    whether or not the other terminal was authorized.  A conflict over the
+    whether or not the other terminal was authorized: against every
+    terminal the ledger holds, recorded or pending, including one whose
+    standing copy finding is an `error` or `fail`.  A conflict over the
     first use of a decision or a native job (DRD-8, DRL-4) that would `fail`
     against a terminal the ledger lists as undecided, whose decision
     ordering rests on a copy still selectable, is `indeterminate`: that
-    terminal may not have been authorized.  The finding depends only on
+    terminal may not have been authorized.  A pending terminal outside that
+    list takes no part in DRD-8 or DRL-4.  The finding depends only on
     ``current`` and the ledger's terminals.
     """
     for prior in current.attested:
@@ -3811,7 +3839,12 @@ def _terminal_replay_check(
         if conflict:
             return result("fail", *conflict)
     undecided = []
-    for other, decided in (*((item, True) for item in ledger.terminals()), *((item, False) for item in ledger.undecided())):
+    listed = ledger.undecided()
+    for other, decided in (
+        *((item, True) for item in ledger.terminals()),
+        *((item, False) for item in listed),
+        *((item, None) for item in ledger.pending() if item not in listed),
+    ):
         conflict = terminal_conflict(other, current)
         if conflict is None:
             continue
@@ -3819,6 +3852,8 @@ def _terminal_replay_check(
         # records, is a conflict whichever came first and whether or not the
         # other terminal was authorized.
         either = conflict[0] in ("DRT-4", "DRT-16")
+        if decided is None and not either:
+            continue
         precedes = True if either else terminal_precedes(other, current)
         if precedes is None:
             undecided.append((conflict[0], "authenticated event positions cannot order this terminal against a conflicting terminal"))

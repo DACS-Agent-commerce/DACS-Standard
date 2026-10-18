@@ -73,12 +73,17 @@ def verdict(observed):
 REPLAY_VERDICT_RANK = {"pass": 0, "indeterminate": 1, "error": 2, "fail": 3}
 EQUIVOCATION = ("indeterminate", "DRAA-4")
 COPY_SELECTING_RULES = {"DRV-6", "DRD-10", "DRD-11", "DRC-15", "DRW-4"}
+# DRW-4 rests on a copy only on the anchor side; the terminal-side bound reads none.
+ANCHOR_SIDE_DRW4 = "a decision-ordering sum exceeds the safe-integer bound"
 
 
 def revision_allowed(revision, current):
+    """Whether ``revision`` may replace ``current``, the verdict its `previous` names."""
+    detail = revision.get("previous", {}).get("detail")
+    on_copy = current[1] in COPY_SELECTING_RULES and (current[1] != "DRW-4" or detail == ANCHOR_SIDE_DRW4)
     if verdict(revision) == EQUIVOCATION:
-        return current[0] in ("pass", "indeterminate") or current[1] in COPY_SELECTING_RULES
-    if revision["result"] == "error" or (current[0] == "error" and current[1] not in COPY_SELECTING_RULES):
+        return current[0] in ("pass", "indeterminate") or on_copy
+    if revision["result"] == "error" or (current[0] == "error" and not on_copy):
         return False
     return REPLAY_VERDICT_RANK[revision["result"]] >= REPLAY_VERDICT_RANK[current[0]]
 
@@ -200,8 +205,8 @@ GUARD_CASES = {
     "artifact-missing": (_release(drop("artifacts", "job")), ("error", "DRV-3", "required candidate artifacts are missing")),
     "artifact-not-object": (_release(put("artifacts", "railDefinition", [])), ("error", "DRV-3", "candidate artifacts must be objects")),
     "optional-artifact-not-object": (_release(put("artifacts", "evaluationRule", [])), ("error", "DRV-3", "evaluationRule must be an object")),
-    "overlay-version": (_release(put("artifacts", "agreement", "deliveryOrRemedyAgreementVersion", "2")), ("error", "DRV-2", "unsupported agreement overlay version")),
-    "overlay-discriminator-missing": (_release(drop("artifacts", "agreement", "deliveryOrRemedyAgreementVersion")), ("error", "DRV-3", "agreement overlay has no deliveryOrRemedyAgreementVersion discriminator")),
+    "overlay-version": (_release(put("artifacts", "agreement", "deliveryOrRemedyAgreementVersion", "2")), ("error", "DRV-8", "unsupported agreement overlay version")),
+    "overlay-discriminator-missing": (_release(drop("artifacts", "agreement", "deliveryOrRemedyAgreementVersion")), ("error", "DRV-8", "agreement overlay has no deliveryOrRemedyAgreementVersion discriminator")),
     "bilateral-discriminator-missing": (_hooked(bilateral=drop("payeeBoundAgreementVersion")), ("error", "DRV-3", "bilateral agreement has no version discriminator")),
     "decision-stage-unknown": (_hooked(decision=put("decisionStage", "mid-submission")), ("error", "DRV-3", "decision stage is outside the closed value set")),
     "dispute-opener-unknown": (_hooked("pre-submission-rejected-refund", disputeCase=put("openedByRole", "arbiter")), ("error", "DRV-3", "dispute case openedByRole is outside the closed value set")),
@@ -484,15 +489,14 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
     def test_error_results_cite_drv3_unless_the_candidate_names_no_rule(self):
         """Malformed input is DRV-3 or a §3.1 wire rule; DRV-2 is left only where the candidate names no rule."""
         literal_no_rule = {
-            "pipeline contains an unsupported phase kind", "unsupported agreement overlay version",
+            "pipeline contains an unsupported phase kind",
             "unsupported resolver evidence version", "unsupported deployment manifest version",
             "unsupported deployment capability profile", "unsupported bilateral agreement version",
             "unsupported implementation ABI",
             "unsupported agreement phase: this pack models the payee-bound commit only",
         }
-        no_rule = literal_no_rule | {
-            f"unsupported {name} version" for name in verifier.ARTIFACT_VERSION_FIELDS
-        }
+        # DRV-8 names every other artifact version member.
+        no_rule = literal_no_rule | {"unsupported delivery version"}
         source = VERIFIER.read_text(encoding="utf-8")
         labelled = re.findall(r'result\("error", "DRV-2", "([^"]*)"\)', source)
         self.assertEqual(sorted(labelled), sorted(literal_no_rule))
@@ -534,8 +538,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         notify["pipeline"].insert(4, {"kind": "notify"})
         observed = {
             "pipeline contains an unsupported phase kind": evaluate(notify),
-            "unsupported agreement overlay version": lifecycle(
-                ("artifacts", "agreement", "deliveryOrRemedyAgreementVersion"), "2"),
+            "unsupported delivery version": lifecycle(
+                ("artifacts", "delivery", "deliveryEvidenceVersion"), "2"),
             "unsupported resolver evidence version": lifecycle(
                 ("resolverEvidence", "resolverEvidenceVersion"), "2"),
             "unsupported deployment manifest version": deployment("manifestVersion", "2"),
@@ -551,6 +555,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                          ("error", "DRV-3", "malformed deployment manifest"))
         # Where the candidate names the step-1 rule, the result cites it.
         for name, rule in (
+            ("agreement-overlay-version-unsupported", "DRV-8"),
+            ("job-version-unsupported", "DRV-8"),
             ("rail-version-unsupported", "DRR-6"),
             ("rail-type-unprefixed", "DRR-6"),
             ("rail-capability-profile-unsupported", "DRC-14"),
@@ -559,6 +565,37 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         ):
             with self.subTest(named=name):
                 self.assertEqual(finding(self._vector(name)), ("error", rule))
+
+    def test_every_drv8_version_member_is_error_under_step_one(self):
+        """DRV-8 / R45: each listed version member, missing or other than "1", is `error` before any signature check."""
+        text = " ".join(SPEC.read_text(encoding="utf-8").split())
+        clause = text[text.index("(DRV-8)"):text.index("(DRV-8)") + 900]
+        members = set(re.findall(r"`(\w+Version)`", clause[:clause.index("A missing")]))
+        overlay, rail = "deliveryOrRemedyAgreementVersion", "jobEscrowRailVersion"
+        fields = {name: field for name, field in verifier.ARTIFACT_VERSION_FIELDS.items() if name != "delivery"}
+        self.assertEqual(members, set(fields.values()) | {overlay, rail})
+        self.assertIn("deliveryEvidenceVersion", verifier.ARTIFACT_VERSION_FIELDS.values())
+        self.assertNotIn("deliveryEvidenceVersion", members)
+        cases = {
+            **{f"{name}-version-{form}": "DRV-8" for name in fields for form in ("unsupported", "missing")},
+            "agreement-overlay-version-unsupported": "DRV-8", "agreement-overlay-version-missing": "DRV-8",
+            "rail-version-unsupported": "DRR-6", "rail-version-missing": "DRR-6", "rail-type-unprefixed": "DRR-6",
+        }
+        for name, rule in cases.items():
+            with self.subTest(vector=name):
+                self.assertEqual((self.vectors[name]["expected"], self.vectors[name]["expectedRule"]), ("error", rule))
+                self.assertIn("DRV-8", self.vectors[name]["rules"])
+                self.assertEqual(finding(self._vector(name)), ("error", rule))
+        # DeliveryEvidence is a DACS-4 type: its version keeps the step-1 and step-2 labels.
+        for name, rule in (("delivery-version-unsupported", "DRV-2"), ("delivery-version-missing", "DRV-3")):
+            with self.subTest(vector=name):
+                self.assertEqual(self.vectors[name]["rules"], [rule])
+                self.assertEqual(finding(self._vector(name)), ("error", rule))
+        # Before any hash or signature check: an unsigned artifact still gives DRV-8.
+        value = make_base("release")
+        value["artifacts"]["job"]["escrowJobRefVersion"] = "2"
+        value["artifacts"]["job"].pop("signature")
+        self.assertEqual(finding(value), ("error", "DRV-8"))
 
     def test_keccak_and_eip55_reproduce_the_published_vectors(self):
         """Keccak-256 and EIP-55, against known answers; `hashlib.sha3_256` is a different hash."""
@@ -1515,6 +1552,64 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(second), ledger)), ("indeterminate", "DRD-8"))
             self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(release), ledger)), ("fail", "DRT-16"))
 
+    def test_a_pending_terminal_with_a_failed_copy_still_fails_an_event_or_evidence_conflict(self):
+        """DRT-4, DRT-16 fail beside a pending terminal whose copy finding is `fail` or `error`; DRD-8 ignores it."""
+        release = self._fixture("release")
+        terminal = generator.block_time(generator.TERMINAL_BLOCKS["release"])
+        widened = (release["artifacts"]["railDefinition"]["parameters"]["maxCrossSubstrateSkewMs"] + 1000) // 1000
+        resolver_late = copy.deepcopy(release)
+        resolver_late["resolverEvidence"]["decisionAnchor"]["finalizedBlockTimestampSec"] = terminal + widened + 1
+        generator.resign_resolver(resolver_late)
+        event = self._fixture("other-job-reuses-release-terminal-event")
+        second = self._fixture("release-second-terminal-transaction")
+        self.assertEqual((finding(event), finding(second)), (("pass", "DRV-7"), ("pass", "DRV-7")))
+        for label, late, own in (
+            ("resolver anchor late", resolver_late, ("fail", "DRD-11")),
+            ("carried late copy", self._late_decision_copy(), ("fail", "DRD-11")),
+            ("carried unanchored copy", self._late_decision_copy(anchored=False), ("fail", "DRV-6")),
+            ("anchor-side sum unsafe", GUARD_CASES["decision-ordering-anchor-sum-unsafe"][0](self.vector_pack), ("error", "DRW-4")),
+        ):
+            with self.subTest(label=label):
+                checked = verifier._checked_lifecycle(copy.deepcopy(late), DecisionLedger())
+                self.assertEqual((verdict(checked.issue), checked.pending), (own, True))
+                pending = verifier._terminal_record(copy.deepcopy(late))
+                self.assertEqual(pending[:3], verifier._terminal_record(copy.deepcopy(release))[:3])
+                values = {"late": late, "event": event, "second": second}
+                # Its job, event and evidence are authenticated: the other job's
+                # terminal fails DRT-4 in every order, batch and stream, and the
+                # decision's other terminal is still its first use, whether the
+                # pending terminal comes first or last.
+                joint = {"late": ("fail", "DRT-4"), "event": ("fail", "DRT-4")}
+                beside = {**joint, "second": ("pass", "DRV-7")}
+                for order in (
+                    *itertools.permutations(joint), ("late", "event", "second"), ("second", "event", "late"),
+                ):
+                    expected = beside if "second" in order else joint
+                    with self.subTest(order=order):
+                        ledger = DecisionLedger()
+                        observed = evaluate_lifecycles([copy.deepcopy(values[item]) for item in order], ledger)
+                        self.assertEqual(dict(zip(order, map(verdict, observed))), expected)
+                        self.assertNotIn(pending, ledger.terminals())
+                        self.assertEqual(self._streamed(values, order), expected)
+                # The other job's terminal arriving first passes, and is revised
+                # to `fail` once the pending terminal is held.
+                ledger = DecisionLedger()
+                self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(event), ledger)), ("pass", "DRV-7"))
+                last = evaluate_protocol(copy.deepcopy(late), ledger)
+                self.assertEqual(verdict(last), ("fail", "DRT-4"))
+                self.assertEqual(
+                    [(verdict(item["previous"]), verdict(item)) for item in last.get("revises", [])],
+                    [(("pass", "DRV-7"), ("fail", "DRT-4"))],
+                )
+                # A second, distinct evidence record for the pending terminal fails.
+                ledger = DecisionLedger()
+                self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(late), ledger)), own)
+                ((key, entry),) = ledger.held()
+                ledger.hold(key, entry._replace(pending=entry.pending._replace(evidence="00" * 32)))
+                self.assertEqual((ledger.undecided(), len(ledger.pending())), ((), 1))
+                self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(second), ledger)), ("pass", "DRV-7"))
+                self.assertEqual(verdict(evaluate_protocol(copy.deepcopy(release), ledger)), ("fail", "DRT-16"))
+
     def test_an_error_on_a_copy_gives_way_to_its_terminal_replay_fail(self):
         """The anchor-side DRW-4 `error` rests on the sole decision copy: its pending terminal's replay `fail` decides first."""
         unsafe = GUARD_CASES["decision-ordering-anchor-sum-unsafe"][0](self.vector_pack)
@@ -1544,6 +1639,15 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         # The oracle never takes a deterministic `error` to `fail`, nor any verdict to `error`.
         self.assertFalse(revision_allowed({"result": "fail", "rule": "DRD-8"}, ("error", "DRV-3")))
         self.assertFalse(revision_allowed({"result": "error", "rule": "DRW-4"}, ("pass", "DRV-7")))
+        # Only the anchor-side DRW-4 rests on a copy; the terminal-side bound reads none.
+        self.assertEqual(checked.issue["detail"], ANCHOR_SIDE_DRW4)
+        terminal_side = GUARD_CASES["decision-ordering-sum-unsafe"][0](self.vector_pack)
+        terminal_side = verifier._checked_lifecycle(copy.deepcopy(terminal_side), DecisionLedger()).issue
+        self.assertEqual(verdict(terminal_side), ("error", "DRW-4"))
+        for previous, allowed in ((checked.issue, True), (terminal_side, False)):
+            with self.subTest(detail=previous["detail"]):
+                for revision in ({"result": "fail", "rule": "DRD-8"}, dict(zip(("result", "rule"), EQUIVOCATION))):
+                    self.assertIs(revision_allowed({**revision, "previous": previous}, ("error", "DRW-4")), allowed)
 
     def test_an_unordered_resolver_anchor_records_its_terminal_only_once_unselectable(self):
         """DRC-15 on the resolver's own anchor keeps its terminal out of replay until two decision writes are known."""

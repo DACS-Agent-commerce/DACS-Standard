@@ -114,8 +114,8 @@ attested-payload delivery and the `deliver-entitlement` credential rules
 ## Known gaps
 
 Open issues, and open pull requests whose base is `next`, that affect the
-rows above, including related optional design work. All 34 open items other
-than the pull request adding this map were enumerated on 2026-10-16; the list
+rows above, including related optional design work. All 35 open items other
+than the pull request adding this map were enumerated on 2026-10-18; the list
 has no issue-number cutoff. Open pull
 requests were checked for a `next` base. The disposition of #330 below was
 checked against the pinned specification and its open issue on the same date.
@@ -133,10 +133,27 @@ checked against the pinned specification and its open issue on the same date.
 | #292 | issue | §8.6, §10.4 | A proposed batched deal-close commitment preserving per-party evidence and the existing gates before effects |
 | #336, #320 | PR, issue | §9.4.3, §9.5.1, §9.7.1, §10.4.3 | A candidate Atomic DACS Work profile (RFC #320). For every profile it also changes rail resolution (§9.4.3), PC-1 arm selection (§9.5.1) and the AMEND-1 discriminator and signature-domain check (§9.7.1); it adds Atomic handling at SEB-3 |
 | #410 | issue | §9.5.1 | PB-* cases that no committed vector exercises yet |
+| #432 | draft PR | §9.5.9, §9.5.1, §9.5.8, §9.7.0 | `pay-dem` success only on a bound, executed transaction record (DEM-1..DEM-7); a node's `included` status is not settlement |
 | #426 | draft PR | §9.7.0 and others | Vectors for FV-1..FV-10 guards and other recently merged rules, with some clarifications |
 | #374 | issue | §10.5 | Binding reputation derivations to a complete per-claim session set |
 | #356, #371 | issue, draft PR | — | A pre-normative delivery-or-remedy profile; its first binding is an EVM escrow rail, not `pay-dem` |
 | #99 | issue | §10.4.2, §10.4.3, §11.2.1 | An optional DACS-X dispute-output interface and deterministic fixture contract over the bundle divergence walk |
+
+#432 concerns the payment step itself. At the pinned revision, §9.5.9 step 5
+returns success once the transfer reaches the terminal `included` state, and
+its failure modes expect a failed transfer to reach `failed`. #432 reports
+that `kynesyslabs/node` at `61b8e75aa8db5e408c49e1c3a89db4d673f45578` stores a
+`confirmed` or `failed` record for each transaction, while
+`getTransactionStatus` reports `included` for every stored record, failed ones
+included; it pins `@kynesyslabs/demosdk` 4.0.16 (npm integrity
+`sha512-nVhp1uC+tFGzhew9c8XIajTMmELopx7gd0joqqzDd2XyUuFDcqrda51NYqvX5C8+L3Xgnie/mRf7JRqZ7r3tHA==`).
+A handler that follows step 5 as written can therefore report a failed
+transfer as settled. A read-only query to `node2.demos.sh` on 2026-10-18 is
+consistent with this; it is an observation of a live node, not a pin.
+`getTransactionStatus` returned `included` at block 480877 for transaction
+`85b8fcdcee48822742a39e1b9877f5e2f8dde36430e8e486e3a8b0c9a7744cbd`, and
+`getTxByHash` returned the same transaction with status `failed`
+(`TX_NONCE_INVALID_LOW`). This map records the gap and does not change §9.5.9.
 
 No open issue tracks these vector gaps yet:
 
@@ -148,7 +165,22 @@ No open issue tracks these vector gaps yet:
   The DACS-5 reference regression test
   (`tests/test_current_evidence_boundary_regressions.py`) and
   `scripts/listing_artifact.py` do check missing, duplicate and non-adjacent
-  phases on a fixed-price pipeline.
+  phases on a fixed-price pipeline;
+- no committed vector exercises the PS-3 requirement that the listing's
+  pricing model be compatible with the chosen pattern, such as fixed-price
+  over an auction listing. `neg-ps3-fixed-over-negotiable` and the `ps3-*`
+  vectors in `agreement-listing-v0.1` cover only the negotiable band-centre
+  clause;
+- no committed vector exercises the §9.6.1 extended pointer
+  (`externalUrl`, `externalContentHash`) for payloads above the Storage
+  Program soft limit. DV-1..DV-4 have expected outputs only in the
+  `private-deliverables-v0.1` security set, which is not part of the
+  conformance manifest.
+
+§9.6.1 gives that soft limit as a 128 KB Storage Program cap. The Demos node
+enforces 1 MiB (`STORAGE_PROGRAM_MAX_SIZE_BYTES = 1048576` in
+`GCRStorageProgramRoutines.ts` at `kynesyslabs/node` `61b8e75`), as does
+`@kynesyslabs/demosdk` 4.0.16. No open issue tracks the difference.
 
 `pay-dem` `bft-final` finality (§9.5.9, §9.7.0) and the `demos-native:DEM`
 registry entry (§9.4.2; resolved per §9.4.3) also depend on two open upstream

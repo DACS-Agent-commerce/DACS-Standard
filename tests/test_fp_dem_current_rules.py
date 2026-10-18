@@ -1,5 +1,6 @@
 import collections
 import importlib.util
+import json
 import re
 import subprocess
 import sys
@@ -169,6 +170,18 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
         self.assertIn("commitments[0] != negotiations[0] + 1", listing)
         for path in ("tests/test_current_evidence_boundary_regressions.py", "scripts/listing_artifact.py"):
             self.assertIn(f"`{path}`", untracked.replace("\n  ", " "))
+        # PS-3's pattern/pricing compatibility and the §9.6.1 extended pointer
+        # have no committed vector either; the PS-3 vectors test only the band centre.
+        flat = untracked.replace("\n  ", " ")
+        self.assertIn("pricing model be compatible with the chosen pattern", flat)
+        self.assertIn("cover only the negotiable band-centre clause", flat)
+        self.assertIn("§9.6.1 extended pointer (`externalUrl`, `externalContentHash`)", flat)
+        manifest = subprocess.run(["git", "-C", str(ROOT), "show", f"{PIN}:conformance/MANIFEST.json"],
+                                  capture_output=True, text=True, check=True).stdout
+        self.assertNotIn("externalUrl", manifest)
+        self.assertEqual([case["id"] for case in json.loads(manifest)["cases"] if "PS-3" in case["spec"]
+                          or "ps3" in case["id"]], ["neg-ps3-fixed-over-negotiable"])
+        self.assertNotIn("DV-", " ".join(case["spec"] for case in json.loads(manifest)["cases"]))
         upstream = gaps.split("also depend on two open upstream", 1)[1]
         for text in ("DACS-Agent-commerce/dacs-sdk#284", "kynesyslabs/node#994"):
             self.assertIn(text, upstream)
@@ -177,6 +190,52 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
         self.assertIn("| demos-native:DEM |", registry)
         self.assertIn("registry entry (§9.4.2; resolved per §9.4.3)", gaps)
         self.assertIn("other\nthan the pull request adding this map", gaps)
+
+    def test_gaps_record_that_included_is_not_an_executed_pay_dem_transfer(self):
+        # At the pin §9.5.9 returns success on `included`, which a node also
+        # reports for a failed record; #432 is the open fix.
+        rows = {number: (kind, sections, what) for number, kind, sections, what in
+                table_rows(self.text, "## Known gaps")}
+        kind, sections, what = rows["#432"]
+        self.assertEqual((kind, sections), ("draft PR", "§9.5.9, §9.5.1, §9.5.8, §9.7.0"))
+        self.assertIn("executed transaction record", what)
+        self.assertIn("`included` status is not settlement", what)
+        settle = self.sources["DACS-4-SETTLE.md"].split("#### 9.5.9 pay-dem", 1)[1].split("\n#### ", 1)[0]
+        self.assertIn("5. On the transaction reaching the terminal **`included`** state", settle)
+        note = self.text.split("#432 concerns the payment step itself.", 1)[1].split("\n\n", 1)[0]
+        note = " ".join(note.split())
+        for text in ("§9.5.9 step 5 returns success once the transfer reaches the terminal `included` state",
+                     "`kynesyslabs/node` at `61b8e75aa8db5e408c49e1c3a89db4d673f45578`",
+                     "`@kynesyslabs/demosdk` 4.0.16 (npm integrity `sha512-",
+                     "report a failed transfer as settled",
+                     "an observation of a live node, not a pin",
+                     "does not change §9.5.9"):
+            self.assertIn(text, note)
+        self.assertIn("other\nthan the pull request adding this map were enumerated on 2026-10-18", self.text)
+
+    def test_gaps_record_the_storage_program_cap_difference(self):
+        # §9.6.1 says 128 KB; the pinned node and SDK enforce 1 MiB.
+        delivery = self.sources["DACS-4-SETTLE.md"].split("#### 9.6.1 ", 1)[1].split("\n#### ", 1)[0]
+        self.assertIn("Storage Programs have a 128 KB cap", delivery)
+        gaps = " ".join(self.text.split("## Known gaps", 1)[1].split())
+        self.assertIn("§9.6.1 gives that soft limit as a 128 KB Storage Program cap. "
+                      "The Demos node enforces 1 MiB (`STORAGE_PROGRAM_MAX_SIZE_BYTES = 1048576`", gaps)
+        self.assertIn("No open issue tracks the difference.", gaps)
+
+    def test_covers_column_follows_the_rule_id_index_at_the_pin(self):
+        index = subprocess.run(["git", "-C", str(ROOT), "show", f"{PIN}:docs/rule-id-index.md"],
+                               capture_output=True, text=True, check=True).stdout
+        surfaces = {family.rstrip("*").rstrip("-"): surface
+                    for family, surface, *_rest in table_rows(index, "## Rule families")}
+        checked = 0
+        for _stage, _sections, rules, covers in table_rows(self.text, "## Current rules"):
+            if rules == "—":
+                continue
+            for family in {rule_family(rule) for rule in re.findall(RULE, rules)}:
+                with self.subTest(family=family):
+                    self.assertEqual(covers, surfaces[family])
+                    checked += 1
+        self.assertGreater(checked, 60)
 
     def test_readme_and_historical_readiness_page_link_the_map(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

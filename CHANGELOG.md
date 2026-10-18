@@ -22,7 +22,19 @@ The format used per release:
 - Native-send conformance isolates the transaction type, exact recipient account,
   signed OS-string amounts and fees, phase DEM-to-OS conversion, and record shape.
   Raw Demos references derive canonical SB-1 IDs before SB-2 collision grouping.
-  The corpora contain 141 pay-dem and 170 settlement-finality cases.
+  The corpora contain 158 pay-dem and 170 settlement-finality cases.
+- The DEM-1 signed transaction must be the complete demosdk 4.0.16 native-send
+  envelope that the pinned node admits. It carries a positive integer
+  `timestamp`, `from_ed25519_address`, a fee object with exactly `network_fee`,
+  `rpc_fee`, `additional_fee` and `rpc_address` in node order, and the four
+  native-send `gcr_edits` the node regenerates. The passing broadcast vector
+  now carries that envelope, and negative vectors cover each missing or
+  misshaped member.
+- DEM-7 SB-2 derives the SB-1 identifier of every admitted reference before
+  comparing, collapsing verified legacy spellings. An admitted reference
+  without an identifier is `error`, never skipped. Only an FV-5-authenticated
+  bound `failed` record makes consumer evidence `fail`; a plain RPC read of
+  one is `indeterminate`.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
@@ -1097,7 +1109,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 141-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 158-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-broadcast gate with phase and payment authority and signed-envelope
@@ -1105,9 +1117,9 @@ The format used per release:
   standalone DEM-7 gate, and delivery composed with FV-5, SB-1, SB-2 and PB.
   Each vector lists
   the oracle guards whose removal changes its result. The set `hash` is
-  SHA-256 over the JCS form of `vectors`. An earlier 8-vector draft with the
-  same set name, synced into dacs-sdk#352 under `test/fixtures/standard-next/`,
-  has a different schema and hash. This set supersedes it, and a runner built
+  SHA-256 over the JCS form of `vectors`. An earlier 10-vector draft with the
+  same set name, synced into dacs-sdk#352 under `test/fixtures/standard-next/`
+  (head `4e7419f`, draft hash `da86e204…`), has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
   set is identified by its `hash`, not by its name alone. In
   `settlement-finality-verification` (170 cases), transaction inclusion and

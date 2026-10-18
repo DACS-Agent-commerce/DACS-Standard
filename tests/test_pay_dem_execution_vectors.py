@@ -47,6 +47,9 @@ GUARDS = frozenset({
     "signed-transfer-matches-retention",
     "signed-transaction-authentic",
     "signed-os-strings",
+    "signed-fee-members",
+    "signed-timestamp",
+    "signed-native-edits",
     "no-cross-phase-reuse",
     # DEM-2 and the DEMOS-MAPPING §A.2 native-send record profile
     "node-profile-pinned",
@@ -86,6 +89,7 @@ GUARDS = frozenset({
     "consumer-requires-confirmed-record",
     "consumer-binding",
     "consumer-failed-refutes",
+    "consumer-failed-requires-authentication",
     "consumer-authenticated-contradiction-fails",
     # DEM-7 composed with FV-5, SB-1, SB-2 and PB before delivery
     "delivery-requires-dem7",
@@ -94,6 +98,8 @@ GUARDS = frozenset({
     "delivery-requires-sb1",
     "delivery-requires-pb",
     "delivery-sb2-own-admissions",
+    "sb2-admitted-legacy-collapse",
+    "sb2-admitted-malformed-error",
     "sb2-same-tuple-idempotent",
     "sb1-demos-id",
     "sb1-demos-canonical",
@@ -136,6 +142,42 @@ ADDRESS = re.compile(r"(?:0x)?([0-9a-f]{64})")
 DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)")
 SIGNATURE = re.compile(r"0x[0-9a-f]{128}")
 RETAINED = {"jobId", "phaseIndex", "txHash", "nonce", "sender", "recipient", "amountOs"}
+FEE_AMOUNTS = ("network_fee", "rpc_fee", "additional_fee")
+# The pinned node's RPC ingress rebuilds the fee object in this order before
+# it re-derives the hash (src/forks/serializerGate.ts).
+FEE_MEMBERS = [*FEE_AMOUNTS, "rpc_address"]
+GAS_OS = "1000000000"  # demosdk 4.0.16 gas edit: 1 DEM, serialized in OS
+
+
+def regenerated_edits(content):
+    """The native-send `gcr_edits` the pinned node regenerates at admission
+    (demosdk 4.0.16 GCRGeneration, serialized post-fork), or None."""
+    data = content.get("data")
+    sender = content.get("from_ed25519_address")
+    if not (isinstance(data, list) and len(data) == 2 and isinstance(data[1], dict)
+            and isinstance(data[1].get("args"), list) and len(data[1]["args"]) == 2
+            and isinstance(data[1]["args"][0], str) and isinstance(sender, str)):
+        return None
+    to, amount = data[1]["args"]
+    to = to if to.startswith("0x") else "0x" + to
+    amount = amount if isinstance(amount, str) else str(amount)
+    return [
+        {"type": "balance", "operation": "remove", "isRollback": False, "account": sender, "txhash": "", "amount": amount},
+        {"type": "balance", "operation": "add", "isRollback": False, "account": to, "txhash": "", "amount": amount},
+        {"type": "balance", "account": sender, "operation": "remove", "amount": GAS_OS, "txhash": "", "isRollback": False},
+        {"type": "nonce", "operation": "add", "account": sender, "amount": 1, "txhash": "", "isRollback": False},
+    ]
+
+
+def edits_match(content) -> bool:
+    """The node blanks each `txhash` and compares the serialized lists."""
+    edits, expected = content.get("gcr_edits"), regenerated_edits(content)
+    if expected is None or not (isinstance(edits, list) and all(isinstance(e, dict) for e in edits)):
+        return False
+    try:
+        return stringify([{**edit, "txhash": ""} for edit in edits]) == stringify(expected)
+    except (ValueError, TypeError, UnicodeError):
+        return False
 
 
 def _safe_integer(value) -> bool:
@@ -208,13 +250,23 @@ def decode(transaction, off, *, executed: bool = True):
     recipient = _address(content.get("to"), off)
     if amount is None or sender is None or recipient is None:
         return None
+    fee = content.get("transaction_fee")
     if not executed and "signed-os-strings" not in off:
-        fee = content.get("transaction_fee")
         if not (isinstance(content.get("amount"), str) and DECIMAL.fullmatch(content["amount"])
                 and isinstance(fee, dict)
                 and all(isinstance(fee.get(k), str) and DECIMAL.fullmatch(fee[k])
-                        for k in ("network_fee", "rpc_fee", "additional_fee"))):
+                        for k in FEE_AMOUNTS)):
             return None
+    if (not executed and "signed-fee-members" not in off and isinstance(fee, dict)
+            and all(k in fee for k in FEE_AMOUNTS)
+            and (list(fee) != FEE_MEMBERS or not (fee["rpc_address"] is None or isinstance(fee["rpc_address"], str)))):
+        return None
+    if not executed and "signed-timestamp" not in off:
+        timestamp = content.get("timestamp")
+        if not (_safe_integer(timestamp) and timestamp > 0):
+            return None
+    if not executed and "signed-native-edits" not in off and not edits_match(content):
+        return None
     if "from_ed25519_address" in content and "decode-address" not in off:
         if _address(content["from_ed25519_address"], off) != sender:
             return None
@@ -497,7 +549,9 @@ def dem7(protocol_input: dict, off) -> str:
         if decision != "pass":
             return "indeterminate" if "consumer-authenticated-contradiction-fails" in off else decision
         return "indeterminate" if "consumer-admits-confirmed" in off else "pass"
-    if is_bound and status == "failed":
+    if is_bound and status == "failed" and (
+        read.get("authenticated") is True or "consumer-failed-requires-authentication" in off
+    ):
         return "indeterminate" if "consumer-failed-refutes" in off else "fail"
     if (
         not is_bound
@@ -538,9 +592,20 @@ def admit_for_delivery(protocol_input: dict, off) -> tuple[str, dict]:
         "jobId": protocol_input["phase"]["jobId"],
         "phaseIndex": protocol_input["phase"]["phaseIndex"],
     }
+    # SB-1 projects every admitted reference, collapsing a verified legacy
+    # spelling, before SB-2 compares; one that cannot project is malformed.
+    presented = demos_id(protocol_input["signedEvidence"]["txRef"], off)
+    admissions = protocol_input["consumerAdmissions"]
+    keys = [
+        demos_id(admitted["txRef"], off,
+                 legacy=admitted.get("legacy") is True and "sb2-admitted-legacy-collapse" not in off)
+        for admitted in admissions
+    ]
+    if (presented is None or None in keys) and "sb2-admitted-malformed-error" not in off:
+        return result("error")
     others = [
-        admitted for admitted in protocol_input["consumerAdmissions"]
-        if demos_id(admitted["txRef"], off) == demos_id(protocol_input["signedEvidence"]["txRef"], off)
+        admitted for admitted, key in zip(admissions, keys)
+        if key is not None and key == presented
         and ({k: admitted[k] for k in tuple_} != tuple_ or "sb2-same-tuple-idempotent" in off)
     ]
     if others and "delivery-sb2-own-admissions" not in off:
@@ -791,6 +856,85 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 bytes.fromhex(record["signature"]["data"][2:]), record["hash"].encode("utf-8")
             )
 
+    def test_permitted_broadcast_is_a_complete_sdk_envelope(self):
+        # demosdk 4.0.16 pay() and sign() add timestamp, node fees and
+        # regenerated edits before hashing; the pinned node refuses a send
+        # without them.
+        content = self.cases["first-broadcast-after-durable-retention"]["protocolInput"]["signedTransaction"]["content"]
+        self.assertEqual(
+            ["type", "from", "to", "amount", "data", "nonce", "timestamp", "transaction_fee",
+             "from_ed25519_address", "gcr_edits"],
+            list(content),
+        )
+        self.assertTrue(_safe_integer(content["timestamp"]) and isinstance(content["timestamp"], int))
+        self.assertEqual(FEE_MEMBERS, list(content["transaction_fee"]))
+        self.assertTrue(edits_match(content))
+        # The regeneration reproduces the edits SDK clients shipped in both
+        # live node2 records, member order and types included.
+        for name in ("node2-confirmed-record", "node2-included-failed-record"):
+            with self.subTest(name=name):
+                served = self.cases[name]["protocolInput"]["recordRead"]["record"]["content"]
+                self.assertTrue(edits_match(served))
+        permitted = [vector["name"] for vector in self.data["vectors"] if vector["want"].get("broadcastPermitted")]
+        self.assertEqual(["first-broadcast-after-durable-retention"], permitted)
+
+    def test_each_missing_or_misshaped_envelope_member_is_refused(self):
+        control = self.cases["first-broadcast-after-durable-retention"]
+        for name, guard in (
+            ("fee-object-missing", "signed-os-strings"),
+            ("fee-member-missing", "signed-os-strings"),
+            ("numeric-rpc-fee", "signed-os-strings"),
+            ("numeric-additional-fee", "signed-os-strings"),
+            ("noncanonical-fee-string", "signed-os-strings"),
+            ("fee-members-reordered", "signed-fee-members"),
+            ("rpc-address-omitted", "signed-fee-members"),
+            ("extra-fee-member", "signed-fee-members"),
+            ("timestamp-missing", "signed-timestamp"),
+            ("fractional-timestamp", "signed-timestamp"),
+            ("edits-missing", "signed-native-edits"),
+            ("edits-credit-differs", "signed-native-edits"),
+            ("edits-extra-credit", "signed-native-edits"),
+        ):
+            with self.subTest(name=name):
+                case = self.cases["broadcast-signed-" + name]
+                self.assertTrue(authentic(case["protocolInput"]["signedTransaction"]))
+                self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(case))
+                self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(case, {guard}))
+                self.assertEqual(evaluate(control), evaluate(control, {guard}))
+
+    def test_admitted_legacy_spellings_collapse_before_sb2(self):
+        base = self.cases["delivery-hash-admitted-for-another-job"]
+        tx_hash = base["protocolInput"]["signedEvidence"]["txRef"]["txHash"]
+        for spelling in ("0x" + tx_hash, tx_hash.upper(), "0x" + tx_hash.upper()):
+            for legacy, verdict in ((True, "indeterminate"), (False, "error"), (None, "error")):
+                with self.subTest(spelling=spelling[:6], legacy=legacy):
+                    case = json.loads(json.dumps(base))
+                    admission = case["protocolInput"]["consumerAdmissions"][0]
+                    admission["txRef"]["txHash"] = spelling
+                    if legacy is not None:
+                        admission["legacy"] = legacy
+                    expected, want = evaluate(case)
+                    self.assertEqual(verdict, expected)
+                    self.assertFalse(want["deliveryAuthorized"])
+                    self.assertFalse(want["settlementAccounting"])
+        # The same spelling for the same tuple is still idempotent.
+        same = json.loads(json.dumps(self.cases["delivery-same-tuple-readmitted"]))
+        same["protocolInput"]["consumerAdmissions"][0]["txRef"]["txHash"] = "0x" + tx_hash.upper()
+        same["protocolInput"]["consumerAdmissions"][0]["legacy"] = True
+        self.assertEqual("pass", evaluate(same)[0])
+        group = self.cases["sb2-demos-legacy-spelling-collision"]
+        self.assertEqual(["indeterminate", "indeterminate"],
+                         [record["decision"] for record in evaluate(group)[1]["records"]])
+
+    def test_only_an_authenticated_failed_record_refutes_evidence(self):
+        self.assertEqual("fail", evaluate(self.cases["consumer-failed-fails"])[0])
+        self.assertIs(True, self.cases["consumer-failed-fails"]["protocolInput"]["recordRead"]["authenticated"])
+        unauthenticated = self.cases["consumer-failed-unauthenticated"]
+        self.assertEqual("indeterminate", evaluate(unauthenticated)[0])
+        plain = json.loads(json.dumps(unauthenticated))
+        del plain["protocolInput"]["recordRead"]["authenticated"]
+        self.assertEqual("indeterminate", evaluate(plain)[0])
+
     def test_authentic_other_sender_must_match_retained_payer(self):
         case = self.cases["broadcast-signed-sender-differs"]
         value = case["protocolInput"]
@@ -899,6 +1043,11 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn(sdk.removeprefix("@kynesyslabs/demosdk@"), demos)
         self.assertIn(integrity, demos)
         self.assertIn("authenticate the committed native-send state transition independently", demos)
+        self.assertIn("`network_fee`, `rpc_fee`, `additional_fee` and `rpc_address`, in that order", demos)
+        self.assertIn("`timestamp` MUST be a positive JSON integer", demos)
+        self.assertIn("refuses a native transaction whose edits differ", demos)
+        self.assertIn("A bound `failed` record from an ordinary RPC read is `indeterminate`.", spec)
+        self.assertIn("collapsing a verified legacy spelling", spec)
 
 
 if __name__ == "__main__":

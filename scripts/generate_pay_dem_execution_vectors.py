@@ -295,24 +295,62 @@ def content_hash(content: dict[str, Any]) -> str:
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
+TIMESTAMP = 1791649642726  # a `Date.now()` value, as `pay()` stamps it
+SDK_FEES = {"network_fee": "1000000000", "rpc_fee": "1000000000", "additional_fee": "0", "rpc_address": None}
+# demosdk 4.0.16 member order: the transaction skeleton, then the members
+# `sign()` adds.
+SDK_ORDER = (
+    "type", "from", "to", "amount", "data", "nonce", "timestamp", "transaction_fee",
+    "from_ed25519_address", "gcr_edits",
+)
+
+
+def native_send_edits(content: dict[str, Any]) -> list[dict[str, Any]]:
+    """demosdk 4.0.16 `GCRGeneration.generate` for a native send, as `sign()`
+    serializes it post-fork: debit, credit, 1 DEM gas and the nonce edit,
+    with the empty `txhash` the SDK ships."""
+    sender = content["from_ed25519_address"]
+    to, amount = content["data"][1]["args"]
+    account = to if to.startswith("0x") else "0x" + to
+    amount = amount if isinstance(amount, str) else str(amount)
+    return [
+        {"type": "balance", "operation": "remove", "isRollback": False, "account": sender, "txhash": "", "amount": amount},
+        {"type": "balance", "operation": "add", "isRollback": False, "account": account, "txhash": "", "amount": amount},
+        {"type": "balance", "account": sender, "operation": "remove", "amount": "1000000000", "txhash": "", "isRollback": False},
+        {"type": "nonce", "operation": "add", "account": sender, "amount": 1, "txhash": "", "isRollback": False},
+    ]
+
+
+def sdk_content(content: dict[str, Any], omit: tuple[str, ...] = ()) -> dict[str, Any]:
+    """Complete a native-send body as `pay()` and `sign()` do: timestamp,
+    node fees and regenerated edits, in the SDK's member order. `omit`
+    leaves members out."""
+    content = copy.deepcopy(content)
+    content.setdefault("timestamp", TIMESTAMP)
+    content.setdefault("transaction_fee", dict(SDK_FEES))
+    content.setdefault("gcr_edits", native_send_edits(content))
+    ordered = {key: content[key] for key in SDK_ORDER if key in content}
+    ordered.update(content)
+    return {key: value for key, value in ordered.items() if key not in omit}
+
+
 def signed(
     content: dict[str, Any] | None = None,
     *,
     signer: Ed25519PrivateKey = PAYER_SIGNER,
     signed_content: dict[str, Any] | None = None,
+    omit: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     """The signed native transaction as demosdk 4.0.16 builds it: numeric
-    nonce, OS-string amount, `hash` over the serialized content and an
-    Ed25519 signature over the UTF-8 hash. `signed_content` hashes and signs
-    other content than the transaction carries (a forged hash)."""
+    nonce, OS-string amount, timestamp, node fees and regenerated edits,
+    `hash` over the serialized content and an Ed25519 signature over the
+    UTF-8 hash. `signed_content` hashes and signs other content than the
+    transaction carries (a forged hash)."""
     if content is None:
         content = send_content(nonce=NONCE, amount=AMOUNT_OS)
-    content = copy.deepcopy(content)
-    fees = {"network_fee": "1000000000", "rpc_fee": "1000000000", "additional_fee": "0", "rpc_address": None}
-    content.setdefault("transaction_fee", fees)
+    content = sdk_content(content, omit)
     if signed_content is not None:
-        signed_content = copy.deepcopy(signed_content)
-        signed_content.setdefault("transaction_fee", fees)
+        signed_content = sdk_content(signed_content, omit)
     tx_hash = content_hash(content if signed_content is None else signed_content)
     return {
         "content": content,
@@ -359,11 +397,12 @@ def consistent(
     signer: Ed25519PrivateKey = PAYER_SIGNER,
     *,
     signed_content: dict[str, Any] | None = None,
+    omit: tuple[str, ...] = (),
     **retained_changes: Any,
 ) -> dict[str, Any]:
     """A signed transaction and a retention that cites its hash, so a gate
     vector differs from the control only in what it names."""
-    transaction = signed(content, signer=signer, signed_content=signed_content)
+    transaction = signed(content, signer=signer, signed_content=signed_content, omit=omit)
     return {
         "signed_transaction": transaction,
         "transfer": retained(txHash=transaction["hash"], **retained_changes),
@@ -426,8 +465,18 @@ def deliver(
         found(record("confirmed"), authenticated=True) if read is None else read, "included"
     )
     protocol_input["otherGates"] = _apply(ALL_GATES_PASS, gates or {})
+    # Each admission is a raw reference: `txHash` overrides the canonical
+    # spelling and `legacy` marks verified legacy evidence.
     protocol_input["consumerAdmissions"] = [
-        dict(admission, txRef={"kind": "demos", "txHash": TX_HASH, "blockNumber": BLOCK})
+        _apply(
+            {
+                "jobId": admission["jobId"],
+                "phaseIndex": admission["phaseIndex"],
+                "txRef": {"kind": "demos", "txHash": admission.get("txHash", TX_HASH), "blockNumber": BLOCK},
+                "legacy": admission.get("legacy", _OMIT),
+            },
+            {},
+        )
         for admission in (admissions or [])
     ]
     return _vector(
@@ -900,9 +949,15 @@ def build_vectors() -> list[dict[str, Any]]:
             read=found(record("confirmed"), node="unpinned"),
         ),
         admit(
-            "consumer-failed-fails", "fail", "DEM-7", ["consumer-failed-refutes", "consumer-requires-confirmed-record"],
-            "A bound failed record refutes the success evidence.",
-            read=found(record("failed")),
+            "consumer-failed-fails", "fail", "DEM-7/FV-5", ["consumer-failed-refutes", "consumer-requires-confirmed-record"],
+            "A bound failed record, authenticated under FV-5, refutes the success evidence.",
+            read=found(record("failed"), authenticated=True),
+        ),
+        admit(
+            "consumer-failed-unauthenticated", "indeterminate", "DEM-7/FV-5",
+            ["consumer-failed-requires-authentication", "consumer-requires-confirmed-record"],
+            "A failed record from a plain RPC read is not an authenticated refutation; the evidence stays indeterminate.",
+            read=found(record("failed"), authenticated=False),
         ),
         admit(
             "consumer-wrong-payee-unauthenticated", "indeterminate", "DEM-7", ["consumer-binding", "consumer-requires-confirmed-record"],
@@ -965,6 +1020,18 @@ def build_vectors() -> list[dict[str, Any]]:
             admissions=[{"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX}],
         ),
         deliver(
+            "delivery-hash-admitted-legacy-spelling-for-another-job", "indeterminate", "DEM-7/SB-1/SB-2",
+            ["consumer-admits-confirmed", "delivery-sb2-own-admissions", "sb1-demos-shape", "sb2-admitted-legacy-collapse"],
+            "A verified legacy 0x/upper-case spelling admitted for another job collapses to the same demos:{txHash}; the group is indeterminate.",
+            admissions=[{"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX, "txHash": "0x" + TX_HASH.upper(), "legacy": True}],
+        ),
+        deliver(
+            "delivery-admitted-reference-noncanonical", "error", "DEM-7/SB-1",
+            ["consumer-admits-confirmed", "sb1-demos-canonical", "sb1-demos-shape", "sb2-admitted-malformed-error"],
+            "An admitted current reference that cannot produce the canonical SB-1 key is malformed; it is never silently skipped.",
+            admissions=[{"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX, "txHash": "0x" + TX_HASH}],
+        ),
+        deliver(
             "delivery-hash-admitted-for-another-phase", "indeterminate", "DEM-7/SB-2", ["consumer-admits-confirmed", "delivery-sb2-own-admissions"],
             "The same collision rule applies to another phase index of the same job.",
             admissions=[{"jobId": JOB_ID, "phaseIndex": PHASE_INDEX + 1}],
@@ -1001,6 +1068,40 @@ def build_vectors() -> list[dict[str, Any]]:
                         "Post-fork signed fee amounts use canonical OS strings.",
                         **consistent(send_content(nonce=NONCE, amount=AMOUNT_OS, transaction_fee={
                             "network_fee": 1_000_000_000, "rpc_fee": "1000000000", "additional_fee": "0", "rpc_address": None}))))
+    # The rest of the demosdk sign() envelope the pinned node needs at admission.
+    signed_body = send_content(nonce=NONCE, amount=AMOUNT_OS)
+    control_edits = native_send_edits(signed_body)
+    for name, guard, note, changes in (
+        ("fee-object-missing", "signed-os-strings", "The signed fee object must be present.", {"omit": ("transaction_fee",)}),
+        ("fee-member-missing", "signed-os-strings", "All three signed fee amounts must be present.",
+         {"transaction_fee": {"network_fee": "1000000000", "additional_fee": "0", "rpc_address": None}}),
+        ("numeric-rpc-fee", "signed-os-strings", "rpc_fee is a canonical OS string, never a DEM number.",
+         {"transaction_fee": dict(SDK_FEES, rpc_fee=1_000_000_000)}),
+        ("numeric-additional-fee", "signed-os-strings", "additional_fee is a canonical OS string, never a DEM number.",
+         {"transaction_fee": dict(SDK_FEES, additional_fee=0)}),
+        ("noncanonical-fee-string", "signed-os-strings", "A fee string with a leading zero is not canonical.",
+         {"transaction_fee": dict(SDK_FEES, network_fee="01000000000")}),
+        ("fee-members-reordered", "signed-fee-members",
+         "The node rebuilds the fee object in network, rpc, additional, rpc_address order before re-deriving the hash.",
+         {"transaction_fee": {"rpc_fee": "1000000000", "network_fee": "1000000000", "additional_fee": "0", "rpc_address": None}}),
+        ("rpc-address-omitted", "signed-fee-members", "The node adds rpc_address null when it is absent, so the hash would not match.",
+         {"transaction_fee": {"network_fee": "1000000000", "rpc_fee": "1000000000", "additional_fee": "0"}}),
+        ("extra-fee-member", "signed-fee-members", "The node drops an extra fee member, so the hash would not match.",
+         {"transaction_fee": dict(SDK_FEES, tip="1")}),
+        ("timestamp-missing", "signed-timestamp", "The node converts the signed timestamp with BigInt; an absent one is refused.",
+         {"omit": ("timestamp",)}),
+        ("fractional-timestamp", "signed-timestamp", "A fractional timestamp is not a BigInt value.",
+         {"timestamp": TIMESTAMP + 0.5}),
+        ("edits-missing", "signed-native-edits", "sign() always regenerates gcr_edits; the node refuses a send without them.",
+         {"omit": ("gcr_edits",)}),
+        ("edits-credit-differs", "signed-native-edits", "The node regenerates the edits and refuses a credit other than the send amount.",
+         {"gcr_edits": [control_edits[0], dict(control_edits[1], amount=OTHER_AMOUNT_OS), *control_edits[2:]]}),
+        ("edits-extra-credit", "signed-native-edits", "An extra credit edit is a forged mint; the regenerated edits differ.",
+         {"gcr_edits": [*control_edits, dict(control_edits[1], account="0x" + PAYER_KEY)]}),
+    ):
+        omit = changes.pop("omit", ())
+        vectors.append(gate("broadcast-signed-" + name, "fail", "DEM-1", [guard, "signed-transfer-matches-retention"], note,
+                            **consistent(_apply(signed_body, changes), omit=omit)))
     vectors.append(gate("broadcast-dem-os-misconversion", "fail", "DEM-1",
                         ["retained-amount-is-phase-amount"], "1.5 DEM is 1500000000 OS, not 1500000001.",
                         **consistent(send_content(nonce=NONCE, amount=OTHER_AMOUNT_OS, amount_os=OTHER_AMOUNT_OS), amountOs=OTHER_AMOUNT_OS)))
@@ -1059,13 +1160,16 @@ def build_vectors() -> list[dict[str, Any]]:
     for name, second_ref, expected in (
         ("two-job-collision", dict(ref, blockNumber=BLOCK + 1), "indeterminate"),
         ("distinct-hash-control", dict(ref, txHash=OTHER_TX_HASH), "pass"),
+        ("legacy-spelling-collision", dict(ref, txHash="0x" + TX_HASH.upper()), "indeterminate"),
     ):
         refs = [ref, second_ref]
-        vectors.append(_vector("sb2-demos-" + name, "resolve-settlement-group",
-                               {"records": [{"jobId": job, "phaseIndex": PHASE_INDEX, "txRef": item}
-                                            for job, item in zip((JOB_ID, OTHER_JOB_ID), refs)]}, expected,
-                               {"records": [{"settlementTxId": "demos:" + item["txHash"], "decision": expected} for item in refs]},
-                               "DEM-7/SB-1/SB-2", [], "Derive keys before grouping; no job or block coordinate may split one transfer."))
+        records = [{"jobId": job, "phaseIndex": PHASE_INDEX, "txRef": item} for job, item in zip((JOB_ID, OTHER_JOB_ID), refs)]
+        if name == "legacy-spelling-collision":
+            records[1]["legacy"] = True
+        vectors.append(_vector("sb2-demos-" + name, "resolve-settlement-group", {"records": records}, expected,
+                               {"records": [{"settlementTxId": "demos:" + item["txHash"].removeprefix("0x").lower(),
+                                             "decision": expected} for item in refs]},
+                               "DEM-7/SB-1/SB-2", [], "Derive keys before grouping; no job, block or legacy spelling may split one transfer."))
     for vector in vectors:
         if vector["operation"] == "project-settlement-id":
             name = vector["name"]
@@ -1076,7 +1180,11 @@ def build_vectors() -> list[dict[str, Any]]:
                 ["sb1-demos-shape"]
             )
         elif vector["operation"] == "resolve-settlement-group":
-            vector["guards"] = ["sb1-demos-id"] + (["sb2-group-raw-references"] if vector["expected"] == "indeterminate" else [])
+            vector["guards"] = sorted(
+                ["sb1-demos-id"]
+                + (["sb2-group-raw-references"] if vector["expected"] == "indeterminate" else [])
+                + (["sb1-demos-shape"] if vector["name"].endswith("-legacy-spelling-collision") else [])
+            )
     return vectors
 
 
@@ -1104,7 +1212,7 @@ def document() -> dict[str, Any]:
             "inclusionObservation": "block identified for the retained hash, or null",
             "recordRead": "getTxByHash read: found (record and node pin), not-found or unavailable; appliedTransfer and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived in production from status or edits",
             "otherGates": "verdicts of the FV, SB-1 and PB checks that compose with DEM-7 before delivery",
-            "consumerAdmissions": "raw txRef and (jobId, phaseIndex) for every otherwise admitted pay-dem record; derive SB-1 IDs before grouping",
+            "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) for every otherwise admitted pay-dem record; derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error",
             "guards": "checks whose removal makes this vector fail",
         },
         "count": len(vectors),

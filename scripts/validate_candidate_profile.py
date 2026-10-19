@@ -22,7 +22,9 @@ spec validators (which read spec/ only) never see it. This checker pins it:
   it covers), every case lists only defined rules, and every case declares
   expected results allowed for its kind;
 - the document stays pre-normative, every external pin links to a 40-hex
-  commit, and the **Checked against** commit is an ancestor of HEAD whose
+  commit (a wrapped item included), every ERC-8183 link and the
+  `canonicalErcRevision` literal name one ERCs commit, and the
+  **Checked against** commit is an ancestor of HEAD whose
   spec/ equals spec/ at the candidate's latest revision (the working tree
   while the document has uncommitted edits); a later spec/ change that does
   not revise the candidate does not fail the check;
@@ -86,6 +88,8 @@ CHECKED_AGAINST_RE = re.compile(r"^\*\*Checked against:\*\* DACS-Standard `next`
 EXTERNAL_PINS_HEADING = "**External pins:**"
 LINK_RE = re.compile(r"\]\((https?://[^)\s]+)\)")
 PINNED_LINK_RE = re.compile(r"^https://github\.com/[^/]+/[^/]+/blob/[0-9a-f]{40}/")
+ERC8183_LINK_RE = re.compile(r"\(https://github\.com/ethereum/ERCs/blob/([0-9a-f]{40})/ERCS/erc-8183\.md[)#]")
+CANONICAL_ERC_REVISION_RE = re.compile(r'canonicalErcRevision: "ethereum/ERCs@([0-9a-f]{40})"')
 STATUS_PREFIX = "**Status:** pre-normative review candidate"
 RESULT_VOCABULARY = '"pass" | "fail" | "indeterminate" | "error"'
 FORBIDDEN_RESULTS = ("`verified`", "`rejected`")
@@ -120,7 +124,7 @@ def split_lines(text: str) -> list[tuple[int, str, bool]]:
     out: list[tuple[int, str, bool]] = []
     in_code = False
     for number, line in enumerate(text.splitlines(), start=1):
-        if line.startswith("```"):
+        if validate_rule_ids.is_fence(line):
             in_code = not in_code
             out.append((number, line, True))
             continue
@@ -132,7 +136,7 @@ def code_blocks(text: str) -> list[list[str]]:
     blocks: list[list[str]] = []
     current: list[str] | None = None
     for line in text.splitlines():
-        if line.startswith("```"):
+        if validate_rule_ids.is_fence(line):
             if current is None:
                 current = []
             else:
@@ -149,7 +153,7 @@ def sections(text: str) -> list[tuple[str, str]]:
     out: list[tuple[str, list[str]]] = [("preamble", [])]
     in_code = False
     for line in text.splitlines():
-        if line.startswith("```"):
+        if validate_rule_ids.is_fence(line):
             in_code = not in_code
         if not in_code and (line.startswith("## ") or line.startswith("### ")):
             out.append((line.lstrip("#").strip(), []))
@@ -283,6 +287,8 @@ def signing_domains(text: str) -> tuple[list[dict], list[str]]:
             errors.append(f"line {number}: signing domain {kind}:v{version}: signs unknown operand {operand}")
             continue
         signed_by[type_name] = signed_by.get(type_name, 0) + 1
+        # Candidate convention: a domain's vN equals its type's version member. CORE §B.7's
+        # version_tag is the stage major version; the two agree while every type is "1".
         if type_name in versions and version != versions[type_name]:
             errors.append(
                 f"signing domain {kind}:v{version}: does not match {type_name} version \"{versions[type_name]}\""
@@ -304,7 +310,8 @@ def external_pin_errors(lines: list[str]) -> list[str]:
         return [f"missing '{EXTERNAL_PINS_HEADING}' list"]
     started = False
     for line in lines[start + 1:]:
-        if line.startswith("- "):
+        # An indented line continues the current item, so a wrapped item does not end the list.
+        if line.startswith("- ") or (started and line.startswith(" ") and line.strip()):
             started = True
             for url in LINK_RE.findall(line):
                 if not PINNED_LINK_RE.match(url):
@@ -315,6 +322,20 @@ def external_pin_errors(lines: list[str]) -> list[str]:
     if not started:
         errors.append(f"'{EXTERNAL_PINS_HEADING}' list is empty")
     return errors
+
+
+def erc8183_revision_errors(text: str) -> list[str]:
+    """Every ERC-8183 link and the `canonicalErcRevision` literal name one ERCs commit."""
+    links = ERC8183_LINK_RE.findall(text)
+    literals = CANONICAL_ERC_REVISION_RE.findall(text)
+    if not links:
+        return ["no commit-pinned link to canonical ERC-8183 (ethereum/ERCs .../ERCS/erc-8183.md)"]
+    if len(literals) != 1:
+        return [f"expected exactly one canonicalErcRevision literal, found {len(literals)}"]
+    commits = sorted(set(links) | set(literals))
+    if len(commits) > 1:
+        return ["ERC-8183 links and canonicalErcRevision name different commits: " + ", ".join(commits)]
+    return []
 
 
 def checked_against(text: str) -> str | None:
@@ -391,6 +412,7 @@ def validate_text(text: str, spec_text: str) -> list[str]:
     if checked_against(text) is None:
         errors.append("missing '**Checked against:** DACS-Standard `next` at `<40-hex commit>`.' pin")
     errors.extend(external_pin_errors(lines))
+    errors.extend(erc8183_revision_errors(text))
 
     seen: set[str] = set()
     for rule_id in rule_ids:

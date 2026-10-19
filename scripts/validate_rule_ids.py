@@ -34,6 +34,11 @@ FENCE_PREFIXES = ("```", "~~~")
 SKIP_PREFIXES = {"AP", "CAIP", "DACS", "EIP", "ERC", "HTTP", "IEEE", "L", "NAICS", "P", "RE", "SR", "UTF"}
 
 
+def is_fence(line: str) -> bool:
+    """A ``` or ~~~ code-fence line, indented or not."""
+    return line.lstrip().startswith(FENCE_PREFIXES)
+
+
 def rule_family(rule_id: str) -> str:
     return re.sub(r"\d+$", "", rule_id).rstrip("-")
 
@@ -68,7 +73,7 @@ def defined_capability_ids(spec_text: str) -> set[str]:
     in_section = in_code = False
     rows: list[str] = []
     for line in spec_text.splitlines():
-        if line.lstrip().startswith(FENCE_PREFIXES):
+        if is_fence(line):
             in_code = not in_code
             if rows:
                 break

@@ -1,10 +1,14 @@
 import importlib.util
+import re
+import subprocess
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_rule_ids.py"
 ROOT = Path(__file__).resolve().parents[1]
+# A `next` commit whose CORE §5 table lists exactly SR-1 through SR-5.
+CORE_PIN = "df7bc202ebdc179a59d61a8221072f33f482b933"
 
 
 def load_validator():
@@ -88,8 +92,16 @@ class RuleIdValidationTests(unittest.TestCase):
 
     def test_repository_capabilities_are_the_core_section_5_rows(self):
         validator = load_validator()
-        spec_text = validator.specsource.spec_text(ROOT)
-        self.assertEqual(validator.defined_capability_ids(spec_text), {"SR-1", "SR-2", "SR-3", "SR-4", "SR-5"})
+        # The live set may grow (a later SR-6 is not this test's concern); it must parse.
+        live = validator.defined_capability_ids(validator.specsource.spec_text(ROOT))
+        self.assertTrue(live)
+        self.assertTrue(all(re.fullmatch(r"SR-\d+", capability) for capability in live), live)
+        # The exact set is pinned to CORE at a fixed commit, so the parser is checked on real text.
+        core = subprocess.run(["git", "-C", str(ROOT), "show", f"{CORE_PIN}:spec/CORE.md"],
+                              capture_output=True, text=True)
+        if core.returncode != 0:
+            self.skipTest(f"CORE at {CORE_PIN} is unavailable (shallow clone?): {core.stderr.strip()}")
+        self.assertEqual(validator.defined_capability_ids(core.stdout), {"SR-1", "SR-2", "SR-3", "SR-4", "SR-5"})
 
     def test_capability_rows_outside_the_core_section_5_table_define_nothing(self):
         with TemporaryDirectory() as tmp:

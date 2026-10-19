@@ -214,6 +214,11 @@ class CandidateProfileValidationTests(unittest.TestCase):
             "A `budgetBaseUnits` that is not in minimal unsigned decimal form.",
             "MUST have type `bytes32`, which the section 8.1 mapping fills",
             "A `deliverable` or `reason` input that is not `bytes32`.",
+            # Sweep 10: the ABI signature form, zero budgets, and the spec/ coupling are stated.
+            "separated by single commas with no spaces and enclosed in parentheses",
+            "a `signature` that contains a space",
+            "DRF-2 fails a zero-budget funding only because DACS-4 `PriceTerm.amount` positivity",
+            "must exist in the working tree's spec/. A later spec/ change that removes or renames one therefore fails",
         ):
             self.assertIn(anchor, self.text)
         for removed in (
@@ -360,6 +365,7 @@ class CandidateProfileValidationTests(unittest.TestCase):
             ("`railDefinitionRef`", "FV-1"),
             ("`evidence.phase`", "FV-1"),
             ("steward signature", "FV-1"),
+            ("equal the reference", "FV-1"),
             ("`settlementFinality", "FV-2"),
         ):
             self.assertIn(member, spec_rules[rule_id], (rule_id, member))
@@ -367,6 +373,8 @@ class CandidateProfileValidationTests(unittest.TestCase):
         for mapping in (
             "by the artifact's own version member under DRV-8",
             "Its `railDefinitionRef` is the overlay's `railDefinitionRef`",
+            "FV-1's requirement to equal the reference reads its `railId` and `railVersion` members",
+            "`railId` and `railVersion` MUST equal the reference's and those of the selected",
             'under the DRR-2 domain `"dacs-x-job-escrow-rail:v1:"`',
             "the resolved `phaseHandler` MUST equal `x-job-escrow`",
             "the artifact's `finality` member",
@@ -376,6 +384,30 @@ class CandidateProfileValidationTests(unittest.TestCase):
         self.assertIn("DRF-9", cases["R21"]["rules"])
         self.assertIn("other than the overlay's `railDefinitionRef`", cases["R21"]["description"])
         self.assertIn("DRF-9", cases["I1"]["rules"])
+
+    # Sweep 10: FV-1 compares (railId, railVersion) with the reference, so the reference must
+    # be the DACS-4 RailDefinitionRef, and the optional PaymentRailRef.railVersion is required.
+    @unittest.skipIf(SHALLOW, SHALLOW_REASON)
+    def test_rail_definition_refs_carry_what_fv1_compares(self):
+        settle = self.spec_at_pin("spec/DACS-4-SETTLE.md")
+        reference = re.search(r"^type RailDefinitionRef = AttestationRef & \{\n(.*?)^\}", settle, re.M | re.S)
+        self.assertIsNotNone(reference)
+        self.assertEqual(re.findall(r"^\s+(\w+):", reference.group(1), re.M), ["railId", "railVersion"])
+        self.assertIn("railDefinitionRef: RailDefinitionRef", settle)
+        self.assertRegex(settle, r"(?m)^\s+railVersion\?: number")
+        types = dict(self.validator.type_bodies(self.text))
+        for name in ("DeliveryOrRemedyAgreement", "EscrowJobRef"):
+            self.assertIn("  railDefinitionRef: RailDefinitionRef", types[name], name)
+        self.assertNotIn("railDefinitionRef: AttestationRef", self.text)
+        rules = {r["id"]: r["text"] for r in self.validator.parse_rules(self.text)}
+        self.assertIn("a job-escrow `PaymentRailRef` without `railVersion` MUST yield `error`", rules["DRR-3"])
+        self.assertIn("a `terms.rail` without the `railVersion` that DRR-3 requires MUST yield `error`", rules["DRA-22"])
+        r21 = {c["id"]: c for c in self.validator.parse_cases(self.text)}["R21"]
+        self.assertIn("A `railDefinitionRef` whose `railVersion` differs from the resolved definition's",
+                      r21["description"])
+        self.assertIn("a selected `PaymentRailRef` or `terms.rail` without `railVersion`", r21["description"])
+        self.assertIn("and the missing `railVersion`; `fail` otherwise", r21["expectedText"])
+        self.assertLessEqual({"DRR-3", "DRA-22", "DRF-9"}, set(r21["rules"]))
 
     # Sweep 9: the candidate's commit step is none of the five DACS-3 commitment kinds,
     # so every DACS-3 rule that reads the agreement commitment phase must be adapted.
@@ -432,9 +464,9 @@ class CandidateProfileValidationTests(unittest.TestCase):
     # an eligible deployment must prove it; DRD-13's status-bound `reject` was left out.
     def test_every_implementation_duty_is_in_the_capability_gate(self):
         self.assertEqual(self.implementation_duties_outside_the_gate(self.text), [])
-        ungated = mutate(self.text, "means DRC-1 through DRC-13, DRC-22, and DREB-24.",
+        ungated = mutate(self.text, "means DRC-1 through DRC-13, DRC-22, DRC-23, and DREB-24.",
                          "means DRC-1 through DRC-13 and DREB-24.")
-        self.assertEqual(self.implementation_duties_outside_the_gate(ungated), ["DRC-22", "DRD-13"])
+        self.assertEqual(self.implementation_duties_outside_the_gate(ungated), ["DRC-22", "DRC-23", "DRD-13"])
         # §8.4 and §12 state the same eligibility range, which reaches the last DRC rule.
         last = max(int(r["id"].rsplit("-", 1)[1]) for r in self.validator.parse_rules(self.text)
                    if r["id"].startswith("DRC-"))
@@ -528,6 +560,159 @@ class CandidateProfileValidationTests(unittest.TestCase):
         rules = {r["id"]: r["text"] for r in self.validator.parse_rules(self.text)}
         self.assertIn(empty_code_hash, rules["DRW-2"])
         self.assertNotEqual("0x" + hashlib.sha3_256(b"").hexdigest(), empty_code_hash)
+        # Sweep 10: ERC-20 and EIP-161 are relied on by DRC-8, DRF-3 and DRW-2, so they are pinned too.
+        for pinned in ("https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-20.md",
+                       "https://github.com/ethereum/EIPs/blob/c1a1eb21b465c9c42704a8a5743ad0694aedbff7/EIPS/eip-161.md"):
+            self.assertTrue(any(f"]({pinned})" in line for line in pins), pinned)
+
+    def signed_type_members(self, text: str) -> dict[str, list[str]]:
+        """Top-level members of every signed type, read from its type block."""
+        members: dict[str, list[str]] = {}
+        for name, lines in self.validator.type_bodies(text):
+            if name in self.validator.SIGNED_TYPES:
+                members[name] = [m.group(1) for m in map(re.compile(r"^  ([A-Za-z]+)\??: ").match, lines)
+                                 if m and m.group(1) not in ("signature", "signatures")]
+        return members
+
+    def unnamed_members(self, text: str) -> list[str]:
+        """Signed-type members that no labelled rule names, as `m`, `m.<path>`, or `<Type>.m`."""
+        rules = "\n".join(r["text"] for r in self.validator.parse_rules(text))
+        return [f"{name}.{member}" for name, members in self.signed_type_members(text).items() for member in members
+                if not re.search(rf"`(?:{member}|{member}\.[^`]*|[A-Za-z]+\.{member})`", rules)]
+
+    # Sweep 10: a member of a signed artifact that no rule names is a field nothing compares.
+    # Derived from the type blocks, so a member added later must be bound by a rule.
+    def test_every_signed_type_member_is_named_by_a_rule(self):
+        self.assertEqual(self.unnamed_members(self.text), [])
+        extra = mutate(self.text, '  disposition: "release-to-provider" | "refund-to-client"\n  signature: ComponentSignature\n',
+                       '  disposition: "release-to-provider" | "refund-to-client"\n  extraBinding: string\n'
+                       "  signature: ComponentSignature\n")
+        self.assertEqual(self.unnamed_members(extra), ["EscrowDecision.extraBinding"])
+
+    def unbound_job_artifacts(self, text: str) -> list[str]:
+        """Signed types that carry a job binding member but are not named by DRV-9."""
+        binding = ("jobId", "deliveryOrRemedyAgreementHash", "escrowJobRef")
+        # The overlay is the binding itself, and the rail is not job-specific.
+        exempt = {"DeliveryOrRemedyAgreement", "JobEscrowRailDefinition"}
+        drv9 = {r["id"]: r["text"] for r in self.validator.parse_rules(text)}["DRV-9"]
+        for member in binding:
+            self.assertIn(f"`{member}`", drv9, member)
+        return sorted(name for name, members in self.signed_type_members(text).items()
+                      if name not in exempt and set(members) & set(binding) and f"`{name}`" not in drv9)
+
+    # Sweep 10: every artifact's jobId, overlay hash and escrowJobRef are compared with the job
+    # under verification, so another job's evaluation or decision cannot authorize this one.
+    def test_every_job_bound_artifact_is_compared_with_the_job(self):
+        self.assertEqual(self.unbound_job_artifacts(self.text), [])
+        self.assertEqual(self.unbound_job_artifacts(mutate(self.text, "`ExecutionEvaluation`, `EscrowDecision`, `DisputeCase`",
+                                                           "`EscrowDecision`, `DisputeCase`")),
+                         ["ExecutionEvaluation"])
+        rules = {r["id"]: r["text"] for r in self.validator.parse_rules(self.text)}
+        self.assertIn("A mismatch MUST yield `fail`", rules["DRV-9"])
+        r4 = {c["id"]: c for c in self.validator.parse_cases(self.text)}["R4"]
+        self.assertIn("DRV-9", r4["rules"])
+        self.assertIn("names another job that is not yet terminal", r4["description"])
+        self.assertEqual(r4["expected"], ["fail"])
+
+    # Sweep 10: canonical ERC-8183 events carry no token and DRC-18 decodes only pinned events,
+    # so the token comes from one contract-wide pin that the capability gate covers.
+    def test_token_identity_comes_from_the_contract_pin(self):
+        rules = {r["id"]: r["text"] for r in self.validator.parse_rules(self.text)}
+        self.assertIn("MUST NOT let any caller choose or change a job's token", rules["DRC-23"])
+        self.assertIn("`parameters.paymentToken`", rules["DRC-23"])
+        for rule_id in ("DRF-2", "DREB-11", "DRT-4"):
+            self.assertIn("DRC-23 contract token", rules[rule_id], rule_id)
+        self.assertNotIn("token", rules["DRT-4"].split(".")[0])
+        self.assertNotIn("DRC-23", self.implementation_duties_outside_the_gate(self.text))
+        self.assertIn("set by `setBudget(jobId, token, amount, optParams)` and announced only in `BudgetSet`", self.text)
+        r10 = {c["id"]: c for c in self.validator.parse_cases(self.text)}["R10"]
+        self.assertIn("lets a caller choose or change a job's payment token", r10["description"])
+        self.assertLessEqual({"DRC-23", "DRF-2", "DREB-11"}, set(r10["rules"]))
+
+    # Sweep 10: a rule is covered only by a case that fails its violation.
+    def test_retry_and_refund_rules_have_violating_cases(self):
+        cases = {c["id"]: c for c in self.validator.parse_cases(self.text)}
+        self.assertEqual(cases["R46"]["rules"], ["DRV-5"])
+        self.assertEqual(cases["R46"]["expected"], ["fail"])
+        self.assertIn("before reconciling the original native job and action", cases["R46"]["description"])
+        self.assertIn("A refund move without the full-budget `Refunded` event", cases["R24"]["description"])
+        self.assertIn("DRL-11", cases["R24"]["rules"])
+        self.assertIn("Terminal evidence whose `terminalState` differs", cases["R24"]["description"])
+        self.assertIn("DRL-10", cases["R24"]["rules"])
+        self.assertIn("A first revision other than zero", cases["R29"]["description"])
+        self.assertLessEqual({"DRAA-7", "DRX-10"}, set(cases["R29"]["rules"]))
+
+    # Sweep 10: the candidate has no executable oracle, so nothing outside it may claim its
+    # names or domains. A spec/ file, MANIFEST row, vector, or implementation manifest that
+    # did would let an implementation be presented as conforming to unchecked MUSTs.
+    def test_no_conformance_artifact_claims_the_candidate_profile(self):
+        self.assertEqual(json.loads(MATRIX.read_text(encoding="utf-8"))["executableVectorCount"], 0)
+        domains = [entry["domain"] for entry in self.validator.signing_domains(self.text)[0]]
+        names = ["x-commit-delivery-or-remedy-agreement", "x-job-escrow", "x-evm-erc8183", *domains]
+        for name in names:
+            self.assertIn(name, self.text, name)
+        claims = []
+        for path in sorted([*(ROOT / "spec").rglob("*"), *(ROOT / "conformance").rglob("*")]):
+            if not path.is_file() or MATRIX.parent in path.parents:
+                continue
+            content = path.read_bytes().decode("utf-8", errors="replace")
+            claims += [f"{path.relative_to(ROOT)}: {name}" for name in names if name in content]
+        self.assertEqual(claims, [])
+
+    # Sweep 10: DRV-8 fixes the value, so a type bumped together with its domain is refused.
+    def test_version_member_value_must_be_the_drv8_value(self):
+        text = mutate(self.text, '  escrowDecisionVersion: "1"', '  escrowDecisionVersion: "2"')
+        text = mutate(text, '"dacs-x-escrow-decision:v1:"', '"dacs-x-escrow-decision:v2:"')
+        self.assertEqual(self.validator.signing_domains(text)[1],
+                         ['signed type EscrowDecision version escrowDecisionVersion must be "1" (DRV-8)'])
+        self.assertEqual(self.validator.SIGNED_TYPE_VERSION, "1")
+        rules = {r["id"]: r["text"] for r in self.validator.parse_rules(self.text)}
+        self.assertIn('with the value `"1"`', rules["DRV-8"])
+
+    # Sweep 10 (P3): branches that surviving mutants showed no test reached.
+    def test_rejected_result_token_is_refused(self):
+        self.assert_structural(
+            mutate(self.text, "5. Return `indeterminate` when", "5. Return `rejected` when"),
+            "non-DACS verifier result `rejected` used",
+        )
+
+    def test_shall_and_required_are_requirements(self):
+        for keyword in ("SHALL", "SHALL NOT", "REQUIRED"):
+            rule = self.validator.parse_rules(f"- (DRZ-1) The binding {keyword} hold.\n")[0]
+            self.assertEqual(rule["keywords"], [keyword])
+            self.assertTrue(rule["requirement"], keyword)
+        self.assertFalse(self.validator.parse_rules("- (DRZ-1) The binding SHOULD hold.\n")[0]["requirement"])
+
+    def test_family_gaps_at_the_first_and_second_to_last_number(self):
+        rules = [l for l in self.text.splitlines() if l.startswith("- (DRA-")]
+        for removed, gap in ((rules[0], "DRA-1"), (rules[-2], f"DRA-{len(rules) - 1}")):
+            errors = self.structural_errors(mutate(self.text, removed + "\n", ""))
+            self.assertIn(f"rule family DRA has gaps: {gap}", errors)
+        rejection = [l for l in self.text.splitlines() if l.startswith("- **R")]
+        for removed, gap in ((rejection[0], "R1"), (rejection[-2], f"R{len(rejection) - 1}")):
+            errors = self.structural_errors(mutate(self.text, removed + "\n", ""))
+            self.assertIn(f"case family R has gaps: {gap}", errors)
+
+    def test_first_external_pin_item_directly_under_the_heading_is_checked(self):
+        lines = ["**External pins:**", "- ERC at [`x`](https://github.com/o/r/blob/master/f.md);", ""]
+        self.assertEqual(self.validator.external_pin_errors(lines),
+                         ["external pin https://github.com/o/r/blob/master/f.md does not link to a 40-hex commit"])
+
+    def test_fenced_heading_does_not_start_a_section(self):
+        text = "intro\n```text\n## Not a heading\n```\n## Real\nbody\n"
+        self.assertEqual([heading for heading, _body in self.validator.sections(text)], ["preamble", "Real"])
+
+    def test_status_line_is_the_third_line(self):
+        spec_text = self.validator.specsource.spec_text(ROOT)
+        status = "status line must remain 'pre-normative review candidate' until executable vectors exist"
+        self.assertNotIn(status, self.validator.validate_text(f"# T\n\n{self.validator.STATUS_PREFIX}\n", spec_text))
+        self.assertIn(status, self.validator.validate_text(f"# T\n{self.validator.STATUS_PREFIX}\n", spec_text))
+
+    def test_messages_name_the_document_line(self):
+        text = mutate(self.text, "DRP-13 states what it must not do instead.\n", "It MUST NOT strip either phase.\n")
+        number = next(n for n, line in enumerate(text.splitlines(), start=1) if "It MUST NOT strip either phase." in line)
+        self.assertIn(f"line {number}: capitalized requirement keyword outside a labelled rule",
+                      self.structural_errors(text))
 
     # A later spec/ PR on `next` that does not revise the candidate must not fail
     # these tests: only the pin check may see spec/, and it pins the committed revision.
@@ -1068,6 +1253,16 @@ class CandidateProfileCliTests(unittest.TestCase):
             self.assertNotEqual(matrix.read_text(encoding="utf-8"), MATRIX.read_text(encoding="utf-8"))
         self.assertEqual(written, 0, written_stderr)
         self.assertEqual(checked, 0, checked_stderr)
+
+    @unittest.skipIf(SHALLOW, SHALLOW_REASON)
+    def test_write_creates_a_new_nested_matrix_directory(self):
+        validator = load_validator()
+        with TemporaryDirectory() as tmp, as_committed_candidate(validator):
+            doc = Path(tmp) / "candidate.md"
+            doc.write_text(self.text, encoding="utf-8")
+            matrix = Path(tmp) / "new" / "nested" / "matrix.json"
+            self.assertEqual(run_main(validator, "--doc", str(doc), "--matrix", str(matrix), "--write"), (0, ""))
+            self.assertEqual(matrix.read_text(encoding="utf-8"), MATRIX.read_text(encoding="utf-8"))
 
 
 class CheckedAgainstPinTests(unittest.TestCase):

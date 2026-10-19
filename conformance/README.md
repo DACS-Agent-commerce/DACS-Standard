@@ -99,6 +99,7 @@ The output map describes the intended DACS-X step-3 policy boundary: a full tran
 ## Files
 
 - `MANIFEST.json` — the case index: every vector's `id`, `area`, spec `§`, summary, `status`, provenance `reason`, and pinned `want`.
+- `candidates/delivery-or-remedy/rule-case-matrix.json` — the generated rule-to-case matrix of the pre-normative `docs/delivery-or-remedy-candidate.md`. It indexes prose cases, not vectors (`executableVectorCount: 0`), so no implementation can claim conformance from it.
 - `fixtures/attestation-bundle-0004.json` — the full byte-stable completed §10.4 AttestationBundle fixture.
 - `fixtures/attestation-bundle-0004-seller.json` — the same `jobId` as DACS-VERIFY-0004 with a divergent `failed-counterparty` outcome; it verifies independently and has a different bundle hash.
 - `fixtures/attestation-bundle-htlc9.json` — the full byte-stable HTLC-9 asymmetric-settlement fixture.

@@ -317,7 +317,7 @@
         "MUST NOT"
       ],
       "requirement": true,
-      "textSha256": "07f77ddfbae917d949429beed7b0f9c5bf7f80ac4df6ebcb0f0b17957d877795",
+      "textSha256": "fe842faf58d14434e5f49af0719739b4649e4fce3a4bf538aa0dc3ae4fa719e9",
       "cases": [
         "P1",
         "R21",
@@ -676,7 +676,7 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "bb0ad06a00b4c0138754e6a0b56e58e2c77d78ed3e3f8ed8447511d6fbf884d5",
+      "textSha256": "eb99b98406c3433edf556a437a53fd490fb0e2a3a8b1249c2fc70852d5c9f313",
       "cases": [
         "P1",
         "R21"
@@ -903,7 +903,7 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "c9f6c984b9142990d8ff6f1e4bc1a4c579f0cf07d7d6344e3a0b4ae5c3f2e219",
+      "textSha256": "0dcf8062fc1374f410eee1b47f1569fd244b3ce7c06c2d9567896dd99a485040",
       "cases": [
         "P1",
         "R24"
@@ -1098,10 +1098,11 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "e1a39a85638a36e46c511383d3edbf0057932c1ad3841d2fcb3c7994d381b6df",
+      "textSha256": "66ed93db6122ad27b2d1ef9ba1ef44664b725642d06465203a995ff3045caf74",
       "cases": [
         "P1",
-        "R1"
+        "R1",
+        "R10"
       ]
     },
     {
@@ -1191,7 +1192,7 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "ec209de17e3172fb28da813f8851e276138d4ec3d3896ad48da489350a8ddfb6",
+      "textSha256": "2702756c9092935e8c737ac7af806e5c493d3047310cf48d5c3e32a01ddab4ae",
       "cases": [
         "P1",
         "R21",
@@ -1232,7 +1233,7 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "dfb564a68bfe24002e0c0739d89c5ab33ae70c3bed3e3a161012d9a04edfea18",
+      "textSha256": "48aa6866a07a2ec2b66ab28c9305670b1c23cae05e02ef2b25780962c764ac38",
       "cases": [
         "P1",
         "R39"
@@ -1635,6 +1636,18 @@
       ]
     },
     {
+      "id": "DRX-10",
+      "section": "6.4 DisputeCase and DisputeOutcome",
+      "keywords": [
+        "MUST"
+      ],
+      "requirement": true,
+      "textSha256": "2caccbe9c24e122abadc50337ebd5fab03344cd0839a417440e430aa83c509ec",
+      "cases": [
+        "R29"
+      ]
+    },
+    {
       "id": "DRAA-1",
       "section": "6.5 Candidate logical addresses",
       "keywords": [
@@ -1724,7 +1737,7 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "4803e4863463e558c25d39be0c6d55b599c3ea4dc020c846adf3ec3340d7f3d3",
+      "textSha256": "9bcbb6fa36ec0eead072cf226ad856885621e0023db5d225b425003b3d0801e4",
       "cases": [
         "R29"
       ]
@@ -1805,7 +1818,7 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "2fecd8b129a025ab6a97c7a7c513b9e017996db37bacbfc73f26ff746f63a700",
+      "textSha256": "ddc6dc15f898f8476d28dd712f6ab445224fa9f9663d55ad57d9c9a1b6a0ae09",
       "cases": [
         "P1",
         "R1",
@@ -1819,7 +1832,7 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "27b446cdcb026cd2078e200a12ea9b314064c93f4ec6b04ef8d09c3028f277f7",
+      "textSha256": "944c767cf1a3a35d44f226aaedbf2de0740fbccb460f7395215068d502771938",
       "cases": [
         "P1",
         "R1"
@@ -1832,7 +1845,7 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "967a398259a285a6dfe2c2b0f65551c08996b24a49ad7865d5bad9ba80b2fd9d",
+      "textSha256": "8d146a443a9536152f03e16a333a1c4399fcb35862605ccc3a311d7c9cd63201",
       "cases": [
         "P2",
         "R1"
@@ -2116,10 +2129,11 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "9d62c6ef1021ac11c12d2145fca83786e41340a9698ec94fdba8745174901ced",
+      "textSha256": "3535db4dc7761eadc710a6ed882b8195065b7663f82c25385bea6d2f099e6f38",
       "cases": [
         "P1",
-        "R1"
+        "R1",
+        "R10"
       ]
     },
     {
@@ -2457,7 +2471,7 @@
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "4949b78be1eb53e7473bdbf43a3c5343f8616493cafd5748be98ee482f395848",
+      "textSha256": "ce3d223a7ba2a4c458d677a259e1b1a65fa2ddbe4683f1901d60426e818dd524",
       "cases": [
         "P1",
         "R31"
@@ -2502,7 +2516,7 @@
         "MUST NOT"
       ],
       "requirement": true,
-      "textSha256": "cbeb78f5fc80339c2c680e0d29010546253f8ed5089f5b645a4d0522ceb87c95",
+      "textSha256": "30b6d6ecf5eaa9ff7534add45778aacf72a9b1b0a8bf8f4f00447e54e6f6315c",
       "cases": [
         "P1",
         "R31"
@@ -2579,6 +2593,19 @@
       ]
     },
     {
+      "id": "DRC-23",
+      "section": "8.4 Deployment eligibility",
+      "keywords": [
+        "MUST",
+        "MUST NOT"
+      ],
+      "requirement": true,
+      "textSha256": "ea85216576b46510e1bc865b2c2b803a82bb72cee9b61c16dcdebf495e18d619",
+      "cases": [
+        "R10"
+      ]
+    },
+    {
       "id": "DRV-1",
       "section": "9. Verification result and ordering",
       "keywords": [
@@ -2638,6 +2665,7 @@
       "textSha256": "63459d400a8a279cd103ef41dcbb324e20236c344e1f018aab00bdb7aaca2a61",
       "cases": [
         "P8",
+        "R46",
         "I7"
       ]
     },
@@ -2680,13 +2708,25 @@
       ]
     },
     {
+      "id": "DRV-9",
+      "section": "9. Verification result and ordering",
+      "keywords": [
+        "MUST"
+      ],
+      "requirement": true,
+      "textSha256": "32380f0c1f29a5d286a79e224eeeeac9b58b8d6cec02a42e8672743794b269cd",
+      "cases": [
+        "R4"
+      ]
+    },
+    {
       "id": "DRQ-1",
       "section": "10. Transcript and evidence disclosure",
       "keywords": [
         "MUST"
       ],
       "requirement": true,
-      "textSha256": "9ea94ba59c8e36bb241f26652360ec89671c85d2355e4c51b00c236afb2838c6",
+      "textSha256": "3e1f54a08efe7c16c674f337daf92c5abe888353ee854c2b951d5495596c456d",
       "cases": [
         "P1",
         "R35"
@@ -3112,7 +3152,7 @@
     {
       "id": "R4",
       "section": "11.2 Required rejection cases",
-      "textSha256": "5b0d833424cc9fac0d83f0ae125fc5696305a168530a4a7b62a97887f7a77828",
+      "textSha256": "3a798cb2d1fcbbca2939c6dbfc7b1f0905e0308bc0822565c8d4112716ee590d",
       "expected": [
         "fail"
       ],
@@ -3121,7 +3161,8 @@
         "DRD-8",
         "DRT-11",
         "DRF-1",
-        "DRL-4"
+        "DRL-4",
+        "DRV-9"
       ]
     },
     {
@@ -3203,7 +3244,7 @@
     {
       "id": "R10",
       "section": "11.2 Required rejection cases",
-      "textSha256": "7f0dd9ec556e5c4c5d187b8766aabccca6a19cb1b7aeeaa4b542faa772a316c5",
+      "textSha256": "2c73c8f87c43c471e0ac8ef8636ef9ff2502f197bf16d518582c03287e00252e",
       "expected": [
         "fail"
       ],
@@ -3221,7 +3262,10 @@
         "DREB-10",
         "DRL-9",
         "DRA-14",
-        "DRC-22"
+        "DRC-22",
+        "DRC-23",
+        "DRF-2",
+        "DREB-11"
       ]
     },
     {
@@ -3387,12 +3431,12 @@
     {
       "id": "R21",
       "section": "11.2 Required rejection cases",
-      "textSha256": "795095059e96a1d4ca6982ced5539469286e94d03ae61af53680d25f0f7db27f",
+      "textSha256": "7ef9d7097154197a01fd57b03b5f604200f34fc9bc7621022d638c35cf0f9912",
       "expected": [
         "error",
         "fail"
       ],
-      "expectedTextSha256": "1d6adcf29ca03ab79a614f31bf3f2295db05b35950f08e761d872a8b2e81ecb8",
+      "expectedTextSha256": "a4d34959e49882de31cb1e15f02c616995cace0f02eb401b90ba597dde74431b",
       "rules": [
         "DRR-1",
         "DRR-2",
@@ -3440,7 +3484,7 @@
     {
       "id": "R24",
       "section": "11.2 Required rejection cases",
-      "textSha256": "e1f7bef52920ba79b486b2c795af92650502c9957ace670155582fde71a3fca5",
+      "textSha256": "d256c40def07b958c606328824e54fcaa04367134d5a6b6768bdc898cdccb344",
       "expected": [
         "fail"
       ],
@@ -3517,7 +3561,7 @@
     {
       "id": "R29",
       "section": "11.2 Required rejection cases",
-      "textSha256": "a07f399c818c9b93f410966e11220ab66877a712c223f45684cdf8fe2c1c8074",
+      "textSha256": "07735326363cbffb7912b4f2d302854158ce8410433b239ebf4ccd77529d5c9d",
       "expected": [
         "fail"
       ],
@@ -3527,7 +3571,8 @@
         "DRX-5",
         "DRX-6",
         "DRX-7",
-        "DRAA-7"
+        "DRAA-7",
+        "DRX-10"
       ]
     },
     {
@@ -3546,7 +3591,7 @@
     {
       "id": "R31",
       "section": "11.2 Required rejection cases",
-      "textSha256": "20ce690db93e9dc11189edd0e8a2233ef3a2a6d632faded5040b51dfa19f6b81",
+      "textSha256": "4ee68148abcbcf79377394ac53480d0f6d0ea3a5a40ad118db1ee1686ea8c9a7",
       "expected": [
         "error",
         "fail"
@@ -3767,6 +3812,18 @@
       ]
     },
     {
+      "id": "R46",
+      "section": "11.2 Required rejection cases",
+      "textSha256": "f7272c2174848c6e999a6e184594d2fbde83419e6a92551b1da08982d2dfc397",
+      "expected": [
+        "fail"
+      ],
+      "expectedTextSha256": "77c26ec24e354bb60892e66255bd2d65c3950469056b637e51b84ee9f4c0218c",
+      "rules": [
+        "DRV-5"
+      ]
+    },
+    {
       "id": "I1",
       "section": "11.3 Required indeterminate cases",
       "textSha256": "e1b97103f3aa0c90641f112da0b5e3e7d0a5e0b7c3dd0bcafea1e7adce349269",
@@ -3918,7 +3975,7 @@
     },
     {
       "name": "DeliveryOrRemedyAgreement",
-      "sha256": "98d0ff2d2903f52c4e3589e2ea1018067d05c1de242b3fa9b6bf95ab6bc6110b"
+      "sha256": "1f992abcb6814c88029fd410180e0f1ad38daf88aa82c480bb6ff14271d867f6"
     },
     {
       "name": "EscrowRoleBinding",
@@ -3934,7 +3991,7 @@
     },
     {
       "name": "EscrowJobRef",
-      "sha256": "97f657e3f93ff595cc36b371cbc221edb34b0bf9f2c00c7b856af7553474bfb0"
+      "sha256": "981de15970ac510425be96ba8876248d73b3c5379beed78bed1b77c1eedc4cbc"
     },
     {
       "name": "EvmEventRef",
@@ -4026,7 +4083,7 @@
   "sections": [
     {
       "heading": "preamble",
-      "sha256": "55a93d8098d5171bc7cb1724dbd3bc3a2113d03db02cfa7e34651279e468cd3d"
+      "sha256": "82c5898521ee109c81af66cda8a7596690e4cc1d1f621e61f4324cfc634d701f"
     },
     {
       "heading": "1. Outcome and boundary",
@@ -4042,7 +4099,7 @@
     },
     {
       "heading": "2.2 Rail definition, Listing selection, and dispatch",
-      "sha256": "7a0b4e282c7a66f57fe3af6de12c7a398fb1f00ed3ab8dc448f91476b62c6112"
+      "sha256": "bde9f8a007a76c23552d0fa74d0b8f953aee5f1cad6b072e8c4d22302d11fd48"
     },
     {
       "heading": "2.3 Gates applied to each invocation",
@@ -4050,7 +4107,7 @@
     },
     {
       "heading": "3. Roles and signed agreement",
-      "sha256": "e1c6b1f0c83aad55bc148595fe2282857dc46c1dfb28bd12c38dbd093558aeac"
+      "sha256": "f07d37a1e5a06f89b525fe3d9cfe773b649632fa5fa2138f4cf3d4b37b03645e"
     },
     {
       "heading": "3.1 Wire encodings",
@@ -4062,15 +4119,15 @@
     },
     {
       "heading": "4.1 ERC-8183 state crosswalk",
-      "sha256": "e00196763cf1ea1e90c284f8169ce6dffedd2cbe996398ba6a7b1d0a21c68b50"
+      "sha256": "ad47f27e2b9699f09c55cb0ca046d4a46a73ee0c0973c735cb4fa84d82641c67"
     },
     {
       "heading": "5. Job reference and creation binding",
-      "sha256": "964ef164323f0c465ad93990bbe1a121b6f7fe7dac43b001052fdd5316f47ac2"
+      "sha256": "0994fdfcb16938f628a959f6fa740c4907f47c9b53196e6923c04587415c3795"
     },
     {
       "heading": "5.1 Funding evidence",
-      "sha256": "82f32c0f9eb404bcec722202219c92672a3229a846cb0916c7427c5d479fc927"
+      "sha256": "6ad0fb98eaf66558b2c19fcf05476d3b35b30ae998a486a98934b59e2197138b"
     },
     {
       "heading": "6. Evaluation and decision artifacts",
@@ -4078,7 +4135,7 @@
     },
     {
       "heading": "6.1 ExecutionEvaluation",
-      "sha256": "25f6cf7575be6da09ce0a4ce7a74c83e2975f9f85381c4740a7cd87d8ff040d3"
+      "sha256": "70f60bdc19f73e7c00b4fefe8afe709d085c56b5ea03fe06df7b82ba95855c16"
     },
     {
       "heading": "6.2 EvaluationRule",
@@ -4090,15 +4147,15 @@
     },
     {
       "heading": "6.4 DisputeCase and DisputeOutcome",
-      "sha256": "00a02f3e8691e5ff25b01f18f6dc4f2915e1abdbcb13850497ce4c24a17947f9"
+      "sha256": "aa6706178f2b40a5b349a9921936788875377f5c3e9d65812c04cd79b5bf4ddb"
     },
     {
       "heading": "6.5 Candidate logical addresses",
-      "sha256": "f62fe7a96204b18b6230b85ec84d484f89e6d68c5418bc1ef50389e953952caa"
+      "sha256": "b440b3039ec3114a83b029a152744591607c550321456701bd781065a8a4eabc"
     },
     {
       "heading": "7. Terminal evidence and DACS-5 projection",
-      "sha256": "f1ada09a5fedf177766923365b0b3a6fae62a8c3e0bfb9dbe87ab33d125b6520"
+      "sha256": "b1f201e30860e053c1d2e5067e1a0e29833f723f47c30523c924be273403cc18"
     },
     {
       "heading": "8. Candidate `pay-evm-erc8183` binding",
@@ -4110,7 +4167,7 @@
     },
     {
       "heading": "8.2 Account and deadline mapping",
-      "sha256": "224d84698801b3412955c870a4511a8f3f3f4f3845c190a8cc8be597af404003"
+      "sha256": "c3674d0a3d8f4b919d01ff94620e04bcceb2de96bc791c25fc2e989fd9e6b5c9"
     },
     {
       "heading": "8.3 Direct evaluator transaction model",
@@ -4118,19 +4175,19 @@
     },
     {
       "heading": "8.4 Deployment eligibility",
-      "sha256": "84b492d1a96958fd4cc52832f1e53a87aff1a6a07fb1fb938c22b61b1f07c724"
+      "sha256": "de8ccd2d1c1ebbf3810caa6156b7e2593faf0c925f2ec6b82f8ad2c4a269178a"
     },
     {
       "heading": "9. Verification result and ordering",
-      "sha256": "a1469bf7ef8a6298caac5fa21105094c1f32ef0a398d88d7f874d2f49de02a75"
+      "sha256": "d1ca5f9d5423207e86d298d672b08d9dfa822ab0fc77d264afe591516f07a5dc"
     },
     {
       "heading": "10. Transcript and evidence disclosure",
-      "sha256": "1ceb3e5170f237891a38743501aa2d20ca4d3717d2731551115bcbc3a2ecaaf5"
+      "sha256": "38a344d26ca9681cede3d75291918a0b17c3b7cbd8b9a9fbb3d62f15841cda94"
     },
     {
       "heading": "11. Required conformance evidence",
-      "sha256": "f0ea087d416efcbade2f2e5e45e2465794ce0a6db822f43b1eb8d46daad5d467"
+      "sha256": "588f9773383bd938b9c4a9a90efe3acf4f442ae3d7ffcd891ee2a55f186d7ab3"
     },
     {
       "heading": "11.1 Positive cases",
@@ -4138,7 +4195,7 @@
     },
     {
       "heading": "11.2 Required rejection cases",
-      "sha256": "771351941648e6d60cc5eb054f865351109e05c496053b681334dcd607fb3e2e"
+      "sha256": "5b13de072b262830cbd5e75c07bf965ad22e1649d04386c9bfe0b6b3ff3100eb"
     },
     {
       "heading": "11.3 Required indeterminate cases",
@@ -4158,7 +4215,7 @@
     },
     {
       "heading": "Contract and reference implementation contributors",
-      "sha256": "0f67b5300ea493eb11fd91cad3f148cae6cc486ba5c54e56f7e4620632ca54ec"
+      "sha256": "f6a5ef400d1f67fed89f75a5c4ad19180122eac58dae14e5f267a6d480b7ef2d"
     },
     {
       "heading": "DACS SDK contributors",

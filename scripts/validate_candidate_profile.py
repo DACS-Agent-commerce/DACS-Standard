@@ -11,8 +11,8 @@ spec validators (which read spec/ only) never see it. This checker pins it:
 - every rule reference resolves in the candidate or in spec/, and every
   substrate-capability reference outside code fences, inline code included,
   resolves in the CORE §5 capability table;
-- every type in SIGNED_TYPES is defined once with exactly one version member
-  and is signed by exactly one `"dacs-x-...:vN:" || <operand>` line whose
+- every type in SIGNED_TYPES is defined once with exactly one version member,
+  whose value is DRV-8's "1", and is signed by exactly one `"dacs-x-...:vN:" || <operand>` line whose
   version matches; every signing-domain line in a code block has that form,
   every signed type is in the inventory, and no candidate domain is in the
   CORE registry; every other quoted `dacs-*:vN:` literal is registered;
@@ -109,6 +109,8 @@ SIGNED_TYPES = {
     "DisputeOutcome": ("disputeOutcomeVersion", "dispute_outcome_hash"),
     "EscrowTerminalEvidence": ("escrowTerminalEvidenceVersion", "terminal_evidence_hash"),
 }
+# DRV-8: the one value every signed type's version member carries.
+SIGNED_TYPE_VERSION = "1"
 
 
 def sha256_text(text: str) -> str:
@@ -264,6 +266,8 @@ def signing_domains(text: str) -> tuple[list[dict], list[str]]:
             errors.append(f'signed type {name} must declare exactly one version member {member}: "<n>"')
         if found:
             versions[name] = found[0][1]
+            if found[0][1] != SIGNED_TYPE_VERSION:
+                errors.append(f'signed type {name} version {found[0][0]} must be "{SIGNED_TYPE_VERSION}" (DRV-8)')
     for name in SIGNED_TYPES:
         if definitions.get(name, 0) == 0:
             errors.append(f"signed type {name} is not defined")

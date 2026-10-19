@@ -55,6 +55,7 @@ python3 scripts/check_vendored_vectors.py path/to/vendored/vectors
 python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev 4bb9e48a1095ab32c06c25b7c0b52018d3ce4091
 python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --json
 python3 scripts/check_vendored_vectors.py path/to/vendored/sets --sets-only
+python3 scripts/check_vendored_vectors.py path/to/vendored/selection --subset --sets-only
 ```
 
 `--rev` takes any revision the checkout can resolve. The commit above is
@@ -74,6 +75,13 @@ For a copy that holds only the vector sets, `--sets-only` compares the sets
 alone and counts other JSON files as ignored. In that mode only an object
 with a `set` member is a set, so other JSON that uses a member such as
 `hash` is ignored; every file must still parse.
+
+For a copy that holds selected sets or files, `--subset` still reports the
+sets and files it does not hold as missing, but they do not fail the run;
+drifted, extra and uncheckable ones still do. A `--subset` copy that holds
+no set (or, without `--sets-only`, no other JSON file) is bad input. A copy
+whose files come from different Standard revisions can be checked once per
+revision, each with `--rev` and a directory holding that revision's files.
 
 For each set, it reports changes to `vectors`, `count`, declared `hash`,
 `spec`, or any other top-level member, as well as missing and extra sets.
@@ -112,12 +120,13 @@ Formatting is ignored. Canonical hashing ignores object member order; the
 fallback mode must reproduce a declared hash under a validator-accepted
 encoding.
 
-Exit 0 means every set and compared file matches, exit 1 means drift, and
+Exit 0 means every set and compared file matches, exit 1 means drift
+(including missing sets and files, unless `--subset`), and
 exit 2 means bad input or a set with neither a canonical nor a verified
 declared-encoding hash.
 Such a set is `uncheckable`; a known missing or extra set retains that status
-and also contributes to the separate uncheckable count. Exit 2 takes
-precedence over drift.
+and also contributes to the separate uncheckable count, with or without
+`--subset`. Exit 2 takes precedence over drift.
 
 For a runnable five-stage builder path, see the dependency-free
 [`walkthrough/`](./walkthrough/) reference tool. It verifies the current signed

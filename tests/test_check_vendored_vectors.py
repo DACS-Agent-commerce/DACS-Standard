@@ -661,6 +661,72 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("cannot run git: no git executable", report["error"])
 
+    def test_subset_reports_missing_entries_without_failing(self):
+        # A copy of selected sets reports what it does not hold, without failing on it.
+        self.vendored_set("alpha-v0.1").unlink()
+        (self.vendored / "golden.json").unlink()
+        for args in ((), ("--sets-only",)):
+            with self.subTest(args=args):
+                code, report = self.run_checker(*args)
+                self.assertEqual((code, report["drift"], report["subset"]), (1, True, False))
+                self.assertNotIn("(--subset)", CHECKER.render_text(report))
+                code, report = self.run_checker("--subset", *args)
+                self.assertEqual((code, report["drift"], report["subset"]), (0, False, True))
+                self.assertEqual(self.result_for(report, "alpha-v0.1")["status"], "missing")
+                self.assertEqual((report["summary"]["match"], report["summary"]["missing"]), (1, 1))
+                text = CHECKER.render_text(report)
+                self.assertIn("MISSING  alpha-v0.1", text)
+                self.assertIn("\nMissing sets and files are reported but do not fail (--subset).", text)
+        code, report = self.run_checker("--subset")
+        self.assertEqual(report["files"], [{"path": "golden.json", "status": "missing", "members": None}])
+        self.assertIn("FILE MISSING  golden.json", CHECKER.render_text(report))
+
+    def test_subset_still_fails_on_drift_extra_and_uncheckable(self):
+        self.vendored_set("alpha-v0.1").unlink()
+        for label, args, change in (
+            ("drifted set", (), lambda base: write_json(
+                base / "security" / "beta-v0.1.json", dict(STANDARD_SETS["beta-v0.1"], count=3))),
+            ("extra set", ("--sets-only",), lambda base: write_json(
+                base / "gamma-v0.1.json", make_set("gamma-v0.1", [{"name": "g1"}]))),
+            ("drifted file", (), lambda base: write_json(base / "golden.json", {"signing": {"edited": True}})),
+            ("extra file", (), lambda base: write_json(base / "notes.json", ["local"])),
+        ):
+            with self.subTest(label=label):
+                selection = self.tmp / "selection" / label.replace(" ", "-")
+                shutil.copytree(self.vendored, selection)
+                code, report = self.run_checker("--subset", *args, vendored=selection)
+                self.assertEqual((code, report["drift"]), (0, False))
+                change(selection)
+                code, report = self.run_checker("--subset", *args, vendored=selection)
+                self.assertEqual((code, report["drift"]), (1, True), report)
+        # A Standard set with neither hash stays uncheckable even when it is not vendored.
+        name = "wide-int-v0.1"
+        write_json(self.standard / "conformance" / "vectors" / f"{name}.json",
+                   dict(make_set(name, [{"input": BIG}]), hash="0" * 64))
+        code, report = self.run_checker("--subset")
+        self.assertEqual((code, self.result_for(report, name)["status"]), (2, "missing"))
+        self.assertTrue(report["uncheckable"])
+
+    def test_subset_with_nothing_to_compare_is_bad_input(self):
+        # With missing entries not failing, an empty selection must not pass vacuously.
+        selection = self.tmp / "selection"
+        selection.mkdir()
+        code, report = self.run_checker("--subset", vendored=selection)
+        self.assertEqual(code, 2)
+        self.assertIn("--subset: ", report["error"])
+        self.assertIn("holds no vector sets or other JSON files to compare", report["error"])
+        write_json(selection / "metadata.json", {"hash": "ordinary metadata"})
+        code, report = self.run_checker("--subset", "--sets-only", vendored=selection)
+        self.assertEqual(code, 2)
+        self.assertIn("holds no vector sets to compare", report["error"])
+        code, report = self.run_checker("--sets-only", vendored=selection)
+        self.assertEqual((code, report["summary"]["missing"]), (1, 2))
+        # A selection of other JSON files alone is still compared.
+        (selection / "metadata.json").unlink()
+        shutil.copy(self.vendored / "golden.json", selection / "golden.json")
+        code, report = self.run_checker("--subset", vendored=selection)
+        self.assertEqual((code, report["summary"]["missing"], report["summary"]["files"]["match"]), (0, 2, 1))
+
 
 class RepositoryVectorSetTests(unittest.TestCase):
     def run_checker(self, *argv):
@@ -704,6 +770,31 @@ class RepositoryVectorSetTests(unittest.TestCase):
         self.assertEqual(code, 0, report)
         self.assertEqual(report["summary"]["match"], len(security_sets))
         self.assertEqual(report["summary"]["ignoredJson"]["vendored"], 1)
+
+    def test_subset_copy_passes_against_its_own_revision(self):
+        # A flat copy of selected sets, as an SDK keeps, fails only on its own drift.
+        security_sets = sorted((ROOT / "conformance" / "vectors" / "security").glob("*.json"))
+        _commit, files = CHECKER.read_revision(ROOT, V04_COMMIT)
+        with tempfile.TemporaryDirectory() as tmp:
+            current, pinned = Path(tmp) / "current", Path(tmp) / "v0.4"
+            current.mkdir()
+            pinned.mkdir()
+            for path in security_sets[:2]:
+                shutil.copy(path, current / path.name)
+            code, report = self.run_checker(current, "--sets-only")
+            self.assertEqual(code, 1)
+            code, report = self.run_checker(current, "--subset", "--sets-only")
+            self.assertEqual(code, 0, report)
+            self.assertEqual((report["summary"]["match"], report["summary"]["missing"]),
+                             (2, len(security_sets) - 2))
+            # A file pinned to another revision is checked against that revision.
+            name = "commitment-anchor-authority-v0.3"
+            (pinned / f"{name}.json").write_bytes(dict(files)[f"security/{name}.json"])
+            code, report = self.run_checker(pinned, "--subset", "--sets-only", "--rev", V04_COMMIT)
+            self.assertEqual((code, report["summary"]["match"]), (0, 1), report)
+            code, report = self.run_checker(pinned, "--subset", "--sets-only", "--rev", NEXT_COMMIT)
+        self.assertEqual(code, 1)
+        self.assertEqual(next(r for r in report["sets"] if r["set"] == name)["status"], "drifted")
 
     def test_v04_copy_reports_top_level_and_golden_drift(self):
         # Between v0.4 and the base of this checker, commitment-anchor-authority-v0.3
@@ -760,6 +851,8 @@ class RepositoryVectorSetTests(unittest.TestCase):
         self.assertIn(f"--rev {V04_COMMIT}\n", SCRIPT_PATH.read_text(encoding="utf-8"))
         self.assertNotIn("--rev v0.4", readme)
         self.assertIn("(`git fetch --tags`)", readme)
+        self.assertIn(" --subset --sets-only\n", readme)
+        self.assertIn(" --subset --sets-only\n", SCRIPT_PATH.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

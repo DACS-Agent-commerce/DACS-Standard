@@ -8,6 +8,7 @@ can run this checker to see which copies no longer match:
     python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev 4bb9e48a1095ab32c06c25b7c0b52018d3ce4091
     python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --json
     python3 scripts/check_vendored_vectors.py path/to/vendored/sets --sets-only
+    python3 scripts/check_vendored_vectors.py path/to/vendored/selection --subset --sets-only
 
 A vector set is a JSON object with ``set``, ``spec``, ``count``, ``hash`` and
 ``vectors`` members, such as the files under ``conformance/vectors/security/``.
@@ -24,6 +25,14 @@ compared as type-strict parsed JSON. Such a file is reported as ``match``,
 counts other JSON files as ignored, for a vendored copy that holds sets only.
 In that mode only an object with a ``set`` member is a set, so other JSON that
 uses a member such as ``hash`` is ignored; every file must still parse.
+
+``--subset`` is for a vendored copy that holds selected sets or files. Sets
+and files in the Standard but not vendored are still reported as
+``missing`` but do not fail; drifted, extra and uncheckable ones still do.
+A ``--subset`` copy with no vendored set (or, without ``--sets-only``, no
+other JSON file) is bad input. A copy whose files come from different
+Standard revisions can be checked once per revision, each with ``--rev``
+and a directory holding that revision's files.
 
 Each set is reported as ``match``, ``drifted``, ``missing`` (in the Standard,
 not vendored), ``extra`` (vendored, not in the Standard), or ``uncheckable``
@@ -61,7 +70,8 @@ any of these differ:
   and the report names each changed member.
 
 Exit status: 0 when every set and compared file matches, 1 when any set or
-file is drifted, missing or extra, 2 on any uncheckable set or bad input
+file is drifted, missing (unless ``--subset``) or extra, 2 on any
+uncheckable set, including a missing or extra one, or bad input
 (unreadable paths or revision, symlinked subdirectories,
 invalid or excessively nested JSON, a set file missing a required member,
 or two files declaring the same set). Exit 2 takes precedence over drift.
@@ -401,7 +411,9 @@ def one_sided(vector_set: VectorSet, status: str) -> dict[str, Any]:
     return result
 
 
-def check(vendored_dir: Path, standard: Path, rev: str | None, sets_only: bool = False) -> dict[str, Any]:
+def check(
+    vendored_dir: Path, standard: Path, rev: str | None, sets_only: bool = False, subset: bool = False
+) -> dict[str, Any]:
     commit = None
     if rev is None:
         standard_files = read_tree(standard / VECTORS_DIR)
@@ -411,6 +423,10 @@ def check(vendored_dir: Path, standard: Path, rev: str | None, sets_only: bool =
     if not standard_sets:
         raise BadInput(f"no vector sets found under {VECTORS_DIR} in the Standard checkout")
     vendored_sets, vendored_others = index_sets(read_tree(vendored_dir), "vendored", sets_only)
+    if subset and not vendored_sets and (sets_only or not vendored_others):
+        # With missing entries not failing, an empty selection would pass vacuously.
+        held = "vector sets" if sets_only else "vector sets or other JSON files"
+        raise BadInput(f"--subset: {vendored_dir} holds no {held} to compare")
 
     files = []
     if not sets_only:
@@ -444,14 +460,16 @@ def check(vendored_dir: Path, standard: Path, rev: str | None, sets_only: bool =
         **{status: sum(1 for f in files if f["status"] == status)
            for status in ("match", "drifted", "missing", "extra")},
     }
+    failing = ("drifted", "extra") if subset else ("drifted", "missing", "extra")
     return {
         "standard": {"path": str(standard), "revision": rev, "commit": commit},
         "vendored": str(vendored_dir),
         "setsOnly": sets_only,
+        "subset": subset,
         "hashRule": HASH_RULE,
         "fallbackHashRule": "sha256(vectors encoded as verified by validate_security_vectors)",
-        "drift": any(r["status"] in ("drifted", "missing", "extra") or r.get("changes") for r in results)
-        or any(f["status"] != "match" for f in files),
+        "drift": any(r["status"] in failing or r.get("changes") for r in results)
+        or any(f["status"] in failing for f in files),
         "uncheckable": summary["uncheckable"] > 0,
         "summary": summary,
         "sets": results,
@@ -548,6 +566,8 @@ def render_text(report: dict[str, Any]) -> str:
             f"{files['match']} match, {files['drifted']} drifted, "
             f"{files['missing']} missing, {files['extra']} extra."
         )
+    if report["subset"]:
+        lines.append("Missing sets and files are reported but do not fail (--subset).")
     return "\n".join(lines)
 
 
@@ -569,9 +589,14 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="compare vector sets only and count other JSON files as ignored",
     )
+    parser.add_argument(
+        "--subset",
+        action="store_true",
+        help="the vendored copy holds selected sets or files: report missing ones without failing",
+    )
     args = parser.parse_args(argv)
     try:
-        report = check(args.vendored, args.standard, args.rev, sets_only=args.sets_only)
+        report = check(args.vendored, args.standard, args.rev, sets_only=args.sets_only, subset=args.subset)
     except BadInput as exc:
         if args.json:
             print(json.dumps({"error": str(exc)}, indent=2))

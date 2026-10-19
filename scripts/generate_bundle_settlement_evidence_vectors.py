@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 
 import generate_evidence_bound_fault_bundle_fixture as F
+import generate_atomic_work_vectors as A
+import atomic_work_reference as AR
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -418,6 +420,310 @@ def make_authority(name, definition, signing_keys):
     return authority
 
 
+def _sign_atomic_bundle(bundle):
+    bundle["signatures"] = []
+    payload = (
+        F.DOMAINS["evidence-bound"] + F.bundle_hash(bundle)
+    ).encode("utf-8")
+    bundle["signatures"] = [
+        {
+            "party": A.CLAIMS[role],
+            "algorithm": "ed25519",
+            "value": AR.b64u(AR.ed25519_sign(A.SEEDS[role], payload)),
+        }
+        for role in ("buyer", "seller")
+    ]
+
+
+def _atomic_anchor_receipt(ref, phase_key, logical_address):
+    phase_index, phase = phase_key.split(":", 1)
+    transaction = "tx-atomic-ebfab-" + phase_index
+    return {
+        "receiptVersion": "1",
+        "substrate": "demos-testnet",
+        "finalityProfile": "demos-bft-proof/test-1",
+        "logicalAddress": logical_address,
+        "nativeAddress": ref["anchor"]["locator"],
+        "contentHash": ref["contentHash"],
+        "transactionRef": {"kind": "demos-transaction", "value": transaction},
+        "writer": A.CLAIMS["orchestrator"],
+        "nonce": phase_index,
+        "state": "finalized",
+        "observationDisposition": "established",
+        "observedAt": 1_800_000_041_000 + int(phase_index),
+        "blockRef": {
+            "id": "block-atomic-ebfab-" + phase_index,
+            "height": str(1200 + int(phase_index)),
+            "timestamp": 1_800_000_040_000 + int(phase_index),
+        },
+        "evidence": {
+            "kind": "fixture-demos-bft-proof",
+            "value": hashlib.sha256(transaction.encode()).hexdigest(),
+        },
+    }
+
+
+# SEB-3 defense-in-depth shape cases. Each member is re-signed and its exact
+# hash is given a passing AWS admission; the SEB consumer still checks shape.
+ATOMIC_SHAPE_EDITS = {
+    "signature-missing": lambda e: e.pop("signature"),
+    "signature-algorithm": lambda e: e["signature"].update(algorithm="unsupported"),
+    "signature-signer": lambda e: e["signature"].update(signer="invalid"),
+    "signature-value": lambda e: e["signature"].update(value=""),
+    "required-observed-at": lambda e: e.pop("observedAt"),
+    "network-empty": lambda e: e.update(networkId=""),
+    "phase-index-boolean": lambda e: e.update(phaseIndex=True),
+    "operation-ref-kind": lambda e: e["operationRef"].update(kind="demos"),
+    "operation-ref-index": lambda e: e["operationRef"].update(operationIndex=-1),
+    "operation-ref-work-id": lambda e: e["operationRef"].update(workId="short"),
+    "receipt-ref-version": lambda e: e["workReceiptRef"].update(refVersion="2"),
+    "receipt-ref-content-hash": lambda e: e["workReceiptRef"].update(contentHash="short"),
+    "receipt-ref-locator": lambda e: e["workReceiptRef"].update(locator={}),
+    "proof-profile": lambda e: e["operationProof"].update(proofProfile=""),
+    "proof-subject": lambda e: e["operationProof"].update(subject=[]),
+    "proof-value": lambda e: e["operationProof"].update(value=""),
+    "delivery-operation-kind": lambda e: e["operationRef"].update(operationKind="native-dem-transfer"),
+    "delivery-content-hash": lambda e: e.update(deliverableContentHash="short"),
+    "delivery-anchor": lambda e: e.update(deliverableAnchor={"kind": "storage-program"}),
+    "delivery-payment-member": lambda e: e.update(paymentAmount={"amount": "10", "currency": "DEM"}),
+    "pay-operation-kind": lambda e: e["operationRef"].update(operationKind="storage-program-put"),
+    "pay-amount": lambda e: e.pop("paymentAmount"),
+    "pay-finality-model": lambda e: e["settlementFinality"].update(model="provider-receipt"),
+    "pay-finality-time": lambda e: e["settlementFinality"].update(finalityObservedAt=True),
+    "pay-delivery-member": lambda e: e.update(deliverableContentHash="00" * 32),
+    "failure-reason": lambda e: e.update(reason=""),
+    "failure-success-member": lambda e: e.update(paymentAmount={"amount": "10", "currency": "DEM"}),
+}
+
+def make_atomic_authority(variant="pass"):
+    """Compose a real passing AWS result into DACS-5 SEB/ST-11 authority."""
+    job_id = "01K1DPA0000000000000000000"
+    purchase = A.purchase_intent(job_id, current_profile=True)
+    purchase_receipt = A.final_receipt(purchase)
+    completion = A.completion_intent(purchase_receipt, job_id)
+    completion_receipt = A.final_receipt(completion)
+    purchase_admission = A.composed_purchase_admission(
+        purchase, purchase_receipt
+    )
+    completion_admission = A.composed_completion_admission(
+        purchase, purchase_receipt, completion, completion_receipt
+    )
+    for admission in (purchase_admission, completion_admission):
+        admission.update({
+            "expectedNetworkAuthority": A.CLAIMS["network"],
+            "expectedProofProfile": "demos-bft-proof/test-1",
+            "expectedRailRegistryAuthority": A.CLAIMS["network"],
+        })
+    AR.evaluate_purchase_admission(purchase_admission)
+    AR.evaluate_completion_admission(completion_admission)
+
+    listing = copy.deepcopy(purchase_admission["authority"]["listing"])
+    evidence_by_key = {
+        "2:pay-dem": copy.deepcopy(purchase_admission["settlement"]),
+        "3:deliver-storage-program": copy.deepcopy(
+            completion_admission["settlement"]
+        ),
+    }
+    # Each of these edits the delivery member and re-signs it; its passing
+    # AWS admission below is computed over the edited bytes, so only the
+    # SEB-3 Atomic shape gate can refuse it.
+    shape_edit = {
+        "dual-selector": lambda evidence: evidence.update(evidenceVersion="1"),
+        "unsupported-version": lambda evidence: evidence.update(
+            atomicEvidenceVersion="2"
+        ),
+    }.get(variant)
+    shape_case = variant.removeprefix("shape-") if variant.startswith("shape-") else None
+    shape_edit = ATOMIC_SHAPE_EDITS.get(shape_case, shape_edit)
+    if shape_edit is not None:
+        phase_key = "2:pay-dem" if (shape_case or "").startswith("pay-") else "3:deliver-storage-program"
+        evidence = evidence_by_key[phase_key]["evidence"]
+        if (shape_case or "").startswith("failure-"):
+            evidence.update(outcome="failure", reason="fixture failure")
+            for member in ("deliverableContentHash", "deliverableAnchor", "paymentAmount", "settlementFinality"):
+                evidence.pop(member, None)
+        shape_edit(evidence)
+        evidence["signature"] = AR.sign_embedded(
+            {key: value for key, value in evidence.items() if key != "signature"},
+            A.CLAIMS["orchestrator"],
+            A.SEEDS["orchestrator"],
+            AR.EVIDENCE_DOMAIN,
+        )["signature"]
+        if (shape_case or "").startswith("signature-"):
+            shape_edit(evidence)
+
+    phase_summary = [
+        {"index": index, "kind": step["kind"], "outcome": "ok"}
+        for index, step in enumerate(listing["pipeline"])
+    ]
+    refs = []
+    resolutions = {}
+    receipts = {}
+    executions = {}
+    admissions = {}
+    for phase_key, settlement in evidence_by_key.items():
+        phase_index, phase = phase_key.split(":", 1)
+        evidence = settlement["evidence"]
+        evidence_hash = F.evidence_hash(evidence)
+        ref = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-" + hashlib.sha256(
+                    ("atomic-ebfab:" + phase_key).encode()
+                ).hexdigest(),
+            },
+            "contentHash": evidence_hash,
+        }
+        ref_key = F.canonical(ref).decode("utf-8")
+        refs.append(ref)
+        phase_summary[int(phase_index)]["attestationRef"] = ref
+        resolutions[ref_key] = {
+            "record": evidence,
+            "agreementHash": current_agreement_hash(job_id, phase_key),
+            "sessionId": current_session_id(job_id, phase_key),
+            "lifecycle": {
+                "state": "finalized", "independentlyResolvable": True,
+            },
+        }
+        logical_address = settlement["evidenceAddress"]
+        receipts[ref_key] = _atomic_anchor_receipt(
+            ref, phase_key, logical_address
+        )
+        executions[phase_key] = {
+            "jobId": job_id,
+            "phaseIndex": int(phase_index),
+            "phaseKind": phase,
+            "phaseOrchestrator": A.CLAIMS["orchestrator"],
+            "evidenceFamily": (
+                "ordinary" if variant == "wrong-family" else "atomic"
+            ),
+            "atomicEvidenceLogicalAddress": logical_address,
+            "anchorNonce": phase_index,
+            **({"railId": A.TEST_RAIL_ID} if phase.startswith("pay-") else {}),
+        }
+        admissions[ref_key] = {
+            "disposition": "pass",
+            "evidenceHash": evidence_hash,
+            "phaseKey": phase_key,
+            "logicalAddress": logical_address,
+        }
+    # Each foreign-* variant keeps every artifact exact and moves one binding
+    # of the pay-dem member's passing AWS admission (or its receipt) to the
+    # delivery member's value, so only that binding can refuse it.
+    pay_key, delivery_key = (F.canonical(ref).decode("utf-8") for ref in refs)
+    foreign_admission_field = {
+        "foreign-evidence-hash": "evidenceHash",
+        "foreign-phase-key": "phaseKey",
+        "foreign-logical-address": "logicalAddress",
+    }.get(variant)
+    if foreign_admission_field is not None:
+        admissions[pay_key][foreign_admission_field] = (
+            admissions[delivery_key][foreign_admission_field]
+        )
+    if variant == "foreign-receipt-address":
+        receipts[pay_key]["logicalAddress"] = receipts[delivery_key]["logicalAddress"]
+    # These keep the pay-dem admission exact in hash, phase key and logical
+    # address: only its non-pass AWS result, a case-variant of the exact
+    # lowercase "pass", or an unknown member outside the closed admission
+    # shape, can refuse it.
+    if variant == "non-passing-admission":
+        admissions[pay_key]["disposition"] = "fail"
+    if variant == "extra-member-admission":
+        admissions[pay_key]["valid"] = True
+    if variant == "case-folded-admission":
+        admissions[pay_key]["disposition"] = "PASS"
+    # SEB-3: an AWS indeterminate or error result for these exact bytes is
+    # that exact state, not a rejection.
+    if variant == "indeterminate-admission":
+        admissions[pay_key]["disposition"] = "indeterminate"
+    if variant == "error-admission":
+        admissions[pay_key]["disposition"] = "error"
+    # A present admission map without this member's entry is unavailable
+    # authority for that member, exactly like an absent map.
+    if variant == "member-admission-missing":
+        del admissions[pay_key]
+
+    agreement_ref = {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs3:agreement:" + job_id,
+        },
+        "contentHash": current_agreement_hash(job_id),
+    }
+    bundle = {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": job_id,
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+            "listingId": listing["listingId"],
+            "version": listing["listingVersion"],
+            "contentHash": F.listing_hash(listing),
+        },
+        "agreementRef": agreement_ref,
+        "parties": [
+            {
+                "role": role,
+                "bundleHash": hashlib.sha256(
+                    ("atomic-ebfab-" + role).encode()
+                ).hexdigest(),
+                "primaryClaim": A.CLAIMS[role],
+            }
+            for role in ("buyer", "seller")
+        ],
+        "phaseSummary": phase_summary,
+        "vetRecords": [],
+        "settlementEvidence": refs,
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1_800_000_042_000,
+        "signatures": [],
+    }
+    _sign_atomic_bundle(bundle)
+    authority = {
+        "listing": listing,
+        "bundle": bundle,
+        "defaultReferenceLifecycle": {
+            "state": "finalized", "independentlyResolvable": True,
+        },
+        "referenceValidationByCanonicalRef": resolutions,
+        "sessionExecutionAuthorityByPhaseKey": executions,
+        "verifiedReceiptByCanonicalRef": receipts,
+        "deliveryArtifactAuthorityByPhaseKey": {},
+        "trustedNativeTransactionObservationsByCanonicalRef": {},
+        "atomicEvidenceAdmissionByCanonicalRef": admissions,
+        "bundleLifecycle": {
+            "state": "finalized", "independentlyResolvable": True,
+        },
+        "additionalCommitPhase": "commit-identity-bound-payee-agreement",
+        "agreementSelectionResult": {
+            "resolution": "verified",
+            "agreementRef": copy.deepcopy(agreement_ref),
+            "agreementType": "identity-bound-payee",
+            "proofVerified": True,
+        },
+    }
+    payment_phase_key = "2:pay-dem"
+    payment_record = evidence_by_key[payment_phase_key]["evidence"]
+    payment_ref = phase_summary[2]["attestationRef"]
+    payment_ref_key = F.canonical(payment_ref).decode("utf-8")
+    authority["legacyAgreementAuthorityByPhaseKey"] = {
+        payment_phase_key: current_laa_phase_carrier(
+            bundle,
+            listing,
+            payment_phase_key,
+            payment_record,
+            payment_ref,
+            receipts[payment_ref_key],
+            executions[payment_phase_key],
+        )
+    }
+    if variant == "missing-admission":
+        authority.pop("atomicEvidenceAdmissionByCanonicalRef")
+    return authority
+
+
 def _delivery_resolution(authority, phase_key):
     phase_index_text, phase = phase_key.split(":", 1)
     phase_index = int(phase_index_text)
@@ -764,7 +1070,8 @@ def generate(source):
         "and current DeliveryEvidence plus its top-level receipt are controlled by the authenticated "
         "phase orchestrator even when that role is distinct from the seller that writes deliverables, "
         "EntitlementRecords, and credentials; PDE-7 permits only a single unambiguous "
-        "delivery-shaped SettlementEvidence. "
+        "delivery-shaped SettlementEvidence, while verifier-selected Atomic Work phases use "
+        "AtomicSettlementEvidenceV1 only with an exact passing AWS admission. "
         "deliveryArtifactAuthorityByPhaseKey supplies the independently resolved deliverable, "
         "entitlement/credential, or payload-attestation/method-proof closure required "
         "before successful current or legacy delivery evidence can authorize its phase; legacy "
@@ -783,6 +1090,12 @@ def generate(source):
         data["reasonCodes"].append("execution-authority-indeterminate")
     if "execution-authority-indeterminate" not in data["reasonPrecedence"]:
         data["reasonPrecedence"].insert(1, "execution-authority-indeterminate")
+    # SEB-3 keeps a malformed-input execution authority (an AWS error) as
+    # error rather than folding it into rejection.
+    if "execution-authority-error" not in data["reasonCodes"]:
+        data["reasonCodes"].append("execution-authority-error")
+    if "execution-authority-error" not in data["reasonPrecedence"]:
+        data["reasonPrecedence"].insert(1, "execution-authority-error")
     definitions = semantic_definitions(data)
     for definition in definitions.values():
         if definition.get("legacyDeliveryEvidence") is True:
@@ -1400,15 +1713,161 @@ def generate(source):
         F.CLAIMS[role]: F.b64u(key.public_key().public_bytes_raw())
         for role, key in signing_keys.items()
     }
+    data["publicKeys"].update(A.PUBLIC_KEYS)
     data["domains"] = {
         "listing": F.LISTING_DOMAIN,
         "evidenceBoundBundle": F.DOMAINS["evidence-bound"],
+        "atomicEvidence": AR.EVIDENCE_DOMAIN.decode("ascii"),
     }
     data["executionAuthorityDefinitions"] = definitions
     data["executionAuthorities"] = {
         name: make_authority(name, definition, signing_keys)
         for name, definition in definitions.items()
     }
+    data["executionAuthorities"].update({
+        "atomic-current-completed": make_atomic_authority("pass"),
+        "atomic-missing-aws-admission": make_atomic_authority("missing-admission"),
+        "atomic-wrong-phase-family": make_atomic_authority("wrong-family"),
+        "atomic-dual-selector": make_atomic_authority("dual-selector"),
+        "atomic-foreign-evidence-hash": make_atomic_authority("foreign-evidence-hash"),
+        "atomic-foreign-phase-key": make_atomic_authority("foreign-phase-key"),
+        "atomic-foreign-logical-address": make_atomic_authority(
+            "foreign-logical-address"
+        ),
+        "atomic-foreign-receipt-address": make_atomic_authority(
+            "foreign-receipt-address"
+        ),
+        "atomic-non-passing-admission": make_atomic_authority(
+            "non-passing-admission"
+        ),
+        "atomic-extra-member-admission": make_atomic_authority(
+            "extra-member-admission"
+        ),
+        "atomic-case-folded-admission": make_atomic_authority(
+            "case-folded-admission"
+        ),
+        "atomic-indeterminate-admission": make_atomic_authority(
+            "indeterminate-admission"
+        ),
+        "atomic-error-admission": make_atomic_authority("error-admission"),
+        "atomic-member-admission-missing": make_atomic_authority(
+            "member-admission-missing"
+        ),
+        "atomic-unsupported-version": make_atomic_authority(
+            "unsupported-version"
+        ),
+    })
+    for shape_case in ATOMIC_SHAPE_EDITS:
+        data["executionAuthorities"]["atomic-shape-" + shape_case] = make_atomic_authority("shape-" + shape_case)
+    atomic_vector_specs = (
+        (
+            "bundle-settlement-bijection-atomic-current-completed-pass",
+            "atomic-current-completed", "pass", "verified", "ok",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-missing-aws-indeterminate",
+            "atomic-missing-aws-admission", "indeterminate", "indeterminate",
+            "execution-authority-indeterminate",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-wrong-family-reject",
+            "atomic-wrong-phase-family", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-dual-selector-reject",
+            "atomic-dual-selector", "fail", "rejected", "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-foreign-evidence-hash-reject",
+            "atomic-foreign-evidence-hash", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-foreign-phase-key-reject",
+            "atomic-foreign-phase-key", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-foreign-logical-address-reject",
+            "atomic-foreign-logical-address", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-foreign-receipt-address-reject",
+            "atomic-foreign-receipt-address", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-non-passing-admission-reject",
+            "atomic-non-passing-admission", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-extra-member-admission-reject",
+            "atomic-extra-member-admission", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-case-folded-admission-reject",
+            "atomic-case-folded-admission", "fail", "rejected",
+            "execution-authority",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-indeterminate-admission-indeterminate",
+            "atomic-indeterminate-admission", "indeterminate", "indeterminate",
+            "execution-authority-indeterminate",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-error-admission-error",
+            "atomic-error-admission", "error", "error",
+            "execution-authority-error",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-member-admission-missing-indeterminate",
+            "atomic-member-admission-missing", "indeterminate", "indeterminate",
+            "execution-authority-indeterminate",
+        ),
+        (
+            "bundle-settlement-bijection-atomic-unsupported-version-reject",
+            "atomic-unsupported-version", "fail", "rejected",
+            "execution-authority",
+        ),
+    )
+    atomic_vector_specs += tuple(
+        ("bundle-settlement-bijection-atomic-shape-" + name,
+         "atomic-shape-" + name,
+         "fail" if name.startswith("signature-") else "error",
+         "rejected" if name.startswith("signature-") else "error",
+         "execution-authority" if name.startswith("signature-") else "execution-authority-error")
+        for name in ATOMIC_SHAPE_EDITS
+    )
+    known_vector_names = {vector["name"] for vector in data["vectors"]}
+    for name, authority_name, expected, disposition, reason_code in atomic_vector_specs:
+        if name in known_vector_names:
+            continue
+        data["vectors"].append({
+            "name": name,
+            "expected": expected,
+            "input": {
+                "executionAuthorityRef": authority_name,
+                "topLevelRefs": ["ref-atomic-pay", "ref-atomic-delivery"],
+                "authenticatedRecordByRef": {
+                    "ref-atomic-pay": {
+                        "jobId": "01K1DPA0000000000000000000",
+                        "phaseKey": "2:pay-dem", "outcome": "success",
+                    },
+                    "ref-atomic-delivery": {
+                        "jobId": "01K1DPA0000000000000000000",
+                        "phaseKey": "3:deliver-storage-program",
+                        "outcome": "success",
+                    },
+                },
+                "pointerMap": {},
+                "unrelatedAuthorityDisposition": "verified",
+            },
+            "want": {"disposition": disposition, "reasonCode": reason_code},
+        })
     for vector in data["vectors"]:
         vector_input = vector["input"]
         authority = data["executionAuthorities"].get(vector_input.get("executionAuthorityRef"))

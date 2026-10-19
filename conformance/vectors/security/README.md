@@ -1984,6 +1984,7 @@ boundary directly, and replay each negative against a verifier missing only its
 named LAB guard. Native anchor
 and settlement-binding proofs are independently pinned signed synthetic fixtures
 for offline testing only; they do not define a production Demos proof codec.
+<!-- guard-witness-claim: corpus=current-use-reputation-v1 cases=buyer-seller-role-rebinding,seller-buyer-role-rebinding,fresh-post-checkpoint-legacy-creation,post-checkpoint-anchor-without-pre-checkpoint-proof,missing-era-proof -->
 
 Regenerate and execute from the repository root:
 

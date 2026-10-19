@@ -36,6 +36,13 @@ The format used per release:
   `legacy-agreement-admission-v0.8` signature objects and the placeholder
   signatures in the released `settlement-evidence-payment-success.json` fixture
   and `rating-record.json` example.
+- **Guard-witness convention** — a corpus test module can declare, per case,
+  the reference guard the case witnesses; CI removes that guard and requires
+  the case's verdict to change while declared controls keep theirs. The LAB
+  (`current-use-reputation-v1`) and PDE credential signature-bypass witnesses
+  use it. A witness claim in the CHANGELOG or a corpus README now has to name
+  its witnessed cases in a `guard-witness-claim` marker, and every named case
+  needs a witness entry. See CONTRIBUTING "Validation".
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
@@ -425,6 +432,7 @@ The format used per release:
   binding leaf (private delivery admits only a storage-program anchor, and the
   vectors model no authenticated renewal re-payment), so PDE-5 rejects them as
   well.
+  <!-- guard-witness-claim: corpus=phase-bound-delivery-evidence-v0.7 cases=credential-ref-anchor-locator-signature-mutation,credential-ref-content-hash-signature-mutation,credential-ref-signer-signature-mutation,credential-access-model-signature-mutation,credential-cleartext-hash-signature-mutation unwitnessed=credential-ref-anchor-kind-signature-mutation,credential-renewal-seq-signature-mutation -->
 
 ### Fixed — delivery closure reference validation
 
@@ -825,6 +833,7 @@ The format used per release:
   shows that a verifier omitting only its named guard accepts it. The existing
   historical controls remain the passing LAB-5 same-role re-anchor cases. The
   corpus grows from 8 to 13 cases; the existing cases are byte-identical.
+  <!-- guard-witness-claim: corpus=current-use-reputation-v1 cases=buyer-seller-role-rebinding,seller-buyer-role-rebinding,fresh-post-checkpoint-legacy-creation,post-checkpoint-anchor-without-pre-checkpoint-proof,missing-era-proof -->
 
 ### Added — unallocated #392 consumer-verifiable settlement finality candidate
 

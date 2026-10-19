@@ -104,6 +104,33 @@ prove the later classifier. Add a bounded wrong-implementation witness to normal
 CI for a material regression and pin the reviewer case in
 `conformance/pre-review-invariants.json` and `scripts/pre_review_gate.py`.
 
+Two corpus-wide checks run as their own workflow step and in the unit suite:
+
+```sh
+python3 -m unittest tests.test_signature_vector_consistency tests.test_guard_witnesses -v
+```
+
+**Signature consistency.** `tests/test_signature_vector_consistency.py` walks
+every JSON file under `conformance/` and checks each signature object whose
+`algorithm` is in the spec's registered enum against CORE §B.7 (SIG-6 spelling,
+64-byte Ed25519, canonical DER low-S `ecdsa-secp256k1`), using the channel
+oracle's checker. A case expecting `error` or `indeterminate` for an unsupported
+or unavailable algorithm must carry a value an implementing verifier accepts,
+and a §B.7-violating value must be expected to `fail` unless the case says it
+is about malformed input; each offender is reported with file, case and reason.
+Fix offenders through their generator; only a released file or an agreed
+follow-up goes in the commented `ALLOWED_OFFENDERS` list, and a stale entry fails.
+
+**Guard witnesses.** A corpus whose cases are said to catch a rule declares
+`GUARD_WITNESSES` in its test module (case → guard, a context manager that
+removes that guard from the reference, and control cases) and is listed in
+`tests/test_guard_witnesses.py`. Each case must keep its committed verdict with
+the guard and change without it, while the controls keep theirs. A CHANGELOG or
+corpus README paragraph saying each or every case catches its rule must carry
+`<!-- guard-witness-claim: corpus=<set> cases=<a>,<b> [unwitnessed=<c>] -->`
+inside the paragraph; every listed case needs a witness entry and every case the
+paragraph names must be listed, so either add the witness or narrow the claim.
+
 ```sh
 python3 - <<'PYTEST'
 import sys, unittest

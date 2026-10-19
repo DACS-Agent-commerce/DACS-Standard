@@ -162,6 +162,9 @@ jobs:
       - name: Run offline pre-review invariant gate
         run: python3 scripts/pre_review_gate.py
 
+      - name: Check cross-corpus signature consistency and guard witnesses
+        run: python3 -m unittest tests.test_signature_vector_consistency tests.test_guard_witnesses -v
+
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check
 

@@ -10,7 +10,7 @@ The pack turns the pre-normative
 into executable review evidence. Every result is one of the candidate's four
 verification results: `pass`, `fail`, `indeterminate`, or `error` (§9).
 
-- `candidate-vectors-v0.1.json` holds 504 lifecycle and mapping vectors over
+- `candidate-vectors-v0.1.json` holds 507 lifecycle and mapping vectors over
   deterministic, signed synthetic lifecycles: full release, evaluator
   rejection and refund before or after submission, a dispute-outcome release
   and refund, pre-submission expiry, and post-submission expiry. The
@@ -27,15 +27,22 @@ verification results: `pass`, `fail`, `indeterminate`, or `error` (§9).
   terminal per decision, native job, and terminal event, release/refund
   direction, full-budget and zero-fee requirements, the §3.1 wire rules, and
   the four-result verification boundary.
-- `deployment-capabilities-v0.1.json` derives DRC-1 through DRC-13 and DRC-22
-  outcomes, the capability rules of `dacs-delivery-gate-v1` (DRC-14),
+- `deployment-capabilities-v0.1.json` derives DRC-1 through DRC-13, DRC-22,
+  and DREB-24 outcomes, the capability rules of `dacs-delivery-gate-v1` (DRC-14),
   from explicit capability evidence. It includes a synthetic all-pass control
   that is permanently marked `fixtureOnly`, individual rule regressions, and
   a pinned assessment of
   [`erc-8183/base-contracts@142e669`](https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol).
   The pinned reference is `fail`, remains unregistered, and is never reported
   as available. Its source facts fail DRC-1 through DRC-7, DRC-13, and DRC-22; DRC-8
-  and DRC-10 through DRC-12 stay unknown without deployment evidence. DRC-7
+  and DRC-10 through DRC-12 stay unknown without deployment evidence, and so
+  does DREB-24: `ERC8183.sol` inherits no ERC-2771 forwarder and declares no
+  `*WithAuthorization` entrypoint, but no DRC-10 evidence shows that for a
+  deployment. Its
+  [`ERC8183WithAuthorization.sol`](https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183WithAuthorization.sol)
+  extension adds signature-authorized `createJob`, `fund`, `submit`,
+  `complete`, and `reject` entrypoints (lines 100, 205, 233, 251, and 270), so
+  it also fails DREB-24. DRC-7
   requires that the deployment have no hook, and DRC-8 counts an upgradeable
   payment token against it. The manifest records both halves of DRC-13 from
   the source as `false`. There is no separately enforced per-job submission
@@ -49,9 +56,10 @@ verification results: `pass`, `fail`, `indeterminate`, or `error` (§9).
   status (lines 806–831), so a pre-submission rejection can execute after a
   native `submit` (`rejectBindsExpectedPriorStatus`; DRC-22).
 
-The synthetic control proves only that the checker can observe all fourteen
-positive capability predicates. Those predicates come from the manifest
-itself, so the capability evaluator always reports
+The synthetic control proves only that the checker can observe all fifteen
+positive capability predicates. A capability `pass` needs every rule that
+DRC-14 names for `dacs-delivery-gate-v1`, DREB-24 included. Those predicates
+come from the manifest itself, so the capability evaluator always reports
 `registrationEligible: false`. A manifest's own `fixtureOnly` and
 `registrationStatus` labels cannot change that. Registration needs
 independently resolved deployment and registry facts that this pack does not
@@ -217,7 +225,8 @@ integral float such as `8453.0`, where an integer is read. The §3.1 wire
 rules are checked as written: a native address is `0x` and 40 lower-case
 hexadecimal digits and a claim address is one case or valid EIP-55 (DRW-1), a
 code hash is `0x` and 64 lower-case digits (DRW-2), a transaction hash is
-lower-case (DRW-3), and a time is a non-negative safe integer (DRW-4); each
+64 lower-case hexadecimal digits without `0x`, its DACS-4 SB-1 canonical
+spelling (DRW-3), and a time is a non-negative safe integer (DRW-4); each
 violation is `error` under its rule, and a zero address or empty-code hash
 where a deployment is named is `fail`. So is a lifecycle that nests arrays
 and objects more than 64 deep: the pack's deepest lifecycle nests 8, and the
@@ -311,7 +320,8 @@ token's decimals, leading zeros are stripped, and the result is compared with
 `budgetBaseUnits` as minimal decimal text, with no integer or float
 conversion, so a price of any length converts exactly. The budget itself is
 at most 2^256 − 1. The candidate rail escrows an ERC-20 `paymentToken` (§8.4),
-whose amounts are uint256 as its `decimals()` is a uint8, and every native
+whose amounts are uint256 as its `decimals()` is a uint8 (ERC-20 at the
+pinned `ethereum/ERCs@a078cab`), and every native
 amount must equal the budget (DREB-11, DRF-2, DRT-5, DRT-6). A larger budget
 is an `error` under DRV-3, and so is a larger pre-terminal provider payout in
 the resolver's native state, the one native amount not compared with the
@@ -544,7 +554,7 @@ Each negative is a consistent signed lifecycle plus one edit. The generator
 checks, before it writes or checks the pack, that each negative passes once
 the guard that decides it is removed. Any other outcome, including an
 exception, fails the check, with two listed exceptions.
-`FOLLOW_ON_FINDINGS` lists 107 negatives whose single defect reaches one exact
+`FOLLOW_ON_FINDINGS` lists 109 negatives whose single defect reaches one exact
 second finding once its guard is removed. Some of those defects break a
 second rule. For a record that was not supplied, a later check finds the
 lifecycle inconsistent instead. `STRUCTURAL_NEGATIVES` lists 31 negatives
@@ -568,9 +578,8 @@ SR-2 logical addressing and anchoring, the anchoring
 order of the overlay and evaluation (DRA-12, DRE-7), later mutation of the
 bound job (DRA-14), live proxy and authority resolution, the evaluator EOA's
 control proof (DREB-17), explicit-party evidence proof, gate and
-`PhaseHandlerResult` receipts, retry orchestration, the deployment check for
-trusted forwarders (DREB-24), and the future transcript and post-terminal
-dispute-revision profiles. The test suite fails if a spec rule is absent from
+`PhaseHandlerResult` receipts, retry orchestration, and the future
+transcript and post-terminal dispute-revision profiles. The test suite fails if a spec rule is absent from
 both the vectors and the ledgers or appears both as executed and as
 unexecuted. No verifier finding reports an unexecuted rule.
 

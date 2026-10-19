@@ -19,7 +19,7 @@ from scripts import verify_delivery_remedy_candidate_vectors as verifier
 from scripts.generate_delivery_remedy_candidate_vectors import drop, make_base, put
 from scripts.generate_delivery_remedy_candidate_vectors import each as each_hook
 from scripts.verify_delivery_remedy_candidate_vectors import (
-    DRC_RULES,
+    DEPLOYMENT_RULES,
     NATIVE_STATE_FIELDS,
     PINNED_RESOLVER_KEYS,
     PINNED_STEWARD_KEYS,
@@ -696,6 +696,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             ("evaluator-account-zero-address", ("fail", "DRW-1")),
             ("funding-token-upper-case", ("error", "DRW-1")),
             ("event-reference-tx-hash-upper-case", ("error", "DRW-3")),
+            ("event-reference-tx-hash-0x-prefixed", ("error", "DRW-3")),
         ):
             with self.subTest(vector=name):
                 self.assertEqual(finding(self._vector(name)), outcome)
@@ -2511,7 +2512,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
     def test_synthetic_control_exercises_all_drc_rules_without_registering(self):
         manifest = self.deployment_pack["manifests"]["synthetic-control"]
         statuses = deployment_rule_statuses(manifest)
-        self.assertEqual(set(statuses), DRC_RULES)
+        self.assertEqual(set(statuses), DEPLOYMENT_RULES)
         self.assertEqual(set(statuses.values()), {"pass"})
         observed = evaluate_deployment(manifest)
         self.assertEqual(observed["result"], "pass")
@@ -2548,12 +2549,12 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         # Funded recovery, so recovery does not open at the DREB-15 deadline.
         self.assertIs(manifest["capabilities"]["expiryRecoveryDeadlineEnforced"], False)
         self.assertEqual(
-            [rule for rule in sorted(DRC_RULES, key=lambda item: int(item.split("-")[1])) if observed["ruleStatuses"][rule] == "fail"],
+            [rule for rule in sorted(DEPLOYMENT_RULES, key=lambda item: int(item.split("-")[1])) if observed["ruleStatuses"][rule] == "fail"],
             ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7", "DRC-13", "DRC-22"],
         )
         self.assertEqual(
-            [rule for rule in sorted(DRC_RULES, key=lambda item: int(item.split("-")[1])) if observed["ruleStatuses"][rule] == "unknown"],
-            ["DRC-8", "DRC-10", "DRC-11", "DRC-12"],
+            [rule for rule in sorted(DEPLOYMENT_RULES, key=lambda item: int(item.split("-")[1])) if observed["ruleStatuses"][rule] == "unknown"],
+            ["DRC-8", "DRC-10", "DRC-11", "DRC-12", "DREB-24"],
         )
         self.assertFalse(observed["registrationEligible"])
 

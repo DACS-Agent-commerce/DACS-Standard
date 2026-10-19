@@ -42,10 +42,11 @@ DEFAULT_DEPLOYMENT_PACK = (
     ROOT / "conformance/fixtures/delivery-remedy/deployment-capabilities-v0.1.json"
 )
 # The candidate's External pins, which fix the exact text each binding rule
-# follows, plus the two further sources this pack reads: the ERC-8183
-# reference contract whose divergences the deployment pack checks, and the
-# ULID range of a JID (DRAA-1).  A lifecycle pack written against other
-# sources is refused before any vector runs.
+# follows, plus the three further sources this pack reads: the ERC-8183
+# reference contract whose divergences the deployment pack checks, the ULID
+# range of a JID (DRAA-1), and ERC-20, whose `decimals()` returns a `uint8`
+# (`MAX_TOKEN_DECIMALS`).  A lifecycle pack written against other sources is
+# refused before any vector runs.
 EXTERNAL_SOURCE_PINS = {
     "canonicalErc8183": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-8183.md",
     "eip1271": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-1271.md",
@@ -63,6 +64,7 @@ EXTERNAL_SOURCE_PINS = {
     "demosNodeSecretary": "https://github.com/kynesyslabs/node/blob/ac8f45f02fc9c25082ce9b83595c2e3916b49c5a/src/libs/consensus/v2/types/secretaryManager.ts",
     "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol",
     "ulid": "https://github.com/ulid/spec/blob/d0c7170df4517939e70129b4d6462cc162f2d5bf/README.md",
+    "erc20": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-20.md",
 }
 # DRG-2: the DACS-Standard `next` commit the candidate is checked against, and
 # the documents whose text this verifier implements.  The pack pins each
@@ -84,8 +86,12 @@ PINNED_DOCUMENTS = (
 JID_RE = re.compile(r"^[0-7][0-9A-HJKMNP-TV-Z]{25}$")
 HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 BYTES32_RE = re.compile(r"^0x[0-9a-f]{64}$")
-# DRW-3: the DACS-4 SB-1 spelling of an EVM transaction hash.
-EVM_TX_RE = re.compile(r"^0x[0-9a-f]{64}$")
+# DRW-3: the DACS-4 SB-1 canonical spelling of an EVM transaction hash,
+# exactly 64 lower-case hexadecimal digits without `0x`.  The legacy `0x` and
+# upper-case spellings are malformed here and are not repaired.
+EVM_TX_RE = re.compile(r"^[0-9a-f]{64}$")
+# A fixture-chain block hash, which is not a DACS field and keeps its `0x`.
+FIXTURE_BLOCK_HASH_RE = re.compile(r"^0x[0-9a-f]{64}$")
 # DRW-1: an EVM address in a DACS artifact field, and the address component
 # of a `cci-xm:evm` claim, which may also be upper-case or EIP-55 mixed case.
 EVM_ADDRESS_RE = re.compile(r"0x[0-9a-f]{40}")
@@ -100,8 +106,8 @@ EMPTY_CODE_HASH = "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d8
 UNSIGNED_DECIMAL_RE = re.compile(r"0|[1-9][0-9]*")
 # A CORE CD-1 canonical decimal `PriceTerm.amount`.
 CANONICAL_DECIMAL_RE = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?")
-# ERC-20 `decimals()` is a uint8.
-MAX_TOKEN_DECIMALS = 255
+# ERC-20 `decimals()` is a uint8 (`EXTERNAL_SOURCE_PINS["erc20"]`).
+MAX_TOKEN_DECIMALS = 2 ** 8 - 1
 # An ERC-20 amount and an ERC-8183 job ID are uint256 values, so no budget or
 # job above 2^256 - 1 (78 decimal digits) exists.
 UINT256_MAX_TEXT = str(2 ** 256 - 1)
@@ -492,10 +498,12 @@ PORTABLE_TRANSITIONS = {
     ("submitted", "released"),
     ("submitted", "refunded"),
 }
-# The deployment capability rules of `capabilityProfile`
-# `dacs-delivery-gate-v1` (DRC-14) that a manifest decides: DRC-1 through
-# DRC-13 and DRC-22.  DREB-24 is promotion-blocked.
+# The capability rules of `capabilityProfile` `dacs-delivery-gate-v1`
+# (DRC-14): DRC-1 through DRC-13, DRC-22, and DREB-24.  A manifest decides
+# each one, and a capability `pass` needs all of them.
 DRC_RULES = {f"DRC-{number}" for number in range(1, 14)} | {"DRC-22"}
+DEPLOYMENT_RULES = DRC_RULES | {"DREB-24"}
+DEPLOYMENT_PASS_LABEL = "DRC-1..DRC-13, DRC-22, DREB-24"
 # DACS-2 `AttestationRef` members and anchor kinds.
 ATTESTATION_REF_FIELDS = {"anchor", "contentHash", "signer"}
 ATTESTATION_ANCHOR_KINDS = {"storage-program", "ipfs", "https"}
@@ -2923,8 +2931,8 @@ def _event_ref_check(
     log_index = ref_value.get("logIndex")
     if type(log_index) is not int or log_index < 0:
         return result("error", "DRV-3", f"{label} event log index is not a non-negative integer")
-    # DRW-3: the DACS-4 SB-1 spelling of `txHash`; any other spelling is
-    # malformed and is not repaired.
+    # DRW-3: the DACS-4 SB-1 canonical spelling of `txHash`; any other
+    # spelling, including the legacy `0x` one, is malformed and is not repaired.
     if not isinstance(tx_hash, str) or EVM_TX_RE.fullmatch(tx_hash) is None:
         return result("error", "DRW-3", f"{label} event transaction hash is not its SB-1 spelling")
     if ref_value.get("kind") != "evm-event" or ref_value.get("chainId") != chain_id:
@@ -2960,7 +2968,7 @@ def _block_valid(block: Any) -> bool:
         and block["blockNumber"] >= 0
         and _is_unix_sec(block["blockTimestampSec"])
         and isinstance(block["blockHash"], str)
-        and EVM_TX_RE.fullmatch(block["blockHash"]) is not None
+        and FIXTURE_BLOCK_HASH_RE.fullmatch(block["blockHash"]) is not None
         and isinstance(block["blockHashPreimageUtf8"], str)
     )
 
@@ -3096,7 +3104,7 @@ def _native_event_input_check(
             or not isinstance(event_input_value["topic0"], str)
         ):
             return {}, result("error", "DRV-3", "native event observation is malformed")
-        if event_input_value["eventRef"]["txHash"] != "0x" + hashlib.sha256(tx_preimage.encode("utf-8")).hexdigest():
+        if event_input_value["eventRef"]["txHash"] != hashlib.sha256(tx_preimage.encode("utf-8")).hexdigest():
             return {}, result("fail", reference_rule, "native event transaction preimage does not match")
         if not _block_reproduces(event_input_value, chain_id):
             return {}, result("fail", block_rule, "native event block identity does not reproduce")
@@ -4403,6 +4411,24 @@ def deployment_rule_statuses(manifest: Any) -> dict[str, str] | None:
     statuses["DRC-22"] = "unknown" if prior_status_bound is None else (
         "pass" if type(prior_status_bound) is bool and prior_status_bound is True else "fail"
     )
+    # DREB-24: the implementation recognizes no ERC-2771 trusted forwarder and
+    # no signature-authorized (`*WithAuthorization`) entrypoint for the six
+    # profile actions, and its DRC-10 evidence shows that.  A known forwarder
+    # or entrypoint fails whatever the evidence says; an absence that passing
+    # DRC-10 source and bytecode evidence does not show stays unknown.
+    forwarders = capabilities.get("trustedForwarders")
+    authorized = capabilities.get("authorizationEntrypoints")
+    if any(isinstance(paths, list) and paths != [] for paths in (forwarders, authorized)):
+        statuses["DREB-24"] = "fail"
+    elif statuses["DRC-10"] != "pass":
+        statuses["DREB-24"] = "unknown"
+    else:
+        statuses["DREB-24"] = _status(
+            [forwarders, authorized, evidence.get("authorizationPathsFromSource")],
+            lambda left, right, shown: (
+                left == [] and right == [] and type(shown) is bool and shown is True
+            ),
+        )
     return statuses
 
 
@@ -4442,9 +4468,9 @@ def evaluate_deployment(manifest: Any) -> dict[str, Any]:
             "registrationEligible": False,
         }
     statuses = deployment_rule_statuses(manifest)
-    if statuses is None or set(statuses) != DRC_RULES:
+    if statuses is None or set(statuses) != DEPLOYMENT_RULES:
         return {
-            **result("error", "DRV-3", "could not derive every DRC rule"),
+            **result("error", "DRV-3", "could not derive every capability rule"),
             "ruleStatuses": {},
             "registrationEligible": False,
         }
@@ -4461,7 +4487,7 @@ def evaluate_deployment(manifest: Any) -> dict[str, Any]:
     elif unknown:
         outcome = result("indeterminate", unknown[0], "unresolved deployment rules: " + ", ".join(unknown))
     else:
-        outcome = result("pass", "DRC-1..DRC-13, DRC-22", "all candidate deployment capability rules passed")
+        outcome = result("pass", DEPLOYMENT_PASS_LABEL, "all candidate deployment capability rules passed")
     outcome["ruleStatuses"] = statuses
     # Capability predicates come from the manifest itself.  Its own
     # fixtureOnly and registrationStatus labels cannot establish eligibility;

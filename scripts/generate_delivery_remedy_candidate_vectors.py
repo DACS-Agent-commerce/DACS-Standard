@@ -363,7 +363,8 @@ def event(tx_preimage: str, log_index: int) -> dict[str, Any]:
     return {
         "kind": "evm-event",
         "chainId": CHAIN_ID,
-        "txHash": "0x" + hashlib.sha256(tx_preimage.encode("ascii")).hexdigest(),
+        # DRW-3: the DACS-4 SB-1 canonical spelling, without `0x`.
+        "txHash": hashlib.sha256(tx_preimage.encode("ascii")).hexdigest(),
         "logIndex": log_index,
     }
 
@@ -1969,7 +1970,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("eip1271-relayed-execution", "release", "fail", "DREB-18", "this verifier supports no EIP-1271 chain and code, so a relayed EIP-1271 evaluator call is refused (§11.2 R15); §11.1 P7 cannot be produced here", authenticated("release", terminal_call("release", "nativeCallerAccountType", "eip1271") + terminal_call("release", "outerSubmitter", RELAYER_ACCOUNT)), rules=["DREB-18", "DREB-22"]),
         vector("evaluator-adapter-substitution", "release", "fail", "DREB-20", "a resolved generic adapter is outside the first profile", authenticated("release", native_state("evaluatorAdapter", RELAYER_ACCOUNT))),
         vector("relayer-substituted-as-native-caller", "release", "fail", "DREB-21", "a relayer cannot replace the agreement-bound evaluator as native caller", authenticated("release", terminal_call("release", "nativeCaller", RELAYER_ACCOUNT) + terminal_call("release", "outerSubmitter", RELAYER_ACCOUNT)), rules=["DREB-19", "DREB-21"]),
-        vector("transaction-record-for-another-transaction", "release", "fail", "DRL-10", "the resolver's terminal record must describe the terminal transaction", authenticated("release", terminal_call("release", "txHash", "0x" + "ee" * 32))),
+        vector("transaction-record-for-another-transaction", "release", "fail", "DRL-10", "the resolver's terminal record must describe the terminal transaction", authenticated("release", terminal_call("release", "txHash", "ee" * 32))),
+        vector("resolver-transaction-tx-hash-0x-prefixed", "release", "error", "DRV-3", "a resolver transaction record keeps the SB-1 canonical txHash spelling; the legacy 0x spelling is malformed", authenticated("release", terminal_call("release", "txHash", "0x" + release["artifacts"]["terminal"]["terminalEventRefs"][0]["txHash"])), rules=["DRV-3", "DRW-3"]),
         vector("eoa-relayed-outer-submitter", "release", "fail", "DREB-22", "an EOA evaluator must itself submit the native transaction", authenticated("release", terminal_call("release", "outerSubmitter", RELAYER_ACCOUNT))),
         vector("malformed-outer-submitter", "release", "error", "DRV-3", "the outer submitter is an EVM address", authenticated("release", terminal_call("release", "outerSubmitter", "relayer")), rules=["DREB-22", "DRV-3"]),
         # DRD-8, DRL-4, DRT-4: replay of decisions and terminals.
@@ -1978,6 +1980,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("consumed-decision-replay", "release", "fail", "DRD-8", "DRD-8: a decision the resolver saw consumed by another transaction is one-use", authenticated("release", history([prior_terminal("release", tx_preimage=f"{JOB_A}:complete:earlier", decision_hash=release_decision_hash)]))),
         vector("resolver-history-shows-terminal-job", "rejected-refund", "fail", "DRL-4", "DRL-4: a native job the resolver saw reach a terminal state cannot settle again", authenticated("rejected-refund", history([prior_terminal("rejected-refund", tx_preimage="earlier-terminal", decision_hash=release_decision_hash)]))),
         vector("resolver-history-shows-event-settled-another-job", "release", "fail", "DRT-4", "DRT-4: a terminal event the resolver saw settle another native job is not this job's", authenticated("release", history([prior_terminal("release", native_job_id="2")]))),
+        vector("resolver-history-tx-hash-0x-prefixed", "release", "error", "DRV-3", "a resolver-attested earlier terminal keeps the SB-1 canonical txHash spelling; the legacy 0x spelling is malformed", authenticated("release", history([{**prior_terminal("release", native_job_id="2"), "txHash": "0x" + prior_terminal("release")["txHash"]}])), rules=["DRV-3", "DRW-3"]),
         # Terminals evaluated together: the earlier by authenticated event
         # position holds, in any order of evaluation.
         vector("decision-reused-by-another-terminal-transaction", "release-second-terminal-transaction", "fail", "DRD-8", "DRD-8: a decision that authorized an earlier terminal transaction cannot authorize another", evaluated_with=["release-complete-budget"], rules=["DRD-8", "DRT-16"]),
@@ -2227,12 +2230,14 @@ def build_vector_pack() -> dict[str, Any]:
         {**pin, "topic0": "0x" + "00" * 32} if pin["name"] == "JobCreated" else pin
         for pin in rail_body()["parameters"]["events"]
     ]
-    reference_signature = "createJob(address,address,uint256,string,address)"
+    # The pinned reference's createJob (base-contracts@142e669 ERC8183.sol
+    # lines 512-519), which takes no separate submission cutoff.
+    reference_signature = "createJob(address,address,uint48,string,address,uint256)"
     reference_inputs = [
         {"name": name, "type": abi_type}
         for name, abi_type in (
-            ("provider", "address"), ("evaluator", "address"), ("expiredAt", "uint256"),
-            ("description", "string"), ("hook", "address"),
+            ("provider", "address"), ("evaluator", "address"), ("expiredAt", "uint48"),
+            ("description", "string"), ("hook", "address"), ("providerAgentId", "uint256"),
         )
     ]
     provider_set = (("jobId", "uint256", True), ("provider", "address", True))
@@ -2413,7 +2418,12 @@ def build_vector_pack() -> dict[str, Any]:
             "agreement": put("buyer", "evmAccountClaim", f"cci-xm:evm:{CHAIN_ID}:{BUYER_ACCOUNT}?b=2&a=1"),
         }),
         "event-reference-tx-hash-upper-case": make_base("release", hooks={"terminal": lambda body: body["terminalEventRefs"][0].__setitem__(
-            "txHash", "0x" + body["terminalEventRefs"][0]["txHash"][2:].upper(),
+            "txHash", body["terminalEventRefs"][0]["txHash"].upper(),
+        )}),
+        # The legacy `0x` spelling that SB-1 collapses and a current producer
+        # must not emit.
+        "event-reference-tx-hash-0x-prefixed": make_base("release", hooks={"terminal": lambda body: body["terminalEventRefs"][0].__setitem__(
+            "txHash", "0x" + body["terminalEventRefs"][0]["txHash"],
         )}),
         # ULID upper bound.
         "job-id-above-ulid-range": make_base("release", "8ZZZZZZZZZZZZZZZZZZZZZZZZZ"),
@@ -2565,6 +2575,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("account-claim-parameters-not-canonical", "account-claim-parameters-unsorted", "error", "DRV-3", "account-claim parameters in a signed overlay keep the CORE CF-2 canonical order", rules=["DRA-5", "DRV-3"]),
         vector("funding-token-upper-case", "funding-token-upper-case", "error", "DRW-1", "an artifact address is 0x and 40 lower-case hex digits (§11.2 R27)"),
         vector("event-reference-tx-hash-upper-case", "event-reference-tx-hash-upper-case", "error", "DRW-3", "an EvmEventRef txHash keeps its SB-1 spelling (§11.2 R11)"),
+        vector("event-reference-tx-hash-0x-prefixed", "event-reference-tx-hash-0x-prefixed", "error", "DRW-3", "an EvmEventRef txHash is 64 lower-case hex digits without 0x, its SB-1 canonical spelling (§11.2 R11)"),
         vector("job-id-above-ulid-range", "job-id-above-ulid-range", "error", "DRAA-1", "a ULID above 7ZZZZZZZZZZZZZZZZZZZZZZZZZ is not a canonical JID"),
         vector("case-id-above-ulid-range", "case-id-above-ulid-range", "error", "DRAA-1", "a caseId above the ULID range is not a canonical JID"),
         vector("funding-observed-at-missing", "funding-observed-at-missing", "error", "DRV-3", "funding evidence without observedAt is malformed"),
@@ -2658,7 +2669,6 @@ def build_vector_pack() -> dict[str, Any]:
         "DRAA-9": "requires CORE SR2-10 through SR2-12 receipt delivery to the entitled participants",
         "DRE-7": "requires authenticated evidence that the evaluation was anchored before the decision used it",
         "DREB-17": "requires the agreement-bound DACS control proof for the evaluator's EOA",
-        "DREB-24": "is a deployment capability (DRC-10 evidence of no trusted forwarder or *WithAuthorization entrypoint) that the deployment pack does not check yet",
         "DRF-7": "requires the session orchestrator to anchor funding evidence through a conforming SR-2 implementation",
         "DRG-2": "is a process rule for the candidate document, which scripts/validate_candidate_profile.py checks",
         "DRJ-6": "requires live proxy, implementation, and mutation-authority resolution for a selected deployment",
@@ -2969,8 +2979,11 @@ FOLLOW_ON_FINDINGS: dict[str, tuple[str, str]] = {
     "account-claim-short-address": ("error", "DRV-3"),
     # An upper-case token is not the rail's lower-case token.
     "funding-token-upper-case": ("fail", "DRF-2"),
-    # An upper-case txHash names no observed log.
+    # An upper-case or `0x` txHash names no observed log.
     "event-reference-tx-hash-upper-case": ("fail", "DRT-4"),
+    "event-reference-tx-hash-0x-prefixed": ("fail", "DRT-4"),
+    # A `0x` resolver record names no terminal transaction.
+    "resolver-transaction-tx-hash-0x-prefixed": ("fail", "DRL-10"),
     # A missing or mistyped observedAt is not a unix-millisecond integer, and
     # not the confirmation-depth block's time.
     "funding-observed-at-missing": ("error", "DRW-4"),
@@ -3215,6 +3228,8 @@ def synthetic_manifest() -> dict[str, Any]:
             "submissionCutoffEnforced": True,
             "expiryRecoveryDeadlineEnforced": True,
             "rejectBindsExpectedPriorStatus": True,
+            "trustedForwarders": [],
+            "authorizationEntrypoints": [],
         },
         "evidence": {
             "sourceRevision": "synthetic-fixture-only",
@@ -3225,6 +3240,7 @@ def synthetic_manifest() -> dict[str, Any]:
             "upgradeDisablementAuthenticated": True,
             "decisionOrderingEvidenceAuthenticated": True,
             "deadlineEnforcementAuthenticated": True,
+            "authorizationPathsFromSource": True,
             "complete": True,
             "conflict": False,
         },
@@ -3284,6 +3300,12 @@ def current_reference_manifest() -> dict[str, Any]:
             # 806-831), so a pre-submission rejection can execute after a
             # native submit (DRC-22).
             "rejectBindsExpectedPriorStatus": False,
+            # ERC8183.sol inherits no ERC2771Context and declares no
+            # *WithAuthorization entrypoint; the ERC8183WithAuthorization.sol
+            # extension adds them (deployment case
+            # dreb-24-reference-authorization-extension).
+            "trustedForwarders": [],
+            "authorizationEntrypoints": [],
         },
         "evidence": {
             "sourceRevision": "142e669c1fd318486a4628395b629f033654dd06",
@@ -3294,6 +3316,7 @@ def current_reference_manifest() -> dict[str, Any]:
             "upgradeDisablementAuthenticated": False,
             "decisionOrderingEvidenceAuthenticated": None,
             "deadlineEnforcementAuthenticated": None,
+            "authorizationPathsFromSource": None,
             "complete": False,
             "conflict": None,
         },
@@ -3311,6 +3334,9 @@ def current_reference_manifest() -> dict[str, Any]:
             "submit reverts at or after expiredAt (ERC8183.sol line 728)",
             "reject is gated only on Funded or Submitted and takes no expected prior status "
             "(ERC8183.sol lines 806-831)",
+            "ERC8183.sol inherits no ERC2771Context; the ERC8183WithAuthorization.sol extension adds a "
+            "signature-authorized variant of createJob, fund, submit, complete, and reject "
+            "(lines 100, 205, 233, 251, 270)",
         ],
     }
 
@@ -3355,13 +3381,31 @@ def build_deployment_pack() -> dict[str, Any]:
         deployment_case("drc-12-unauthenticated-ordering", "synthetic-control", "fail", ["DRC-12"], "decision ordering must be authenticated", [{"op": "replace", "path": ["evidence", "decisionOrderingEvidenceAuthenticated"], "value": False}]),
         deployment_case("drc-13-missing-native-submission-cutoff", "synthetic-control", "fail", ["DRC-13"], "submission and recovery deadlines must be separately enforced", [{"op": "replace", "path": ["capabilities", "submissionCutoffEnforced"], "value": False}]),
         deployment_case("drc-22-reject-without-expected-status", "synthetic-control", "fail", ["DRC-22"], "an evaluator reject gated only on Funded or Submitted can execute a pre-submission rejection after a native submit", [{"op": "replace", "path": ["capabilities", "rejectBindsExpectedPriorStatus"], "value": False}]),
-        deployment_case("source-to-bytecode-evidence-unavailable", "synthetic-control", "indeterminate", [], "missing source-to-bytecode evidence is not guessed", [{"op": "replace", "path": ["evidence", "sourceToBytecodeReproducible"], "value": None}], unknown=["DRC-10"]),
+        deployment_case("dreb-24-trusted-forwarder", "synthetic-control", "fail", ["DREB-24"], "an ERC-2771 trusted forwarder lets a relayer act as the native caller", [{"op": "replace", "path": ["capabilities", "trustedForwarders"], "value": ["0x" + "f0" * 20]}]),
+        deployment_case("dreb-24-authorization-entrypoint", "synthetic-control", "fail", ["DREB-24"], "a signature-authorized entrypoint lets a relayer act for a profile role", [{"op": "replace", "path": ["capabilities", "authorizationEntrypoints"], "value": ["completeWithAuthorization"]}]),
+        deployment_case("dreb-24-absence-not-shown", "synthetic-control", "indeterminate", [], "an absence of forwarders and authorization entrypoints that the DRC-10 evidence does not show is not assumed", [{"op": "replace", "path": ["evidence", "authorizationPathsFromSource"], "value": None}], unknown=["DREB-24"], covers=["DREB-24"]),
+        deployment_case("source-to-bytecode-evidence-unavailable", "synthetic-control", "indeterminate", [], "missing source-to-bytecode evidence is not guessed, and without it DREB-24 is not shown", [{"op": "replace", "path": ["evidence", "sourceToBytecodeReproducible"], "value": None}], unknown=["DRC-10", "DREB-24"], covers=["DRC-10", "DREB-24"]),
         deployment_case(
             "current-reference-142e669-ineligible",
             "current-reference-142e669",
             "fail",
             ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7", "DRC-13", "DRC-22"],
             "the pinned reference source is not a DACS-eligible deployment",
+            unknown=["DRC-8", "DRC-10", "DRC-11", "DRC-12", "DREB-24"],
+            covers=["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7", "DRC-13", "DRC-22", "DREB-24"],
+        ),
+        deployment_case(
+            "dreb-24-reference-authorization-extension",
+            "current-reference-142e669",
+            "fail",
+            ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7", "DRC-13", "DRC-22", "DREB-24"],
+            "the pinned reference's ERC8183WithAuthorization.sol extension recognizes signature-authorized createJob, fund, submit, complete, and reject",
+            [
+                {"op": "replace", "path": ["implementation", "sourcePath"], "value": "contracts/ERC8183WithAuthorization.sol"},
+                {"op": "replace", "path": ["capabilities", "authorizationEntrypoints"], "value": [
+                    f"{action}WithAuthorization" for action in ("createJob", "fund", "submit", "complete", "reject")
+                ]},
+            ],
             unknown=["DRC-8", "DRC-10", "DRC-11", "DRC-12"],
         ),
         deployment_case("malformed-deployment-manifest", "synthetic-control", "error", [], "malformed capability input fails before eligibility", [{"op": "remove", "path": ["capabilities"]}]),
@@ -3374,6 +3418,7 @@ def build_deployment_pack() -> dict[str, Any]:
         "sourcePins": {
             "canonicalErc": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-8183.md",
             "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol",
+            "referenceAuthorizationExtension": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183WithAuthorization.sol",
         },
         "scope": "capability evidence only; no chain deployment or DACS rail is registered",
         "hash": hashlib.sha256(canonical_bytes(payload)).hexdigest(),

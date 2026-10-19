@@ -4,11 +4,12 @@
   "spec": "docs/delivery-or-remedy-candidate.md#84-deployment-eligibility",
   "sourcePins": {
     "canonicalErc": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-8183.md",
-    "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol"
+    "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol",
+    "referenceAuthorizationExtension": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183WithAuthorization.sol"
   },
   "scope": "capability evidence only; no chain deployment or DACS rail is registered",
-  "hash": "340f0c81c5dd3f9989c139ceda7a903c36f2c049bfe580a033953463129dc2bf",
-  "count": 21,
+  "hash": "8dd7359c5cb46d6e760c4cc5c822f5fbfc09565b090d45843562b8729432b290",
+  "count": 25,
   "manifests": {
     "synthetic-control": {
       "manifestVersion": "1",
@@ -51,7 +52,9 @@
         "deadlineProfile": "separate-submission-cutoff-v1",
         "submissionCutoffEnforced": true,
         "expiryRecoveryDeadlineEnforced": true,
-        "rejectBindsExpectedPriorStatus": true
+        "rejectBindsExpectedPriorStatus": true,
+        "trustedForwarders": [],
+        "authorizationEntrypoints": []
       },
       "evidence": {
         "sourceRevision": "synthetic-fixture-only",
@@ -62,6 +65,7 @@
         "upgradeDisablementAuthenticated": true,
         "decisionOrderingEvidenceAuthenticated": true,
         "deadlineEnforcementAuthenticated": true,
+        "authorizationPathsFromSource": true,
         "complete": true,
         "conflict": false
       }
@@ -118,7 +122,9 @@
         "deadlineProfile": null,
         "submissionCutoffEnforced": false,
         "expiryRecoveryDeadlineEnforced": false,
-        "rejectBindsExpectedPriorStatus": false
+        "rejectBindsExpectedPriorStatus": false,
+        "trustedForwarders": [],
+        "authorizationEntrypoints": []
       },
       "evidence": {
         "sourceRevision": "142e669c1fd318486a4628395b629f033654dd06",
@@ -129,6 +135,7 @@
         "upgradeDisablementAuthenticated": false,
         "decisionOrderingEvidenceAuthenticated": null,
         "deadlineEnforcementAuthenticated": null,
+        "authorizationPathsFromSource": null,
         "complete": false,
         "conflict": null
       },
@@ -142,7 +149,8 @@
         "claimRefund on a Funded job with a pending claim reverts with PendingClaimExists (ERC8183.sol lines 871-872)",
         "claimRefund calls no hook (\"Not hookable\", ERC8183.sol lines 861-863)",
         "submit reverts at or after expiredAt (ERC8183.sol line 728)",
-        "reject is gated only on Funded or Submitted and takes no expected prior status (ERC8183.sol lines 806-831)"
+        "reject is gated only on Funded or Submitted and takes no expected prior status (ERC8183.sol lines 806-831)",
+        "ERC8183.sol inherits no ERC2771Context; the ERC8183WithAuthorization.sol extension adds a signature-authorized variant of createJob, fund, submit, complete, and reject (lines 100, 205, 233, 251, 270)"
       ]
     }
   },
@@ -582,13 +590,90 @@
       ]
     },
     {
+      "name": "dreb-24-trusted-forwarder",
+      "base": "synthetic-control",
+      "expected": "fail",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DREB-24"
+      ],
+      "rules": [
+        "DREB-24"
+      ],
+      "note": "an ERC-2771 trusted forwarder lets a relayer act as the native caller",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "trustedForwarders"
+          ],
+          "value": [
+            "0xf0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dreb-24-authorization-entrypoint",
+      "base": "synthetic-control",
+      "expected": "fail",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DREB-24"
+      ],
+      "rules": [
+        "DREB-24"
+      ],
+      "note": "a signature-authorized entrypoint lets a relayer act for a profile role",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "authorizationEntrypoints"
+          ],
+          "value": [
+            "completeWithAuthorization"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dreb-24-absence-not-shown",
+      "base": "synthetic-control",
+      "expected": "indeterminate",
+      "registrationEligible": false,
+      "expectedFailedRules": [],
+      "rules": [
+        "DREB-24"
+      ],
+      "note": "an absence of forwarders and authorization entrypoints that the DRC-10 evidence does not show is not assumed",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "authorizationPathsFromSource"
+          ],
+          "value": null
+        }
+      ],
+      "expectedUnknownRules": [
+        "DREB-24"
+      ]
+    },
+    {
       "name": "source-to-bytecode-evidence-unavailable",
       "base": "synthetic-control",
       "expected": "indeterminate",
       "registrationEligible": false,
       "expectedFailedRules": [],
-      "rules": [],
-      "note": "missing source-to-bytecode evidence is not guessed",
+      "rules": [
+        "DRC-10",
+        "DREB-24"
+      ],
+      "note": "missing source-to-bytecode evidence is not guessed, and without it DREB-24 is not shown",
       "patch": [
         {
           "op": "replace",
@@ -600,7 +685,8 @@
         }
       ],
       "expectedUnknownRules": [
-        "DRC-10"
+        "DRC-10",
+        "DREB-24"
       ]
     },
     {
@@ -628,10 +714,73 @@
         "DRC-4",
         "DRC-5",
         "DRC-6",
-        "DRC-7"
+        "DRC-7",
+        "DREB-24"
       ],
       "note": "the pinned reference source is not a DACS-eligible deployment",
       "patch": [],
+      "expectedUnknownRules": [
+        "DRC-8",
+        "DRC-10",
+        "DRC-11",
+        "DRC-12",
+        "DREB-24"
+      ]
+    },
+    {
+      "name": "dreb-24-reference-authorization-extension",
+      "base": "current-reference-142e669",
+      "expected": "fail",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-1",
+        "DRC-2",
+        "DRC-3",
+        "DRC-4",
+        "DRC-5",
+        "DRC-6",
+        "DRC-7",
+        "DRC-13",
+        "DRC-22",
+        "DREB-24"
+      ],
+      "rules": [
+        "DRC-1",
+        "DRC-13",
+        "DRC-2",
+        "DRC-22",
+        "DRC-3",
+        "DRC-4",
+        "DRC-5",
+        "DRC-6",
+        "DRC-7",
+        "DREB-24"
+      ],
+      "note": "the pinned reference's ERC8183WithAuthorization.sol extension recognizes signature-authorized createJob, fund, submit, complete, and reject",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "implementation",
+            "sourcePath"
+          ],
+          "value": "contracts/ERC8183WithAuthorization.sol"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "authorizationEntrypoints"
+          ],
+          "value": [
+            "createJobWithAuthorization",
+            "fundWithAuthorization",
+            "submitWithAuthorization",
+            "completeWithAuthorization",
+            "rejectWithAuthorization"
+          ]
+        }
+      ],
       "expectedUnknownRules": [
         "DRC-8",
         "DRC-10",

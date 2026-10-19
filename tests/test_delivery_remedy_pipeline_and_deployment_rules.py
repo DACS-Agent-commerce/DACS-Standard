@@ -1,4 +1,5 @@
-"""DRP-18 pipeline placement, DRF-9 tagging, and the DRC-22 deployment rule.
+"""DRP-18 pipeline placement, DRF-9 tagging, the DRC-22 and DREB-24 deployment
+rules, and the DACS-4 SB-1 spelling of an EVM transaction hash (DRW-3).
 
 Kept apart from tests/test_delivery_remedy_candidate_vectors.py, whose runtime
 is close to the per-file test timeout.
@@ -8,12 +9,14 @@ import copy
 import json
 import re
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from scripts import generate_delivery_remedy_candidate_vectors as generator
 from scripts import verify_delivery_remedy_candidate_vectors as verifier
 from scripts.generate_delivery_remedy_candidate_vectors import make_base, put
 from scripts.verify_delivery_remedy_candidate_vectors import (
+    DEPLOYMENT_RULES,
     DRC_RULES,
     DecisionLedger,
     apply_operation,
@@ -28,6 +31,8 @@ ROOT = Path(__file__).resolve().parents[1]
 VECTOR_PACK = ROOT / "conformance/fixtures/delivery-remedy/candidate-vectors-v0.1.json"
 DEPLOYMENT_PACK = ROOT / "conformance/fixtures/delivery-remedy/deployment-capabilities-v0.1.json"
 SPEC = ROOT / "docs/delivery-or-remedy-candidate.md"
+SETTLE = ROOT / "spec/DACS-4-SETTLE.md"
+SECURITY_VECTORS = ROOT / "conformance/vectors/security"
 DACS1 = ROOT / "spec/DACS-1-IDENTIFY.md"
 COMMIT_STEP = {
     "kind": verifier.COMMIT_PHASE_KIND,
@@ -185,7 +190,7 @@ class RailReadingAndDeploymentTests(unittest.TestCase):
         control = self.deployment_pack["manifests"]["synthetic-control"]
         self.assertIs(control["capabilities"]["rejectBindsExpectedPriorStatus"], True)
         self.assertEqual(deployment_rule_statuses(control)["DRC-22"], "pass")
-        self.assertEqual(evaluate_deployment(control)["rule"], "DRC-1..DRC-13, DRC-22")
+        self.assertEqual(evaluate_deployment(control)["rule"], "DRC-1..DRC-13, DRC-22, DREB-24")
 
     def test_drc22_statuses(self):
         control = self.deployment_pack["manifests"]["synthetic-control"]
@@ -222,12 +227,230 @@ class RailReadingAndDeploymentTests(unittest.TestCase):
         self.assertEqual(deployment_rule_statuses(reference)["DRC-22"], "fail")
         self.assertIn("DRC-22", cases["current-reference-142e669-ineligible"]["expectedFailedRules"])
 
+    def test_a_capability_pass_needs_every_rule_drc14_names(self):
+        """DRC-14 defines `dacs-delivery-gate-v1`; the evaluator's rule set is that definition."""
+        text = SPEC.read_text(encoding="utf-8")
+        meaning = re.search(r"`capabilityProfile` `dacs-delivery-gate-v1` means ([^.]+)\.", text).group(1)
+        named: set[str] = set()
+        for part in re.split(r",\s*(?:and\s+)?|\s+and\s+", meaning):
+            span = re.fullmatch(r"(DR[A-Z]+)-(\d+) through (DR[A-Z]+)-(\d+)", part)
+            if span is None:
+                named.add(part)
+            else:
+                self.assertEqual(span.group(1), span.group(3))
+                named.update(f"{span.group(1)}-{n}" for n in range(int(span.group(2)), int(span.group(4)) + 1))
+        self.assertEqual(named, DEPLOYMENT_RULES)
+        self.assertIn("DREB-24", named)
+        control = self.deployment_pack["manifests"]["synthetic-control"]
+        self.assertEqual(set(deployment_rule_statuses(control)), named)
+        # A status set that leaves out one named rule is refused, never passed.
+        partial = {rule: "pass" for rule in DRC_RULES}
+        with unittest.mock.patch.object(verifier, "deployment_rule_statuses", return_value=partial):
+            observed = evaluate_deployment(control)
+        self.assertEqual((observed["result"], observed["rule"]), ("error", "DRV-3"))
+        self.assertFalse(observed["registrationEligible"])
+
+    def test_dreb24_statuses(self):
+        """DREB-24: no trusted forwarder or *WithAuthorization entrypoint, shown by DRC-10 evidence."""
+        control = self.deployment_pack["manifests"]["synthetic-control"]
+        self.assertEqual(deployment_rule_statuses(control)["DREB-24"], "pass")
+
+        def put_capability(name, value):
+            return lambda manifest: manifest["capabilities"].__setitem__(name, value)
+
+        def put_evidence(name, value):
+            return lambda manifest: manifest["evidence"].__setitem__(name, value)
+
+        def both(*edits):
+            return lambda manifest: [edit(manifest) for edit in edits]
+
+        for label, edit, status, outcome in (
+            ("trusted forwarder", put_capability("trustedForwarders", ["0x" + "f0" * 20]), "fail", ("fail", "DREB-24")),
+            ("authorization entrypoint", put_capability("authorizationEntrypoints", ["fundWithAuthorization"]), "fail", ("fail", "DREB-24")),
+            # A known path fails even where the DRC-10 evidence is missing.
+            ("forwarder without DRC-10 evidence", both(
+                put_capability("trustedForwarders", ["0x" + "f0" * 20]),
+                put_evidence("sourceToBytecodeReproducible", None),
+            ), "fail", ("fail", "DREB-24")),
+            ("absence not shown", put_evidence("authorizationPathsFromSource", None), "unknown", ("indeterminate", "DREB-24")),
+            ("absence denied", put_evidence("authorizationPathsFromSource", False), "fail", ("fail", "DREB-24")),
+            ("absence as text", put_evidence("authorizationPathsFromSource", "true"), "fail", ("fail", "DREB-24")),
+            ("forwarders unresolved", put_capability("trustedForwarders", None), "unknown", ("indeterminate", "DREB-24")),
+            ("forwarders not a list", put_capability("trustedForwarders", "none"), "fail", ("fail", "DREB-24")),
+            ("entrypoints not a list", put_capability("authorizationEntrypoints", {}), "fail", ("fail", "DREB-24")),
+            # Without passing DRC-10 source and bytecode evidence, the absence
+            # is not shown, whatever the manifest asserts.
+            ("DRC-10 unresolved", put_evidence("sourceToBytecodeReproducible", None), "unknown", ("indeterminate", "DRC-10")),
+            ("DRC-10 failed", put_evidence("independentlyResolvedRuntimeBytecodeHash", "ab" * 32), "unknown", ("fail", "DRC-10")),
+        ):
+            with self.subTest(case=label):
+                manifest = copy.deepcopy(control)
+                edit(manifest)
+                self.assertEqual(deployment_rule_statuses(manifest)["DREB-24"], status)
+                observed = evaluate_deployment(manifest)
+                self.assertEqual((observed["result"], observed["rule"]), outcome)
+                self.assertFalse(observed["registrationEligible"])
+        manifest = copy.deepcopy(control)
+        del manifest["capabilities"]["authorizationEntrypoints"]
+        self.assertEqual(deployment_rule_statuses(manifest)["DREB-24"], "unknown")
+
+    def test_dreb24_deployment_cases_and_pinned_reference(self):
+        cases = {case["name"]: case for case in self.deployment_pack["cases"]}
+
+        def observe(name):
+            case = cases[name]
+            manifest = copy.deepcopy(self.deployment_pack["manifests"][case["base"]])
+            for operation in case["patch"]:
+                manifest = apply_operation(manifest, operation)
+            return manifest, evaluate_deployment(manifest)
+
+        for name, outcome in (
+            ("dreb-24-trusted-forwarder", ("fail", "DREB-24")),
+            ("dreb-24-authorization-entrypoint", ("fail", "DREB-24")),
+            ("dreb-24-absence-not-shown", ("indeterminate", "DREB-24")),
+        ):
+            with self.subTest(case=name):
+                _manifest, observed = observe(name)
+                self.assertEqual((observed["result"], observed["rule"]), outcome)
+                self.assertIn("DREB-24", cases[name]["rules"])
+        # The pinned reference declares no forwarder or authorization
+        # entrypoint, but nothing shows that of a deployment.
+        reference = self.deployment_pack["manifests"]["current-reference-142e669"]
+        self.assertEqual(reference["capabilities"]["trustedForwarders"], [])
+        self.assertEqual(reference["capabilities"]["authorizationEntrypoints"], [])
+        self.assertEqual(deployment_rule_statuses(reference)["DREB-24"], "unknown")
+        self.assertIn("DREB-24", cases["current-reference-142e669-ineligible"]["expectedUnknownRules"])
+        # Its ERC8183WithAuthorization.sol extension (lines 100, 205, 233,
+        # 251, 270) adds signature-authorized entrypoints for five profile actions.
+        manifest, observed = observe("dreb-24-reference-authorization-extension")
+        self.assertEqual(manifest["implementation"]["sourcePath"], "contracts/ERC8183WithAuthorization.sol")
+        self.assertEqual(
+            {name.removesuffix("WithAuthorization") for name in manifest["capabilities"]["authorizationEntrypoints"]},
+            {"createJob", "fund", "submit", "complete", "reject"},
+        )
+        self.assertEqual(observed["ruleStatuses"]["DREB-24"], "fail")
+        self.assertEqual(observed["result"], "fail")
+        self.assertIn("DREB-24", cases["dreb-24-reference-authorization-extension"]["expectedFailedRules"])
+        self.assertIn(
+            "contracts/ERC8183WithAuthorization.sol",
+            self.deployment_pack["sourcePins"]["referenceAuthorizationExtension"],
+        )
+        # The lifecycle pack no longer ledgers DREB-24 as unexecuted.
+        self.assertNotIn("DREB-24", self.vector_pack["promotionBlockedRules"])
+
+    def test_erc20_decimals_bound_is_pinned(self):
+        self.assertEqual(verifier.MAX_TOKEN_DECIMALS, 2 ** 8 - 1)
+        self.assertEqual(
+            verifier.EXTERNAL_SOURCE_PINS["erc20"],
+            "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-20.md",
+        )
+        self.assertEqual(self.vector_pack["sourcePins"]["external"]["erc20"], verifier.EXTERNAL_SOURCE_PINS["erc20"])
+
     def test_a_reject_executed_against_another_prior_status_is_tagged_drc22(self):
         vector = self.vectors["reject-without-expected-status"]
         self.assertEqual(vector["rules"], ["DRC-22", "DRD-13"])
         self.assertEqual(finding(materialize_vector(self.vector_pack, vector)), ("fail", "DRD-13"))
         # The fixture implementation pins the expected prior status in reject.
         self.assertIn(("expectedStatus", "uint8"), verifier.FIXTURE_ENTRYPOINTS["reject"])
+
+
+def _tx_hashes(value, kind=None):
+    """Every `txHash` string in ``value``; with ``kind``, only in objects of that kind."""
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, dict):
+            if isinstance(item.get("txHash"), str) and (kind is None or item.get("kind") == kind):
+                yield item["txHash"]
+            stack.extend(item.values())
+        elif isinstance(item, list):
+            stack.extend(item)
+
+
+class TransactionHashSpellingTests(unittest.TestCase):
+    """DRW-3: an EVM `txHash` is its DACS-4 SB-1 canonical spelling, 64 lower-case hex digits without `0x`."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.vector_pack = json.loads(VECTOR_PACK.read_text(encoding="utf-8"))
+        cls.vectors = {item["name"]: item for item in cls.vector_pack["vectors"]}
+
+    def test_the_spelling_is_the_pinned_sb1_sentence(self):
+        text = " ".join(SETTLE.read_text(encoding="utf-8").split())
+        self.assertIn(
+            "EVM hashes are rendered as exactly 64 lower-case hexadecimal digits without `0x`; a verified legacy "
+            "spelling with `0x` or upper-case characters collapses to that form. A current producer MUST emit the "
+            "canonical spelling.",
+            text,
+        )
+        canonical = "ab" * 32
+        self.assertIsNotNone(verifier.EVM_TX_RE.fullmatch(canonical))
+        for spelling in ("0x" + canonical, canonical.upper(), "0x" + canonical.upper(), canonical[2:], canonical + "ab"):
+            with self.subTest(spelling=spelling):
+                self.assertIsNone(verifier.EVM_TX_RE.fullmatch(spelling))
+        # The repository's canonical security vectors spell every evm-event
+        # reference the same way.
+        security = [
+            tx_hash
+            for path in sorted(SECURITY_VECTORS.glob("*.json"))
+            for tx_hash in _tx_hashes(json.loads(path.read_text(encoding="utf-8")), "evm-event")
+        ]
+        self.assertTrue(security)
+        self.assertTrue(all(verifier.EVM_TX_RE.fullmatch(tx_hash) for tx_hash in security))
+
+    def test_every_pack_transaction_hash_is_canonical(self):
+        # Only the two DRW-3 negatives' own fixtures spell one otherwise.
+        legacy = {"event-reference-tx-hash-0x-prefixed", "event-reference-tx-hash-upper-case"}
+        self.assertLessEqual(legacy, set(self.vector_pack["fixtures"]))
+        hashes = [
+            tx_hash
+            for name, fixture in self.vector_pack["fixtures"].items()
+            if name not in legacy
+            for tx_hash in _tx_hashes(fixture)
+        ]
+        self.assertGreater(len(hashes), 100)
+        self.assertEqual([tx_hash for tx_hash in hashes if verifier.EVM_TX_RE.fullmatch(tx_hash) is None], [])
+        # A fixture-chain block hash is not a DACS field and keeps its `0x`.
+        release = make_base("release")
+        observation = release["reproductionInputs"]["nativeEventInputs"][0]
+        self.assertIsNotNone(verifier.FIXTURE_BLOCK_HASH_RE.fullmatch(observation["blockHash"]))
+
+    def test_every_transaction_hash_site_refuses_the_legacy_spelling(self):
+        release = make_base("release")
+        ref = release["artifacts"]["terminal"]["terminalEventRefs"][0]
+        transaction = release["resolverEvidence"]["transactions"][-1]
+        prior = {
+            "chainId": ref["chainId"],
+            "contractAddress": release["artifacts"]["job"]["contractAddress"],
+            "nativeJobId": "2",
+            "txHash": ref["txHash"],
+            "logIndex": ref["logIndex"],
+            "decisionHash": None,
+        }
+        self.assertIsNone(verifier._event_ref_check(ref, ref["chainId"], "DRT-4", "terminal"))
+        self.assertTrue(verifier._transaction_valid(transaction))
+        self.assertTrue(verifier._prior_terminal_valid(prior))
+        for spelling in ("0x" + ref["txHash"], ref["txHash"].upper()):
+            with self.subTest(spelling=spelling):
+                observed = verifier._event_ref_check(dict(ref, txHash=spelling), ref["chainId"], "DRT-4", "terminal")
+                self.assertEqual((observed["result"], observed["rule"]), ("error", "DRW-3"))
+                self.assertFalse(verifier._transaction_valid(dict(transaction, txHash=spelling)))
+                self.assertFalse(verifier._prior_terminal_valid(dict(prior, txHash=spelling)))
+
+    def test_the_legacy_spelling_vectors(self):
+        for name, outcome, rules in (
+            ("event-reference-tx-hash-0x-prefixed", ("error", "DRW-3"), ["DRW-3"]),
+            ("event-reference-tx-hash-upper-case", ("error", "DRW-3"), ["DRW-3"]),
+            ("resolver-transaction-tx-hash-0x-prefixed", ("error", "DRV-3"), ["DRV-3", "DRW-3"]),
+            ("resolver-history-tx-hash-0x-prefixed", ("error", "DRV-3"), ["DRV-3", "DRW-3"]),
+        ):
+            with self.subTest(vector=name):
+                vector = self.vectors[name]
+                self.assertEqual((vector["expected"], vector["expectedRule"]), outcome)
+                self.assertEqual(vector["rules"], rules)
+                self.assertEqual(finding(materialize_vector(self.vector_pack, vector)), outcome)
+        # The canonical spelling of the same release passes.
+        self.assertEqual(finding(make_base("release")), ("pass", "DRV-7"))
 
 
 if __name__ == "__main__":

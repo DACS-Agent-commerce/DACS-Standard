@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import decimal
 import hashlib
 import json
 import re
@@ -975,6 +976,29 @@ def _demos_native_send(record: Any) -> dict | None:
     }
 
 
+# DEMOS-MAPPING §A.2: the committed balance transition an applied-payment
+# authority authenticates, each a canonical OS decimal.
+DEMOS_COMMITTED_BALANCES = {"payerBeforeOs", "payerAfterOs", "payeeBeforeOs", "payeeAfterOs", "feeOs"}
+
+
+def _os_difference(left: str, right: str) -> str | None:
+    """Exact difference of two canonical OS decimals, or None when negative.
+    Decimal arithmetic, so a spelling past int()'s digit limit still decides."""
+    with decimal.localcontext() as context:
+        context.prec = max(len(left), len(right)) + 1
+        value = decimal.Decimal(left) - decimal.Decimal(right)
+    return None if value < 0 else format(value, "f")
+
+
+def _demos_committed_change(balances: dict) -> tuple[str, str] | None:
+    """The payment debit (fee excluded) and payee credit that an applied-
+    payment authority's committed balances show; None when one decreases."""
+    payer = _os_difference(balances["payerBeforeOs"], balances["payerAfterOs"])
+    debit = None if payer is None else _os_difference(payer, balances["feeOs"])
+    credit = _os_difference(balances["payeeAfterOs"], balances["payeeBeforeOs"])
+    return None if debit is None or credit is None else (debit, credit)
+
+
 def _demos_send_edits_match(content: dict) -> bool:
     """DEMOS-MAPPING §A.2: a `confirmed` record shows payment only when its
     `gcr_edits`, each `txhash` blanked, are the four edits of its send in
@@ -1087,10 +1111,17 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
         return "indeterminate", "authenticated Demos record status is not an execution result (DEM-7)"
     if applied_transfer is None:
         return "indeterminate", "independently authenticated Demos applied transfer unavailable (DEM-7)"
-    if not (_exact_object(applied_transfer, {"txHash", "blockNumber", "sender", "recipient", "payerDebitOs", "payeeCreditOs"})
+    if not (_exact_object(applied_transfer, {"txHash", "blockNumber", "sender", "recipient", "payerDebitOs",
+                                             "payeeCreditOs", "committedBalances"})
             and all(isinstance(applied_transfer[k], str) and POSITION_RE.fullmatch(applied_transfer[k])
-                    for k in ("payerDebitOs", "payeeCreditOs"))):
+                    for k in ("payerDebitOs", "payeeCreditOs"))
+            and _exact_object(applied_transfer["committedBalances"], DEMOS_COMMITTED_BALANCES)
+            and all(isinstance(value, str) and POSITION_RE.fullmatch(value)
+                    for value in applied_transfer["committedBalances"].values())):
         return "indeterminate", "Demos applied transfer does not decode (DEM-7)"
+    if _demos_committed_change(applied_transfer["committedBalances"]) != (
+            applied_transfer["payerDebitOs"], applied_transfer["payeeCreditOs"]):
+        return "indeterminate", "Demos applied debit and credit are not the change of its committed balances (DEM-7)"
     if (any(applied_transfer[k] != projection[k] for k in ("txHash", "blockNumber", "sender", "recipient"))
             or not _safe_integer(applied_transfer["blockNumber"])
             or applied_transfer["payerDebitOs"] != amount_os

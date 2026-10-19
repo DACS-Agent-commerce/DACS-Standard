@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import copy
+import decimal
 import hashlib
 import json
 from pathlib import Path
@@ -263,6 +264,7 @@ class FixtureFactory:
         bft_signers=("validator-a", "validator-b"),
         parent_id: str | None = None,
         record: dict | None = None,
+        state: dict | None = None,
     ) -> dict:
         event_proof = self.merkle_proof(
             "fixture-event-merkle-v1", "eventBytes", event, label + ":event"
@@ -343,21 +345,24 @@ class FixtureFactory:
         }
         self.sign_chain_authority(observation)
         if record is not None:
-            debit, credit = self.replayed_transfer(record)
+            state = self.committed() if state is None else state
+            debit, credit = self.committed_change(state)
             observation["executionResult"] = {
                 "kind": "fixture-independent-results-v1",
                 "networkId": profile["networkId"], "genesisHash": profile["genesisHash"],
                 "blockId": inclusion_id, "transactionRef": copy.deepcopy(reference),
                 "record": copy.deepcopy(record),
                 # Synthetic, independently observed committed state transition:
-                # the debit and credit come from the replay of the apply, never
-                # from the record's amount or status.
+                # it names the transaction it was asked about, and its debit
+                # and credit are the change of the committed balances the
+                # scenario fixes, never the record's amount, status or edits.
                 "appliedTransfer": {
                     "txHash": record["hash"], "blockNumber": record["blockNumber"],
                     "sender": record["content"]["from"].removeprefix("0x").lower(),
                     "recipient": record["content"]["to"].removeprefix("0x").lower(),
                     "payerDebitOs": debit,
                     "payeeCreditOs": credit,
+                    "committedBalances": dict(state),
                 },
             }
             self.sign_execution_result(observation)
@@ -443,34 +448,54 @@ class FixtureFactory:
             {"type": "nonce", "operation": "add", "account": sender, "amount": 1, "txhash": tx_hash, "isRollback": False},
         ]
 
+    # The scenario's committed state, independent of every RPC record: each
+    # account's balance before the transaction's apply, and the 1 DEM gas an
+    # applied native send charges the payer.
+    PAYER_PRE_STATE_OS = "1" + "0" * 30
+    PAYEE_PRE_STATE_OS = "7" + "0" * 24
+    GAS_OS = "1000000000"
+
     @staticmethod
-    def replayed_transfer(record: dict) -> tuple[str, str]:
-        """Synthetic, independent replay of the pinned node's apply
-        (`handleGCR` at 61b8e75): the payer's debit and payee's credit, fees
-        excluded, from the balance change the transaction's edits commit. A
-        failed apply restores state and a missing or empty edit list is a
-        successful no-op; nothing is copied from the record's `amount`."""
-        content = record["content"]
+    def _os(operation, left: str, right: str) -> str:
+        """Exact OS decimal arithmetic, past int()'s digit limit."""
+        with decimal.localcontext() as context:
+            context.prec = max(len(left), len(right)) + 1
+            value = operation(decimal.Decimal(left), decimal.Decimal(right))
+        if value < 0:
+            raise ValueError("negative committed balance change")
+        return format(value, "f")
 
-        def key(value):
-            return value.removeprefix("0x").lower() if isinstance(value, str) else None
+    @classmethod
+    def committed(cls, outcome: str = "applied", amount_os: str = "5000000000", *,
+                  payer_before: str | None = None) -> dict:
+        """The committed balance transition the fixture scenario fixes for its
+        transaction, never read from the record: `applied` moves `amount_os`
+        and charges the gas; `rolled-back` (a failed or rejected apply) and
+        `no-op` (missing or empty edits) leave both balances unchanged."""
+        if outcome == "applied":
+            moved, fee = amount_os, cls.GAS_OS
+        elif outcome in ("rolled-back", "no-op"):
+            moved, fee = "0", "0"
+        else:
+            raise ValueError(outcome)
+        payer_before = payer_before or cls.PAYER_PRE_STATE_OS
+        add, sub = (lambda a, b: a + b), (lambda a, b: a - b)
+        return {
+            "payerBeforeOs": payer_before,
+            "payerAfterOs": cls._os(sub, payer_before, cls._os(add, moved, fee)),
+            "payeeBeforeOs": cls.PAYEE_PRE_STATE_OS,
+            "payeeAfterOs": cls._os(add, cls.PAYEE_PRE_STATE_OS, moved),
+            "feeOs": fee,
+        }
 
-        edits = content.get("gcr_edits") if record.get("status") != "failed" else None
-        debits, credits = [], []
-        for edit in edits if isinstance(edits, list) else []:
-            if not (isinstance(edit, dict) and edit.get("type") == "balance"):
-                continue
-            if dict(edit, txhash="") == {"type": "balance", "account": edit.get("account"), "operation": "remove",
-                                         "amount": "1000000000", "txhash": "", "isRollback": False}:
-                continue  # the 1 DEM gas edit is a fee, not payment
-            if edit.get("operation") == "remove" and key(edit.get("account")) == key(content.get("from")):
-                debits.append(edit.get("amount"))
-            elif edit.get("operation") == "add" and key(edit.get("account")) == key(content.get("to")):
-                credits.append(edit.get("amount"))
-
-        def total(amounts):
-            return "0" if not amounts else amounts[0] if len(amounts) == 1 else str(sum(int(a) for a in amounts))
-        return total(debits), total(credits)
+    @classmethod
+    def committed_change(cls, balances: dict) -> tuple[str, str]:
+        """The payment debit (fee excluded) and payee credit of a committed
+        balance transition: the authority's figures are this change."""
+        sub = lambda a, b: a - b  # noqa: E731
+        payer = cls._os(sub, balances["payerBeforeOs"], balances["payerAfterOs"])
+        return (cls._os(sub, payer, balances["feeOs"]),
+                cls._os(sub, balances["payeeAfterOs"], balances["payeeBeforeOs"]))
 
     def demos_send_record(self, reference: dict, *, status: str = "confirmed", **content_changes) -> dict:
         """A `getTxByHash` native-send record in the node's wire form
@@ -491,7 +516,9 @@ class FixtureFactory:
         }
         content.update(content_changes)
         if "gcr_edits" not in content_changes:
-            content["gcr_edits"] = self.demos_send_edits(content, reference["txHash"])
+            # The pinned apply stamps each edit's `txhash` only while applying
+            # it: a failed record's edits keep the empty hash.
+            content["gcr_edits"] = self.demos_send_edits(content, "" if status == "failed" else reference["txHash"])
         return {
             "hash": reference["txHash"],
             "blockNumber": reference["blockNumber"],
@@ -1535,7 +1562,8 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     # with exactly one dimension
     # changed; fv-bft-final-canonical-success is the positive control.
     def demos_record(*, status="confirmed", event_changes=None, block_number=None,
-                     record_changes=None, without_record=False, phase_amount=None, phase_currency="DEM", **content_changes):
+                     record_changes=None, without_record=False, phase_amount=None, phase_currency="DEM", state=None,
+                     **content_changes):
         job_id = ("FV-amount-" + phase_amount + "-" + phase_currency) if phase_amount is not None else None
         value = factory.model_input("bft-final", job_id=job_id)
         reference = value["evidence"]["paymentTxRefs"][0]
@@ -1566,7 +1594,7 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         record.update(record_changes or {})
         value["context"]["observation"] = factory.chain_observation(
             value["rail"]["consumerFinalityProfile"]["settlement"],
-            reference, event, "bft-final", record=record,
+            reference, event, "bft-final", record=record, state=state,
         )
         if without_record:
             value["context"]["observation"].pop("executionResult")
@@ -1574,13 +1602,14 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
 
     other_party = CLAIMS["orchestrator"]
     other_key = factory.demos_key("orchestrator")
+    applied, rolled_back, no_op = factory.committed(), factory.committed("rolled-back"), factory.committed("no-op")
     payee_key = factory.demos_key("seller")
 
     def send(recipient, amount_os):
         return ["native", {"nativeOperation": "send", "args": [recipient, amount_os]}]
 
     vectors.extend([
-        case("fv-bft-final-included-execution-failed", "fail", "BFT-final inclusion of a Demos transfer whose authenticated record failed is not settlement", demos_record(status="failed")),
+        case("fv-bft-final-included-execution-failed", "fail", "BFT-final inclusion of a Demos transfer whose authenticated record failed is not settlement", demos_record(status="failed", state=rolled_back)),
         case("fv-bft-final-execution-pending", "indeterminate", "an authenticated Demos record that is neither confirmed nor failed is not an execution result", demos_record(status="pending")),
         case("fv-bft-final-execution-included-alias", "indeterminate", "the status-index label included is not a Demos execution result", demos_record(status="included")),
         case("fv-bft-final-execution-success-alias", "indeterminate", "only the exact Demos record status confirmed is an executed send", demos_record(status="success")),
@@ -1589,7 +1618,7 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-bft-final-event-wrong-amount", "fail", "an authentic selected event of another amount contradicts the phase", demos_record(event_changes={"amount": "6"})),
         case("fv-bft-final-record-wrong-payee", "fail", "an authentic confirmed native send to another Demos key contradicts the phase payee", demos_record(to="0x" + other_key, data=send(other_key, "5000000000"))),
         case("fv-bft-final-record-wrong-payer", "fail", "an authentic confirmed native send from another Demos key contradicts the phase payer", demos_record(**{"from": "0x" + other_key, "from_ed25519_address": "0x" + other_key})),
-        case("fv-bft-final-record-wrong-amount", "fail", "an authentic confirmed native send of another OS amount contradicts the phase amount", demos_record(amount=6_000_000_000, data=send(payee_key, "6000000000"))),
+        case("fv-bft-final-record-wrong-amount", "fail", "an authentic confirmed native send of another OS amount contradicts the phase amount", demos_record(amount=6_000_000_000, data=send(payee_key, "6000000000"), state=factory.committed(amount_os="6000000000"))),
         case("fv-bft-final-record-wrong-record-hash", "fail", "the authenticated record must be the signed txHash's record", demos_record(record_changes={"hash": "ee" * 32})),
         case("fv-bft-final-record-wrong-record-block", "fail", "the authenticated record's blockNumber must be the signed blockNumber", demos_record(record_changes={"blockNumber": 101})),
         case("fv-bft-final-record-wrong-block", "fail", "the signed Demos blockNumber must be the authenticated inclusion block", demos_record(block_number=101)),
@@ -1606,18 +1635,32 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-bft-final-record-unpinned-node", "indeterminate", "a verifier that does not pin the profile's execution-record semantics cannot rely on confirmed", factory.model_input("bft-final"), trusted_overrides={"demosRecordProfile": "kynesyslabs/node@ac8f45f02fc9c25082ce9b83595c2e3916b49c5a"}),
     ])
 
+    # A zero debit or credit is a committed transition that moved nothing on
+    # that side; the authority's figures stay the change of its balances.
+    zero_credit = dict(applied, payeeAfterOs=applied["payeeBeforeOs"])
+    zero_debit = dict(applied, payerAfterOs=factory._os(lambda a, b: a - b, applied["payerBeforeOs"], applied["feeOs"]))
+    undecodable = {"extra-member", "numeric-debit", "noncanonical-credit",
+                   "committed-balances-missing", "committed-balances-numeric"}
     for suffix, replacement, expected in (
         ("missing", None, "indeterminate"),
-        ("zero-credit", {"payeeCreditOs": "0"}, "fail"),
-        ("zero-debit", {"payerDebitOs": "0"}, "fail"),
+        ("zero-credit", dict(zip(("payerDebitOs", "payeeCreditOs"), factory.committed_change(zero_credit)),
+                             committedBalances=zero_credit), "fail"),
+        ("zero-debit", dict(zip(("payerDebitOs", "payeeCreditOs"), factory.committed_change(zero_debit)),
+                            committedBalances=zero_debit), "fail"),
         ("wrong-hash", {"txHash": "ee" * 32}, "fail"),
         ("wrong-block", {"blockNumber": 101}, "fail"),
         ("wrong-sender", {"sender": other_key}, "fail"),
         ("wrong-recipient", {"recipient": other_key}, "fail"),
+        # Figures that are not the change of the committed balances the
+        # authority authenticates prove nothing either way.
+        ("not-committed-change", {"committedBalances": rolled_back}, "indeterminate"),
         # An authenticated transfer that does not decode is no evidence either way.
         ("extra-member", {"feeOs": "1000000000"}, "indeterminate"),
         ("numeric-debit", {"payerDebitOs": 5000000000}, "indeterminate"),
         ("noncanonical-credit", {"payeeCreditOs": "05000000000"}, "indeterminate"),
+        ("committed-balances-missing", {"committedBalances": {k: v for k, v in applied.items() if k != "feeOs"}},
+         "indeterminate"),
+        ("committed-balances-numeric", {"committedBalances": dict(applied, feeOs=1000000000)}, "indeterminate"),
     ):
         value = demos_record()
         observation = value["context"]["observation"]
@@ -1625,27 +1668,38 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         if replacement is None:
             proof.pop("appliedTransfer")
         else:
-            proof["appliedTransfer"].update(replacement)
+            proof["appliedTransfer"].update(copy.deepcopy(replacement))
         factory.sign_execution_result(observation)
         vectors.append(case("fv-bft-final-applied-transfer-" + suffix, expected,
                             "an authenticated applied transfer that does not decode proves nothing"
-                            if suffix in {"extra-member", "numeric-debit", "noncanonical-credit"} else
+                            if suffix in undecodable else
+                            "an applied debit and credit are evidence only as the change of the committed balances the authority authenticates"
+                            if suffix == "not-committed-change" else
                             "confirmed and the send's edits cannot substitute for an authenticated applied debit and payee credit", value))
 
     # A confirmed send whose transaction carries no edits is a successful
-    # no-op at the pinned node: its replayed transition is zero, and an
-    # authority that copies the claimed amount onto it is not believed.
+    # no-op at the pinned node: its committed balances do not change, and an
+    # authority that reports a payment for it is not believed.
     for name, edits in (("missing-edits", None), ("empty-edits", [])):
         vectors.append(case("fv-bft-final-confirmed-no-op-" + name, "fail",
-                            "the authenticated replay of an edit-less confirmed send shows no debit or credit",
-                            demos_record(gcr_edits=edits)))
-    copied = demos_record(gcr_edits=None)
-    copied["context"]["observation"]["executionResult"]["appliedTransfer"].update(
-        payerDebitOs="5000000000", payeeCreditOs="5000000000")
-    factory.sign_execution_result(copied["context"]["observation"])
+                            "the authenticated committed balances of an edit-less confirmed send show no debit or credit",
+                            demos_record(gcr_edits=edits, state=no_op)))
     vectors.append(case("fv-bft-final-confirmed-no-op-copied-authority", "indeterminate",
                         "an authority that reports payment for a confirmed send without its edits establishes nothing",
-                        copied))
+                        demos_record(gcr_edits=None)))
+    # The edit list must equal the send's four edits exactly: a partial list
+    # or reordered members is not that list, whatever the authority reports.
+    full = factory.demos_send_record(factory.transaction_ref("bft-final", "bft-final"))["content"]["gcr_edits"]
+    for name, edits in (("partial-edits", full[:2]),
+                        ("reordered-edit-members", [dict(reversed(list(full[0].items())))] + full[1:])):
+        vectors.append(case("fv-bft-final-confirmed-" + name, "indeterminate",
+                            "a confirmed send whose edits are not exactly its four send edits establishes no payment",
+                            demos_record(gcr_edits=edits)))
+    # A confirmed send that carries all four edits while the authenticated
+    # committed balances did not move: the edits are the claim, not the payment.
+    vectors.append(case("fv-bft-final-confirmed-four-edits-uncommitted-payment", "fail",
+                        "authenticated committed balances unchanged by a confirmed send with all four edits refute the payment",
+                        demos_record(state=rolled_back)))
     vectors.append(case("fv-block-depth-execution-result-not-native-send", "error",
                         "only a Demos native send carries an execution result; on another chain model the member is malformed",
                         changed("block-depth", lambda v: v["context"]["observation"].__setitem__("executionResult", {}))))
@@ -1680,12 +1734,13 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         ("amount-below-os-precision", "5.0000000001", "5000000000", "error"),
     ):
         vectors.append(case("fv-bft-final-" + name, expected, "DEM amount converts exactly to OS",
-                            demos_record(phase_amount=amount, amount=int(os_amount), data=send(payee_key, os_amount))))
+                            demos_record(phase_amount=amount, amount=int(os_amount), data=send(payee_key, os_amount),
+                                         state=factory.committed(amount_os=os_amount))))
     vectors.append(case("fv-bft-final-amount-not-dem", "error", "native DEM settlement requires DEM currency",
                         demos_record(phase_amount="5", phase_currency="USDC")))
     for name, value in (
         ("record-wrong-payee-certificate-withheld", demos_record(to="0x" + other_key, data=send(other_key, "5000000000"))),
-        ("execution-failed-certificate-withheld", demos_record(status="failed")),
+        ("execution-failed-certificate-withheld", demos_record(status="failed", state=rolled_back)),
         ("record-wrong-hash-certificate-withheld", demos_record(record_changes={"hash": "ee" * 32})),
     ):
         value["context"]["observation"].pop("finalityCertificate")
@@ -1699,11 +1754,8 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
                         demos_record(amount=oversized, data=send(payee_key, oversized))))
     vectors.append(case("fv-bft-final-record-oversized-send-argument", "indeterminate", "an oversized send argument differs from content.amount, so the record does not decode",
                         demos_record(data=send(payee_key, oversized))))
-    oversized_debit = demos_record()
-    oversized_debit["context"]["observation"]["executionResult"]["appliedTransfer"]["payerDebitOs"] = oversized
-    factory.sign_execution_result(oversized_debit["context"]["observation"])
     vectors.append(case("fv-bft-final-applied-transfer-oversized-debit", "fail", "an authenticated oversized applied debit contradicts the phase amount",
-                        oversized_debit))
+                        demos_record(state=factory.committed(amount_os=oversized, payer_before="1" + "0" * 4320))))
     for name, mutate, expected in (
         ("record-not-object", lambda o: o["executionResult"].__setitem__("record", []), "indeterminate"),
         ("record-content-not-object", lambda o: o["executionResult"]["record"].__setitem__("content", []), "indeterminate"),

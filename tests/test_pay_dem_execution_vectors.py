@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from decimal import ROUND_DOWN, Decimal, InvalidOperation
+from decimal import ROUND_DOWN, Decimal, InvalidOperation, localcontext
 import hashlib
 import json
 from pathlib import Path
@@ -88,6 +88,7 @@ GUARDS = frozenset({
     "success-requires-exact-confirmed",
     "success-requires-applied-transfer",
     "confirmed-requires-send-edits",
+    "applied-transfer-is-committed-change",
     "applied-transfer-binds-network",
     "applied-transfer-binds-block-id",
     # DEM-4
@@ -173,8 +174,11 @@ RETAINED = {"jobId", "phaseIndex", "txHash", "nonce", "sender", "recipient", "am
 # identity, transaction, parties, and the committed debit and credit.
 APPLIED_TRANSFER = frozenset({
     "networkId", "genesisHash", "blockId", "txHash", "blockNumber", "sender", "recipient",
-    "payerDebitOs", "payeeCreditOs",
+    "payerDebitOs", "payeeCreditOs", "committedBalances",
 })
+# The committed balance transition the authority authenticates: each party's
+# balance before and after the transaction's apply, and the fee it charged.
+COMMITTED_BALANCES = frozenset({"payerBeforeOs", "payerAfterOs", "payeeBeforeOs", "payeeAfterOs", "feeOs"})
 NETWORK = frozenset({"networkId", "genesisHash"})
 # DEMOS-MAPPING §A.2 node pin, written out here rather than taken from the
 # generator: the binding's own attestation of the exact commit, clean tree.
@@ -225,34 +229,27 @@ def edits_match(content, off=frozenset()) -> bool:
         return False
 
 
-GAS_EDIT_MEMBERS = ["type", "account", "operation", "amount", "txhash", "isRollback"]
+def _os_difference(left: str, right: str) -> str | None:
+    """Exact difference of two canonical OS decimals, or None when negative.
+    Decimal arithmetic decides spellings past int()'s digit limit too."""
+    with localcontext() as context:
+        context.prec = max(len(left), len(right)) + 1
+        value = Decimal(left) - Decimal(right)
+    return None if value < 0 else format(value, "f")
 
 
-def replayed(record) -> tuple[str, str]:
-    """This test's own replay of the pinned apply (handleGCR at 61b8e75) of a
-    record's transaction: the payer's debit and payee's credit from its
-    balance edits, the 1 DEM gas edit (SDK member order) excluded. A failed
-    apply restores state; a missing or empty edit list changes nothing."""
-    content = record["content"]
-
-    def key(value):
-        return value.removeprefix("0x").lower() if isinstance(value, str) else None
-
-    def total(amounts):
-        return "0" if not amounts else amounts[0] if len(amounts) == 1 else str(sum(map(int, amounts)))
-
-    edits = content.get("gcr_edits") if record.get("status") != "failed" else None
-    debits, credits = [], []
-    for edit in edits if isinstance(edits, list) else []:
-        if not (isinstance(edit, dict) and edit.get("type") == "balance"):
-            continue
-        if list(edit) == GAS_EDIT_MEMBERS and edit.get("operation") == "remove" and edit.get("amount") == GAS_OS:
-            continue
-        if edit.get("operation") == "remove" and key(edit.get("account")) == key(content.get("from")):
-            debits.append(edit["amount"])
-        elif edit.get("operation") == "add" and key(edit.get("account")) == key(content.get("to")):
-            credits.append(edit["amount"])
-    return total(debits), total(credits)
+def committed_change(proof) -> tuple[str, str] | None:
+    """The payment debit (fee excluded) and payee credit that an authority's
+    committed balances show, or None when they do not decode. The record's
+    amount and edits play no part: they are the claim being checked."""
+    balances = proof.get("committedBalances") if isinstance(proof, dict) else None
+    if not (isinstance(balances, dict) and set(balances) == COMMITTED_BALANCES
+            and all(isinstance(value, str) and DECIMAL.fullmatch(value) for value in balances.values())):
+        return None
+    payer = _os_difference(balances["payerBeforeOs"], balances["payerAfterOs"])
+    debit = None if payer is None else _os_difference(payer, balances["feeOs"])
+    credit = _os_difference(balances["payeeAfterOs"], balances["payeeBeforeOs"])
+    return None if debit is None or credit is None else (debit, credit)
 
 
 def _safe_integer(value) -> bool:
@@ -539,6 +536,11 @@ def applied(read, projection, protocol_input, off) -> str:
         and all(isinstance(proof[k], str) and DECIMAL.fullmatch(proof[k])
                 for k in ("payerDebitOs", "payeeCreditOs"))
     ):
+        return "indeterminate"
+    # Its debit and credit are evidence only as the change of the committed
+    # balances it authenticates; figures without that change prove nothing.
+    if ("applied-transfer-is-committed-change" not in off
+            and committed_change(proof) != (proof["payerDebitOs"], proof["payeeCreditOs"])):
         return "indeterminate"
     expected = {k: projection[k] for k in ("txHash", "blockNumber", "sender", "recipient")}
     if "applied-transfer-binds-network" not in off:
@@ -1463,14 +1465,18 @@ class PayDemExecutionVectorTests(unittest.TestCase):
     def test_applied_payment_authority_binds_every_member_on_both_paths(self):
         # DEMOS-MAPPING §A.2: the authority binds the network, the inclusion
         # block identity, the transaction and block number, both parties and
-        # the debit and credit. Each member has a vector on the handler (DEM-3)
-        # and the consumer (DEM-7) path that differs from the passing control
-        # in that member alone and does not pass.
+        # the debit and credit, which are the change of the committed balances
+        # it authenticates. Each member has a vector on the handler (DEM-3) and
+        # the consumer (DEM-7) path that differs from the passing control in
+        # that member alone (a debit or credit together with the balances it
+        # is the change of) and does not pass.
         demos = DEMOS.read_text(encoding="utf-8")
         self.assertIn("The authority MUST bind the same network, inclusion block identity, transaction hash and block number", demos)
-        for prefix, control_name, refused in (
-            ("confirmed-applied-transfer-", "included-confirmed", "indeterminate"),
-            ("consumer-applied-transfer-", "consumer-confirmed-gate-passes", "fail"),
+        for prefix, control_name, refused, figures_alone in (
+            ("confirmed-applied-transfer-", "included-confirmed", "indeterminate",
+             "confirmed-four-edits-authority-not-committed-change"),
+            ("consumer-applied-transfer-", "consumer-confirmed-gate-passes", "fail",
+             "consumer-four-edits-authority-not-committed-change"),
         ):
             control = self.cases[control_name]
             self.assertEqual("pass", evaluate(control)[0])
@@ -1481,14 +1487,19 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             self.assertEqual(control["protocolInput"]["inclusionObservation"]["blockId"], proof["blockId"])
             witnessed = set()
             for name, vector in self.cases.items():
-                if not name.startswith(prefix):
+                if not (name.startswith(prefix) or name == figures_alone):
                     continue
                 varied = vector["protocolInput"]["recordRead"].get("appliedTransfer", {})
                 differs = {k for k in APPLIED_TRANSFER if varied.get(k) != proof[k]}
+                if (differs > {"committedBalances"}
+                        and committed_change(varied) == (varied.get("payerDebitOs"), varied.get("payeeCreditOs"))):
+                    differs.discard("committedBalances")
                 rest = {k: v for k, v in vector["protocolInput"].items() if k != "recordRead"}
                 if len(differs) == 1 and rest == {k: v for k, v in control["protocolInput"].items() if k != "recordRead"}:
                     with self.subTest(name=name):
-                        self.assertEqual(refused, evaluate(vector)[0])
+                        # Figures without their committed change prove nothing either way.
+                        self.assertEqual("indeterminate" if differs == {"committedBalances"} else refused,
+                                         evaluate(vector)[0])
                         self.assertIn("success-requires-applied-transfer", vector["guards"])
                     witnessed |= differs
             self.assertEqual(APPLIED_TRANSFER, witnessed, prefix)
@@ -1724,31 +1735,141 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     self.assertTrue(want["terminalFailureProofRetained"])
                     self.assertEqual("failure-without-settlement-finality", want["evidence"])
 
-    def test_passing_records_are_applied_sends_with_replayed_authority(self):
+    def test_every_authority_is_the_change_of_its_committed_balances(self):
         """Every passing record carries the four edits of its send, and every
-        fixture authority not deliberately varied equals this test's own
-        replay of the pinned apply, never the record's claimed amount."""
-        varied = re.compile(r"applied-transfer|copied-authority")
+        fixture authority (except the one deliberately inconsistent pair) is
+        the change of the committed balances it authenticates: a debit and
+        credit of the OS amount on every passing vector, with balances that
+        actually moved. The record's amount and edits are never consulted."""
+        inconsistent = {"confirmed-four-edits-authority-not-committed-change",
+                        "consumer-four-edits-authority-not-committed-change"}
         checked = 0
         for vector in self.data["vectors"]:
             read = vector["protocolInput"].get("recordRead")
             if not (isinstance(read, dict) and isinstance(read.get("record"), dict)):
                 continue
-            record = read["record"]
             with self.subTest(name=vector["name"]):
+                proof = read.get("appliedTransfer")
                 if vector["expected"] == "pass":
-                    self.assertTrue(edits_match(record["content"]))
-                    self.assertIn("appliedTransfer", read)
-                if "appliedTransfer" in read and not varied.search(vector["name"]):
-                    proof = read["appliedTransfer"]
-                    self.assertEqual(replayed(record), (proof["payerDebitOs"], proof["payeeCreditOs"]))
+                    self.assertTrue(edits_match(read["record"]["content"]))
+                    amount = (vector["protocolInput"].get("phase") or vector["protocolInput"]["retainedTransfer"])["amountOs"]
+                    self.assertEqual((amount, amount), committed_change(proof))
+                    balances = proof["committedBalances"]
+                    self.assertNotEqual(balances["payerBeforeOs"], balances["payerAfterOs"])
+                    self.assertNotEqual(balances["payeeBeforeOs"], balances["payeeAfterOs"])
+                if proof is not None and vector["name"] not in inconsistent:
+                    self.assertEqual(committed_change(proof), (proof["payerDebitOs"], proof["payeeCreditOs"]))
                     checked += 1
         self.assertGreater(checked, 80)
+        for name in inconsistent:
+            proof = self.cases[name]["protocolInput"]["recordRead"]["appliedTransfer"]
+            self.assertEqual(("0", "0"), committed_change(proof))
+            self.assertNotEqual(("0", "0"), (proof["payerDebitOs"], proof["payeeCreditOs"]))
+
+    def test_fixture_authority_never_follows_the_record(self):
+        """The generator's authority reports the scenario's committed state:
+        rewriting the record's edits, amount or status leaves it unchanged."""
+        base = generator.record("confirmed")
+        want = generator.found(base)["appliedTransfer"]
+        forged_edits = json.loads(json.dumps(base))
+        for edit in forged_edits["content"]["gcr_edits"][:2]:
+            edit["amount"] = "7"
+        stripped = json.loads(json.dumps(base))
+        del stripped["content"]["gcr_edits"]
+        for label, value in (
+            ("forged-edits", forged_edits),
+            ("no-edits", stripped),
+            ("other-amount", generator.record("confirmed", generator.send_content(amount_os=generator.OTHER_AMOUNT_OS))),
+            ("failed", generator.record("failed")),
+        ):
+            with self.subTest(record=label):
+                got = generator.found(value)["appliedTransfer"]
+                for member in ("payerDebitOs", "payeeCreditOs", "committedBalances"):
+                    self.assertEqual(want[member], got[member])
+
+    def test_four_edit_record_without_committed_payment_is_refused(self):
+        """A confirmed record carrying all four edits of its send proves no
+        payment when the authenticated committed balances did not move: an
+        honest zero authority is refused (handler `indeterminate`, consumer
+        `fail`), and one that copies the amount over unchanged balances
+        establishes nothing on either path."""
+        for name, expected in (
+            ("confirmed-four-edits-uncommitted-payment", "indeterminate"),
+            ("confirmed-four-edits-authority-not-committed-change", "indeterminate"),
+            ("consumer-four-edits-uncommitted-payment", "fail"),
+            ("consumer-four-edits-authority-not-committed-change", "indeterminate"),
+        ):
+            with self.subTest(name=name):
+                vector = self.cases[name]
+                self.assertTrue(edits_match(vector["protocolInput"]["recordRead"]["record"]["content"]))
+                self.assertEqual(expected, vector["expected"])
+                self.assertEqual(expected, evaluate(vector)[0])
+        unchanged = dict(generator.ROLLED_BACK)
+        self.assertEqual(unchanged["payerBeforeOs"], unchanged["payerAfterOs"])
+        self.assertEqual(unchanged["payeeBeforeOs"], unchanged["payeeAfterOs"])
+        # Every passing vector, with its committed balances left unchanged:
+        # copied figures prove nothing, honest zero figures refute.
+        for vector in self.data["vectors"]:
+            read = vector["protocolInput"].get("recordRead")
+            if vector["expected"] != "pass" or not isinstance(read, dict) or "appliedTransfer" not in read:
+                continue
+            for label, figures in (("copied", None), ("honest-zero", ("0", "0"))):
+                with self.subTest(name=vector["name"], authority=label):
+                    mutated = json.loads(json.dumps(vector))
+                    proof = mutated["protocolInput"]["recordRead"]["appliedTransfer"]
+                    proof["committedBalances"] = dict(unchanged)
+                    if figures is not None:
+                        proof["payerDebitOs"], proof["payeeCreditOs"] = figures
+                    result = evaluate(mutated)[0]
+                    self.assertNotEqual("pass", result)
+                    if vector["operation"] == "admit-evidence" and figures is not None:
+                        self.assertEqual("fail", result)
+
+    def test_contradicting_authority_never_overrides_a_failed_record(self):
+        """DEM-7 and DEMOS-MAPPING §A.2 make a contradicting authority `fail`
+        only for a bound `confirmed` record. A bound `failed` record keeps its
+        DEM-4 (handler) or DEM-7 `failed` (consumer) outcome even though its
+        authenticated authority shows the rolled-back, unchanged balances."""
+        spec = SPEC.read_text(encoding="utf-8")
+        demos = DEMOS.read_text(encoding="utf-8")
+        self.assertIn("For a bound `confirmed` record, independently authenticated applied-payment authority that contradicts them is `fail`", spec)
+        self.assertIn("A bound `failed` record is decided by the two `failed` rules above, whatever the authority reports.", spec)
+        self.assertIn("A bound `failed` record stays under DEM-4 for the handler and under DEM-7's `failed` rules for a consumer, whatever the authority reports.", demos)
+        checked = 0
+        for name, expected in (
+            ("included-failed", "fail"),
+            ("node2-included-failed-record", "fail"),
+            ("consumer-failed-fails", "fail"),
+            ("consumer-failed-unauthenticated", "indeterminate"),
+        ):
+            with self.subTest(name=name):
+                vector = self.cases[name]
+                read = vector["protocolInput"]["recordRead"]
+                self.assertEqual("failed", read["record"]["status"])
+                self.assertIs(True, read["appliedTransferAuthenticated"])
+                self.assertEqual(("0", "0"), committed_change(read["appliedTransfer"]))
+                self.assertEqual(expected, vector["expected"])
+                self.assertEqual(expected, evaluate(vector)[0])
+                checked += 1
+        # Every failed-record vector with an authority: dropping or keeping
+        # the authority never changes its outcome.
+        for vector in self.data["vectors"]:
+            read = vector["protocolInput"].get("recordRead")
+            if not (isinstance(read, dict) and isinstance(read.get("record"), dict)
+                    and read["record"].get("status") == "failed" and "appliedTransfer" in read):
+                continue
+            with self.subTest(name=vector["name"]):
+                without = json.loads(json.dumps(vector))
+                del without["protocolInput"]["recordRead"]["appliedTransfer"]
+                del without["protocolInput"]["recordRead"]["appliedTransferAuthenticated"]
+                self.assertEqual(evaluate(vector)[0], evaluate(without)[0])
+                checked += 1
+        self.assertGreater(checked, 10)
 
     def test_confirmed_no_op_never_establishes_payment(self):
         """The pinned node applies a send without edits as a successful no-op:
-        neither its replayed zero transition nor an authority that copies the
-        claimed amount onto it reaches success, on the handler or consumer path."""
+        neither its unchanged committed balances nor an authority that reports
+        a payment for it reaches success, on the handler or consumer path."""
         for name, expected in (
             ("confirmed-no-op-apply", "indeterminate"),
             ("confirmed-no-op-empty-edits", "indeterminate"),

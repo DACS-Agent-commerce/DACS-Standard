@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import decimal
 import hashlib
 import json
 from pathlib import Path
@@ -55,6 +56,7 @@ BLOCK = 42
 LARGE_AMOUNT_OS = "9007199254740993"  # above 2^53 - 1: the node serves a string
 # Longer than Python's 4,300-digit int() limit: readers compare it by spelling.
 OVERSIZED_OS = "9" * 4301
+OVERSIZED_PAYER_OS = "1" + "0" * 4320  # a committed balance that can pay it
 CANONICAL = re.compile(r"0|[1-9][0-9]*")
 # The phase's Demos network as its binding pins it (FV `demos:mainnet` naming).
 NETWORK = {"networkId": "demos:mainnet", "genesisHash": _hex("genesis:demos:mainnet")}
@@ -179,71 +181,105 @@ def record(
     """A `getTxByHash` response record in the node's wire form: the send body
     plus the stored `timestamp`, fees and `gcr_edits` (the live records'
     shape). `edits` replaces the served edit list, and `_OMIT` drops it, which
-    the pinned node applies as a successful no-op."""
+    the pinned node applies as a successful no-op. The pinned apply stamps
+    each edit's `txhash` only while it applies them, so a `failed` record's
+    edits keep the empty hash, as the live failed record shows."""
     content = copy.deepcopy(send_content() if content is None else content)
     value = _apply({"hash": TX_HASH, "blockNumber": BLOCK, "status": status, "content": content}, changes)
     content.setdefault("timestamp", str(TIMESTAMP))
     content.setdefault("transaction_fee", {"network_fee": 1000000000, "rpc_fee": 1000000000, "additional_fee": 0, "rpc_address": None})
     if edits is _SERVED:
-        edits = served_edits(content, value["hash"] if isinstance(value.get("hash"), str) else TX_HASH)
+        stamped = value["hash"] if isinstance(value.get("hash"), str) else TX_HASH
+        edits = served_edits(content, "" if status == "failed" else stamped)
     if edits is not _OMIT and edits is not None:
         content.setdefault("gcr_edits", edits)
     return value
 
 
-# Synthetic committed balances before the transfer's block. A replay of the
-# pinned node's apply reads the payment debit and credit from their change.
-PRE_STATE_OS = "1" + "0" * 30
+def os_sum(left: str, right: str) -> str:
+    """Exact sum of two canonical OS decimals, past int()'s digit limit."""
+    with decimal.localcontext() as context:
+        context.prec = max(len(left), len(right)) + 1
+        return format(decimal.Decimal(left) + decimal.Decimal(right), "f")
 
 
-def _key_of(value: Any) -> str | None:
-    return value.removeprefix("0x").lower() if isinstance(value, str) else None
+def os_difference(left: str, right: str) -> str:
+    """Exact difference of two canonical OS decimals; never negative here."""
+    with decimal.localcontext() as context:
+        context.prec = max(len(left), len(right)) + 1
+        value = decimal.Decimal(left) - decimal.Decimal(right)
+    if value < 0:
+        raise ValueError("negative committed balance change")
+    return format(value, "f")
 
 
-def _total(amounts: list[str]) -> str:
-    # One edit per party is the profile's send; its spelling is the change.
-    return "0" if not amounts else amounts[0] if len(amounts) == 1 else str(sum(int(a) for a in amounts))
+# The scenario's committed state, independent of every RPC record: each
+# account's balance immediately before the transaction's apply, and the 1 DEM
+# gas an applied native send charges the payer.
+PAYER_PRE_STATE_OS = "1" + "0" * 30
+PAYEE_PRE_STATE_OS = "7" + "0" * 24
+GAS_OS = "1000000000"
 
 
-def replayed_transfer(value: dict[str, Any], committed: bool) -> tuple[str, str]:
-    """The committed payer debit and payee credit (fees excluded) of a
-    synthetic, independent replay of the pinned node's apply (`handleGCR` at
-    61b8e75) of the transaction over `PRE_STATE_OS`. The fixture scenario
-    fixes whether the apply committed; a failed apply restores state, and a
-    missing, non-array or empty edit list is a successful no-op. Nothing is
-    copied from the record's claimed `amount`."""
-    content = value["content"]
-    sender, recipient = _key_of(content.get("from")), _key_of(content.get("to"))
-    edits = content.get("gcr_edits") if committed else None
-    debits: list[str] = []
-    credits: list[str] = []
-    for edit in edits if isinstance(edits, list) else []:
-        if not (isinstance(edit, dict) and edit.get("type") == "balance"):
-            continue
-        account, amount = _key_of(edit.get("account")), edit.get("amount")
-        if dict(edit, txhash="") == {"type": "balance", "account": edit.get("account"), "operation": "remove",
-                                     "amount": "1000000000", "txhash": "", "isRollback": False}:
-            continue  # the 1 DEM gas edit is a fee, not payment
-        if edit.get("operation") == "remove" and account == sender:
-            debits.append(amount)
-        elif edit.get("operation") == "add" and account == recipient:
-            credits.append(amount)
-    return _total(debits), _total(credits)
+def committed(
+    outcome: str = "applied", amount_os: str = AMOUNT_OS, *, payer_before: str = PAYER_PRE_STATE_OS,
+) -> dict[str, str]:
+    """The committed balance transition the fixture scenario fixes for its
+    transaction, never read from the record: `applied` moves `amount_os` from
+    payer to payee and charges the gas; a `rolled-back` apply (a failed send,
+    or one the pinned node rejected after inclusion) and a `no-op` apply
+    (missing or empty edits) leave both balances unchanged."""
+    if outcome == "applied":
+        moved, fee = amount_os, GAS_OS
+    elif outcome in ("rolled-back", "no-op"):
+        moved, fee = "0", "0"
+    else:
+        raise ValueError(outcome)
+    return {
+        "payerBeforeOs": payer_before,
+        "payerAfterOs": os_difference(payer_before, os_sum(moved, fee)),
+        "payeeBeforeOs": PAYEE_PRE_STATE_OS,
+        "payeeAfterOs": os_sum(PAYEE_PRE_STATE_OS, moved),
+        "feeOs": fee,
+    }
+
+
+APPLIED = committed()
+ROLLED_BACK = committed("rolled-back")
+NO_OP = committed("no-op")
+
+
+def committed_change(balances: dict[str, str]) -> tuple[str, str]:
+    """The payment debit (fee excluded) and payee credit of a committed
+    balance transition: the authority's figures are this change."""
+    payer_change = os_difference(balances["payerBeforeOs"], balances["payerAfterOs"])
+    return (os_difference(payer_change, balances["feeOs"]),
+            os_difference(balances["payeeAfterOs"], balances["payeeBeforeOs"]))
+
+
+def with_state(read: dict[str, Any], balances: dict[str, str]) -> dict[str, Any]:
+    """Give a read's authority another committed transition and its change."""
+    debit, credit = committed_change(balances)
+    read["appliedTransfer"].update(payerDebitOs=debit, payeeCreditOs=credit, committedBalances=dict(balances))
+    return read
 
 
 def found(
     value: dict[str, Any], *, authenticated: bool | None = None, node: dict[str, str] = PINNED_BUILD,
-    applied: bool = True, applied_block_id: str | None = None,
+    applied: bool = True, applied_block_id: str | None = None, state: dict[str, str] = APPLIED,
 ) -> dict[str, Any]:
+    """A found read. Its applied-payment authority reports the committed
+    transition `state` that the scenario names (by default the phase's
+    payment applied), whatever the record claims or carries as edits."""
     read: dict[str, Any] = {"state": "found", "nodeBuild": dict(node), "record": value}
     if authenticated is not None:
         read["authenticated"] = authenticated
     if applied:
         # Synthetic state-transition authority, separate from the RPC record:
-        # the debit and credit come from the replay, never from `amount`.
-        # Only a failed apply is rolled back.
+        # it names the transaction it was asked about, and its debit and
+        # credit are the change of the committed balances it authenticates.
         content = value["content"]
-        debit, credit = replayed_transfer(value, committed=value.get("status") != "failed")
+        debit, credit = committed_change(state)
         read["appliedTransferAuthenticated"] = True
         read["appliedTransfer"] = {
             "networkId": NETWORK["networkId"], "genesisHash": NETWORK["genesisHash"],
@@ -252,6 +288,7 @@ def found(
             "sender": content["from"].removeprefix("0x").lower(),
             "recipient": content["to"].removeprefix("0x").lower(),
             "payerDebitOs": debit, "payeeCreditOs": credit,
+            "committedBalances": dict(state),
         }
     return read
 
@@ -711,7 +748,7 @@ def build_vectors() -> list[dict[str, Any]]:
         classify(
             "confirmed-large-string-amount-binds", "pass", "DEM-2/DEM-3", ["success-authorizes-no-delivery", "success-branch"],
             "Above 2^53 - 1 OS the node serves the amount as a decimal string; it binds by integer value.",
-            read=found(record("confirmed", send_content(amount_os=LARGE_AMOUNT_OS))),
+            read=found(record("confirmed", send_content(amount_os=LARGE_AMOUNT_OS)), state=committed(amount_os=LARGE_AMOUNT_OS)),
             transfer=retained(amountOs=LARGE_AMOUNT_OS),
         ),
         classify(
@@ -722,12 +759,12 @@ def build_vectors() -> list[dict[str, Any]]:
         classify(
             "included-failed", "fail", "DEM-4/DEM-6", ["failure-is-permanent", "failure-proof-retained", "no-replacement", "success-requires-record"],
             "Included is not executed: a bound failed record is a durable permanent failure with no replacement.",
-            read=found(record("failed")),
+            read=found(record("failed"), state=ROLLED_BACK),
         ),
         classify(
             "node2-included-failed-record", "fail", "DEM-2/DEM-4", ["failure-is-permanent", "failure-proof-retained", "no-replacement", "success-requires-record"],
             "A live node2 transfer whose status index said included while its record failed (TX_NONCE_INVALID_LOW).",
-            read=found(copy.deepcopy(NODE2_FAILED)), transfer=live_failed, inclusion=live_failed_block,
+            read=found(copy.deepcopy(NODE2_FAILED), state=ROLLED_BACK), transfer=live_failed, inclusion=live_failed_block,
         ),
         classify(
             "included-pending", "indeterminate", "DEM-5", unresolved,
@@ -772,7 +809,7 @@ def build_vectors() -> list[dict[str, Any]]:
         classify(
             "failed-unpinned-node", "indeterminate", unbound, ["failure-requires-binding", "node-build-attested"] + unresolved,
             "A failed record from an unpinned node proves nothing about execution either.",
-            read=found(record("failed"), node=SELF_REPORTED_BUILD),
+            read=found(record("failed"), node=SELF_REPORTED_BUILD, state=ROLLED_BACK),
         ),
         classify(
             "confirmed-old-build-node", "indeterminate", unbound, ["node-build-commit"] + unresolved,
@@ -788,19 +825,47 @@ def build_vectors() -> list[dict[str, Any]]:
         # applies it as a successful no-op, so no payment moved.
         classify(
             "confirmed-no-op-apply", "indeterminate", "DEM-3/DEM-5", unresolved,
-            "A confirmed send with no gcr_edits applied nothing: the replayed debit and credit are zero.",
-            read=found(record("confirmed", edits=_OMIT)),
+            "A confirmed send with no gcr_edits applied nothing: the committed balances did not change.",
+            read=found(record("confirmed", edits=_OMIT), state=NO_OP),
         ),
         classify(
             "confirmed-no-op-empty-edits", "indeterminate", "DEM-3/DEM-5", unresolved,
             "An empty edit list is the same no-op; confirmed is not payment.",
-            read=found(record("confirmed", edits=[])),
+            read=found(record("confirmed", edits=[]), state=NO_OP),
         ),
         classify(
             "confirmed-no-op-copied-authority", "indeterminate", "DEM-3/DEM-5", ["confirmed-requires-send-edits"] + unresolved,
-            "An authority that copies confirmed and the amount onto a no-op record cannot establish payment.",
-            read=_apply(found(record("confirmed", edits=_OMIT)),
-                        {"appliedTransfer": found(record("confirmed"))["appliedTransfer"]}),
+            "An authority that reports a committed payment for a record without its send's edits cannot establish payment.",
+            read=found(record("confirmed", edits=_OMIT)),
+        ),
+        # The edits must equal the send's four edits exactly: a partial list or
+        # reordered members is not that list, whatever the authority reports.
+        classify(
+            "confirmed-partial-edits", "indeterminate", "DEM-3/DEM-5", ["confirmed-requires-send-edits"] + unresolved,
+            "A confirmed record carrying only the payment's two balance edits is not the send's four edits.",
+            read=found(record("confirmed", edits=served_edits(send_content(), TX_HASH)[:2])),
+        ),
+        classify(
+            "confirmed-reordered-edit-members", "indeterminate", "DEM-3/DEM-5", ["confirmed-requires-send-edits"] + unresolved,
+            "Edit members in another order serialize differently from the send's edits.",
+            read=found(record("confirmed", edits=[dict(reversed(list(served_edits(send_content(), TX_HASH)[0].items())))]
+                              + served_edits(send_content(), TX_HASH)[1:])),
+        ),
+        # A confirmed record that carries its send's four edits, while the
+        # authenticated committed state shows no payment: the edits are the
+        # claim, the committed balances are the evidence.
+        classify(
+            "confirmed-four-edits-uncommitted-payment", "indeterminate", "DEM-3/DEM-5",
+            ["success-requires-applied-transfer"] + unresolved,
+            "Committed balances unchanged by a confirmed send with all four edits: no payment moved.",
+            read=found(record("confirmed"), state=ROLLED_BACK),
+        ),
+        classify(
+            "confirmed-four-edits-authority-not-committed-change", "indeterminate", "DEM-3/DEM-5",
+            ["applied-transfer-is-committed-change", "success-requires-applied-transfer"] + unresolved,
+            "An authority whose debit and credit copy the amount while its committed balances did not change establishes nothing.",
+            read=_apply(found(record("confirmed")), {"appliedTransfer": dict(
+                found(record("confirmed"))["appliedTransfer"], committedBalances=dict(ROLLED_BACK))}),
         ),
         classify(
             "confirmed-wrong-hash", "indeterminate", unbound, ["bind-hash"] + unresolved,
@@ -831,7 +896,8 @@ def build_vectors() -> list[dict[str, Any]]:
         classify(
             "confirmed-wrong-amount", "indeterminate", unbound, ["bind-amount"] + unresolved,
             "A record for a different OS amount is unbound.",
-            read=found(record("confirmed", send_content(amount_os=OTHER_AMOUNT_OS))),
+            # The chain committed the transfer the record shows, so only the DEM-2 amount binding refuses it.
+            read=found(record("confirmed", send_content(amount_os=OTHER_AMOUNT_OS)), state=committed(amount_os=OTHER_AMOUNT_OS)),
         ),
         classify(
             "confirmed-missing-nonce", "indeterminate", unbound, ["decode-nonce"] + unresolved,
@@ -875,17 +941,17 @@ def build_vectors() -> list[dict[str, Any]]:
             read=found(record("confirmed", send_content(**{"from": "0x" + PAYER_KEY.upper(), "from_ed25519_address": "0x" + PAYER_KEY.upper()}))),
         ),
         classify(
-            "confirmed-sender-alias-mismatch", "indeterminate", unbound, unresolved,
+            "confirmed-sender-alias-mismatch", "indeterminate", unbound, ["decode-address"] + unresolved,
             "from and from_ed25519_address must name the same key.",
             read=found(record("confirmed", send_content(from_ed25519_address="0x" + OTHER_KEY))),
         ),
         classify(
-            "confirmed-payload-recipient-mismatch", "indeterminate", unbound, unresolved,
+            "confirmed-payload-recipient-mismatch", "indeterminate", unbound, ["decode-native-send"] + unresolved,
             "The native send argument must credit the same recipient as content.to.",
             read=found(record("confirmed", send_content(data=["native", {"nativeOperation": "send", "args": [OTHER_KEY, AMOUNT_OS]}]))),
         ),
         classify(
-            "confirmed-payload-amount-mismatch", "indeterminate", unbound, unresolved,
+            "confirmed-payload-amount-mismatch", "indeterminate", unbound, ["decode-native-send"] + unresolved,
             "The native send argument must carry the same OS amount as content.amount.",
             read=found(record("confirmed", send_content(data=["native", {"nativeOperation": "send", "args": [PAYEE_KEY, OTHER_AMOUNT_OS]}]))),
         ),
@@ -904,42 +970,42 @@ def build_vectors() -> list[dict[str, Any]]:
         classify(
             "failed-wrong-nonce", "indeterminate", unbound, ["bind-nonce", "failure-requires-binding"] + unresolved,
             "A failed record with another nonce does not prove this transfer failed.",
-            read=found(record("failed", send_content(nonce=str(NONCE + 1)))),
+            read=found(record("failed", send_content(nonce=str(NONCE + 1))), state=ROLLED_BACK),
         ),
         classify(
             "failed-missing-nonce", "indeterminate", unbound, ["decode-nonce"] + unresolved,
             "A failed record missing its nonce does not decode, so it proves nothing.",
-            read=found(record("failed", send_content(nonce=_OMIT))),
+            read=found(record("failed", send_content(nonce=_OMIT)), state=ROLLED_BACK),
         ),
         classify(
             "failed-wrong-block", "indeterminate", unbound, ["bind-block", "failure-requires-binding"] + unresolved,
             "A failed record in another block conflicts with the inclusion observation.",
-            read=found(record("failed", blockNumber=BLOCK + 1)),
+            read=found(record("failed", blockNumber=BLOCK + 1), state=ROLLED_BACK),
         ),
         classify(
             "failed-wrong-amount", "indeterminate", unbound, ["bind-amount", "failure-requires-binding"] + unresolved,
             "A failed record for another amount does not prove this transfer failed.",
-            read=found(record("failed", send_content(amount_os=OTHER_AMOUNT_OS))),
+            read=found(record("failed", send_content(amount_os=OTHER_AMOUNT_OS)), state=ROLLED_BACK),
         ),
         classify(
             "failed-wrong-hash", "indeterminate", unbound, ["bind-hash", "failure-requires-binding"] + unresolved,
             "A failed record for another hash does not prove this transfer failed.",
-            read=found(record("failed", hash=OTHER_TX_HASH)),
+            read=found(record("failed", hash=OTHER_TX_HASH), state=ROLLED_BACK),
         ),
         classify(
             "failed-wrong-sender", "indeterminate", unbound, ["bind-sender", "failure-requires-binding"] + unresolved,
             "A failed record from another sender does not prove this transfer failed.",
-            read=found(record("failed", send_content(sender=OTHER_KEY))),
+            read=found(record("failed", send_content(sender=OTHER_KEY)), state=ROLLED_BACK),
         ),
         classify(
             "failed-wrong-recipient", "indeterminate", unbound, ["bind-recipient", "failure-requires-binding"] + unresolved,
             "A failed record to another recipient does not prove this transfer failed.",
-            read=found(record("failed", send_content(recipient=OTHER_KEY))),
+            read=found(record("failed", send_content(recipient=OTHER_KEY)), state=ROLLED_BACK),
         ),
         classify(
             "failed-without-inclusion-observation", "indeterminate", unbound, ["bind-block", "bind-requires-inclusion", "failure-requires-binding"],
             "A failed record without an inclusion observation is not a bound failure.",
-            read=found(record("failed")), status_index="unknown", inclusion=None,
+            read=found(record("failed"), state=ROLLED_BACK), status_index="unknown", inclusion=None,
         ),
         classify(
             "transfer-unknown-not-rebroadcast", "indeterminate", "DEM-6", ["no-rebroadcast"],
@@ -1200,14 +1266,39 @@ def build_vectors() -> list[dict[str, Any]]:
             "consumer-confirmed-no-op-apply", "fail", "DEM-7/FV-5",
             ["consumer-authenticated-contradiction-fails", "consumer-requires-confirmed-record", "success-requires-applied-transfer"],
             "Authenticated applied-payment authority shows the edit-less confirmed send moved nothing: the evidence is refuted.",
-            read=found(record("confirmed", edits=[])),
+            read=found(record("confirmed", edits=[]), state=NO_OP),
         ),
         admit(
             "consumer-confirmed-no-op-copied-authority", "indeterminate", "DEM-7",
             ["confirmed-requires-send-edits", "consumer-requires-confirmed-record"],
-            "An authority that copies confirmed and the amount onto a record without the send's edits is not admitted.",
-            read=_apply(found(record("confirmed", edits=_OMIT)),
-                        {"appliedTransfer": found(record("confirmed"))["appliedTransfer"]}),
+            "An authority that reports a committed payment for a record without the send's edits is not admitted.",
+            read=found(record("confirmed", edits=_OMIT)),
+        ),
+        admit(
+            "consumer-partial-edits", "indeterminate", "DEM-7",
+            ["confirmed-requires-send-edits", "consumer-requires-confirmed-record"],
+            "A record carrying only the payment's two balance edits is not admitted.",
+            read=found(record("confirmed", edits=served_edits(send_content(), TX_HASH)[:2])),
+        ),
+        admit(
+            "consumer-reordered-edit-members", "indeterminate", "DEM-7",
+            ["confirmed-requires-send-edits", "consumer-requires-confirmed-record"],
+            "A record whose edit members are reordered is not admitted.",
+            read=found(record("confirmed", edits=[dict(reversed(list(served_edits(send_content(), TX_HASH)[0].items())))]
+                              + served_edits(send_content(), TX_HASH)[1:])),
+        ),
+        admit(
+            "consumer-four-edits-uncommitted-payment", "fail", "DEM-7/FV-5",
+            ["consumer-authenticated-contradiction-fails", "consumer-requires-confirmed-record", "success-requires-applied-transfer"],
+            "Authenticated committed balances unchanged by a confirmed send with all four edits refute the payment.",
+            read=found(record("confirmed"), state=ROLLED_BACK),
+        ),
+        admit(
+            "consumer-four-edits-authority-not-committed-change", "indeterminate", "DEM-7",
+            ["applied-transfer-is-committed-change", "consumer-requires-confirmed-record", "success-requires-applied-transfer"],
+            "An authority whose debit and credit are not the change of its committed balances is not admitted.",
+            read=_apply(found(record("confirmed")), {"appliedTransfer": dict(
+                found(record("confirmed"))["appliedTransfer"], committedBalances=dict(ROLLED_BACK))}),
         ),
         admit(
             "consumer-wrong-hash-unauthenticated", "indeterminate", "DEM-7", ["consumer-binds-hash", "consumer-requires-confirmed-record"],
@@ -1223,13 +1314,13 @@ def build_vectors() -> list[dict[str, Any]]:
         admit(
             "consumer-failed-fails", "fail", "DEM-7/FV-5", ["consumer-failed-refutes", "consumer-requires-confirmed-record"],
             "A bound failed record, authenticated under FV-5, refutes the success evidence.",
-            read=found(record("failed"), authenticated=True),
+            read=found(record("failed"), authenticated=True, state=ROLLED_BACK),
         ),
         admit(
             "consumer-failed-unauthenticated", "indeterminate", "DEM-7/FV-5",
             ["consumer-failed-requires-authentication", "consumer-requires-confirmed-record"],
             "A failed record from a plain RPC read is not an authenticated refutation; the evidence stays indeterminate.",
-            read=found(record("failed"), authenticated=False),
+            read=found(record("failed"), authenticated=False, state=ROLLED_BACK),
         ),
         admit(
             "consumer-wrong-payee-unauthenticated", "indeterminate", "DEM-7", ["consumer-binds-payee", "consumer-requires-confirmed-record"],
@@ -1249,7 +1340,8 @@ def build_vectors() -> list[dict[str, Any]]:
         admit(
             "consumer-wrong-amount-authenticated", "fail", "DEM-7/FV-5", ["consumer-authenticated-contradiction-fails", "consumer-binds-amount", "consumer-requires-confirmed-record"],
             "Under FV-5 an authenticated record for another amount is fail.",
-            read=found(record("confirmed", send_content(amount_os=OTHER_AMOUNT_OS)), authenticated=True),
+            read=found(record("confirmed", send_content(amount_os=OTHER_AMOUNT_OS)), authenticated=True,
+                       state=committed(amount_os=OTHER_AMOUNT_OS)),
         ),
         admit(
             "consumer-wrong-payee-authenticated", "fail", "DEM-7/FV-5", ["consumer-authenticated-contradiction-fails", "consumer-binds-payee", "consumer-requires-confirmed-record"],
@@ -1416,10 +1508,12 @@ def build_vectors() -> list[dict[str, Any]]:
                            dem7_passed=False))
     # Each member of the DEMOS-MAPPING §A.2 applied-payment binding, on the
     # handler (DEM-3) and the consumer (DEM-7) path.
+    # A zero debit or credit is a committed transition that moved nothing on
+    # that side, so the authority's figure is still its committed change.
     for suffix, changes, binding in (
         ("unauthenticated", {"appliedTransferAuthenticated": False}, []),
-        ("zero-credit", {"payeeCreditOs": "0"}, []),
-        ("zero-debit", {"payerDebitOs": "0"}, []),
+        ("zero-credit", dict(APPLIED, payeeAfterOs=PAYEE_PRE_STATE_OS), []),
+        ("zero-debit", dict(APPLIED, payerAfterOs=os_difference(PAYER_PRE_STATE_OS, GAS_OS)), []),
         ("wrong-hash", {"txHash": OTHER_TX_HASH}, []),
         ("wrong-block", {"blockNumber": BLOCK + 1}, []),
         ("wrong-sender", {"sender": OTHER_KEY}, []),
@@ -1431,6 +1525,8 @@ def build_vectors() -> list[dict[str, Any]]:
         read = found(record("confirmed"))
         if suffix == "unauthenticated":
             read.update(changes)
+        elif suffix.startswith("zero-"):
+            with_state(read, changes)
         else:
             read["appliedTransfer"].update(changes)
         vectors.append(classify("confirmed-applied-transfer-" + suffix, "indeterminate", "DEM-3/DEM-5",
@@ -1573,22 +1669,24 @@ def build_vectors() -> list[dict[str, Any]]:
              phase_context=phase(amount={"amount": OVERSIZED_OS, "currency": "DEM"}, amountOs=OVERSIZED_OS + "000000000")),
         classify("record-oversized-amount", "indeterminate", unbound, ["bind-amount"] + unresolved,
                  "An oversized OS amount decodes as a canonical string and is unbound; it never aborts the handler.",
-                 read=found(record("confirmed", send_content(amount_os=OVERSIZED_OS, amount=OVERSIZED_OS)))),
+                 read=found(record("confirmed", send_content(amount_os=OVERSIZED_OS, amount=OVERSIZED_OS)),
+                            state=committed(amount_os=OVERSIZED_OS, payer_before=OVERSIZED_PAYER_OS))),
         classify("record-oversized-nonce", "indeterminate", unbound, ["bind-nonce"] + unresolved,
                  "An oversized nonce decodes as a canonical string and is unbound.",
                  read=found(record("confirmed", send_content(nonce=OVERSIZED_OS)))),
         classify("applied-transfer-oversized-debit", "indeterminate", "DEM-3/DEM-5",
                  ["success-requires-applied-transfer"] + unresolved,
                  "An applied debit other than the OS amount, however long, is no proof of payment.",
-                 read=_apply(found(record("confirmed")), {"appliedTransfer": dict(
-                     found(record("confirmed"))["appliedTransfer"], payerDebitOs=OVERSIZED_OS)})),
+                 read=found(record("confirmed"), state=committed(amount_os=OVERSIZED_OS, payer_before=OVERSIZED_PAYER_OS))),
         admit("consumer-oversized-record-amount", "indeterminate", "DEM-7",
               ["consumer-binds-amount", "consumer-requires-confirmed-record"],
               "An oversized record amount is compared with the phase by spelling and does not bind.",
-              read=found(record("confirmed", send_content(amount_os=OVERSIZED_OS, amount=OVERSIZED_OS)))),
+              read=found(record("confirmed", send_content(amount_os=OVERSIZED_OS, amount=OVERSIZED_OS)),
+                         state=committed(amount_os=OVERSIZED_OS, payer_before=OVERSIZED_PAYER_OS))),
         admit("consumer-oversized-amount-bound", "pass", "DEM-7", ["consumer-admits-confirmed"],
               "A large amount that every source spells the same way still binds.",
-              read=found(record("confirmed", send_content(amount_os=OVERSIZED_OS + "000000000", amount=OVERSIZED_OS + "000000000"))),
+              read=found(record("confirmed", send_content(amount_os=OVERSIZED_OS + "000000000", amount=OVERSIZED_OS + "000000000")),
+                         state=committed(amount_os=OVERSIZED_OS + "000000000", payer_before=OVERSIZED_PAYER_OS)),
               phase_context=phase(amount={"amount": OVERSIZED_OS, "currency": "DEM"}, amountOs=OVERSIZED_OS + "000000000")),
     ]
     # A DEM-4 proof is APR closed-cannot-settle evidence only when FV-5
@@ -1648,7 +1746,7 @@ def document() -> dict[str, Any]:
             "statusIndex": "getTransactionStatus state for the retained hash (included, pending or unknown); never decisive",
             "network": "the phase's Demos network (networkId, genesisHash) as its binding pins it; applied-payment authority must name the same network, and a missing or malformed one binds nothing",
             "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity",
-            "recordRead": "getTxByHash read: found (record and nodeBuild), not-found or unavailable; appliedTransfer (networkId, genesisHash, blockId, txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs) and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived in production from status or edits; the fixtures take its debit and credit from a replay of the pinned apply over a committed pre-state, never from the record's amount",
+            "recordRead": "getTxByHash read: found (record and nodeBuild), not-found or unavailable; appliedTransfer (networkId, genesisHash, blockId, txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs, committedBalances: payerBeforeOs, payerAfterOs, payeeBeforeOs, payeeAfterOs, feeOs) and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived from the record's status, amount or edits; payerDebitOs must be payerBeforeOs - payerAfterOs - feeOs and payeeCreditOs must be payeeAfterOs - payeeBeforeOs, or the authority establishes nothing; the fixtures take the committed balances from the scenario's own pre-state and outcome (applied, rolled-back or no-op)",
             "nodeBuild": "the build attestation the Demos binding configuration holds for the node that served the read (source binding-attestation, commit, tree); only binding-attestation of commit 61b8e75aa8db5e408c49e1c3a89db4d673f45578 with a clean tree is pinned, and a self-reported build, another commit or a dirty tree is not",
             "gcr_edits": "a confirmed record establishes success only when its gcr_edits, each txhash blanked, are the four edits of its send; the pinned node applies a missing or empty list as a successful no-op",
             "otherGates": "verdicts of the FV, SB-1 and PB checks that compose with DEM-7 before delivery",

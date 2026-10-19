@@ -33,7 +33,7 @@ from frozen_dacs5_v05_reader import (  # noqa: E402
 )
 from scripts.jcs import canonicalize  # noqa: E402
 from scripts.settlement_finality_reference import (  # noqa: E402
-    DEM_AMOUNT_RE, verify_finality, _demos_native_send, _demos_os_spelling, _demos_send_edits_match,
+    DEM_AMOUNT_RE, verify_finality, _demos_committed_change, _demos_native_send, _demos_os_spelling, _demos_send_edits_match,
 )
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 import dacs5_reference as D5  # noqa: E402
@@ -169,7 +169,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(180, self.data["count"])
+        self.assertEqual(186, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -354,7 +354,8 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 self.assertTrue(_demos_send_edits_match(record["content"]))
                 self.assertEqual(expected, self.evaluate_case(case)["decision"])
         # An authenticated applied transfer that does not decode is indeterminate, not a contradiction.
-        for suffix in ("extra-member", "numeric-debit", "noncanonical-credit"):
+        for suffix in ("extra-member", "numeric-debit", "noncanonical-credit",
+                       "committed-balances-missing", "committed-balances-numeric"):
             with self.subTest(suffix=suffix):
                 result = self.evaluate_case(self.cases["fv-bft-final-applied-transfer-" + suffix])
                 self.assertEqual("indeterminate", result["decision"])
@@ -365,16 +366,84 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual("fail", result["decision"])
         self.assertIn("signature does not verify", result["reason"])
 
+    def test_applied_transfer_is_the_change_of_committed_balances(self):
+        """Every Demos authority (except the deliberately inconsistent one) is
+        the change of the committed balances it authenticates; on a passing
+        case those balances actually moved by the phase amount. A confirmed
+        record with all four edits whose committed balances did not move is
+        `fail`, and figures copied over unchanged balances are `indeterminate`."""
+        checked = 0
+        for name, case in self.cases.items():
+            result = case["input"].get("context", {}).get("observation", {}).get("executionResult")
+            proof = result.get("appliedTransfer") if isinstance(result, dict) else None
+            if not isinstance(proof, dict) or name in {
+                    "fv-bft-final-applied-transfer-not-committed-change",
+                    "fv-bft-final-applied-transfer-committed-balances-missing",
+                    "fv-bft-final-applied-transfer-committed-balances-numeric",
+                    "fv-bft-final-applied-transfer-numeric-debit",
+                    "fv-bft-final-applied-transfer-noncanonical-credit"}:
+                continue
+            with self.subTest(name=name):
+                self.assertEqual(_demos_committed_change(proof["committedBalances"]),
+                                 (proof["payerDebitOs"], proof["payeeCreditOs"]))
+                if case["expected"] == "pass":
+                    self.assertTrue(_demos_send_edits_match(result["record"]["content"]))
+                    balances = proof["committedBalances"]
+                    self.assertNotEqual(balances["payerBeforeOs"], balances["payerAfterOs"])
+                    self.assertNotEqual(balances["payeeBeforeOs"], balances["payeeAfterOs"])
+                checked += 1
+        self.assertGreater(checked, 20)
+        for suffix, expected, reason in (
+            ("confirmed-four-edits-uncommitted-payment", "fail", "applied transfer contradicts the native send"),
+            ("applied-transfer-not-committed-change", "indeterminate", "not the change of its committed balances"),
+        ):
+            with self.subTest(suffix=suffix):
+                case = self.cases["fv-bft-final-" + suffix]
+                result = case["input"]["context"]["observation"]["executionResult"]
+                self.assertEqual("confirmed", result["record"]["status"])
+                self.assertTrue(_demos_send_edits_match(result["record"]["content"]))
+                outcome = self.evaluate_case(case)
+                self.assertEqual(expected, outcome["decision"])
+                self.assertIn(reason, outcome["reason"])
+        # The fixture authority follows the scenario's committed state, not
+        # the record: forging the record's edits leaves it unchanged.
+        factory = finality_fixtures.FixtureFactory()
+        value = factory.model_input("bft-final")
+        observation = value["context"]["observation"]
+        encoded = observation["selectedEventProof"]["eventBytes"]
+        event = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+        want = observation["executionResult"]["appliedTransfer"]
+        for label, mutate in (
+            ("forged-edits", lambda c: [edit.__setitem__("amount", "7") for edit in c["gcr_edits"][:2]]),
+            ("no-edits", lambda c: c.pop("gcr_edits")),
+            ("other-amount", lambda c: c.__setitem__("amount", 6_000_000_000)),
+        ):
+            with self.subTest(record=label):
+                forged = copy.deepcopy(observation["executionResult"]["record"])
+                mutate(forged["content"])
+                rebuilt = factory.chain_observation(
+                    value["rail"]["consumerFinalityProfile"]["settlement"],
+                    value["evidence"]["paymentTxRefs"][0], event, "bft-final", record=forged)
+                got = rebuilt["executionResult"]["appliedTransfer"]
+                for member in ("payerDebitOs", "payeeCreditOs", "committedBalances"):
+                    self.assertEqual(want[member], got[member])
+        self.assertEqual(factory.committed_change(factory.committed()), ("5000000000", "5000000000"))
+        self.assertEqual(factory.committed_change(factory.committed("rolled-back")), ("0", "0"))
+        # Oversized committed balances decide by decimal arithmetic.
+        self.assertIsNone(_demos_committed_change({"payerBeforeOs": "0", "payerAfterOs": "1", "feeOs": "0",
+                                                   "payeeBeforeOs": "0", "payeeAfterOs": "0"}))
+        oversized = "9" * 4301
+        self.assertEqual((oversized, oversized), _demos_committed_change(
+            factory.committed(amount_os=oversized, payer_before="1" + "0" * 4320)))
+
     def test_confirmed_no_op_send_never_settles(self):
         """The pinned node applies an edit-less send as a successful no-op. The
-        passing record carries its send's four edits and an authority equal to
-        the replayed transition; the no-op's replayed zero transition is `fail`
-        and an authority copying the claimed amount onto it is `indeterminate`."""
+        passing record carries its send's four edits; the no-op's unchanged
+        committed balances are `fail`, and an authority reporting a payment
+        for it is `indeterminate`."""
         control = self.cases["fv-bft-final-canonical-success"]
         result = control["input"]["context"]["observation"]["executionResult"]
         self.assertTrue(_demos_send_edits_match(result["record"]["content"]))
-        self.assertEqual(finality_fixtures.FixtureFactory.replayed_transfer(result["record"]),
-                         (result["appliedTransfer"]["payerDebitOs"], result["appliedTransfer"]["payeeCreditOs"]))
         for suffix, expected, reason in (
             ("missing-edits", "fail", "applied transfer contradicts the native send"),
             ("empty-edits", "fail", "applied transfer contradicts the native send"),

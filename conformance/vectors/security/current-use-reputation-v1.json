@@ -5,7 +5,7 @@
   "fixturePolicy": "Synthetic signed native proofs for offline conformance only; no production Demos native cryptographic codec is claimed. Trust roots are verifier configuration.",
   "replayPolicy": "Every vector embeds the complete executable replay input: the exact request, its full authenticated dependency closure, the verifier configuration with public keys, the trusted query context, and the expected outcome. The set hash is computed over these complete replay inputs; mutating any authority, receipt, finality, or historical-evidence member of the bound payload yields a non-pass.",
   "count": 13,
-  "hash": "85a908afc1bbe62b48ed2310ecf9770fa31450260b95bea2757c7ea3c871295b",
+  "hash": "2201fa3ab1ae89f2c22decd78c715b2f3ae37953af1820c06829803d55a06f89",
   "vectors": [
     {
       "name": "current-use-block-depth",
@@ -3098,18 +3098,25 @@
                           "sender": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                           "recipient": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
                           "payerDebitOs": "5000000000",
-                          "payeeCreditOs": "5000000000"
+                          "payeeCreditOs": "5000000000",
+                          "committedBalances": {
+                            "payerBeforeOs": "1000000000000000000000000000000",
+                            "payerAfterOs": "999999999999999999994000000000",
+                            "payeeBeforeOs": "7000000000000000000000000",
+                            "payeeAfterOs": "7000000000000005000000000",
+                            "feeOs": "1000000000"
+                          }
                         },
                         "attestations": [
                           {
                             "authorityRef": "execution-a",
                             "algorithm": "ed25519",
-                            "value": "6KecYbZ0CcEK7Vh_1D9YOLffPSOTs2KaVHmr4RReIY8nrmSFYnzgmXi3G_yhCyUPRTa1OHZW5nRvWDZYV0hGBQ"
+                            "value": "2TeESN5gskUaiv3MyeMoY5p-uNHXf4qnFiuhk1kI9t70Z55aZ8YhX3S-3LwTIA1Tjx6Cf5At87Irv6eDuDgkBg"
                           },
                           {
                             "authorityRef": "execution-b",
                             "algorithm": "ed25519",
-                            "value": "OrP78y9ddzULlaQpv-r4RYbQdpFLKiJbVHNWWSTclK7rFrFwR1lEz61ql2GamYXBSzKCjCFQlde5QJlmdW7bDw"
+                            "value": "nvsWOUsTk8lc9q2DGpjcexaaHpr_KlbIFaySbQ4U3LQXJX942zlhn46FWxZS4QMZU3si2-OpTEmilM3NCtyoAg"
                           }
                         ]
                       },

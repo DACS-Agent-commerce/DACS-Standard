@@ -570,6 +570,10 @@ class FinalityResolutionContextTests(unittest.TestCase):
             # FRC-4 / CORE SIG-6 on the observation response envelope.
             ('if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != value:', "if False:", "pass",
              ["response-signature-nonminimal-base64url"]),
+            # CORE §B.7 SIG-7: the wire stage is part of the response shape
+            # (error); a non-empty-string check lets it fall through to fail.
+            ('or not _signature_wire(signature.get("value"))', 'or not _nonempty(signature.get("value"))', "fail",
+             ["response-signature-nonminimal-base64url"]),
             ("if not _verify_response_signature(response, seat):", "if False:", "pass",
              ["response-signature-invalid"]),
             # FRC-2 query and provenance binding.

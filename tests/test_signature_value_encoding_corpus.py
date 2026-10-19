@@ -140,6 +140,36 @@ class SignatureValueEncodingCorpusTests(unittest.TestCase):
             first, payload, ec.ECDSA(hashes.SHA256())
         )
 
+    def test_signature_defects_carry_one_verdict_per_sig7_stage(self):
+        # CORE §B.7 SIG-7: in the corpora that verify a signature envelope and
+        # report its verdict directly, an algorithm outside the envelope's set
+        # and a wire-stage failure are `error`; an invalid decoded format is
+        # `fail`. The same defect cannot carry two verdicts across modules.
+        seen = {"algorithm": 0, "wire": 0, "format": 0}
+        for path, case in cases():
+            if path.name not in SIG7_CORPORA:
+                continue
+            for envelope, allowed in typed_envelopes(case):
+                defect = sig7_defect(envelope, allowed)
+                if defect is None:
+                    continue
+                seen[defect] += 1
+                with self.subTest(corpus=path.name, case=case["name"], defect=defect):
+                    self.assertEqual(SIG7_VERDICT[defect], case["expected"])
+        # Each stage is exercised somewhere, so the check cannot pass vacuously.
+        self.assertTrue(all(seen.values()), seen)
+
+    def test_attestation_and_certificate_algorithm_sets_are_typed(self):
+        # The FV attestation and certificate algorithm fields name their one
+        # admitted algorithm, and RailSignature is a defined envelope type.
+        settle = (ROOT / "spec" / "DACS-4-SETTLE.md").read_text(encoding="utf-8")
+        self.assertIn("type RailSignature = ComponentSignature", settle)
+        self.assertIn('attestations: { authorityRef: string; algorithm: "ed25519"; value: string }[]', settle)
+        self.assertIn('signatures: { validatorId: string; algorithm: "ed25519"; value: string }[]', settle)
+        self.assertNotRegex(settle, r"algorithm: string")
+        core = (ROOT / "spec" / "CORE.md").read_text(encoding="utf-8")
+        self.assertIn("(SIG-7) **One verdict per signature defect.**", core)
+
     def test_fv_rail_envelope_error_names_an_unregistered_algorithm(self):
         # The `error` verdict holds for every verifier only when the label is
         # outside the closed ComponentSignature algorithm set.
@@ -159,6 +189,56 @@ class SignatureValueEncodingCorpusTests(unittest.TestCase):
         )
         self.assertEqual(case["expected"], "error")
         self.assertNotIn(case["input"]["rail"]["signature"]["algorithm"], registered)
+
+
+COMPONENT_ALGORITHMS = frozenset({"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
+ED25519_ONLY = frozenset({"ed25519"})
+
+# Corpora whose cases verify a signature envelope and report that verdict
+# directly. DACS-5 SPA folds a rejected artifact into its admission `fail`
+# (SPA-1), and the historical/legacy corpora carry legacy spellings by design.
+SIG7_CORPORA = {
+    "settlement-finality-verification.json",
+    "finality-resolution-context-v1.json",
+    "canonical-channel-message-v0.6.json",
+}
+SIG7_VERDICT = {"algorithm": "error", "wire": "error", "format": "fail"}
+BASE64URL = re.compile(r"[A-Za-z0-9_-]+\Z")
+
+
+def typed_envelopes(node, allowed=COMPONENT_ALGORITHMS):
+    """Yield (envelope, algorithm set) for each DACS signature envelope.
+
+    Attestations, certificate signatures and observation-response signatures
+    admit ed25519 alone (DACS-4 §9.7.0); other envelopes are ComponentSignature.
+    """
+    if isinstance(node, dict):
+        if "algorithm" in node and "value" in node:
+            narrow = {"authorityRef", "validatorId", "keyId"} & set(node)
+            yield node, ED25519_ONLY if narrow else allowed
+        for item in node.values():
+            yield from typed_envelopes(item, allowed)
+    elif isinstance(node, list):
+        for item in node:
+            yield from typed_envelopes(item, allowed)
+
+
+def sig7_defect(envelope, allowed):
+    algorithm = envelope.get("algorithm")
+    if not isinstance(algorithm, str) or algorithm not in allowed:
+        return "algorithm"
+    value = envelope.get("value")
+    if not isinstance(value, str) or not BASE64URL.fullmatch(value) or len(value) % 4 == 1:
+        return "wire"
+    try:
+        raw = b64url_decode(value)
+    except ValueError:
+        return "wire"
+    if algorithm == "ed25519":
+        return None if len(raw) == 64 else "format"
+    if algorithm == "ecdsa-secp256k1":
+        return None if canonical_ecdsa(value) else "format"
+    return None  # CORE §B.7 defines no decoded format for sr1-aggregate
 
 
 def _signed_artifacts(node):

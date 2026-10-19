@@ -1900,6 +1900,19 @@ def nonminimal_b64u(value: str) -> str:
     return value[:-1] + B64URL_ALPHABET[index | 1]
 
 
+def short_b64u(value: str) -> str:
+    """Drop the last byte of a genuine 64-byte signature and re-encode it.
+
+    The result is canonical Base64URL (it passes the SIG-6 wire stage) but
+    decodes to 63 bytes, so it fails the Ed25519 algorithm stage (SIG-7
+    ``fail``) without any key.
+    """
+    raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    if len(raw) != 64 or b64u(raw) != value:
+        raise ValueError("expected a canonical 64-byte Base64URL value")
+    return b64u(raw[:-1])
+
+
 def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
     """Cases that isolate an FV guard another guard used to decide.
 
@@ -1973,8 +1986,9 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-ap2-sr3-native-head-future-provider-current", "fail", "the authenticated native head is observed after the verifier-local clock; the provider attestation is not", changed_sr3(native_head_at(VERIFICATION_TIME + 1_000, "ap2-sr3:future-head"))),
     ])
 
-    # CORE SIG-6: a non-minimal Base64URL spelling of a genuine signature is
-    # rejected before verification, on every independently parsed envelope.
+    # CORE SIG-6/SIG-7: a non-minimal Base64URL spelling of a genuine
+    # signature fails the wire stage, malformed encoding (error) before any
+    # key, on every independently parsed envelope.
     def respell(container, key="value"):
         container[key] = nonminimal_b64u(container[key])
 
@@ -1982,12 +1996,12 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
     response_hash = provider["context"]["responseAttestation"]["contentHash"]
     provider_signature = factory.trusted["providerAttestations"][response_hash]["signature"]["value"]
     vectors.extend([
-        case("fv-evidence-signature-nonminimal-base64url", "fail", "the evidence signature decodes to the genuine bytes but is not the minimal Base64URL spelling", changed("block-depth", lambda v: respell(v["evidence"]["signature"]))),
-        case("fv-rail-signature-nonminimal-base64url", "fail", "the rail steward signature decodes to the genuine bytes but is not the minimal Base64URL spelling", changed("block-depth", lambda v: respell(v["rail"]["signature"]))),
-        case("fv-agreement-signature-nonminimal-base64url", "fail", "the buyer's agreement signature decodes to the genuine bytes but is not the minimal Base64URL spelling", changed("block-depth", lambda v: respell(v["agreement"]["signatures"][0]))),
-        case("fv-head-authority-signature-nonminimal-base64url", "fail", "a head authority signature decodes to the genuine bytes but is not the minimal Base64URL spelling", changed("block-depth", lambda v: respell(v["context"]["observation"]["authorityEvidence"]["attestations"][0]))),
-        case("fv-bft-signature-nonminimal-base64url", "fail", "a BFT certificate signature decodes to the genuine bytes but is not the minimal Base64URL spelling", changed("bft-final", lambda v: respell(v["context"]["observation"]["finalityCertificate"]["signatures"][0]))),
-        case("fv-provider-attestation-signature-nonminimal-base64url", "fail", "the trusted provider attestation signature decodes to the genuine bytes but is not the minimal Base64URL spelling", provider, trusted_overrides={"providerAttestations": {response_hash: {"signature": {"value": nonminimal_b64u(provider_signature)}}}}),
+        case("fv-evidence-signature-nonminimal-base64url", "error", "the evidence signature decodes to the genuine bytes but is not the minimal Base64URL spelling, so it fails the SIG-6 wire stage", changed("block-depth", lambda v: respell(v["evidence"]["signature"]))),
+        case("fv-rail-signature-nonminimal-base64url", "error", "the rail steward signature decodes to the genuine bytes but is not the minimal Base64URL spelling, so it fails the SIG-6 wire stage", changed("block-depth", lambda v: respell(v["rail"]["signature"]))),
+        case("fv-agreement-signature-nonminimal-base64url", "error", "the buyer's agreement signature decodes to the genuine bytes but is not the minimal Base64URL spelling, so it fails the SIG-6 wire stage", changed("block-depth", lambda v: respell(v["agreement"]["signatures"][0]))),
+        case("fv-head-authority-signature-nonminimal-base64url", "error", "a head authority signature decodes to the genuine bytes but is not the minimal Base64URL spelling, so it fails the SIG-6 wire stage", changed("block-depth", lambda v: respell(v["context"]["observation"]["authorityEvidence"]["attestations"][0]))),
+        case("fv-bft-signature-nonminimal-base64url", "error", "a BFT certificate signature decodes to the genuine bytes but is not the minimal Base64URL spelling, so it fails the SIG-6 wire stage", changed("bft-final", lambda v: respell(v["context"]["observation"]["finalityCertificate"]["signatures"][0]))),
+        case("fv-provider-attestation-signature-nonminimal-base64url", "error", "the trusted provider attestation signature decodes to the genuine bytes but is not the minimal Base64URL spelling, so it fails the SIG-6 wire stage", provider, trusted_overrides={"providerAttestations": {response_hash: {"signature": {"value": nonminimal_b64u(provider_signature)}}}}),
     ])
 
     # FV-2: unknown or malformed echo values are error, not a mismatch.
@@ -2075,12 +2089,24 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
         assert attestations[2]["authorityRef"] == "rpc-d"
         attestations[2]["value"] = "==not base64url=="
 
-    # CORE §B.7 SIG-6: a signature skipped for lack of a key still gets the
-    # keyed path's encoding check, so the verdict does not depend on the key.
+    # CORE §B.7 SIG-7: a signature skipped for lack of a key still gets the
+    # key-free checks, so the verdict does not depend on the key.
     vectors.append(case(
-        "fv-trusted-observation-authority-key-absent-attestation-noncanonical", "fail",
+        "fv-trusted-observation-authority-key-absent-attestation-noncanonical", "error",
         "rpc-a and rpc-b meet the threshold with available keys, and pinned rpc-d, whose key the verifier lacks, presents a value that is not canonical Base64URL",
         changed("block-depth", keyless_noncanonical),
+    ))
+
+    def keyless_wrong_length(value):
+        pin_authorities(value, ("rpc-a", "rpc-b", "rpc-d"), ("rpc-a", "rpc-b", "rpc-d"))
+        attestations = value["context"]["observation"]["authorityEvidence"]["attestations"]
+        assert attestations[2]["authorityRef"] == "rpc-d"
+        attestations[2]["value"] = short_b64u(attestations[2]["value"])
+
+    vectors.append(case(
+        "fv-trusted-observation-authority-key-absent-attestation-wrong-length", "fail",
+        "rpc-a and rpc-b meet the threshold with available keys, and pinned rpc-d, whose key the verifier lacks, presents canonical Base64URL that decodes to 63 bytes, which no Ed25519 key verifies",
+        changed("block-depth", keyless_wrong_length),
     ))
 
     def unconfigured_provider(value):
@@ -2217,12 +2243,18 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
     )
     for prefix, build, path in bft_paths:
         certificate_without_set(prefix + "-validator-set-absent-signatures-not-array", "error", "the pinned validator set is not configured and the BFT signatures are an object", build(), path, lambda s, c: c.__setitem__("signatures", {}))
-        certificate_without_set(prefix + "-validator-set-absent-signature-noncanonical", "fail", "the pinned validator set is not configured and a BFT signature value is not canonical Base64URL", build(), path, noncanonical_value)
+        certificate_without_set(prefix + "-validator-set-absent-signature-noncanonical", "error", "the pinned validator set is not configured and a BFT signature value is not canonical Base64URL", build(), path, noncanonical_value)
     certificate_without_set("fv-bft-validator-set-absent-signature-malformed", "error", "the pinned validator set is not configured and a BFT signature lacks its algorithm", factory.model_input("bft-final"), ("observation",), lambda s, c: s[0].pop("algorithm"))
     certificate_without_set("fv-bft-validator-set-absent-signer-id-not-string", "error", "the pinned validator set is not configured and a BFT signature names its validator by a number", factory.model_input("bft-final"), ("observation",), lambda s, c: s[0].__setitem__("validatorId", 7))
     certificate_without_set("fv-bft-validator-set-absent-duplicate-signer", "fail", "the pinned validator set is not configured and one validator signs twice", factory.model_input("bft-final"), ("observation",), duplicate_signer)
-    certificate_without_set("fv-bft-validator-set-absent-algorithm-unsupported", "fail", "the pinned validator set is not configured and a BFT signature names secp256k1", factory.model_input("bft-final"), ("observation",), unsupported_algorithm)
+    certificate_without_set("fv-bft-validator-set-absent-algorithm-unsupported", "error", "the pinned validator set is not configured and a BFT signature names secp256k1, outside the ed25519-only certificate algorithm set", factory.model_input("bft-final"), ("observation",), unsupported_algorithm)
     certificate_without_set("fv-bft-validator-set-absent-signatures-empty", "fail", "the pinned validator set is not configured and the certificate carries no signature, which no positive quorum admits", factory.model_input("bft-final"), ("observation",), lambda s, c: s.clear())
+    certificate_without_set("fv-bft-validator-set-absent-signature-wrong-length", "fail", "the pinned validator set is not configured and a BFT signature is canonical Base64URL that decodes to 63 bytes, which no Ed25519 key verifies", factory.model_input("bft-final"), ("observation",), lambda s, c: s[0].__setitem__("value", short_b64u(s[0]["value"])))
+
+    # SIG-7: attestation and certificate signatures admit ed25519 alone, so a
+    # registered ComponentSignature name is still outside their set (error).
+    vectors.append(case("fv-head-authority-attestation-algorithm-outside-set", "error", "a head authority attestation names sr1-aggregate, a ComponentSignature algorithm outside the ed25519-only attestation set", changed("block-depth", lambda v: v["context"]["observation"]["authorityEvidence"]["attestations"][0].__setitem__("algorithm", "sr1-aggregate"))))
+    vectors.append(case("fv-bft-signature-algorithm-outside-set", "error", "with the validator set configured, a BFT signature names sr1-aggregate, a ComponentSignature algorithm outside the ed25519-only certificate set", changed("bft-final", lambda v: v["context"]["observation"]["finalityCertificate"]["signatures"][0].__setitem__("algorithm", "sr1-aggregate"))))
 
     # HTLC-8: the destination lock is mined no earlier than the source lock's
     # mined instant plus the pinned sourceFinalitySec.  Each schedule keeps
@@ -2280,20 +2312,26 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
     value = factory.provider_sr3_value()
     native(value)["authorityEvidence"]["attestations"][0]["value"] = "==junk=="
     vectors.append(case(
-        "fv-ap2-sr3-keyless-attestation-noncanonical", "fail",
-        "SIG-6 checks a presented SR-3 head signature even without its key", value,
+        "fv-ap2-sr3-keyless-attestation-noncanonical", "error",
+        "SIG-6 wire-checks a presented SR-3 head signature even without its key; the malformed value is error", value,
         trusted_overrides={"observationAuthorityKeys": None},
     ))
     value = changed("block-depth", lambda v: v["evidence"]["signature"].__setitem__("value", "==junk=="))
     vectors.append(case(
-        "fv-keyless-evidence-signature-noncanonical", "fail",
-        "SIG-6 checks presented evidence signature encoding independently of party-key availability",
+        "fv-keyless-evidence-signature-noncanonical", "error",
+        "SIG-6 wire-checks the presented evidence signature independently of party-key availability; the malformed value is error",
+        value, trusted_overrides={"partyKeys": None},
+    ))
+    value = changed("block-depth", lambda v: v["evidence"]["signature"].__setitem__("value", short_b64u(v["evidence"]["signature"]["value"])))
+    vectors.append(case(
+        "fv-keyless-evidence-signature-wrong-length", "fail",
+        "the presented evidence signature is canonical Base64URL that decodes to 63 bytes; SIG-7 makes it fail without the party key",
         value, trusted_overrides={"partyKeys": None},
     ))
     value = unconfigured_and(lambda v: v["evidence"]["signature"].__setitem__("value", "==junk=="))
     vectors.append(case(
-        "fv-orchestrator-key-absent-evidence-signature-noncanonical", "fail",
-        "the session names a keyless orchestrator while the other party keys remain available; malformed evidence signature encoding is still fail",
+        "fv-orchestrator-key-absent-evidence-signature-noncanonical", "error",
+        "the session names a keyless orchestrator while the other party keys remain available; a malformed evidence signature encoding is still error",
         value, trusted_overrides=unconfigured_authority,
     ))
     for key_map in ("partyKeys", "stewardKeys"):

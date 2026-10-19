@@ -75,9 +75,63 @@ The format used per release:
 
 ### Fixed — conformance vectors for rules merged in #415–#420
 
-These additions change no normative text unless a bullet says so. Each new
+These additions change no normative text unless a bullet is marked
+**(normative)**; each such bullet ends with a compatibility line. Each new
 case is a committed vector that a verifier ignoring its rule gets wrong,
 except where a bullet names the earlier check that decides it.
+
+- **One verdict per signature defect** (CORE §B.7 SIG-7; DACS-3 §8.3.3;
+  DACS-4 §9.7.0 FV entry, FV-10; DACS-5 SPA-1; **(normative)**) — CORE §B.7
+  now orders the verdicts for a signature envelope's own defects, the same in
+  every module: an algorithm outside the envelope's set and a value that fails
+  the SIG-6 wire stage are `error`; an authenticated algorithm-metadata
+  mismatch and a canonical value of the wrong decoded length or format are
+  `fail`; an unavailable key or an unimplemented registered algorithm is
+  `indeterminate`. The wire/algorithm split is the one
+  `signature-value-encoding-v0.1` already records as `failureStage`, and the
+  channel corpus already followed it (`canonical-padded-base64url` `error`,
+  `canonical-hex-signature-value` `fail`). DACS-5 SPA-1 now states that its
+  admission reports every rejected artifact as `fail`.
+  - `settlement-finality-verification` (292 → 297): the six
+    `*-signature-nonminimal-base64url` cases, the six keyless or
+    checkpoint-absent `*-noncanonical` cases and
+    `fv-bft-validator-set-absent-algorithm-unsupported` move from `fail` to
+    `error`. Five cases are new: a canonical 63-byte value on a keyless
+    attestation, a keyless evidence signature and a checkpoint-absent BFT
+    signature (`fail`), and `sr1-aggregate` on a head attestation and on a BFT
+    signature with the checkpoint (`error`).
+  - `finality-resolution-context-v1`: `response-signature-nonminimal-base64url`
+    moves from `fail` to `error`.
+  - `RailSignature` is now defined as `ComponentSignature`, and the FV
+    attestation and certificate `algorithm` fields are typed `"ed25519"`, the
+    set their 32-byte Ed25519 trust anchors admit.
+  - `tests/test_signature_value_encoding_corpus.py` checks every envelope in
+    the FV, FRC and channel corpora against the SIG-7 stage verdicts.
+
+  Compatibility: no verdict at the merge base changes. Every moved verdict
+  belongs to a case this entry adds. A verifier that answered `fail` for a
+  wire-stage failure on an FV or FRC envelope now answers `error`, and a
+  certificate or attestation that names an algorithm other than `ed25519` is
+  `error` rather than `fail`.
+- **HTLC leg chain and timing inputs** (DACS-4 HTLC-6, HTLC-8, §9.14;
+  **(normative)**) — HTLC-6 names the source of each leg's chain: the CAIP-2
+  namespace of the signed profile's `source.networkId` or
+  `destination.networkId`. A txRef `chainId` must equal that ID's reference and
+  never selects the chain. The `solana` and `bip122` native-hash entries are
+  marked forward-looking, since v0.1 evidence reaches only `eip155`. HTLC-8
+  defines a lock's mined instant as its authenticated inclusion block's
+  timestamp, compared with the lock's expiry as integer Unix milliseconds (a
+  seconds timestamp is multiplied by 1000). Evidence that cannot yield either
+  value is `error`. The fixture codec's `minedAt` and `expiry` members carry
+  these values. A test ties the spec text to the inputs the reference reads.
+  Compatibility: no verdict changes. HTLC-6's EVM-only evidence rule and the
+  HTLC-8 bound were already added by this entry.
+- **FRC-8 closure depth** (DACS-4 §9.7.0 FRC-8; **(normative)**) — the
+  observed arm's `observation` is a `FinalityVerificationContext`, closed by
+  its own types at every depth, and `transportMetadata` is the only open
+  member. A test adds a member at each nesting level of the chain, BFT and
+  provider contexts and requires `error`. Compatibility: the reference already
+  enforced this, so no verdict changes.
 
 - **Executable finality-resolution corpus** (DACS-4 §9.7.0; #416 follow-up) —
   every `finality-resolution-context-v1` case now carries its complete
@@ -175,7 +229,8 @@ except where a bullet names the earlier check that decides it.
   when any of these checks was skipped.
 
 - **FV guards a neighbouring guard used to decide** (DACS-4 §9.7.0 FV-1..FV-9;
-  CORE §B.7 SIG-6) — `settlement-finality-verification` (208 → 249). Each new
+  CORE §B.7 SIG-6; **(normative)** for the FV entry's key-map and absent-key
+  rules) — `settlement-finality-verification` (208 → 249). Each new
   case changes only unsigned bytes, verifier-owned trust input, or the one
   artifact it re-signs:
   - Merkle proofs that keep the genuine root while their leaf and sibling
@@ -185,7 +240,7 @@ except where a bullet names the earlier check that decides it.
   - An `ap2-sr3` native head that is stale or future while the provider
     attestation is current.
   - A non-minimal Base64URL spelling of a genuine signature on each of six
-    envelopes (`fail`).
+    envelopes (`error` under SIG-7, see above).
   - Unknown producer-report values (`error`).
   - Missing (`indeterminate`) and malformed (`error`) trusted key maps, and
     empty or malformed pinned validator sets (`error`).
@@ -196,7 +251,7 @@ except where a bullet names the earlier check that decides it.
     or the rail signature, fails against an available key (`fail`).
   - A pinned authority whose key the verifier lacks presents a value that
     is not canonical Base64URL, while the keyed authorities meet the
-    threshold (`fail`).
+    threshold (`error` under SIG-7).
   - A genuine head attestation by an authority the verifier trusts but the
     signed profile does not pin (`fail`).
   - A well-formed x402 reference (X402-1 version `"1"`) on the provider
@@ -214,9 +269,11 @@ except where a bullet names the earlier check that decides it.
   the rest of the observation still check every signature with an available
   key and every deterministic fact, so a bad signature is `fail` even when
   another signer's key is missing, in the same or an earlier stage. A value
-  skipped for lack of a key still gets the encoding check, so a malformed
-  value is `fail` whether or not the verifier holds the key.
-  None of these changes alters an existing verdict. The `fv-inclusion-block-identity-substitution` note now
+  skipped for lack of a key still gets the key-free SIG-7 checks, whether or
+  not the verifier holds the key.
+  Compatibility: DACS-4's FV entry now states the key-map and absent-key
+  rules. They are new requirements on an FV verifier, and no verdict at the
+  merge base changes. The `fv-inclusion-block-identity-substitution` note now
   describes it as the ancestry case that it is.
 - **HTLC hash identifiers** (DACS-4 §9.14, HTLC-6; normative clarification) —
   the HTLC row registers `sourceHashAlgorithm` and `destinationHashAlgorithm`
@@ -237,16 +294,17 @@ except where a bullet names the earlier check that decides it.
   fixtures now carry the repository's pinned AP2 version `0.2` instead of
   `"1"`. `fv-ap2-protocol-version-unsupported` and
   `fv-ap2-sr3-protocol-version-unsupported` are `error`.
-- **AP2 provider endpoint location** (DACS-4 §9.14) — the `pay-ap2` row now
-  names `rail.network.providerEndpoint`, matching the `ap2-provider`
-  NetworkSpec and step 4. The FV vectors README records the fixture-only
+- **AP2 provider endpoint location** (DACS-4 §9.14; **(normative)**) — the
+  `pay-ap2` row now requires `rail.network.providerEndpoint`, matching the
+  `ap2-provider` NetworkSpec and step 4. Compatibility: a `pay-ap2` rail
+  without that member was already unusable at step 4. No verdict changes. The FV vectors README records the fixture-only
   joins: `eip155:`/`solana:` network identifiers, the HTTPS provider
   endpoint, and the static tank `bridgeId`/`transferId`.
 - **FRC closed shapes and local acquisition** (DACS-4 §9.7.0 FRC-5, FRC-8,
   FRC-9) — FRC-8 now states what the reference already enforced: the
   response type and both arms are closed apart from `transportMetadata`, and
   new members need a new response version (normative clarification; SIG-5
-  hashing is unchanged). `finality-resolution-context-v1` (19 → 49) adds:
+  hashing is unchanged). `finality-resolution-context-v1` (19 → 43) adds:
   - extra members on a signed response and on each response arm (`error`);
   - acquisition records with another nonce, a status other than obtained, or
     a duplicate response hash (`error`), and one naming another responder
@@ -259,8 +317,8 @@ except where a bullet names the earlier check that decides it.
     authority id, a duplicate key id, a seat without keys, an unregistered
     key algorithm, and a duplicate unavailable reason (`error`); and a
     malformed policy on the replay and composite entry points (`error`);
-  - a response signature over other bytes and a non-minimal Base64URL
-    spelling of a genuine one (`fail`, FRC-4 and CORE SIG-6);
+  - a response signature over other bytes (`fail`, FRC-4) and a non-minimal
+    Base64URL spelling of a genuine one (`error`, CORE §B.7 SIG-7);
   - a transported query other than the issued one, and a policy source
     record that does not hash the policy (`fail`, FRC-2);
   - a response acquired outside the query boundary or after the decision
@@ -317,9 +375,10 @@ except where a bullet names the earlier check that decides it.
     keep their verdicts. Each still asks whether a registered algorithm the
     resolver lacks is unavailable.
   - `tests/test_signature_value_encoding_corpus.py` requires every committed
-    `ecdsa-secp256k1` value to be canonical, except the four
-    `canonical-channel-message-v0.6` cases about that encoding, which expect
-    `fail`.
+    `ecdsa-secp256k1` value to be canonical, except four
+    `canonical-channel-message-v0.6` cases, which expect `fail`. Those are
+    `canonical-algorithm-key-confusion` (Ed25519 bytes under an ECDSA label)
+    and the three encoding cases below.
 - **Channel release pin, ECDSA encoding and SDK wire bytes** (CORE §11.1.2,
   §B.7; DACS-3 §8.3.3) — `canonical-channel-message-v0.6` (63 → 67):
   - The fixture release pin moves from `0d92f664`, whose `spec/PROFILE.md`
@@ -328,16 +387,22 @@ except where a bullet names the earlier check that decides it.
     reads both at the pinned commit.
   - `current-profile-wrong-module-version` (`fail`) pairs the exact pin with
     one wrong module version.
-  - CORE §B.7 now defines the `ecdsa-secp256k1` value as strict DER with low
-    S (normative clarification). `canonical-ecdsa-high-s`,
-    `canonical-ecdsa-fixed-width-r-s` and `canonical-ecdsa-der-long-form-length`
-    are `fail`; a verifier that tolerates each encoding passes its case.
+  - **(normative)** CORE §B.7 now defines the `ecdsa-secp256k1` value for
+    every DACS envelope, not only the channel's: strict DER of the SEC 1
+    `ECDSA-Sig-Value` with low S, over the SHA-256 prehash of the signed
+    bytes. `canonical-ecdsa-high-s`, `canonical-ecdsa-fixed-width-r-s` and
+    `canonical-ecdsa-der-long-form-length` are `fail` (a SIG-7
+    decoded-format failure). A verifier that tolerates each encoding passes
+    its case. Compatibility: a producer emitting a fixed-width, high-S or
+    BER value, or signing without the SHA-256 prehash, must re-sign. No
+    verdict at the merge base changes.
   - The two shipped-SDK wire messages are pinned by their JCS SHA-256.
 - **Demos mapping corrections** (DEMOS-MAPPING A.2, A.4, A.5; DACS-4 §9.5.5,
   §9.6.1; DACS-5 §10.4.2; GLOSSARY; informative except where noted):
-  - `ChannelSession`'s CH-6 reuse check is optional. It needs a
+  - **(normative)** `ChannelSession`'s CH-6 reuse check is optional. It needs a
     caller-supplied, persistent `ChannelIdRegistry`, which a CH-6-claiming
-    adapter must require.
+    adapter MUST require. Compatibility: an adapter that claimed CH-6
+    without such a registry no longer conforms.
   - The SDK sender check is scheme-only; `demos:0x<64hex>` is its canonical
     form.
   - The Storage Program substrate cap is 1 MB and the ACL modes are
@@ -353,17 +418,19 @@ except where a bullet names the earlier check that decides it.
     `rail-availability-selection-v0.1` (28 → 33) adds two `fail` cases: a
     steward-signed `mocked` tank rail that a node-derived `live` hint cannot
     select for production, and an unsigned tank copy claiming `live`.
-  - DACS-4 §9.4 and DEMOS-MAPPING now state the tank rule as a steward
-    and selector rule: the steward does not sign the tank rail `live`
-    yet, and an orchestrator selects a steward-signed, pinned `live` tank
+  - **(normative)** DACS-4 §9.4 (and RAV-R1) and DEMOS-MAPPING now state
+    the tank rule as a steward and selector rule: the steward MUST NOT sign
+    the tank rail `live` yet, and an orchestrator selects a steward-signed, pinned `live` tank
     rail only when its trusted local operator policy records that its
     pinned node completes the handler. Three cases pin the gate: no such
     record (`fail`), a record (`pass`, fixture-only), and a malformed
-    record (`error`).
+    record (`error`). Compatibility: a selector that chose a `live` tank rail
+    on availability alone now gets `fail` without the completion record.
 
 ### Conformance coverage and reference alignment
 
-- **HTLC hash and epoch checks** (DACS-4 HTLC-6, HTLC-8). Each leg's
+- **HTLC hash and epoch checks** (DACS-4 HTLC-6, HTLC-8; **(normative)**).
+  Each leg's
   registered hash identifier must be one its chain computes natively:
   `keccak256` or `sha256` on EVM (opcode and SHA-256 precompile) and Solana
   (syscalls), and `sha256` on Bitcoin. An EVM leg on `sha256`, the usual
@@ -373,19 +440,24 @@ except where a bullet names the earlier check that decides it.
   evidence names only `eip155` legs, because the registered txRef kinds carry
   a numeric EVM `chainId`. A destination lock mined before the source lock's
   mined instant plus the pinned `sourceFinalitySec` is `fail`; the HTLC-8
-  text now states that schedule check (normative clarification). Settlement
-  finality 269 → 277:
+  text now states that schedule check. Compatibility: an HTLC rail whose
+  hash identifier its leg chain cannot compute, or whose leg is not `eip155`,
+  was already unverifiable and is now `error`. A schedule that mines the
+  destination lock early is now `fail`. Settlement finality 269 → 277:
   - an EVM source leg on `sha256` and two EVM legs sharing `sha256` (`pass`);
   - a `cosmos:8453` leg whose evidence names EVM chainId 8453 (`error`);
   - a rail without `sourceHashAlgorithm` (`error`);
   - destination locks mined 1s after the source lock (inside the 600s
     finality interval), 1ms before and exactly at the pinned source-finality
     instant, and a rail without `sourceFinalitySec`.
-- **Validator checkpoint deferral** (DACS-4 FV-10). A missing validator-set
-  checkpoint no longer hides the certificate's own checks: a non-array
-  signature list or malformed member is `error`, and an unsupported
-  algorithm, a duplicate signer, a non-canonical value or an empty list is
-  `fail`. Settlement finality 277 → 288: one case per check on the chain BFT
+- **Validator checkpoint deferral** (DACS-4 FV-10; **(normative)**). A
+  missing validator-set checkpoint no longer hides the certificate's own
+  checks: a non-array signature list, a malformed member, an algorithm other
+  than `ed25519` or a wire-stage failure is `error`, and a duplicate signer,
+  a wrong decoded length or an empty list is `fail` (SIG-7). Compatibility:
+  a verifier that answered `indeterminate` for these without a checkpoint now
+  answers `error` or `fail`; FV-10's stage precedence is otherwise unchanged.
+  Settlement finality 277 → 288: one case per check on the chain BFT
   path, and the non-array and non-canonical cases on the `ap2-sr3` and tank
   coordinator paths.
 - **Malformed trusted maps** (DACS-4 FV entry). Settlement finality

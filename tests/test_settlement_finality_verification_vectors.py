@@ -170,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(292, self.data["count"])
+        self.assertEqual(297, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -366,14 +366,28 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ('            and _nonempty_string(signature.get("validatorId"))\n', "", 1, "indeterminate", [
                 "fv-bft-validator-set-absent-signer-id-not-string",
             ]),
-            ('if signature["validatorId"] in seen or signature.get("algorithm") != "ed25519":', "if False:", 1, "indeterminate", [
-                "fv-bft-validator-set-absent-duplicate-signer", "fv-bft-validator-set-absent-algorithm-unsupported",
+            ('if signature["validatorId"] in seen:', "if False:", 1, "indeterminate", [
+                "fv-bft-validator-set-absent-duplicate-signer",
+            ]),
+            # SIG-7: the certificate algorithm set is ed25519 alone (error),
+            # with or without the pinned validator-set checkpoint.
+            ('            and signature.get("algorithm") == "ed25519"\n', "", 1, "indeterminate", [
+                "fv-bft-validator-set-absent-algorithm-unsupported",
+            ]),
+            ('            and signature.get("algorithm") == "ed25519"\n', "", 1, "pass", [
+                "fv-bft-signature-algorithm-outside-set",
+            ]),
+            # SIG-7: a wire-stage failure is error; without the shape check
+            # the same value falls through to a signature fail.
+            ('            and _signature_wire(signature.get("value"))\n', "", 1, "fail", [
+                "fv-bft-validator-set-absent-signature-noncanonical",
+                "fv-ap2-sr3-bft-validator-set-absent-signature-noncanonical",
+                "fv-tank-coordinator-bft-validator-set-absent-signature-noncanonical",
+                "fv-bft-signature-nonminimal-base64url",
             ]),
             ('if not _signature_encoding(signature.get("value")):\n                return "fail", "BFT certificate signature does not verify"',
              "if False:\n                pass", 1, "indeterminate", [
-                 "fv-bft-validator-set-absent-signature-noncanonical",
-                 "fv-ap2-sr3-bft-validator-set-absent-signature-noncanonical",
-                 "fv-tank-coordinator-bft-validator-set-absent-signature-noncanonical",
+                 "fv-bft-validator-set-absent-signature-wrong-length",
              ]),
             ('        if not signatures:\n            return "fail", "BFT signed weight is below the pinned quorum"\n', "", 1, "indeterminate", [
                 "fv-bft-validator-set-absent-signatures-empty",
@@ -420,10 +434,31 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 "fv-trusted-party-key-for-orchestrator-absent-agreement-signature-invalid",
                 "fv-trusted-party-key-for-orchestrator-absent-rail-signature-invalid",
             ]),
-            # SIG-6: skipping a keyless attestation without its encoding check
-            # admits the malformed value.
+            # SIG-7: skipping a keyless attestation without its key-free
+            # length check admits the wrong-length value.
             ('valid_value = _signature_encoding(attestation.get("value"))', "valid_value = True", 1, "pass", [
+                "fv-trusted-observation-authority-key-absent-attestation-wrong-length",
+            ]),
+            # SIG-7: the attestation shape owns the wire stage (error) and the
+            # ed25519-only algorithm set (error).
+            ('        or not _signature_wire(attestation.get("value"))\n', "", 1, "fail", [
                 "fv-trusted-observation-authority-key-absent-attestation-noncanonical",
+                "fv-ap2-sr3-keyless-attestation-noncanonical",
+                "fv-head-authority-signature-nonminimal-base64url",
+            ]),
+            ('        or attestation.get("algorithm") != "ed25519"\n', "", 1, "pass", [
+                "fv-head-authority-attestation-algorithm-outside-set",
+            ]),
+            # SIG-7: every signer-field envelope checks the wire stage in its
+            # shape; a string-only check lets the value fall through to fail.
+            ('        and _signature_wire(value.get("value"))\n', '        and isinstance(value.get("value"), str)\n', 1, "fail", [
+                "fv-evidence-signature-nonminimal-base64url", "fv-rail-signature-nonminimal-base64url",
+                "fv-agreement-signature-nonminimal-base64url", "fv-provider-attestation-signature-nonminimal-base64url",
+                "fv-keyless-evidence-signature-noncanonical",
+                "fv-orchestrator-key-absent-evidence-signature-noncanonical",
+            ]),
+            ('if key_state[0] == "indeterminate" and not _signature_encoding(signature["value"]):', "if False:", 1, "indeterminate", [
+                "fv-keyless-evidence-signature-wrong-length",
             ]),
         ]
         for old, new, count, mutant_decision, names in guards:
@@ -491,6 +526,13 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         def junk_rail_signature(value):
             value["rail"]["signature"]["value"] = "==not base64url=="
 
+        def short_attestation(value):
+            attestation = value["context"]["observation"]["authorityEvidence"]["attestations"][0]
+            attestation["value"] = finality_fixtures.short_b64u(attestation["value"])
+
+        def short_rail_signature(value):
+            value["rail"]["signature"]["value"] = finality_fixtures.short_b64u(value["rail"]["signature"]["value"])
+
         bft = self.cases["fv-bft-final-canonical-success"]
         rows = [
             # FV-10 deferral inside one observation: absent authority keys do
@@ -502,10 +544,13 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             (self.cases["fv-htlc-keccak256-hashlock-is-sha3-256"], "observationAuthorityKeys", {}, None, "fail"),
             (self.cases["fv-tank-coordinator-relation-mismatch"], "observationAuthorityKeys", {}, None, "fail"),
             (self.cases["fv-liquidity-tank-canonical-success"], "observationAuthorityKeys", {}, None, "indeterminate"),
-            # FV-3: a value skipped for lack of a key still gets the encoding
-            # check, so an empty map does not admit it.
-            (depth, "observationAuthorityKeys", {}, junk_attestation, "fail"),
-            (depth, "stewardKeys", {}, junk_rail_signature, "fail"),
+            # FV-3 / CORE §B.7 SIG-7: a value skipped for lack of a key still
+            # gets the key-free checks, so an empty map admits neither a
+            # wire-stage failure (error) nor a wrong decoded length (fail).
+            (depth, "observationAuthorityKeys", {}, junk_attestation, "error"),
+            (depth, "stewardKeys", {}, junk_rail_signature, "error"),
+            (depth, "observationAuthorityKeys", {}, short_attestation, "fail"),
+            (depth, "stewardKeys", {}, short_rail_signature, "fail"),
             (depth, "partyKeys", {}, None, "indeterminate"),
             (depth, "partyKeys", {"did:demos:outsider": party[buyer]}, None, "indeterminate"),
             (depth, "partyKeys", {orchestrator: party[orchestrator]}, None, "indeterminate"),
@@ -520,6 +565,71 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         for case, name, keys, mutate, expected in rows:
             with self.subTest(case=case["name"], map=name, keys=sorted(keys)):
                 self.assertEqual(expected, run(case, name, keys, mutate)["decision"])
+
+    def test_htlc_leg_chain_and_timing_inputs_are_the_ones_the_spec_names(self):
+        # HTLC-6/HTLC-8: a third party reproduces these verdicts from the
+        # spec alone, so the spec names each input the reference reads.
+        settle = (ROOT / "spec" / "DACS-4-SETTLE.md").read_text(encoding="utf-8")
+        htlc6 = re.search(r"^- \(HTLC-6\).*$", settle, re.M).group(0)
+        htlc8 = settle[settle.index("- (HTLC-8)"):settle.index("- (HTLC-10)")]
+        for leg in ("source", "destination"):
+            self.assertIn(f"`consumerFinalityProfile.{leg}.networkId`", htlc6)
+        self.assertIn("forward-looking", htlc6)
+        for phrase in ("`inclusionBlock`", "integer Unix milliseconds", "multiplied by 1000", "`minedAt`", "`expiry`"):
+            self.assertIn(phrase, htlc8)
+
+        # The leg chain is the profile's CAIP-2 namespace, never the txRef:
+        # moving the source profile to a namespace with no native-hash entry
+        # is error even though every txRef still names an EVM chainId.
+        case = self.cases["fv-htlc-reveal-canonical-success"]
+        value = copy.deepcopy(case["input"])
+        value["rail"]["consumerFinalityProfile"]["source"]["networkId"] = "cosmos:cosmoshub-4"
+        finality_fixtures.FixtureFactory().rebind_rail(value)
+        result = verify_finality(value, merge(self.trust, case.get("trustedOverrides")))
+        self.assertEqual(("error", "HTLC leg chain has no registered native hash"),
+                         (result["decision"], result["reason"]))
+
+        # The mined instant is read in milliseconds: a seconds value for the
+        # destination lock is a different instant, not a rounding of it.
+        for name, offset_ms in (
+            ("fv-htlc-destination-lock-at-source-finality", 0),
+            ("fv-htlc-destination-lock-one-ms-before-source-finality", -1),
+        ):
+            source_lock = self.cases[name]["input"]["context"]["sourceLock"]
+            destination_lock = self.cases[name]["input"]["context"]["destinationLock"]
+            source_event = json.loads(base64.urlsafe_b64decode(
+                source_lock["selectedEventProof"]["eventBytes"] + "=" * (-len(source_lock["selectedEventProof"]["eventBytes"]) % 4)))
+            destination_event = json.loads(base64.urlsafe_b64decode(
+                destination_lock["selectedEventProof"]["eventBytes"] + "=" * (-len(destination_lock["selectedEventProof"]["eventBytes"]) % 4)))
+            parameters = self.cases[name]["input"]["rail"]["parameters"]
+            with self.subTest(case=name):
+                self.assertEqual(
+                    source_event["minedAt"] + parameters["sourceFinalitySec"] * 1000 + offset_ms,
+                    destination_event["minedAt"],
+                )
+
+    def test_finality_context_members_are_closed_at_every_depth(self):
+        # DACS-4 FRC-8 relies on this: the observed arm's observation is a
+        # FinalityVerificationContext closed by its own types at every depth.
+        for name, path, reason in (
+            ("fv-block-depth-canonical-success", ("observation",), "malformed AuthenticatedChainObservation"),
+            ("fv-block-depth-canonical-success", ("observation", "authenticatedHead"), "malformed inclusion block or authenticated head"),
+            ("fv-block-depth-canonical-success", ("observation", "inclusionBlock"), "malformed inclusion block or authenticated head"),
+            ("fv-block-depth-canonical-success", ("observation", "authorityEvidence"), "malformed chain authority evidence"),
+            ("fv-bft-final-canonical-success", ("observation", "finalityCertificate"), "malformed BFT certificate"),
+            ("fv-provider-receipt-canonical-success", (), "malformed provider finality context"),
+        ):
+            case = self.cases[name]
+            value = copy.deepcopy(case["input"])
+            node = value["context"]
+            for segment in path:
+                node = node[segment]
+            node["unexpectedMember"] = 1
+            result = verify_finality(value, merge(self.trust, case.get("trustedOverrides")))
+            with self.subTest(case=name, path=path):
+                self.assertEqual(("error", reason), (result["decision"], result["reason"]))
+        settle = (ROOT / "spec" / "DACS-4-SETTLE.md").read_text(encoding="utf-8")
+        self.assertIn("Closure continues below the\n  arms", settle)
 
     def test_ap2_fixtures_carry_the_pinned_ap2_protocol_version(self):
         # One AP2 wire version across the repository: the FV oracle implements
@@ -555,14 +665,22 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         names = {
             "fv-ap2-sr3-keyless-attestation-noncanonical": "observationAuthorityKeys",
             "fv-keyless-evidence-signature-noncanonical": "partyKeys",
+            "fv-keyless-evidence-signature-wrong-length": "partyKeys",
             "fv-partyKeys-absent-depth-echo-mismatch": "partyKeys",
             "fv-stewardKeys-absent-depth-echo-mismatch": "stewardKeys",
             "fv-ap2-sr3-key-absent-provider-binding-mismatch": "observationAuthorityKeys",
             "fv-provider-key-absent-provider-binding-mismatch": "providerAuthorityKeys",
         }
+        # CORE §B.7 SIG-7: a wire-stage failure is error and a wrong decoded
+        # length is fail, with or without the key map.
+        decisions = {
+            "fv-ap2-sr3-keyless-attestation-noncanonical": "error",
+            "fv-keyless-evidence-signature-noncanonical": "error",
+        }
         reasons = {
-            "fv-ap2-sr3-keyless-attestation-noncanonical": "observation authority signature does not verify",
-            "fv-keyless-evidence-signature-noncanonical": "finality-bound evidence signature does not verify",
+            "fv-ap2-sr3-keyless-attestation-noncanonical": "malformed authority attestation",
+            "fv-keyless-evidence-signature-noncanonical": "malformed or non-exclusive FinalityBoundSettlementEvidence",
+            "fv-keyless-evidence-signature-wrong-length": "finality-bound evidence signature does not verify",
             "fv-partyKeys-absent-depth-echo-mismatch": "producer report depth differs from signed rail profile",
             "fv-stewardKeys-absent-depth-echo-mismatch": "producer report depth differs from signed rail profile",
             "fv-ap2-sr3-key-absent-provider-binding-mismatch": "provider response attestation signature does not verify",
@@ -575,7 +693,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 trust[key_map] = missing
                 with self.subTest(case=name, keys=missing):
                     result = verify_finality(case["input"], trust)
-                    self.assertEqual("fail", result["decision"], result["reason"])
+                    self.assertEqual(decisions.get(name, "fail"), result["decision"], result["reason"])
                     self.assertEqual(reasons[name], result["reason"])
 
     def test_bft_signature_failure_precedes_staleness_with_and_without_head_keys(self):

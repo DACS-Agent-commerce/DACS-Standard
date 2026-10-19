@@ -219,10 +219,22 @@ def _settle(deferred: dict | None, result: dict) -> dict:
     return deferred
 
 
+def _signature_wire(value: Any) -> bool:
+    """CORE §B.7 SIG-6 wire stage: exact unpadded Base64URL. Failing it is
+    malformed encoding, ``error`` under SIG-7, so the envelope shape checks
+    apply it before any key is consulted."""
+    try:
+        b64url_decode(value)
+    except (ValueError, TypeError, binascii.Error):
+        return False
+    return True
+
+
 def _signature_encoding(value: Any) -> bool:
-    """The encoding check a keyed Ed25519 verification applies first. A
-    signature skipped for lack of a key still gets it, so a malformed
-    presented value is ``fail`` whether or not the verifier holds the key."""
+    """The SIG-6 algorithm stage a keyed Ed25519 verification applies first:
+    exactly 64 decoded bytes. A signature skipped for lack of a key still
+    gets it, so a wrong-length value is ``fail`` (SIG-7) whether or not the
+    verifier holds the key."""
     try:
         return len(b64url_decode(value)) == 64
     except (ValueError, TypeError, binascii.Error):
@@ -250,7 +262,7 @@ def _signature_shape(value: Any, signer_field: str) -> bool:
         _exact_object(value, {signer_field, "algorithm", "value"})
         and value.get("algorithm") == "ed25519"
         and _nonempty_string(value.get(signer_field))
-        and isinstance(value.get("value"), str)
+        and _signature_wire(value.get("value"))
     )
 
 
@@ -926,7 +938,14 @@ def _verify_authority(observation: dict, profile: dict, path_ids: list[str], tru
     if not isinstance(attestations, list):
         return "error", "authority attestations are not an array"
     payload_hash = hash_value(_authority_payload(observation, path_ids))
-    if any(not _exact_object(attestation, {"authorityRef", "algorithm", "value"}) for attestation in attestations):
+    # SIG-7: an algorithm outside the ed25519-only attestation set, or a
+    # value that fails the SIG-6 wire stage, is malformed (error).
+    if any(
+        not _exact_object(attestation, {"authorityRef", "algorithm", "value"})
+        or attestation.get("algorithm") != "ed25519"
+        or not _signature_wire(attestation.get("value"))
+        for attestation in attestations
+    ):
         return "error", "malformed authority attestation"
     key_state = _trusted_key_map(trusted, "observationAuthorityKeys")
     if key_state is not None and key_state[0] == "error":
@@ -939,9 +958,8 @@ def _verify_authority(observation: dict, profile: dict, path_ids: list[str], tru
         if (
             authority_ref in seen
             or authority_ref not in policy["authorityRefs"]
-            or attestation.get("algorithm") != "ed25519"
         ):
-            return "fail", "duplicate, substituted, or unsupported observation authority"
+            return "fail", "duplicate or substituted observation authority"
         seen.add(authority_ref)
         # A profile-pinned authority without a trusted key cannot count
         # toward the quorum; it is missing authority, not a bad signature.
@@ -981,9 +999,13 @@ def _verify_bft_certificate(observation: dict, profile: dict, trusted: dict) -> 
     if not isinstance(signatures, list):
         return "error", "BFT signatures are not an array"
     for signature in signatures:
+        # SIG-7: the certificate's algorithm set is ed25519 alone; another
+        # name or a value failing the SIG-6 wire stage is malformed (error).
         if not (
             _exact_object(signature, {"validatorId", "algorithm", "value"})
             and _nonempty_string(signature.get("validatorId"))
+            and signature.get("algorithm") == "ed25519"
+            and _signature_wire(signature.get("value"))
         ):
             return "error", "malformed BFT signature"
     validator_sets = trusted.get("validatorSets")
@@ -997,8 +1019,8 @@ def _verify_bft_certificate(observation: dict, profile: dict, trusted: dict) -> 
         # list can never meet it.
         seen = set()
         for signature in signatures:
-            if signature["validatorId"] in seen or signature.get("algorithm") != "ed25519":
-                return "fail", "BFT signer is substituted, duplicate, or unsupported"
+            if signature["validatorId"] in seen:
+                return "fail", "BFT signer is substituted or duplicate"
             if not _signature_encoding(signature.get("value")):
                 return "fail", "BFT certificate signature does not verify"
             seen.add(signature["validatorId"])
@@ -1028,8 +1050,8 @@ def _verify_bft_certificate(observation: dict, profile: dict, trusted: dict) -> 
     for signature in signatures:
         validator_id = signature.get("validatorId")
         validator = by_id.get(validator_id)
-        if validator is None or validator_id in seen or signature.get("algorithm") != "ed25519":
-            return "fail", "BFT signer is substituted, duplicate, or unsupported"
+        if validator is None or validator_id in seen:
+            return "fail", "BFT signer is substituted or duplicate"
         if not _verify_ed25519(
             {validator_id: validator["publicKey"]}, validator_id,
             BFT_CERTIFICATE_DOMAIN, certificate["blockId"], signature.get("value"),

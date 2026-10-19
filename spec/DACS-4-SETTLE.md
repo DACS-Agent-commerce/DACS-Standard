@@ -979,10 +979,11 @@ Atomic cross-chain settlement using HTLC contracts on source and destination cha
 - (HTLC-3) buyerSalt MUST NOT be reused across sessions; each jobId uses a freshly-generated salt.
 - (HTLC-4) The payer MUST retain buyerSalt until the destination-side claim reaches finality (loss makes the preimage unrecoverable — a fund-safety requirement, not merely operational).
 - (HTLC-5) **Preimage derivation** MUST use HKDF (RFC 5869, sha256): IKM=buyerSalt, salt=jobId, info=agreementHash. Weaker derivations MUST NOT be used. jobId MUST be globally unique per swap and agreementHash MUST be collision-resistant; both hold in DACS, where jobId is per-session and agreementHash is the sha256 of the canonical agreement.
-- (HTLC-6) **Hashlock** is the chain-native hash of the preimage. Source and destination chains MAY use different hash functions and MUST NOT be required to share one; each MUST be an identifier the §9.14 HTLC row registers and that the leg chain computes natively: `keccak256` or `sha256` on EVM (the KECCAK256 opcode and the SHA-256 precompile), `keccak256` or `sha256` on Solana (the `sol_keccak256` and `sol_sha256` syscalls), and `sha256` on Bitcoin (`OP_SHA256`). The verifier checks this on the signed rail before the observations: an unregistered identifier, a registered identifier that the leg chain does not compute natively (for example `keccak256` on a Bitcoin leg), and a leg on a chain the row lists no native hash for are each `error`, never `fail`. Another chain's hash (for example blake2b, or Bitcoin's `OP_HASH160`) needs a registry entry first. The registered HTLC txRef kinds name a numeric EVM `chainId`, so v0.1 settlement evidence can name only `eip155` legs; evidence for a leg on any other chain is `error`. The preimage is the only cross-chain-shared value; the preimage revealed on the destination is bit-identical to the one producing `hashlock_source`.
+- (HTLC-6) **Hashlock** is the chain-native hash of the preimage. Source and destination chains MAY use different hash functions and MUST NOT be required to share one; each MUST be an identifier the §9.14 HTLC row registers and that the leg chain computes natively: `keccak256` or `sha256` on EVM (the KECCAK256 opcode and the SHA-256 precompile), `keccak256` or `sha256` on Solana (the `sol_keccak256` and `sol_sha256` syscalls), and `sha256` on Bitcoin (`OP_SHA256`). The verifier checks this on the signed rail before the observations: an unregistered identifier, a registered identifier that the leg chain does not compute natively (for example `keccak256` on a Bitcoin leg), and a leg on a chain the row lists no native hash for are each `error`, never `fail`. Another chain's hash (for example blake2b, or Bitcoin's `OP_HASH160`) needs a registry entry first. A leg's chain is named by the signed rail's finality profile, not by the evidence: the source leg's chain is `consumerFinalityProfile.source.networkId` and the destination leg's is `consumerFinalityProfile.destination.networkId`, each a CAIP-2 chain ID whose namespace (the text before the first `:`) selects the native-hash entry. Each leg's HTLC txRef `chainId` MUST equal that CAIP-2 ID's reference; it never selects the chain. The registered HTLC txRef kinds carry a numeric EVM `chainId`, so v0.1 settlement evidence can name only `eip155` legs, and evidence for a leg whose profile names any other namespace is `error`. The `solana` and `bip122` native-hash entries are forward-looking: no v0.1 evidence reaches them until an HTLC txRef kind for that chain is registered. The preimage is the only cross-chain-shared value; the preimage revealed on the destination is bit-identical to the one producing `hashlock_source`.
 - (HTLC-7) **Timelock asymmetry.** Implementations MUST reject a route unless `expiry_source > expiry_dest + source_finality + safety`, evaluated on absolute expiry instants. The margin is sized to **source** finality, not destination latency: the binding constraint is the payee *finalising* its source claim after the reveal. `source_finality` and `safety` are the pinned rail parameters `rail.parameters.sourceFinalitySec` and `rail.parameters.safetyWindowSec`; both are REQUIRED, and `safetyWindowSec` defaults to 600s. The inequality MUST be evaluated against the pinned values, not runtime-estimated latency.
 - (HTLC-8) **Timelock epoch.** Timelocks are durations measured from when each lock is mined. With this anchoring, the HTLC-7 duration inequality implies the absolute-expiry inequality. HTLC-8 places two separate requirements:
   - *Payee obligation.* The payee MUST NOT submit the destination lock until it has itself observed the source lock reach finality under the source chain's finality profile. Implementations MUST reject any schedule that could mine the destination lock before that.
+  - *Timing inputs.* A lock's *mined instant* is the timestamp of the block that includes the lock transaction: the leg observation's authenticated `inclusionBlock`, whose timestamp the leg network's binding decodes from the exact `header` bytes. A lock's *expiry* is the absolute instant the authenticated lock event commits to. A verifier compares both as integer Unix milliseconds; a chain whose header timestamp is in seconds (EVM `block.timestamp`) is multiplied by 1000 exactly, with no rounding. Evidence whose binding cannot yield an authenticated mined instant and expiry for each lock is `error`. The conformance fixtures' codec carries the decoded values as the authenticated `htlc-lock` event's `minedAt` and `expiry` members, in milliseconds; their millisecond-offset boundary cases test the comparison itself, which a seconds-resolution chain reaches only at multiples of 1000.
   - *Verifier schedule bound.* From settlement evidence, a verifier checks only the pinned bound that HTLC-7 also uses. A destination lock whose authenticated mined instant is earlier than the source lock's authenticated mined instant plus `sourceFinalitySec` is `fail`; one mined exactly at that instant satisfies the bound. A `pass` attests this schedule property only. It does not attest that the source lock had finalized when the destination lock was mined, because the registered evidence carries no authenticated source-finalization instant; that remains the payee's own obligation above. Economic completion does not rest on this bound: each of the four HTLC observations, including the payee's source claim, MUST verify under its own chain's finality profile, and `outcome: "success"` requires the source claim's source-chain finality.
 - (HTLC-10) **Free-option disclosure.** The asymmetry guarantees liveness but not freedom from the inherent HTLC free option. The payer MAY decline to reveal after observing market movement, at zero cost, while the payee's destination capital stays locked to the destination timelock. v0.1 does NOT standardise an anti-option mechanism. Listings sensitive to option abuse SHOULD prefer pay-cross-chain-liquidity-tank or require a payer stake.
 
@@ -1704,6 +1705,8 @@ type ComponentSignature = {
   value: string                                // unpadded Base64URL signature over the artifact payload (CORE §B.7 SIG-6)
 
 }
+
+type RailSignature = ComponentSignature        // signer: the authorized registry steward; payload "dacs-rail:v1:" (§9.4.3)
 ```
 
 The finality-bound shape is closed. A #392 producer MUST first authenticate the
@@ -1814,15 +1817,26 @@ type AuthenticatedChainObservation = {
   authorityEvidence: {
     kind: string
     sourceRefs: string[]
-    attestations: { authorityRef: string; algorithm: string; value: string }[]
+    attestations: { authorityRef: string; algorithm: "ed25519"; value: string }[]
   }
   finalityCertificate?: {
     kind: string
     validatorSetHash: string
     blockId: string
-    signatures: { validatorId: string; algorithm: string; value: string }[]
+    signatures: { validatorId: string; algorithm: "ed25519"; value: string }[]
   }
 }
+```
+
+Observation-authority attestations and finality-certificate signatures verify
+against the verifier's pinned authority keys and validator-set checkpoint keys,
+which are raw 32-byte Ed25519 public keys in this version. Their algorithm set
+is therefore `ed25519` alone, like the `FinalityObservationResponseVersion1`
+signature; any other name, including a registered `ComponentSignature`
+algorithm, is outside the set and `error` (CORE §B.7 SIG-7). Adding an
+algorithm here is a new revision of these types.
+
+```
 
 type FinalityVerificationContext =
   | { kind: "chain"; observation: AuthenticatedChainObservation }
@@ -2024,7 +2038,10 @@ the reference authenticates.
   event and, for a BFT certificate, its block and validator set are. `FinalityObservationResponseVersion1` and both of its `response`
   arms are closed: a member outside the type, other than the optional
   `transportMetadata`, makes the response malformed, and so does a
-  `transportMetadata` that is not a JSON object. A later revision adds
+  `transportMetadata` that is not a JSON object. Closure continues below the
+  arms: the `observed` arm's `observation` is a `FinalityVerificationContext`,
+  and each of its members is closed by its own FV type, so an extra member at
+  any depth is likewise malformed; `transportMetadata` alone is open. A later revision adds
   members only under a new `finalityObservationResponseVersion`. SIG-5 is
   unaffected: the signature still covers the response as received, and a
   valid signature does not cure the closed-shape refusal. A malformed
@@ -2082,18 +2099,20 @@ the evidence, Agreement, rail and context stages, within one observation, and ac
 model's arms and their relations, every signature with an available key and
 every deterministic check still runs, and any `error` or
 `fail` they establish is the result; the absent key is reported as
-`indeterminate` only when none does (FV-10). A presented signature value whose
-key is absent still gets the encoding check a keyed verification applies first,
-so a malformed value is `fail` whether or not the verifier holds the key
-(CORE §B.7 SIG-6; encoding is checked independently). A rail signer absent
+`indeterminate` only when none does (FV-10). A presented signature envelope
+whose key is absent still gets the key-free checks of CORE §B.7 SIG-7: an
+algorithm outside the envelope's set or a value that fails the SIG-6 wire
+encoding is `error`, and a canonical value of the wrong decoded length is
+`fail`, whether or not the verifier holds the key. A rail signer absent
 from a non-empty steward key map is not a trusted steward and is `fail`.
 A missing validator-set checkpoint is authority uncertainty, distinct from
 an absent key map; on chain, SR-3 and composite paths it is deferred while
 available deterministic checks run (FV-10). The certificate's own checks
-still run first: a non-array signature list or a malformed member is
-`error`, and an unsupported algorithm, a duplicate signer, a value that
-fails the SIG-6 encoding check, or an empty signature list (which no
-positive quorum admits) is `fail`.
+still run first: a non-array signature list, a malformed member, an
+algorithm other than `ed25519`, or a value that fails the SIG-6 wire
+encoding is `error`, and a duplicate signer, a canonical value of the wrong
+decoded length, or an empty signature list (which no positive quorum admits)
+is `fail`.
 
 - **(FV-1) Exact rail authority.** A consumer MUST classify the record by
   `finalityBoundEvidenceVersion` before finality action, resolve
@@ -2842,7 +2861,7 @@ implementers.
 | --- | --- | --- |
 | pay-evm-erc20 | {rail: railId}; rail.parameters.finalityBlocks optional | evm-event (legacy read: evm) |
 | pay-solana-spl | {rail: railId}; rail.parameters.commitmentLevel optional | solana-instruction (legacy read: solana) |
-| pay-cross-chain-htlc | {rail: railId}; rail.parameters.timelockSourceSec, timelockDestSec, sourceFinalitySec, and safetyWindowSec required, with timelockSourceSec > timelockDestSec + sourceFinalitySec + safetyWindowSec (HTLC-7 — the margin covers the payee reaching SOURCE-chain finality after the reveal; evaluated against the pinned params, not runtime latency), under the HTLC-8 epoch (a verifier fails a destination lock mined before the source lock's mined instant plus sourceFinalitySec); rail.parameters.sourceHashAlgorithm and destinationHashAlgorithm required, each a registered HTLC-6 hashlock identifier: `sha256` (FIPS 180-4 SHA-256) or `keccak256` (Keccak-256 with the original `0x01` padding, as used by EVM; **not** FIPS 202 SHA3-256). each identifier MUST be native to its leg chain (`keccak256` or `sha256` for `eip155` and `solana`, `sha256` for `bip122`), and a registered identifier the leg chain does not compute natively, or a leg chain without a native-hash entry, is `error`; any other identifier, including `sha3-256`, is unsupported (`error`) until registered. A verifier recomputes each leg's hashlock under that leg's identifier; a hashlock that does not recompute is `fail` | htlc-lock + htlc-reveal + htlc-claim (source) |
+| pay-cross-chain-htlc | {rail: railId}; rail.parameters.timelockSourceSec, timelockDestSec, sourceFinalitySec, and safetyWindowSec required, with timelockSourceSec > timelockDestSec + sourceFinalitySec + safetyWindowSec (HTLC-7 — the margin covers the payee reaching SOURCE-chain finality after the reveal; evaluated against the pinned params, not runtime latency), under the HTLC-8 epoch (a verifier fails a destination lock mined before the source lock's mined instant plus sourceFinalitySec); rail.parameters.sourceHashAlgorithm and destinationHashAlgorithm required, each a registered HTLC-6 hashlock identifier: `sha256` (FIPS 180-4 SHA-256) or `keccak256` (Keccak-256 with the original `0x01` padding, as used by EVM; **not** FIPS 202 SHA3-256). Each identifier MUST be native to its leg chain, the CAIP-2 namespace of the profile's `source.networkId` or `destination.networkId` (`keccak256` or `sha256` for `eip155`; the forward-looking `solana` entry admits `keccak256` or `sha256` and `bip122` admits `sha256`, and v0.1 evidence reaches only `eip155`), and a registered identifier the leg chain does not compute natively, or a leg chain without a native-hash entry, is `error`; any other identifier, including `sha3-256`, is unsupported (`error`) until registered. A verifier recomputes each leg's hashlock under that leg's identifier; a hashlock that does not recompute is `fail` | htlc-lock + htlc-reveal + htlc-claim (source) |
 | pay-cross-chain-liquidity-tank | {rail: railId} | liquidity-tank |
 | pay-ap2 | {rail: railId}; rail.network.providerEndpoint required (the `ap2-provider` NetworkSpec member that step 4 submits to) | ap2 (txRef carries `protocolVersion`, required) |
 | pay-x402 | {rail: railId} | x402-event (`protocolVersion`, receipt hash, settlement transaction, chain, and log index required; legacy read: x402) |

@@ -921,6 +921,35 @@ order. A fixed-width `r || s` value (as in JOSE ES256K), a high-S value, or
 any non-canonical DER spelling MUST be rejected; a verifier MUST NOT
 normalize it.
 
+**Signature-envelope verdicts.** A procedure that verifies a DACS signature
+envelope and reports `pass`, `fail`, `indeterminate` or `error` for it MUST
+classify the envelope's own defects as follows, in this order, in every module:
+
+1. An `algorithm` outside the envelope type's algorithm set is malformed
+   structure: `error`. The set is the one the envelope's type declares
+   (`ComponentSignature` and every type defined as it admit `ed25519`,
+   `ecdsa-secp256k1` and `sr1-aggregate`; a type that names one literal admits
+   only that one). A verifier MUST NOT accept a name outside the set because
+   it implements an algorithm of that name.
+2. A `value` that fails the wire checks above (Base64URL alphabet, padding,
+   length, residual bits, exact re-encoding) is malformed encoding: `error`.
+3. An authenticated algorithm-metadata mismatch (the envelope names an
+   algorithm the signer's authenticated key metadata contradicts) is `fail`.
+4. A canonical value whose decoded length or internal format is invalid for
+   its algorithm (an `ed25519` value that is not 64 bytes; an
+   `ecdsa-secp256k1` value that is not canonical low-S DER) can never verify:
+   `fail`.
+5. A signer key the verifier does not hold, or a registered algorithm in the
+   set that the verifier does not implement, is `indeterminate`, unless
+   another check establishes `error` or `fail`.
+6. A value that does not verify under the available key is `fail`.
+
+Checks 1–4 need no key, so a verifier applies them whether or not it holds the
+signer's key or implements the algorithm. A procedure that admits signed
+artifacts into a larger decision states how a rejected artifact affects that
+decision in its own rule (DACS-5 SPA-1 reports every rejected artifact as
+`fail`).
+
 This rule applies to DACS signature envelopes such as `ListingSignature`,
 `RevocationSignature`, `AgreementSignature`, `ComponentSignature`, and
 `BundleSignature`. It does not override encodings defined by a composed protocol
@@ -957,6 +986,7 @@ MUST be regenerated and re-signed.
 - (SIG-4) An artifact kind not in the current v0.x table MUST use a domain separator of the form "dacs-x-" || kind || ":v" || version || ":" until accepted into a future version of the registry.
 - (SIG-5) **Preserve-unknown.** A verifier MUST reconstruct the signed payload (canonical form and artifact hash) over the document **as received**, including any fields it does not recognise. It MUST NOT strip, drop, or otherwise omit unrecognised fields before recomputing the canonical form — doing so changes the hash and would reject a validly-signed document produced under a later minor version. A verifier MAY ignore the *meaning* of unknown fields but MUST include their bytes in the hash.
 - (SIG-6) **Canonical signature value.** Producers and verifiers MUST apply the unpadded Base64URL wire encoding, canonicality check, algorithm-specific validation, and legacy-import boundary defined above.
+- (SIG-7) **One verdict per signature defect.** Verifiers MUST classify signature-envelope defects by the ordered signature-envelope verdicts above: an algorithm outside the envelope's set and a wire-encoding failure are `error`, an algorithm-metadata mismatch and an invalid decoded format are `fail`, and only an unavailable key or an unimplemented registered algorithm is `indeterminate`.
 
 > **Note (non-normative).** SIG-5 is what makes the "forward-readable shapes" guarantee of §11.1.2 hold for signed artifacts: an older verifier can still verify a newer minor version's signature, interpreting only the fields it knows.
 

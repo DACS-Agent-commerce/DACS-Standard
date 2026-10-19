@@ -104,6 +104,15 @@ def _b64url(value: Any) -> bytes:
     return raw
 
 
+def _signature_wire(value: Any) -> bool:
+    """CORE §B.7 SIG-6 wire stage; failing it is malformed (SIG-7 ``error``)."""
+    try:
+        _b64url(value)
+    except (ValueError, TypeError, binascii.Error):
+        return False
+    return True
+
+
 @dataclass(frozen=True)
 class FinalityResolutionAuthority:
     """Verifier-owned authority retained after issuing one exact query."""
@@ -519,7 +528,7 @@ def _response_shape(response: Any) -> bool:
         or not _exact(signature, {"keyId", "algorithm", "value"})
         or not _nonempty(signature.get("keyId"))
         or signature.get("algorithm") != "ed25519"
-        or not _nonempty(signature.get("value"))
+        or not _signature_wire(signature.get("value"))
     ):
         return False
     if not isinstance(arm, dict) or arm.get("status") not in {"observed", "unavailable"}:

@@ -199,7 +199,9 @@ legacy candidate and its adjacent context cannot initialize it. A proven
 algorithm-metadata mismatch, binding contradiction, terminated state, reuse,
 or replay is `fail` even when key bytes are unavailable; matching authenticated
 algorithm metadata with unavailable key bytes remains `indeterminate`.
-Malformed structure or encoding is `error`. Both arms retain their exact
+Malformed structure, an algorithm outside the envelope's set, and a value that
+fails the SIG-6 wire encoding are `error`; a canonical value whose decoded
+format is invalid for its algorithm is `fail` (CORE §B.7 SIG-7). Both arms retain their exact
 signature validation and frozen signed bytes/domains. The frozen legacy corpus
 and the generated current/mixed-wire corpus are identified in §14.3.
 

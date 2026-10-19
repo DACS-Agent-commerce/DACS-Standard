@@ -3172,7 +3172,7 @@
     }
   },
   "fixtureOnly": true,
-  "hash": "efa53fad76fe2d7eb20ed7e4591e47b4314cd8fd1e3ee586511e65b7a3d537e5",
+  "hash": "e16bd401366c45dfab5d701387105a6ce747459de716c218e7f2d05e4561dd87",
   "positive": {
     "authority": {
       "acquisitionRecords": [
@@ -44065,7 +44065,7 @@
       "operation": "replay"
     },
     {
-      "expected": "fail",
+      "expected": "error",
       "input": {
         "authority": {
           "acquisitionRecords": [
@@ -45118,7 +45118,7 @@
         }
       },
       "name": "response-signature-nonminimal-base64url",
-      "note": "observer-a's response signature decodes to the genuine bytes but is not the minimal Base64URL spelling; the verifier acquired it as transported",
+      "note": "observer-a's response signature decodes to the genuine bytes but is not the minimal Base64URL spelling, so it fails the SIG-6 wire stage (CORE \u00a7B.7 SIG-7 error); the verifier acquired it as transported",
       "operation": "verify"
     },
     {

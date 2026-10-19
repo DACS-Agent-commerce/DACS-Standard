@@ -1244,11 +1244,12 @@ def document() -> dict:
              "replayRecord": unknown_replay,
              "authority": serialize_authority(replay_payload),
          }},
-        {"name": "response-signature-nonminimal-base64url", "expected": "fail",
+        {"name": "response-signature-nonminimal-base64url", "expected": "error",
          "operation": "verify",
          "note": "observer-a's response signature decodes to the genuine bytes but "
-                 "is not the minimal Base64URL spelling; the verifier acquired it "
-                 "as transported",
+                 "is not the minimal Base64URL spelling, so it fails the SIG-6 wire "
+                 "stage (CORE §B.7 SIG-7 error); the verifier acquired it as "
+                 "transported",
          "input": nonminimal_signature_input},
         {"name": "response-signature-invalid", "expected": "fail",
          "operation": "verify",

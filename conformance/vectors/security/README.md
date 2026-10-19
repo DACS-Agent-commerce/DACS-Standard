@@ -91,7 +91,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 292 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 297 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1646,7 +1646,7 @@ current, mixed, and frozen historical verdict with
 
 ### `claim-requirement-qualification-v0.3.json` — §7.7.1 CRQ-1..CRQ-4
 
-41 candidate vectors for qualifying authenticated, resolved `VerifyResult`
+42 candidate vectors for qualifying authenticated, resolved `VerifyResult`
 objects against the complete applicable `ClaimRequirement` predicate before
 decision classification. The set covers exact positive matching, absent
 listing constraints with an implicit session-start version pin, competing old
@@ -1672,7 +1672,7 @@ Three same-claim alternative cases use a registry whose `lei` recipe lists
 With no selected method, one qualified pass from either method satisfies the
 member beside a current fail from the other; alternatives are OR, not
 corroboration. A listing that selects `tlsnotary` excludes a default-method
-pass. Two further cases are `error` under CRQ-2: one registry gives two `lei`
+pass. Three further cases are `error` under CRQ-2: one registry gives two `lei`
 families `tlsnotary` at distinct recipe versions, so ownership is ambiguous;
 in another, the admitted inventory lists a `tlsnotary` family whose
 definition body is absent, so the remaining owner cannot be shown unique; in
@@ -1931,7 +1931,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
 
-292 candidate cases execute consumer-verifiable settlement finality for
+297 candidate cases execute consumer-verifiable settlement finality for
 block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
 liquidity-tank profiles. The consumer derives the model and strength from the
 exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
@@ -1975,8 +1975,8 @@ changes the verdict:
   another transaction tree.
 - The `ap2-sr3` native head freshness is checked apart from provider
   freshness.
-- Non-minimal Base64URL spellings of genuine signatures are rejected on every
-  envelope (CORE SIG-6).
+- Non-minimal Base64URL spellings of genuine signatures fail the SIG-6 wire
+  stage and are `error` on every envelope (CORE §B.7 SIG-7).
 - Unknown producer-report values are `error` (FV-2).
 - Missing trusted key maps are `indeterminate`; malformed ones, and empty or
   malformed pinned validator sets, are `error`.
@@ -1990,9 +1990,14 @@ changes the verdict:
   key absent, a buyer agreement signature or rail signature that fails against
   an available key is `fail`, and so is a bad BFT signature when the
   observation authority keys are absent (unit test).
-- A presented value skipped for lack of a key still gets the encoding check
-  (CORE §B.7 SIG-6): a pinned, keyless authority's non-Base64URL attestation is `fail`
-  even when the keyed authorities meet the threshold.
+- A presented value skipped for lack of a key still gets the key-free checks
+  (CORE §B.7 SIG-7): a pinned, keyless authority's non-Base64URL attestation is
+  `error`, and a canonical value that decodes to 63 bytes is `fail`, even when
+  the keyed authorities meet the threshold. Keyless evidence signatures and BFT
+  signatures without a validator-set checkpoint follow the same split.
+- Head-authority attestations and BFT certificate signatures admit `ed25519`
+  alone (DACS-4 §9.7.0). Another name, even the registered `sr1-aggregate`, is
+  `error` with or without the validator-set checkpoint.
 - Only authorities the signed profile pins count toward the head quorum, even
   when the verifier trusts another authority's key (FV-6).
 - A well-formed x402 reference (X402-1 version `"1"`) on the provider rail is
@@ -2013,13 +2018,18 @@ bad available-key BFT signatures on chain and AP2/SR-3 paths. Missing
 certificates or validator checkpoints still permit deterministic tank-relation
 checks. Missing SR-3 observations or provider attestations do not suppress
 independent provider-signature, response-binding or capture-status checks.
-Keyless evidence and SR-3 attestation values receive the SIG-6 encoding check;
+Keyless evidence and SR-3 attestation values receive the SIG-7 key-free checks;
 missing Agreement or rail keys do not hide signed depth-echo mismatches.
 Known-answer tests pin Keccak-256 for empty and `abc` inputs and compare SHA3
 padding with `hashlib.sha3_256` across sponge-rate boundaries.
 
 Some joins belong to this fixture codec, not to DACS-4:
 
+- An `htlc-lock` event's `minedAt` and `expiry` carry the decoded inclusion-block
+  timestamp and the lock's absolute expiry in Unix milliseconds (DACS-4 HTLC-8
+  timing inputs). `fv-htlc-destination-lock-one-ms-before-source-finality`
+  tests the comparison at millisecond resolution; a seconds-resolution chain
+  reaches it only at multiples of 1000.
 - `networkId` is `eip155:<chainId>` for EVM and `solana:<cluster>` for Solana,
   and the rail ↔ profile network join uses those forms. `solana:<cluster>` is
   a DACS fixture spelling, not CAIP-2's genesis-hash form.
@@ -2108,9 +2118,9 @@ one case breaks each structural policy rule (no authorities, a duplicate
 authority or key id, a seat without keys, an unregistered algorithm, a
 duplicate unavailable reason).
 
-The FRC-4 cases carry a response signature over other bytes and a
-non-minimal Base64URL spelling of a genuine signature, each acquired as
-transported (`fail`). Two FRC-2 cases transport a query other than the issued
+The FRC-4 cases carry a response signature over other bytes (`fail`) and a
+non-minimal Base64URL spelling of a genuine signature, which fails the SIG-6
+wire stage (`error`, CORE §B.7 SIG-7), each acquired as transported. Two FRC-2 cases transport a query other than the issued
 one, and hold a policy source record that does not hash the policy (`fail`).
 Two FRC-5 cases acquire a response outside the query boundary or after the
 decision time, and an FRC-9 case lacks the recorded commerce inputs
@@ -2127,7 +2137,7 @@ python3 -m unittest tests.test_finality_resolution_context_vectors -v
 
 ### `current-use-reputation-v1.json` — unallocated #391+#392 LAB-1..LAB-7 / CUR-1..CUR-8
 
-Thirty-four candidate fixtures drive the complete stronger DACS-5 consumer path. Six
+Thirty-six candidate fixtures drive the complete stronger DACS-5 consumer path. Six
 compose the finality-bound bundle consumer with every FV model, exact RSV and
 applicable SB-3 checks; the provider-receipt case remains classified as
 provisional capture. Two retain the complete original requests for the legacy

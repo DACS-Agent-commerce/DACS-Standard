@@ -600,10 +600,26 @@ class SettlementContractTests(unittest.TestCase):
 
     def test_unavailable_resolver_does_not_record_a_violation(self):
         vector = next(v for v in self.data["amendmentTargets"] if v["name"] == "ordinary-target")
-        for exception in (TimeoutError("timeout"), FileNotFoundError("not found")):
+        for exception in (TimeoutError("timeout"), FileNotFoundError("not found"),
+                          ConnectionRefusedError("refused")):
             with self.subTest(exception=type(exception).__name__):
                 resolver = mock.Mock(side_effect=exception)
-                self.assertEqual(self.consume(vector, resolver)[0], "indeterminate")
+                result, reason = self.consume(vector, resolver)
+                self.assertEqual(result, "indeterminate")
+                # The cause stays distinguishable: timeout, not-found or refused.
+                self.assertIn(type(exception).__name__, reason)
+
+    def test_non_object_inputs_fail_closed(self):
+        vector = next(v for v in self.data["amendmentTargets"] if v["name"] == "ordinary-target")
+        for amendment in (None, [], "amendment"):
+            with self.subTest(amendment=amendment):
+                self.assertEqual(self.consume({**vector, "amendment": amendment})[0], "violation")
+        case = next(c for c in self.rails["cases"] if c["name"] == "rail-authority-pinned-before-start")
+        for member, value in (("rail", None), ("rail", []), ("railRef", None), ("railRef", "demos-native:DEM"),
+                              ("session", None), ("authority", [])):
+            with self.subTest(member=member, value=value):
+                result, _ = self.resolve_rail({**case, member: value})
+                self.assertIn(result, {"rejected", "indeterminate"})
 
     def test_rail_authority_cases_resolve_as_fixed(self):
         # RTB-1: every case is decided from verifier-owned session pins and

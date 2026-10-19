@@ -99,7 +99,6 @@ REGISTRY_INDEX_ADDRESS = "dacs4:registry:v0.1"
 ANCHOR_TEST_DOMAIN = b"settlement-vector-anchor-finality:"
 ANCHOR_TEST_KIND = "test-anchor-finality"
 SAFE_INT_MAX = 2**53 - 1
-_HEX_64 = re.compile(r"[0-9a-f]{64}\Z")
 
 
 def _shapes():
@@ -617,6 +616,8 @@ def consume_amendment_target(
     """
     shape = _shapes()
     try:
+        if not isinstance(amendment, dict):
+            raise Invalid("amendment is not an object")
         verify_embedded(amendment, public_keys, AMENDMENT_DOMAIN)
         target_ref = amendment.get("amendsEvidenceRef")
         if not shape._attestation_ref_shape_valid(target_ref):
@@ -624,7 +625,8 @@ def consume_amendment_target(
         try:
             resolved = resolve(target_ref)
         except OSError as exc:
-            raise Unknown("amendment target unavailable") from exc
+            # Keep the cause: a timeout, a not-found and a refusal differ.
+            raise Unknown(f"amendment target unavailable ({type(exc).__name__}: {exc})") from exc
         if not isinstance(resolved, dict):
             raise Unknown("amendment target unavailable")
         target = resolved.get("artifact")
@@ -708,6 +710,8 @@ def resolve_session_rail(
     session start, is `rejected`.
     """
     try:
+        if not all(isinstance(value, dict) for value in (session, rail_ref, rail)):
+            raise Invalid("session pins, rail reference and rail definition must be objects")
         started_at = session["startedAt"]
         registry_version = session["railRegistryVersion"]
         if type(started_at) is not int or type(registry_version) is not int:

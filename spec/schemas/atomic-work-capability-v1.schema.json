@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dacs.dev/schemas/atomic-work-capability-v1.schema.json",
+  "title": "AtomicWorkCapabilityV1",
+  "type": "object",
+  "required": [
+    "capabilityVersion",
+    "networkAuthority",
+    "networkId",
+    "executionProfile",
+    "workVersions",
+    "profiles",
+    "operationKinds",
+    "payloadSchemas",
+    "authorizationAlgorithms",
+    "proofProfile",
+    "validatorSetId",
+    "limits",
+    "evidence"
+  ],
+  "properties": {
+    "capabilityVersion": { "const": "1" },
+    "networkAuthority": { "$ref": "#/$defs/claimReference" },
+    "networkId": { "type": "string", "minLength": 1 },
+    "executionProfile": { "type": "string", "minLength": 1 },
+    "workVersions": { "const": ["1"] },
+    "profiles": {
+      "oneOf": [
+        { "const": ["dacs-purchase-v1"] },
+        { "const": ["dacs-completion-v1"] },
+        { "const": ["dacs-purchase-v1", "dacs-completion-v1"] }
+      ]
+    },
+    "operationKinds": {
+      "const": [
+        "assert-artifact",
+        "assert-work-receipt",
+        "native-dem-transfer",
+        "payment-slot-cas",
+        "storage-program-put"
+      ]
+    },
+    "payloadSchemas": {
+      "type": "object",
+      "required": [
+        "assert-artifact",
+        "assert-work-receipt",
+        "native-dem-transfer",
+        "payment-slot-cas",
+        "storage-program-put"
+      ],
+      "properties": {
+        "assert-artifact": {
+          "const": "https://dacs.dev/schemas/atomic-assert-artifact-payload-v1.schema.json"
+        },
+        "assert-work-receipt": {
+          "const": "https://dacs.dev/schemas/atomic-assert-work-receipt-payload-v1.schema.json"
+        },
+        "native-dem-transfer": {
+          "const": "https://dacs.dev/schemas/atomic-native-dem-transfer-payload-v1.schema.json"
+        },
+        "payment-slot-cas": {
+          "const": "https://dacs.dev/schemas/atomic-payment-slot-cas-payload-v1.schema.json"
+        },
+        "storage-program-put": {
+          "const": "https://dacs.dev/schemas/atomic-storage-program-put-payload-v1.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "authorizationAlgorithms": { "const": ["ed25519"] },
+    "proofProfile": { "type": "string", "minLength": 1 },
+    "validatorSetId": { "type": "string", "minLength": 1 },
+    "limits": {
+      "type": "object",
+      "required": [
+        "maxCanonicalBytes",
+        "maxOperations",
+        "maxExecutionTimeMs",
+        "maxProofBytes",
+        "feeRule"
+      ],
+      "properties": {
+        "maxCanonicalBytes": { "$ref": "#/$defs/positiveSafeInteger" },
+        "maxOperations": { "$ref": "#/$defs/positiveSafeInteger" },
+        "maxExecutionTimeMs": { "$ref": "#/$defs/positiveSafeInteger" },
+        "maxProofBytes": { "$ref": "#/$defs/positiveSafeInteger" },
+        "feeRule": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "claimReference": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9-]*:[^\\s?]+(?:\\?(?:[^\\s:?&=%]|%[0-9A-F]{2})+=(?:[^\\s:?&=%]|%[0-9A-F]{2})*(?:&(?:[^\\s:?&=%]|%[0-9A-F]{2})+=(?:[^\\s:?&=%]|%[0-9A-F]{2})*)*)?$"
+    },
+    "positiveSafeInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    }
+  }
+}

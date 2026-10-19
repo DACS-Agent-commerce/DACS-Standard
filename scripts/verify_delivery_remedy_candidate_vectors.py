@@ -53,12 +53,14 @@ EXTERNAL_SOURCE_PINS = {
     "eip55": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-55.md",
     "eip1052": "https://github.com/ethereum/EIPs/blob/c1a1eb21b465c9c42704a8a5743ad0694aedbff7/EIPS/eip-1052.md",
     "erc2771": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-2771.md",
+    "solidityAbiSpec": "https://github.com/ethereum/solidity/blob/f401782df49be312ea4ef52a2d467cf5183b5906/docs/abi-spec.rst",
     "rfc8785": "https://www.rfc-editor.org/rfc/rfc8785",
     "demosSdk": {
         "package": "@kynesyslabs/demosdk",
         "version": "4.0.16",
         "integrity": "sha512-nVhp1uC+tFGzhew9c8XIajTMmELopx7gd0joqqzDd2XyUuFDcqrda51NYqvX5C8+L3Xgnie/mRf7JRqZ7r3tHA==",
     },
+    "demosNodeSecretary": "https://github.com/kynesyslabs/node/blob/ac8f45f02fc9c25082ce9b83595c2e3916b49c5a/src/libs/consensus/v2/types/secretaryManager.ts",
     "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol",
     "ulid": "https://github.com/ulid/spec/blob/d0c7170df4517939e70129b4d6462cc162f2d5bf/README.md",
 }
@@ -239,6 +241,24 @@ COMMIT_PHASE_KIND = "x-commit-delivery-or-remedy-agreement"
 ESCROW_PHASE_KIND = "x-job-escrow"
 AGREEMENT_PHASES = {"commit-payee-bound-agreement", "commit-identity-bound-payee-agreement"}
 MODELLED_AGREEMENT_PHASE = "commit-payee-bound-agreement"
+# DACS-1 `PhaseType`: the DACS-3 negotiation kinds, the complete
+# sealed-envelope ones among them, and the five DACS-3 agreement commitment
+# kinds.  DRP-18 reads the candidate commit step as the PS-2 commitment phase,
+# so it immediately follows the one negotiation step, no DACS-3 commitment
+# kind accompanies it, and a complete sealed-envelope negotiation, which PS-2
+# pairs only with `commit-selection-bound-agreement`, cannot precede it.
+NEGOTIATION_KINDS = {
+    "negotiate-fixed-price", "negotiate-rfq", "negotiate-sealed-envelope",
+    "negotiate-sealed-envelope-procurement", "negotiate-sealed-envelope-complete",
+    "negotiate-sealed-envelope-procurement-complete",
+}
+COMPLETE_SEALED_NEGOTIATION_KINDS = {
+    "negotiate-sealed-envelope-complete", "negotiate-sealed-envelope-procurement-complete",
+}
+DACS3_COMMITMENT_KINDS = {
+    "commit-agreement", "commit-payee-bound-agreement", "commit-identity-bound-agreement",
+    "commit-identity-bound-payee-agreement", "commit-selection-bound-agreement",
+}
 # DACS-3 §8.5: the five agreement discriminators; exactly one is present.
 AGREEMENT_DISCRIMINATORS = (
     "agreementVersion", "payeeBoundAgreementVersion", "identityBoundAgreementVersion",
@@ -472,7 +492,10 @@ PORTABLE_TRANSITIONS = {
     ("submitted", "released"),
     ("submitted", "refunded"),
 }
-DRC_RULES = {f"DRC-{number}" for number in range(1, 14)}
+# The deployment capability rules of `capabilityProfile`
+# `dacs-delivery-gate-v1` (DRC-14) that a manifest decides: DRC-1 through
+# DRC-13 and DRC-22.  DREB-24 is promotion-blocked.
+DRC_RULES = {f"DRC-{number}" for number in range(1, 14)} | {"DRC-22"}
 # DACS-2 `AttestationRef` members and anchor kinds.
 ATTESTATION_REF_FIELDS = {"anchor", "contentHash", "signer"}
 ATTESTATION_ANCHOR_KINDS = {"storage-program", "ipfs", "https"}
@@ -1343,7 +1366,13 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
     # §9 step 1.  A payment phase is a DRP-4 finding and an unsupported
     # delivery a DRP-3 finding below, not unsupported kinds.  An unprefixed
     # candidate name is not the `x-` name (DRG-3), so it is an unknown kind.
-    supported_kinds = {COMMIT_PHASE_KIND, ESCROW_PHASE_KIND, *DACS4_DELIVERY_KINDS, "rate"}
+    # The DACS-3 negotiation and commitment kinds are known kinds whose
+    # placement DRP-18 decides; a `negotiate-*` kind DACS-1 does not define
+    # stays unknown.
+    supported_kinds = {
+        COMMIT_PHASE_KIND, ESCROW_PHASE_KIND, *DACS4_DELIVERY_KINDS, "rate",
+        *NEGOTIATION_KINDS, *DACS3_COMMITMENT_KINDS,
+    }
     if any(
         step["kind"] not in supported_kinds and not step["kind"].startswith(("pay-", "deliver-"))
         for step in pipeline
@@ -1375,8 +1404,8 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
         return result("fail", "DRP-3", "the delivery between escrow steps is not a deliver-* kind this pack supports")
     if any(step["kind"].startswith("pay-") for step in pipeline):
         return result("fail", "DRP-4", "ordinary payment phases cannot accompany the escrow pair")
-    commits =[i for i, step in enumerate(pipeline) if step["kind"] == COMMIT_PHASE_KIND]
-    if len(commits) != 1 or commits[0] > fund_index:
+    commits = [i for i, step in enumerate(pipeline) if step["kind"] == COMMIT_PHASE_KIND]
+    if not commits or commits[0] > fund_index:
         return result("fail", "DRP-14", "the pipeline does not commit the agreements once, before funding")
     commit_parameters = pipeline[commits[0]].get("parameters")
     if (
@@ -1387,6 +1416,21 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
         return result("error", "DRP-14", "unsupported commit-phase agreementPhase")
     if commit_parameters["agreementPhase"] != MODELLED_AGREEMENT_PHASE:
         return result("error", "DRV-2", "unsupported agreement phase: this pack models the payee-bound commit only")
+    # DRP-18: the commit step is the PS-2 agreement commitment phase, of the
+    # kind its agreementPhase names.  PS-1 and PS-2 then fix the pipeline's
+    # one negotiation step, the commit step immediately after it, and no
+    # other commitment phase.
+    if any(step["kind"] in DACS3_COMMITMENT_KINDS for step in pipeline):
+        return result("fail", "DRP-18", "a DACS-3 commitment phase accompanies the commit step")
+    if len(commits) != 1:
+        return result("fail", "DRP-18", "the pipeline has a second commit step")
+    negotiations = [i for i, step in enumerate(pipeline) if step["kind"] in NEGOTIATION_KINDS]
+    if len(negotiations) != 1:
+        return result("fail", "DRP-18", "the pipeline does not contain exactly one negotiate-* step")
+    if negotiations[0] + 1 != commits[0]:
+        return result("fail", "DRP-18", "the commit step does not immediately follow the negotiation")
+    if pipeline[negotiations[0]]["kind"] in COMPLETE_SEALED_NEGOTIATION_KINDS:
+        return result("fail", "DRP-18", "a complete sealed-envelope negotiation cannot precede the payee-bound commit step")
     if (
         agreement.get("fundPhaseIndex") != fund_index
         or agreement.get("deliveryPhaseIndex") != delivery_indexes[0]
@@ -4352,6 +4396,13 @@ def deployment_rule_statuses(manifest: Any) -> dict[str, str] | None:
                 and type(authenticated) is bool and authenticated is True
             ),
         )
+    # DRC-22: the evaluator's `reject` binds the expected prior native status
+    # and reverts when the job's status differs; a `reject` gated only on
+    # `Funded` or `Submitted` does not.
+    prior_status_bound = capabilities.get("rejectBindsExpectedPriorStatus")
+    statuses["DRC-22"] = "unknown" if prior_status_bound is None else (
+        "pass" if type(prior_status_bound) is bool and prior_status_bound is True else "fail"
+    )
     return statuses
 
 
@@ -4410,7 +4461,7 @@ def evaluate_deployment(manifest: Any) -> dict[str, Any]:
     elif unknown:
         outcome = result("indeterminate", unknown[0], "unresolved deployment rules: " + ", ".join(unknown))
     else:
-        outcome = result("pass", "DRC-1..DRC-13", "all candidate deployment capability rules passed")
+        outcome = result("pass", "DRC-1..DRC-13, DRC-22", "all candidate deployment capability rules passed")
     outcome["ruleStatuses"] = statuses
     # Capability predicates come from the manifest itself.  Its own
     # fixtureOnly and registrationStatus labels cannot establish eligibility;

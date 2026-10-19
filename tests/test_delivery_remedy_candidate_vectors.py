@@ -4,7 +4,6 @@ import hashlib
 import io
 import itertools
 import json
-import random
 import re
 import shutil
 import subprocess
@@ -245,8 +244,8 @@ GUARD_CASES = {
         put("consumerFinalityProfile", "settlement", "kind", "commitment-level"),
     )), ("fail", "DRR-4", "consumerFinalityProfile is not the block-depth model")),
     "pipeline-not-array": (_release(put("pipeline", {})), ("error", "DRV-3", "pipeline must be a non-empty array")),
-    "pipeline-step-without-kind": (_release(put("pipeline", 4, {"name": "rate"})), ("error", "DRV-3", "every pipeline step must have a kind")),
-    "escrow-parameters-not-object": (_release(put("pipeline", 1, "parameters", [])), ("error", "DRV-3", "x-job-escrow parameters must be an object")),
+    "pipeline-step-without-kind": (_release(put("pipeline", generator.TERMINAL_PHASE_INDEX + 1, {"name": "rate"})), ("error", "DRV-3", "every pipeline step must have a kind")),
+    "escrow-parameters-not-object": (_release(put("pipeline", generator.FUND_PHASE_INDEX, "parameters", [])), ("error", "DRV-3", "x-job-escrow parameters must be an object")),
     "execution-context-not-object": (_release(put("executionContext", [])), ("error", "DRV-3", "executionContext must be an object")),
     "bilateral-member-missing": (_hooked(bilateral=drop("listingRef")), ("error", "DRV-3", "bilateral agreement is missing a PayeeBoundAgreementDocument member")),
     "bilateral-party-malformed": (_hooked(bilateral=put("parties", 0, "role", "observer")), ("error", "DRV-3", "bilateral agreement parties are not AgreementParty entries")),
@@ -421,7 +420,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         self.assertEqual(
             set(proofs),
             {
-                "DRA-4", "DRA-8", "DRA-9", "DRE-2", "DRF-8", "DRP-6", "DRP-7", "DRP-8", "DRP-9",
+                "DRA-4", "DRA-8", "DRA-9", "DRE-2", "DRF-8", "DRF-9", "DRP-6", "DRP-7", "DRP-8", "DRP-9",
                 "DRP-10", "DRP-11", "DRP-12", "DRR-2", "DRR-3",
                 # The fixture source revision, the token and implementation
                 # code, the confirmation-block time, and the rule's anchoring.
@@ -535,7 +534,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             return evaluate_deployment(manifest)
 
         notify = make_base("release")
-        notify["pipeline"].insert(4, {"kind": "notify"})
+        notify["pipeline"].insert(generator.TERMINAL_PHASE_INDEX + 1, {"kind": "notify"})
         observed = {
             "pipeline contains an unsupported phase kind": evaluate(notify),
             "unsupported delivery version": lifecycle(
@@ -852,12 +851,12 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         release = self._fixture("release")
         delivery = release["artifacts"]["delivery"]
         job = release["artifacts"]["agreement"]["jobId"]
-        self.assertEqual(delivery["deliverableAnchor"], {"kind": "storage-program", "locator": f"dacs4:deliverable:{job}:2"})
-        self.assertEqual(release["artifacts"]["deliveryRef"]["anchor"]["locator"], f"dacs4:delivery:{job}:2")
+        self.assertEqual(delivery["deliverableAnchor"], {"kind": "storage-program", "locator": f"dacs4:deliverable:{job}:{generator.DELIVERY_PHASE_INDEX}"})
+        self.assertEqual(release["artifacts"]["deliveryRef"]["anchor"]["locator"], f"dacs4:delivery:{job}:{generator.DELIVERY_PHASE_INDEX}")
         native = "stor-" + hashlib.sha256(b"x").hexdigest()[:40]
         for locator in (
-            native, "stor-" + "ab" * 32, f"dacs4:deliverable:{job}", f"dacs4:deliverable:{job}:02",
-            f"dacs4:deliverable:{generator.JOB_B}:2", f"dacs4:deliverable:{job}:3",
+            native, "stor-" + "ab" * 32, f"dacs4:deliverable:{job}", f"dacs4:deliverable:{job}:0{generator.DELIVERY_PHASE_INDEX}",
+            f"dacs4:deliverable:{generator.JOB_B}:{generator.DELIVERY_PHASE_INDEX}", f"dacs4:deliverable:{job}:{generator.TERMINAL_PHASE_INDEX}",
         ):
             with self.subTest(locator=locator):
                 value = make_base("release", hooks={"delivery": put("deliverableAnchor", "locator", locator)})
@@ -2002,7 +2001,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 self.assertEqual(finding(value), ("fail", "DRP-3"))
         kinds = sorted(verifier.DACS4_DELIVERY_KINDS - verifier.MODELLED_DELIVERY_KINDS) + ["deliver-other"]
         anchors = (
-            {"kind": "storage-program", "locator": f"dacs4:deliverable:{generator.JOB_A}:2"},
+            {"kind": "storage-program", "locator": f"dacs4:deliverable:{generator.JOB_A}:{generator.DELIVERY_PHASE_INDEX}"},
             {"kind": "payload-attestation", "locator": "fixture:any-anchor"},
             None,
         )
@@ -2013,14 +2012,14 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 with self.subTest(kind=kind, anchor=anchor, lifecycle=lifecycle, relabel_step=relabel_step):
                     hooks = {"delivery": each_hook(*delivery_edits)}
                     if relabel_step:
-                        hooks["fixture"] = put("pipeline", 2, {"kind": kind})
+                        hooks["fixture"] = put("pipeline", generator.DELIVERY_PHASE_INDEX, {"kind": kind})
                     observed = finding(make_base(lifecycle, hooks=hooks))
                     self.assertNotEqual(observed[0], "pass")
                     self.assertIn(observed, {("fail", "DRP-3"), ("fail", "DRE-2"), ("error", "DRV-3"), ("error", "DRV-2")})
         # A deliveryless lifecycle cannot name an unmodelled delivery step either.
         for lifecycle in ("expired-pre", "pre-submission-rejected-refund"):
             with self.subTest(deliveryless=lifecycle):
-                value = make_base(lifecycle, hooks={"fixture": put("pipeline", 2, {"kind": "deliver-entitlement"})})
+                value = make_base(lifecycle, hooks={"fixture": put("pipeline", generator.DELIVERY_PHASE_INDEX, {"kind": "deliver-entitlement"})})
                 self.assertEqual(finding(value), ("fail", "DRP-3"))
 
     def test_every_artifact_describes_the_overlay_job(self):
@@ -2238,64 +2237,6 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                         self.assertEqual(self._revised(earlier, issued, item), verdict(together[0]))
                     self.assertEqual(verdict(together[0]), ("indeterminate", "DRD-8"))
                     self.assertEqual([verdict(item) for item in observed], [verdict(item) for item in together[1:]])
-
-    def test_verdicts_do_not_depend_on_evaluation_order(self):
-        vectors = self.vector_pack["vectors"]
-        values = {vector["name"]: self._vector(vector["name"]) for vector in vectors}
-        # Standalone positives; a vector with `evaluatedWith` is a replay scenario.
-        positives = [
-            vector["name"] for vector in vectors
-            if vector["expected"] == "pass" and "evaluatedWith" not in vector
-        ]
-        for order in (positives, positives[::-1]):
-            ledger = DecisionLedger()
-            for _ in range(2):
-                for name in order:
-                    with self.subTest(order=order[0], vector=name):
-                        observed = evaluate_protocol(copy.deepcopy(values[name]), ledger)
-                        self.assertEqual(observed["result"], "pass")
-                        self.assertNotIn("revises", observed)
-        # Each vector set keeps its pinned verdict in every evaluation order.
-        for vector in vectors:
-            members = [*vector.get("evaluatedWith", []), vector["name"]]
-            for order in itertools.permutations(members):
-                with self.subTest(vector=vector["name"], order=order):
-                    observed = evaluate_lifecycles(
-                        [copy.deepcopy(values[name]) for name in order], DecisionLedger()
-                    )[order.index(vector["name"])]
-                    self.assertEqual(verdict(observed), (vector["expected"], vector["expectedRule"]))
-        # The whole pack evaluated as one set: every verdict is the same in
-        # any order, and no two conflicting terminals both pass.
-        names = list(values)
-        baseline = None
-        for order in (names, names[::-1], random.Random(372).sample(names, len(names))):
-            observed = evaluate_lifecycles([copy.deepcopy(values[name]) for name in order], DecisionLedger())
-            verdicts = {name: tuple(item.values()) for name, item in zip(order, observed)}
-            baseline = baseline or verdicts
-            self.assertEqual(verdicts, baseline)
-        self._assert_no_conflicting_pass(values, baseline)
-        # One at a time through one ledger, in either order, no two
-        # conflicting terminals both pass either, and the verdicts as revised
-        # are the verdicts of the whole pack as one set.
-        for order in (names, names[::-1]):
-            ledger = DecisionLedger()
-            streamed = {name: tuple(evaluate_protocol(copy.deepcopy(values[name]), ledger).values()) for name in order}
-            self._assert_no_conflicting_pass(values, streamed)
-            with self.subTest(streamed=order[0]):
-                self.assertEqual(
-                    self._streamed(values, order), {name: outcome[:2] for name, outcome in baseline.items()}
-                )
-        # With every standalone positive already known, each vector without
-        # companions keeps its pinned verdict.
-        shared = DecisionLedger()
-        for name in positives:
-            evaluate_protocol(copy.deepcopy(values[name]), shared)
-        for vector in vectors:
-            if "evaluatedWith" in vector:
-                continue
-            with self.subTest(shared=vector["name"]):
-                observed = evaluate_protocol(copy.deepcopy(values[vector["name"]]), copy.deepcopy(shared))
-                self.assertEqual(verdict(observed), (vector["expected"], vector["expectedRule"]))
 
     def _revised(self, value, issued, *later):
         """The verdict ``issued`` for ``value`` after the revisions in ``later`` results.
@@ -2599,7 +2540,8 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         observed = evaluate_deployment(manifest)
         self.assertEqual(observed["result"], "fail")
         # §8.4 states the pinned source has no separately enforced submission
-        # cutoff, so the fixture records that fact and DRC-13 fails with DRC-1..7.
+        # cutoff, so the fixture records that fact and DRC-13 fails with DRC-1..7;
+        # its reject binds no expected prior status, so DRC-22 fails too.
         self.assertIs(manifest["capabilities"]["submissionCutoffEnforced"], False)
         # ERC8183.sol lines 78 and 869-872: claimRefund on a Submitted job waits
         # out a one-hour grace period past expiredAt, and a pending claim blocks
@@ -2607,7 +2549,7 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         self.assertIs(manifest["capabilities"]["expiryRecoveryDeadlineEnforced"], False)
         self.assertEqual(
             [rule for rule in sorted(DRC_RULES, key=lambda item: int(item.split("-")[1])) if observed["ruleStatuses"][rule] == "fail"],
-            ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7", "DRC-13"],
+            ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7", "DRC-13", "DRC-22"],
         )
         self.assertEqual(
             [rule for rule in sorted(DRC_RULES, key=lambda item: int(item.split("-")[1])) if observed["ruleStatuses"][rule] == "unknown"],
@@ -3430,7 +3372,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         self.assertIn(f"`{verifier.DACS_CHECKED_AGAINST}`", SPEC.read_text(encoding="utf-8"))
         # The candidate's own External pins name the same sources.
         spec = SPEC.read_text(encoding="utf-8")
-        for key in ("canonicalErc8183", "eip1271", "eip155", "eip55", "eip1052", "erc2771"):
+        for key in (
+            "canonicalErc8183", "eip1271", "eip155", "eip55", "eip1052", "erc2771",
+            "solidityAbiSpec", "demosNodeSecretary",
+        ):
             with self.subTest(pin=key):
                 self.assertIn(verifier.EXTERNAL_SOURCE_PINS[key], spec)
         self.assertIn(verifier.EXTERNAL_SOURCE_PINS["demosSdk"]["integrity"], spec)

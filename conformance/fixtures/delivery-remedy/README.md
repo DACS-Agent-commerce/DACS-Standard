@@ -10,7 +10,7 @@ The pack turns the pre-normative
 into executable review evidence. Every result is one of the candidate's four
 verification results: `pass`, `fail`, `indeterminate`, or `error` (§9).
 
-- `candidate-vectors-v0.1.json` holds 498 lifecycle and mapping vectors over
+- `candidate-vectors-v0.1.json` holds 504 lifecycle and mapping vectors over
   deterministic, signed synthetic lifecycles: full release, evaluator
   rejection and refund before or after submission, a dispute-outcome release
   and refund, pre-submission expiry, and post-submission expiry. The
@@ -27,13 +27,14 @@ verification results: `pass`, `fail`, `indeterminate`, or `error` (§9).
   terminal per decision, native job, and terminal event, release/refund
   direction, full-budget and zero-fee requirements, the §3.1 wire rules, and
   the four-result verification boundary.
-- `deployment-capabilities-v0.1.json` derives DRC-1 through DRC-13 outcomes
+- `deployment-capabilities-v0.1.json` derives DRC-1 through DRC-13 and DRC-22
+  outcomes, the capability rules of `dacs-delivery-gate-v1` (DRC-14),
   from explicit capability evidence. It includes a synthetic all-pass control
   that is permanently marked `fixtureOnly`, individual rule regressions, and
   a pinned assessment of
   [`erc-8183/base-contracts@142e669`](https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol).
   The pinned reference is `fail`, remains unregistered, and is never reported
-  as available. Its source facts fail DRC-1 through DRC-7 and DRC-13; DRC-8
+  as available. Its source facts fail DRC-1 through DRC-7, DRC-13, and DRC-22; DRC-8
   and DRC-10 through DRC-12 stay unknown without deployment evidence. DRC-7
   requires that the deployment have no hook, and DRC-8 counts an upgradeable
   payment token against it. The manifest records both halves of DRC-13 from
@@ -43,9 +44,12 @@ verification results: `pass`, `fail`, `indeterminate`, or `error` (§9).
   `claimRefund` on a `Submitted` job reverts until
   `expiredAt + EVALUATION_GRACE_PERIOD`, a one-hour constant (`ERC8183.sol`
   lines 78 and 869–870), and on a `Funded` job with a pending claim it reverts
-  with `PendingClaimExists` (lines 871–872).
+  with `PendingClaimExists` (lines 871–872). Its evaluator `reject` is gated
+  only on the job being `Funded` or `Submitted` and takes no expected prior
+  status (lines 806–831), so a pre-submission rejection can execute after a
+  native `submit` (`rejectBindsExpectedPriorStatus`; DRC-22).
 
-The synthetic control proves only that the checker can observe all thirteen
+The synthetic control proves only that the checker can observe all fourteen
 positive capability predicates. Those predicates come from the manifest
 itself, so the capability evaluator always reports
 `registrationEligible: false`. A manifest's own `fixtureOnly` and
@@ -55,10 +59,21 @@ model.
 
 ## Lifecycle model
 
-Each lifecycle runs the candidate §2 pipeline: the
+Each lifecycle runs the candidate §2 pipeline: one `negotiate-fixed-price`
+step (the bilateral agreement's `derivedFromPattern` is `fixed-price`), the
 `x-commit-delivery-or-remedy-agreement` commit phase with `agreementPhase`
-`commit-payee-bound-agreement`, an `x-job-escrow` fund phase, one
-`deliver-storage-program` step, and an `x-job-escrow` terminal phase. The
+`commit-payee-bound-agreement` immediately after it, an `x-job-escrow` fund
+phase, one `deliver-storage-program` step, and an `x-job-escrow` terminal
+phase. DRP-18 reads the commit step as the DACS-3 PS-2 commitment phase, so
+each of these is `fail` under DRP-18: no or two `negotiate-*` steps, a commit
+step that does not immediately follow the negotiation, a second commit step,
+a DACS-3 commitment kind beside the commit step, and a complete
+sealed-envelope negotiation, which PS-2 pairs only with
+`commit-selection-bound-agreement`. A `negotiate-*` kind DACS-1 does not
+define stays an unsupported phase kind (`error`). A missing commit step is
+`fail` under DRP-14. The generator names the step indexes once
+(`NEGOTIATION_STEP_INDEX` through `TERMINAL_PHASE_INDEX`), and every fixture,
+patch path, and index mismatch derives from them. The
 commit phase binds a DACS-3 `PayeeBoundAgreementDocument`, signed by both
 parties under `dacs-payee-bound-agreement:v1:`, and the
 `DeliveryOrRemedyAgreement` overlay, signed by buyer, seller, and evaluator.
@@ -506,8 +521,10 @@ pack can register a rail or authorize a transaction.
 
 The lifecycle pack's `sourcePins` records the candidate's External pins: the
 canonical ERC-8183 text and the reference contract, EIP-155, EIP-55,
-EIP-1052, ERC-1271, ERC-2771, RFC 8785, the ULID specification behind the JID
-range (DRAA-1), and `@kynesyslabs/demosdk` 4.0.16 (npm `dist.integrity`
+EIP-1052, ERC-1271, ERC-2771, the Solidity ABI specification, RFC 8785, the
+ULID specification behind the JID range (DRAA-1), the `kynesyslabs/node`
+source behind the DRC-19 block timestamp, and `@kynesyslabs/demosdk` 4.0.16
+(npm `dist.integrity`
 `sha512-nVhp1uC+tFGzhew9c8XIajTMmELopx7gd0joqqzDd2XyUuFDcqrda51NYqvX5C8+L3Xgnie/mRf7JRqZ7r3tHA==`).
 It also records the DACS commit the candidate was checked against and the
 SHA-256 of the candidate and of each DACS document it cites. The verifier
@@ -527,10 +544,10 @@ Each negative is a consistent signed lifecycle plus one edit. The generator
 checks, before it writes or checks the pack, that each negative passes once
 the guard that decides it is removed. Any other outcome, including an
 exception, fails the check, with two listed exceptions.
-`FOLLOW_ON_FINDINGS` lists 105 negatives whose single defect reaches one exact
+`FOLLOW_ON_FINDINGS` lists 107 negatives whose single defect reaches one exact
 second finding once its guard is removed. Some of those defects break a
 second rule. For a record that was not supplied, a later check finds the
-lifecycle inconsistent instead. `STRUCTURAL_NEGATIVES` lists 30 negatives
+lifecycle inconsistent instead. `STRUCTURAL_NEGATIVES` lists 31 negatives
 that remove or malform a structure the verifier reads. Without their guard
 the verifier raises, or another shape guard decides first, so isolation is
 not claimed for them.
@@ -568,7 +585,11 @@ qualifying finalized funding and decision writes by logical address, native
 address, content hash, transaction, writer, nonce, and consensus finality time.
 They are synthetic proof-verifier outputs, not CORE `AnchorReceipt` proof
 bytes. The pack checks equivocation over these summaries; it does not verify
-native receipt proofs or enforce producer write-once behavior. It holds DRF-8,
+native receipt proofs or enforce producer write-once behavior. It holds DRF-9,
+whose FV-1 reading of the job-escrow evidence the pack checks against the
+overlay's `railDefinitionRef` (the job's reference and the resolved rail) but
+without the registry snapshot and resolved `acceptedRails` that DRR-2 and
+DRR-3 lack too. It holds DRF-8,
 whose chain facts come from the fixture chain and resolver rather than FV-1
 through FV-10, and DRW-6, whose confirmation-depth block time comes from the
 same resolver: a consistent shift of every block time is not detected. It

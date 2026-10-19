@@ -116,6 +116,17 @@ TOKEN = "0x" + "55" * 20
 # A synthetic token symbol: DRC-8 excludes the pausable USDC assets.
 TOKEN_SYMBOL = "FXT"
 RAIL_ID = f"x-evm-erc8183:{CHAIN_ID}:{TOKEN_SYMBOL}"
+# The fixture pipeline's layout (DRP-18, DRP-14, DRP-1 through DRP-3): the one
+# negotiation step, the commit step immediately after it, then the escrow pair
+# around the one delivery.  The negotiation kind matches the bilateral
+# agreement's `derivedFromPattern` (DACS-3 §8.5.2 check 7).  Every fixture,
+# patch path, and mismatch value below derives from these indexes.
+NEGOTIATION_KIND = "negotiate-fixed-price"
+NEGOTIATION_STEP_INDEX = 0
+COMMIT_STEP_INDEX = 1
+FUND_PHASE_INDEX = 2
+DELIVERY_PHASE_INDEX = 3
+TERMINAL_PHASE_INDEX = 4
 ZERO_ADDRESS = "0x" + "00" * 20
 BUYER_ACCOUNT = "0x" + "11" * 20
 SELLER_ACCOUNT = "0x" + "22" * 20
@@ -582,6 +593,7 @@ def make_base(
     terminal_block = TERMINAL_BLOCKS[lifecycle] + terminal_offset
     terminal_at_sec = block_time(terminal_block)
     pipeline = [
+        {"kind": NEGOTIATION_KIND},
         {"kind": "x-commit-delivery-or-remedy-agreement", "parameters": {"agreementPhase": "commit-payee-bound-agreement"}},
         {"kind": "x-job-escrow", "parameters": {"action": "fund", "rail": RAIL_ID}},
         {"kind": "deliver-storage-program"},
@@ -663,7 +675,7 @@ def make_base(
             "price": {"amount": "1", "currency": TOKEN_SYMBOL},
             "rail": {"railId": RAIL_ID, "railVersion": 1},
             "deadline": AGREEMENT_DEADLINE_MS,
-            "payoutBindings": [{"railId": RAIL_ID, "phaseIndex": 1, "payeeAddress": SELLER_ACCOUNT}],
+            "payoutBindings": [{"railId": RAIL_ID, "phaseIndex": FUND_PHASE_INDEX, "payeeAddress": SELLER_ACCOUNT}],
         },
         "derivedFromPattern": "fixed-price",
         "generatedAt": 1799980000000,
@@ -690,9 +702,9 @@ def make_base(
         "agreementRef": ref(bilateral, f"dacs3:agreement:{job_id}"),
         "agreementHash": artifact_hash(bilateral),
         "railDefinitionRef": ref(rail, f"fixture:rail:{RAIL_ID}:1"),
-        "fundPhaseIndex": 1,
-        "deliveryPhaseIndex": 2,
-        "terminalPhaseIndex": 3,
+        "fundPhaseIndex": FUND_PHASE_INDEX,
+        "deliveryPhaseIndex": DELIVERY_PHASE_INDEX,
+        "terminalPhaseIndex": TERMINAL_PHASE_INDEX,
         **{
             role: {
                 "primaryClaim": claims[role],
@@ -1297,7 +1309,7 @@ def build_vector_pack() -> dict[str, Any]:
             "release", submission_block=FUNDING_BLOCK + (SUBMISSION_CUTOFF_SEC - FUNDING_TIME) // BLOCK_SECONDS,
         ),
         "dra-1-bilateral-job": make_base("release", hooks={"bilateral": put("jobId", JOB_B)}),
-        "terminal-phase-index-mismatch": make_base("release", hooks={"terminal": put("terminalPhaseIndex", 4)}),
+        "terminal-phase-index-mismatch": make_base("release", hooks={"terminal": put("terminalPhaseIndex", TERMINAL_PHASE_INDEX + 1)}),
         # DRF-8: the signed record and the resolver's confirmation block are
         # altered together; only the block order contradicts them.
         "funding-finality-block-time-jointly-altered": make_base("release", hooks={
@@ -1317,11 +1329,11 @@ def build_vector_pack() -> dict[str, Any]:
         # Pipeline and agreement negatives: the edit is signed and every
         # downstream binding follows it.
         "second-delivery-phase": make_base("release", hooks={
-            "agreement": put("terminalPhaseIndex", 4),
-            "terminal": put("terminalPhaseIndex", 4),
-            "fixture": lambda fixture: fixture["pipeline"].insert(3, {"kind": "deliver-entitlement"}),
+            "agreement": put("terminalPhaseIndex", TERMINAL_PHASE_INDEX + 1),
+            "terminal": put("terminalPhaseIndex", TERMINAL_PHASE_INDEX + 1),
+            "fixture": lambda fixture: fixture["pipeline"].insert(TERMINAL_PHASE_INDEX, {"kind": "deliver-entitlement"}),
         }),
-        "delivery-phase-index-divergence": make_base("release", hooks={"agreement": put("deliveryPhaseIndex", 4)}),
+        "delivery-phase-index-divergence": make_base("release", hooks={"agreement": put("deliveryPhaseIndex", TERMINAL_PHASE_INDEX + 1)}),
         "bilateral-reference-mismatch": make_base("release", hooks={"agreement": put("agreementRef", "contentHash", "01" * 32)}),
         "bilateral-hash-mismatch": make_base("release", hooks={"agreement": put("agreementHash", "02" * 32)}),
         "evaluator-requirement-mismatch": make_base("release", hooks={
@@ -1374,11 +1386,11 @@ def build_vector_pack() -> dict[str, Any]:
             "bilateral": put("terms", "payoutBindings", 0, "payeeAddress", BUYER_ACCOUNT),
         }),
         "dra-20-payout-phase-index": make_base("release", hooks={
-            "bilateral": put("terms", "payoutBindings", 0, "phaseIndex", 3),
+            "bilateral": put("terms", "payoutBindings", 0, "phaseIndex", TERMINAL_PHASE_INDEX),
         }),
         "dra-20-second-payout-binding": make_base("release", hooks={
             "bilateral": lambda body: body["terms"]["payoutBindings"].append(
-                {"railId": RAIL_ID, "phaseIndex": 3, "payeeAddress": SELLER_ACCOUNT}
+                {"railId": RAIL_ID, "phaseIndex": TERMINAL_PHASE_INDEX, "payeeAddress": SELLER_ACCOUNT}
             ),
         }),
         "dra-20-payee-malformed": make_base("release", hooks={
@@ -1436,7 +1448,7 @@ def build_vector_pack() -> dict[str, Any]:
         }),
         # DRE-2, DRP-7: the current DeliveryEvidence of the agreed phase.
         "dre-2-delivery-phase-kind": make_base("release", hooks={"delivery": put("phase", "deliver-entitlement")}),
-        "drp-7-delivery-phase-index": make_base("release", hooks={"delivery": put("phaseIndex", 3)}),
+        "drp-7-delivery-phase-index": make_base("release", hooks={"delivery": put("phaseIndex", TERMINAL_PHASE_INDEX)}),
         "drp-7-historical-settlement-evidence": make_base("release", hooks={
             "delivery": each(drop("deliveryEvidenceVersion"), put("evidenceVersion", "1")),
         }),
@@ -1447,14 +1459,14 @@ def build_vector_pack() -> dict[str, Any]:
                 put("phase", "deliver-attested-payload"),
                 put("deliverableAnchor", {"kind": "payload-attestation", "locator": "fixture:any-anchor"}),
             ),
-            "fixture": put("pipeline", 2, {"kind": "deliver-attested-payload"}),
+            "fixture": put("pipeline", DELIVERY_PHASE_INDEX, {"kind": "deliver-attested-payload"}),
         }),
         "drp-3-entitlement-delivery": make_base("release", hooks={
             "delivery": each(
                 put("phase", "deliver-entitlement"),
                 put("deliverableAnchor", {"kind": "entitlement", "locator": "fixture:any-anchor"}),
             ),
-            "fixture": put("pipeline", 2, {"kind": "deliver-entitlement"}),
+            "fixture": put("pipeline", DELIVERY_PHASE_INDEX, {"kind": "deliver-entitlement"}),
         }),
         # PDE-3, PDE-4: a storage-program success anchors the deliverable at
         # dacs4:deliverable:{jobId}:{phaseIndex}.  Each control changes one
@@ -1463,7 +1475,7 @@ def build_vector_pack() -> dict[str, Any]:
             "delivery": put("deliverableAnchor", "kind", "not-storage-program"),
         }),
         "dre-2-deliverable-anchor-other-job": make_base("release", hooks={
-            "delivery": put("deliverableAnchor", "locator", f"dacs4:deliverable:{JOB_B}:2"),
+            "delivery": put("deliverableAnchor", "locator", f"dacs4:deliverable:{JOB_B}:{DELIVERY_PHASE_INDEX}"),
         }),
         "dre-2-deliverable-anchor-unindexed": make_base("release", hooks={
             "delivery": put("deliverableAnchor", "locator", f"dacs4:deliverable:{JOB_A}"),
@@ -1499,14 +1511,14 @@ def build_vector_pack() -> dict[str, Any]:
         }),
         "dre-3-evaluation-subject-contradiction": make_base("release", hooks={
             "evaluation": put("subjectEvidenceRefs", [
-                attestation_ref(f"dacs4:delivery:{JOB_A}:2", "13" * 32),
+                attestation_ref(f"dacs4:delivery:{JOB_A}:{DELIVERY_PHASE_INDEX}", "13" * 32),
             ]),
         }),
         # The subject reference names the delivery's locator and hash but
         # another reference kind.
         "dre-3-evaluation-subject-kind": make_base("release", hooks={
             "evaluation": put("subjectEvidenceRefs", [attestation_ref(
-                f"dacs4:delivery:{JOB_A}:2",
+                f"dacs4:delivery:{JOB_A}:{DELIVERY_PHASE_INDEX}",
                 make_base("release")["artifacts"]["deliveryRef"]["contentHash"],
                 "ipfs",
             )]),
@@ -1552,7 +1564,7 @@ def build_vector_pack() -> dict[str, Any]:
         "terminal-funding-mismatch": make_base("release", hooks={"terminal": put("fundingEvidenceRef", attestation_ref(logical(JOB_A, "funding"), "ab" * 32))}),
         "funding-job-mismatch": make_base("release", hooks={"funding": put("escrowJobRef", other_job_ref)}),
         "funding-token-mismatch": make_base("release", hooks={"funding": put("token", "0x" + "66" * 20)}),
-        "funding-phase-index-mismatch": make_base("release", hooks={"funding": put("fundPhaseIndex", 2)}),
+        "funding-phase-index-mismatch": make_base("release", hooks={"funding": put("fundPhaseIndex", FUND_PHASE_INDEX + 1)}),
         # Evaluation, decision, and terminal negatives.  Each evaluation edit
         # keeps the criterion outcomes, result, and finding consistent under
         # the rule matrix (DRE-10), so the disposition check decides.
@@ -1636,7 +1648,7 @@ def build_vector_pack() -> dict[str, Any]:
         # DRV-3: a boolean where an integer is read is malformed, though
         # Python compares `true` equal to 1 and `false` equal to 0.
         "drv-3-agreement-phase-index-boolean": make_base("release", hooks={
-            "agreement": put("fundPhaseIndex", True), "funding": put("fundPhaseIndex", 1),
+            "agreement": put("fundPhaseIndex", True), "funding": put("fundPhaseIndex", FUND_PHASE_INDEX),
         }),
         "drv-3-funding-phase-index-boolean": make_base("release", hooks={"funding": put("fundPhaseIndex", True)}),
         # Identity, job, and rail negatives.
@@ -1788,7 +1800,7 @@ def build_vector_pack() -> dict[str, Any]:
     # The rules each positive proves.  None is promotion-blocked: the pack's
     # verifier refuses a pass vector that claims one.
     common_pass_rules = [
-        "DRP-1", "DRP-2", "DRP-3", "DRP-4", "DRP-5", "DRP-14", "DRG-3",
+        "DRP-1", "DRP-2", "DRP-3", "DRP-4", "DRP-5", "DRP-14", "DRP-18", "DRG-3",
         "DRA-1", "DRA-2", "DRA-3", "DRA-5", "DRA-6", "DRA-7", "DRA-10", "DRA-11", "DRA-13",
         "DRA-15", "DRA-17", "DRA-18", "DRA-19", "DRA-20", "DRA-21", "DRA-22",
         "DRR-1", "DRR-4", "DRR-5", "DRR-6", "DRR-7", "DRR-8",
@@ -1837,21 +1849,29 @@ def build_vector_pack() -> dict[str, Any]:
         vector("dispute-outcome-release", "dispute-release", "pass", "DRV-7", "DRX-9: a seller-fulfilled DisputeOutcome authorizes a post-submission release", rules=release_pass_rules + dispute_rules),
         vector("post-submission-dispute-refund", "post-submission-dispute-refund", "pass", "DRV-7", "DRX-9: a no-fault DisputeOutcome authorizes a post-submission refund", rules=rejection_pass_rules + dispute_rules),
         # DRP: pipeline shape.
-        vector("pipeline-missing-terminal", "release", "fail", "DRP-1", "an unpaired escrow phase is rejected", [{"op": "remove", "path": ["pipeline", 3]}]),
-        vector("pipeline-actions-reversed", "release", "fail", "DRP-2", "escrow phases must be fund then terminal", [{"op": "replace", "path": ["pipeline", 1, "parameters", "action"], "value": "terminal"}]),
+        vector("pipeline-missing-terminal", "release", "fail", "DRP-1", "an unpaired escrow phase is rejected", [{"op": "remove", "path": ["pipeline", TERMINAL_PHASE_INDEX]}]),
+        vector("pipeline-actions-reversed", "release", "fail", "DRP-2", "escrow phases must be fund then terminal", [{"op": "replace", "path": ["pipeline", FUND_PHASE_INDEX, "parameters", "action"], "value": "terminal"}]),
         vector("pipeline-second-delivery", "second-delivery-phase", "fail", "DRP-3", "only one delivery step may occur between the escrow phases"),
-        vector("pipeline-extra-payment", "release", "fail", "DRP-4", "ordinary payment phases cannot accompany the pair", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "pay-x402"}}]),
-        vector("pipeline-pay-alternative", "release", "fail", "DRP-4", "a pay-alternative step cannot accompany the pair", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "pay-alternative"}}]),
-        vector("pipeline-unsupported-phase-kind", "release", "error", "DRV-2", "an unsupported phase kind is a candidate §9 step-1 discriminator, which no rule names yet; the DRV-2 label is pending #371's named step-1 rule", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "notify"}}]),
-        vector("pipeline-unprefixed-escrow-kind", "release", "error", "DRV-2", "DRG-3: `job-escrow` is not the candidate's `x-job-escrow` name, so it is an unknown phase kind", [{"op": "replace", "path": ["pipeline", 1, "kind"], "value": "job-escrow"}, {"op": "replace", "path": ["pipeline", 3, "kind"], "value": "job-escrow"}], rules=["DRG-3", "DRV-2"]),
-        vector("pipeline-commit-phase-missing", "release", "fail", "DRP-14", "the pipeline must commit the agreement and overlay before funding", [{"op": "remove", "path": ["pipeline", 0]}]),
-        vector("pipeline-commit-phase-unsupported", "release", "error", "DRP-14", "an agreementPhase outside DRP-14's two values is an error", [{"op": "replace", "path": ["pipeline", 0, "parameters", "agreementPhase"], "value": "commit-agreement"}]),
-        vector("pipeline-commit-phase-identity-bound", "release", "error", "DRV-2", "the identity-bound commit needs the IBH gates, which this pack does not model, so it fails closed", [{"op": "replace", "path": ["pipeline", 0, "parameters", "agreementPhase"], "value": "commit-identity-bound-payee-agreement"}], rules=["DRP-14", "DRV-2"]),
+        vector("pipeline-extra-payment", "release", "fail", "DRP-4", "ordinary payment phases cannot accompany the pair", [{"op": "add", "path": ["pipeline", TERMINAL_PHASE_INDEX + 1], "value": {"kind": "pay-x402"}}]),
+        vector("pipeline-pay-alternative", "release", "fail", "DRP-4", "a pay-alternative step cannot accompany the pair", [{"op": "add", "path": ["pipeline", TERMINAL_PHASE_INDEX + 1], "value": {"kind": "pay-alternative"}}]),
+        vector("pipeline-unsupported-phase-kind", "release", "error", "DRV-2", "an unsupported phase kind is a candidate §9 step-1 discriminator, which no rule names yet; the DRV-2 label is pending #371's named step-1 rule", [{"op": "add", "path": ["pipeline", TERMINAL_PHASE_INDEX + 1], "value": {"kind": "notify"}}]),
+        vector("pipeline-unprefixed-escrow-kind", "release", "error", "DRV-2", "DRG-3: `job-escrow` is not the candidate's `x-job-escrow` name, so it is an unknown phase kind", [{"op": "replace", "path": ["pipeline", FUND_PHASE_INDEX, "kind"], "value": "job-escrow"}, {"op": "replace", "path": ["pipeline", TERMINAL_PHASE_INDEX, "kind"], "value": "job-escrow"}], rules=["DRG-3", "DRV-2"]),
+        vector("pipeline-commit-phase-missing", "release", "fail", "DRP-14", "the pipeline must commit the agreement and overlay before funding", [{"op": "remove", "path": ["pipeline", COMMIT_STEP_INDEX]}]),
+        vector("pipeline-commit-phase-unsupported", "release", "error", "DRP-14", "an agreementPhase outside DRP-14's two values is an error", [{"op": "replace", "path": ["pipeline", COMMIT_STEP_INDEX, "parameters", "agreementPhase"], "value": "commit-agreement"}]),
+        vector("pipeline-commit-phase-identity-bound", "release", "error", "DRV-2", "the identity-bound commit needs the IBH gates, which this pack does not model, so it fails closed", [{"op": "replace", "path": ["pipeline", COMMIT_STEP_INDEX, "parameters", "agreementPhase"], "value": "commit-identity-bound-payee-agreement"}], rules=["DRP-14", "DRV-2"]),
+        # DRP-18: the commit step is the PS-2 commitment phase, immediately
+        # after the one negotiation step, with no DACS-3 commitment kind.
+        vector("pipeline-negotiation-missing", "release", "fail", "DRP-18", "PS-1: the pipeline has exactly one negotiate-* step, and the commit step follows it", [{"op": "remove", "path": ["pipeline", NEGOTIATION_STEP_INDEX]}]),
+        vector("pipeline-second-negotiation", "release", "fail", "DRP-18", "PS-1: a second negotiate-* step is not one negotiation", [{"op": "add", "path": ["pipeline", TERMINAL_PHASE_INDEX + 1], "value": {"kind": "negotiate-rfq"}}]),
+        vector("pipeline-commit-before-negotiation", "release", "fail", "DRP-18", "PS-2: the commit step immediately follows the negotiation, not precedes it", [{"op": "replace", "path": ["pipeline", NEGOTIATION_STEP_INDEX], "value": {"kind": "x-commit-delivery-or-remedy-agreement", "parameters": {"agreementPhase": "commit-payee-bound-agreement"}}}, {"op": "replace", "path": ["pipeline", COMMIT_STEP_INDEX], "value": {"kind": NEGOTIATION_KIND}}]),
+        vector("pipeline-second-commit-step", "release", "fail", "DRP-18", "PS-2: the pipeline has one agreement commitment phase, so a second commit step fails", [{"op": "add", "path": ["pipeline", TERMINAL_PHASE_INDEX + 1], "value": {"kind": "x-commit-delivery-or-remedy-agreement", "parameters": {"agreementPhase": "commit-payee-bound-agreement"}}}]),
+        vector("pipeline-dacs3-commitment-beside-commit", "release", "fail", "DRP-18", "PS-2: the commit step is the commitment phase, so a DACS-3 commitment kind cannot accompany it", [{"op": "add", "path": ["pipeline", TERMINAL_PHASE_INDEX + 1], "value": {"kind": "commit-payee-bound-agreement"}}]),
+        vector("pipeline-complete-sealed-negotiation", "release", "fail", "DRP-18", "PS-2 pairs a complete sealed-envelope negotiation only with commit-selection-bound-agreement, so it cannot precede the payee-bound commit step", [{"op": "replace", "path": ["pipeline", NEGOTIATION_STEP_INDEX, "kind"], "value": "negotiate-sealed-envelope-complete"}]),
         vector("drp-3-attested-payload-delivery-unmodelled", "drp-3-attested-payload-delivery", "fail", "DRP-3", "DRP-3: this pack does not model attested-payload delivery, so a success without a DPA-6 attestationRef never verifies", rules=["DRE-2", "DRP-3"]),
         vector("drp-3-entitlement-delivery-unmodelled", "drp-3-entitlement-delivery", "fail", "DRP-3", "DRP-3: this pack does not model entitlement delivery, so it never verifies", rules=["DRE-2", "DRP-3"]),
-        vector("pipeline-unsupported-delivery-kind", "release", "fail", "DRP-3", "DRP-3: the one delivery between the escrow steps must be a supported deliver-* kind", [{"op": "replace", "path": ["pipeline", 2, "kind"], "value": "deliver-unsupported"}]),
-        vector("pipeline-rail-divergence", "release", "fail", "DRP-5", "both escrow invocations must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", 3, "parameters", "rail"], "value": f"x-evm-erc8183:{CHAIN_ID}:OTHER"}]),
-        vector("drp-5-escrow-phase-rails", "release", "fail", "DRP-5", "both escrow phases must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", 1, "parameters", "rail"], "value": f"x-evm-erc8183:{CHAIN_ID}:OTHER"}, {"op": "replace", "path": ["pipeline", 3, "parameters", "rail"], "value": f"x-evm-erc8183:{CHAIN_ID}:OTHER"}]),
+        vector("pipeline-unsupported-delivery-kind", "release", "fail", "DRP-3", "DRP-3: the one delivery between the escrow steps must be a supported deliver-* kind", [{"op": "replace", "path": ["pipeline", DELIVERY_PHASE_INDEX, "kind"], "value": "deliver-unsupported"}]),
+        vector("pipeline-rail-divergence", "release", "fail", "DRP-5", "both escrow invocations must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", TERMINAL_PHASE_INDEX, "parameters", "rail"], "value": f"x-evm-erc8183:{CHAIN_ID}:OTHER"}]),
+        vector("drp-5-escrow-phase-rails", "release", "fail", "DRP-5", "both escrow phases must name the agreement-selected rail", [{"op": "replace", "path": ["pipeline", FUND_PHASE_INDEX, "parameters", "rail"], "value": f"x-evm-erc8183:{CHAIN_ID}:OTHER"}, {"op": "replace", "path": ["pipeline", TERMINAL_PHASE_INDEX, "parameters", "rail"], "value": f"x-evm-erc8183:{CHAIN_ID}:OTHER"}]),
         vector("pipeline-delivery-before-final-funding", "release", "fail", "DRP-6", "delivery cannot begin before the funding result is finalized", [{"op": "replace", "path": ["executionContext", "fundingFinalizedBeforeDelivery"], "value": False}]),
         vector("drv-3-purchase-count-boolean", "release", "error", "DRV-3", "a boolean purchase count is malformed input, not the count 0", [{"op": "replace", "path": ["executionContext", "dacs5PurchaseCount"], "value": False}], rules=["DRP-8", "DRV-3"]),
         vector("drv-3-purchase-count-float", "release", "error", "DRV-3", "a float purchase count is malformed input, not the integer count 0", [{"op": "replace", "path": ["executionContext", "dacs5PurchaseCount"], "value": 0.0}], rules=["DRP-8", "DRV-3"]),
@@ -1892,7 +1912,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("dra-10-zero-budget-for-nonzero-price", "dra-10-zero-budget", "fail", "DRA-10", "a zero budget is not the non-zero agreed price"),
         vector("dra-10-zero-price", "dra-10-zero-price", "fail", "DRA-10", "an agreed price must be strictly greater than zero (DACS-4 §9.3), so a zero price and its zero budget move nothing"),
         vector("dra-10-price-not-whole-base-units", "dra-10-excess-precision", "fail", "DRA-10", "a price with more fractional digits than the rail's 6 token decimals is not a whole number of base units"),
-        vector("rail-definition-reference-mismatch", "rail-reference-mismatch", "fail", "DRP-5", "the agreement-selected rail definition must resolve exactly"),
+        vector("rail-definition-reference-mismatch", "rail-reference-mismatch", "fail", "DRP-5", "the agreement-selected rail definition must resolve exactly", rules=["DRF-9", "DRP-5"]),
         vector("evaluator-added-as-bundle-party", "release", "fail", "DRA-13", "the evaluator overlay signature does not create a third bundle party", [{"op": "add", "path": ["bundleRequiredSigners", 2], "value": EVALUATOR}]),
         vector("unsupported-disclosure-policy", "unsupported-disclosure-policy", "error", "DRQ-1", "a transcript-dependent disclosure policy is outside the first profile", rules=["DRQ-1", "DRQ-4"]),
         vector("transcript-input-disclosed", "transcript-in-delivered-artifact", "fail", "DRQ-3", "the candidate input pack cannot carry negotiation transcript material", rules=["DRQ-3", "DRQ-4"]),
@@ -2061,7 +2081,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("native-status-not-mapped", "release", "fail", "DRL-2", "a native status absent from nativeStatusMap is not mapped by guesswork (§11.2 R24)", authenticated("release", tx_record("release", -1, "nativeStatusAfter", value=9))),
         vector("native-entrypoint-not-pinned", "release", "fail", "DRC-18", "a transaction whose selector is not pinned is not decoded under another signature", authenticated("release", tx_record("release", -1, "entrypoint", value="0x00000000"))),
         vector("native-event-topic-not-pinned", "release", "fail", "DRC-18", "a required log whose topic0 is not its pinned topic0 is not decoded", authenticated("release", observation("release", "PaymentReleased", "topic0", value="0x" + "00" * 32))),
-        vector("reject-without-expected-status", "rejected-refund", "fail", "DRD-13", "the reject call binds the expected prior native status", authenticated("rejected-refund", tx_record("rejected-refund", -1, "calldata", "expectedStatus", value=str(NATIVE_STATUS_VALUES["Funded"])))),
+        vector("reject-without-expected-status", "rejected-refund", "fail", "DRD-13", "the reject call binds the expected prior native status", authenticated("rejected-refund", tx_record("rejected-refund", -1, "calldata", "expectedStatus", value=str(NATIVE_STATUS_VALUES["Funded"]))), rules=["DRC-22", "DRD-13"]),
         vector("expiry-invented-decision", "expiry-invented-decision", "fail", "DRD-7", "expiry cannot manufacture an evaluator decision"),
         vector("expiry-terminal-action-not-recovery", "expired-pre", "fail", "DRT-3", "a decisionless terminal must be the native expiry recovery", [{"op": "replace", "path": ["native", "terminalAction"], "value": "reject"}]),
         vector("pre-submission-expiry-delivery-ref", "expiry-invented-delivery", "fail", "DRT-12", "pre-submission expiry omits delivery evidence"),
@@ -2077,7 +2097,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("nonfault-finding-names-party", "nonfault-with-faulted-party", "fail", "DRX-6", "a no-fault finding cannot name a faulted party"),
         vector("nonfault-finding-null-party", "nonfault-with-null-faulted-party", "error", "DRV-3", "a null faultedParty is not a ClaimReference", rules=["DRV-3", "DRX-5"]),
         # Resolver outcomes.
-        vector("rail-resolution-unavailable", "release", "indeterminate", "DRC-11", "unavailable rail authority does not become a guessed failure", authenticated("release", status("railResolution", "unavailable"))),
+        vector("rail-resolution-unavailable", "release", "indeterminate", "DRC-11", "unavailable rail authority does not become a guessed failure", authenticated("release", status("railResolution", "unavailable")), rules=["DRC-11", "DRF-9"]),
         vector("runtime-code-unavailable", "release", "indeterminate", "DRJ-7", "unresolved code remains indeterminate", authenticated("release", status("codeResolution", "unavailable"))),
         vector("delivery-evidence-unavailable", "release", "indeterminate", "DRE-5", "unavailable delivery evidence remains indeterminate", authenticated("release", status("deliveryFinality", "unavailable"))),
         vector("decision-finality-unavailable", "release", "indeterminate", "DRD-4", "unavailable decision finality cannot authorize the terminal action", authenticated("release", status("decisionFinality", "unavailable"))),
@@ -2162,7 +2182,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("dispute-address-segment-nonminimal", "pre-submission-rejected-refund", "error", "DRAA-2", "the dispute outcome address's revision segment is minimal unsigned decimal", [{"op": "replace", "path": ["artifacts", "disputeRef", "anchor", "locator"], "value": logical(LIFECYCLE_JOBS["pre-submission-rejected-refund"], f"dispute:{CASE_A}:outcome:00")}]),
         vector("decision-address-of-another-job", "release", "fail", "DRD-4", "the decision reference names this job's decision address", [{"op": "replace", "path": ["artifacts", "decisionRef", "anchor", "locator"], "value": logical(JOB_B, "decision:post-submission")}]),
         vector("decision-address-of-other-stage", "release", "fail", "DRD-4", "each decision stage has its own address (DRD-14)", [{"op": "replace", "path": ["artifacts", "decisionRef", "anchor", "locator"], "value": logical(JOB_A, "decision:pre-submission")}], rules=["DRD-14", "DRD-4"]),
-        vector("drp-5-job-rail", "drp-5-job-rail", "fail", "DRP-5", "the signed escrow job must use the agreement-selected rail definition"),
+        vector("drp-5-job-rail", "drp-5-job-rail", "fail", "DRP-5", "the signed escrow job must use the agreement-selected rail definition", rules=["DRF-9", "DRP-5"]),
         vector("drj-10-job-contract", "drj-10-job-contract", "fail", "DRJ-10", "the escrow job targets the rail's pinned contract"),
         vector("drj-10-job-runtime", "drj-10-job-runtime", "fail", "DRJ-10", "the escrow job's runtime code is the rail's pinned code"),
         vector("drj-5-escrow-code-changed", "drj-5-escrow-code-changed", "fail", "DRJ-5", "the authenticated escrow code at every action block is the pinned code", rules=["DRJ-5", "DRJ-7"]),
@@ -2692,6 +2712,12 @@ def build_vector_pack() -> dict[str, Any]:
             "fixed before the native submission; the pack models it with a synthetic "
             "resolver-attested digest anchor"
         ),
+        "DRF-9": (
+            "requires FV-1 over the registry snapshot and authenticated acceptedRails selection "
+            "that DRR-2 and DRR-3 name; the pack checks the job's and the resolved rail's "
+            "reference against the overlay's, the steward's RD-1 signature, and the "
+            "orchestrator-stated acceptedRails"
+        ),
         "DRF-8": (
             "requires FV-1 through FV-10 over an AuthenticatedChainObservation for every chain "
             "fact; the pack reads block, transaction, and log facts from the pinned fixture "
@@ -2799,6 +2825,11 @@ FOLLOW_ON_FINDINGS: dict[str, tuple[str, str]] = {
     "drr-3-accepted-rail-other-version": ("fail", "DRA-22"),
     # An overlay delivery index on a non-delivery step names no delivery step.
     "pipeline-phase-index-divergence": ("fail", "DRE-2"),
+    # With the fund step after the negotiation and commit steps (DRP-18), a
+    # boolean fund index no longer equals the step's index, so the index
+    # comparison finds it too.
+    "drv-3-agreement-phase-index-boolean": ("fail", "DRA-11"),
+    "drv-3-funding-phase-index-boolean": ("fail", "DRF-1"),
     # Overlay signatures: two signatures are not the three distinct roles, and
     # a party relabelled to the buyer is not the evaluator's key.
     "overlay-signature-missing": ("fail", "DRA-18"),
@@ -2963,6 +2994,7 @@ FOLLOW_ON_FINDINGS: dict[str, tuple[str, str]] = {
 STRUCTURAL_NEGATIVES: dict[str, str] = {
     "pipeline-missing-terminal": "the pipeline has no terminal escrow step to read",
     "pipeline-commit-phase-missing": "the pipeline has no commit step to read",
+    "pipeline-negotiation-missing": "the pipeline has no negotiation step to read",
     "pipeline-escrow-rail-not-accepted": "acceptedRails has no entry for the selected rail to read",
     "overlay-signature-entry-not-object": "the overlay has no signature object for one role",
     "account-claim-parameters-not-canonical": "an unparsed account claim has no address to read",
@@ -3182,6 +3214,7 @@ def synthetic_manifest() -> dict[str, Any]:
             "deadlineProfile": "separate-submission-cutoff-v1",
             "submissionCutoffEnforced": True,
             "expiryRecoveryDeadlineEnforced": True,
+            "rejectBindsExpectedPriorStatus": True,
         },
         "evidence": {
             "sourceRevision": "synthetic-fixture-only",
@@ -3246,6 +3279,11 @@ def current_reference_manifest() -> dict[str, Any]:
             # Funded job with a pending claim reverts with PendingClaimExists
             # (lines 871-872).
             "expiryRecoveryDeadlineEnforced": False,
+            # reject(jobId, reason, optParams) accepts a Funded or a Submitted
+            # job alike and takes no expected prior status (ERC8183.sol lines
+            # 806-831), so a pre-submission rejection can execute after a
+            # native submit (DRC-22).
+            "rejectBindsExpectedPriorStatus": False,
         },
         "evidence": {
             "sourceRevision": "142e669c1fd318486a4628395b629f033654dd06",
@@ -3271,6 +3309,8 @@ def current_reference_manifest() -> dict[str, Any]:
             "(ERC8183.sol lines 871-872)",
             "claimRefund calls no hook (\"Not hookable\", ERC8183.sol lines 861-863)",
             "submit reverts at or after expiredAt (ERC8183.sol line 728)",
+            "reject is gated only on Funded or Submitted and takes no expected prior status "
+            "(ERC8183.sol lines 806-831)",
         ],
     }
 
@@ -3314,12 +3354,13 @@ def build_deployment_pack() -> dict[str, Any]:
         deployment_case("drc-11-conflicting-evidence", "synthetic-control", "fail", ["DRC-11"], "conflicting deployment evidence leaves the rail unavailable", [{"op": "replace", "path": ["evidence", "conflict"], "value": True}]),
         deployment_case("drc-12-unauthenticated-ordering", "synthetic-control", "fail", ["DRC-12"], "decision ordering must be authenticated", [{"op": "replace", "path": ["evidence", "decisionOrderingEvidenceAuthenticated"], "value": False}]),
         deployment_case("drc-13-missing-native-submission-cutoff", "synthetic-control", "fail", ["DRC-13"], "submission and recovery deadlines must be separately enforced", [{"op": "replace", "path": ["capabilities", "submissionCutoffEnforced"], "value": False}]),
+        deployment_case("drc-22-reject-without-expected-status", "synthetic-control", "fail", ["DRC-22"], "an evaluator reject gated only on Funded or Submitted can execute a pre-submission rejection after a native submit", [{"op": "replace", "path": ["capabilities", "rejectBindsExpectedPriorStatus"], "value": False}]),
         deployment_case("source-to-bytecode-evidence-unavailable", "synthetic-control", "indeterminate", [], "missing source-to-bytecode evidence is not guessed", [{"op": "replace", "path": ["evidence", "sourceToBytecodeReproducible"], "value": None}], unknown=["DRC-10"]),
         deployment_case(
             "current-reference-142e669-ineligible",
             "current-reference-142e669",
             "fail",
-            ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7", "DRC-13"],
+            ["DRC-1", "DRC-2", "DRC-3", "DRC-4", "DRC-5", "DRC-6", "DRC-7", "DRC-13", "DRC-22"],
             "the pinned reference source is not a DACS-eligible deployment",
             unknown=["DRC-8", "DRC-10", "DRC-11", "DRC-12"],
         ),

@@ -116,7 +116,7 @@ v0.1 conformance requirements:
   native chain, establish reveal transaction finality, or authenticate a
   production rail/finality provider.
 - `conformance/fixtures/delivery-remedy/` — signed synthetic release/refund
-  lifecycle cases and DRC-1 through DRC-13 capability evidence for the #356
+  lifecycle cases and DRC-1 through DRC-13 and DRC-22 capability evidence for the #356
   review candidate. It explicitly registers no rail or deployment.
 
 ## Validate locally

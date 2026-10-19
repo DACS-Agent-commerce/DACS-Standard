@@ -7,8 +7,8 @@
     "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol"
   },
   "scope": "capability evidence only; no chain deployment or DACS rail is registered",
-  "hash": "48eea36c3931cb6971f81ac44b0c3a56f85f6c0a2a8715f66f118ce4c7429b32",
-  "count": 20,
+  "hash": "340f0c81c5dd3f9989c139ceda7a903c36f2c049bfe580a033953463129dc2bf",
+  "count": 21,
   "manifests": {
     "synthetic-control": {
       "manifestVersion": "1",
@@ -50,7 +50,8 @@
         "decisionOrderingProfile": "anchor-final-before-terminal-v1",
         "deadlineProfile": "separate-submission-cutoff-v1",
         "submissionCutoffEnforced": true,
-        "expiryRecoveryDeadlineEnforced": true
+        "expiryRecoveryDeadlineEnforced": true,
+        "rejectBindsExpectedPriorStatus": true
       },
       "evidence": {
         "sourceRevision": "synthetic-fixture-only",
@@ -116,7 +117,8 @@
         "decisionOrderingProfile": null,
         "deadlineProfile": null,
         "submissionCutoffEnforced": false,
-        "expiryRecoveryDeadlineEnforced": false
+        "expiryRecoveryDeadlineEnforced": false,
+        "rejectBindsExpectedPriorStatus": false
       },
       "evidence": {
         "sourceRevision": "142e669c1fd318486a4628395b629f033654dd06",
@@ -139,7 +141,8 @@
         "claimRefund on a Submitted job reverts with GracePeriodActive until expiredAt + EVALUATION_GRACE_PERIOD (1 hours) (ERC8183.sol lines 78, 869-870)",
         "claimRefund on a Funded job with a pending claim reverts with PendingClaimExists (ERC8183.sol lines 871-872)",
         "claimRefund calls no hook (\"Not hookable\", ERC8183.sol lines 861-863)",
-        "submit reverts at or after expiredAt (ERC8183.sol line 728)"
+        "submit reverts at or after expiredAt (ERC8183.sol line 728)",
+        "reject is gated only on Funded or Submitted and takes no expected prior status (ERC8183.sol lines 806-831)"
       ]
     }
   },
@@ -556,6 +559,29 @@
       ]
     },
     {
+      "name": "drc-22-reject-without-expected-status",
+      "base": "synthetic-control",
+      "expected": "fail",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-22"
+      ],
+      "rules": [
+        "DRC-22"
+      ],
+      "note": "an evaluator reject gated only on Funded or Submitted can execute a pre-submission rejection after a native submit",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "rejectBindsExpectedPriorStatus"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
       "name": "source-to-bytecode-evidence-unavailable",
       "base": "synthetic-control",
       "expected": "indeterminate",
@@ -590,12 +616,14 @@
         "DRC-5",
         "DRC-6",
         "DRC-7",
-        "DRC-13"
+        "DRC-13",
+        "DRC-22"
       ],
       "rules": [
         "DRC-1",
         "DRC-13",
         "DRC-2",
+        "DRC-22",
         "DRC-3",
         "DRC-4",
         "DRC-5",

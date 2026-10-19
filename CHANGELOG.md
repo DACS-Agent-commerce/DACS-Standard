@@ -27,7 +27,7 @@ The format used per release:
   `indeterminate` decision instead of the catch-all `error`. The pay-dem
   conformance oracle compares the same way, and oversized record, nonce,
   applied-debit, phase and consumer amounts reach a decision. The corpora
-  contain 197 pay-dem and 176 settlement-finality cases.
+  contain 204 pay-dem and 176 settlement-finality cases.
 - The DEM-1 signed transaction must be the complete demosdk 4.0.16 native-send
   envelope that the pinned node admits. It carries a positive integer
   `timestamp`, `from_ed25519_address`, a fee object with exactly `network_fee`,
@@ -57,6 +57,24 @@ The format used per release:
   authority, since DEM-3 success is otherwise unreachable; this is
   `permanent` before any effect. The DACS-4 maturity table now lists
   `pay-dem`.
+- A demosdk `broadcast` carries the validity response that `confirm`
+  returned, and the pinned node executes the transaction embedded in it, so
+  DEM-1 now binds that payload: the broadcast must carry exactly the response
+  the same submission's `confirm` returned, reporting `valid: true`, with an
+  embedded `content`, `hash` and `signature` that serialize as the retained
+  signed transaction. DEMOS-MAPPING §A.2 describes the response
+  (*Validity response*). Every `broadcast-gate` broadcast now carries the
+  SDK's `RPCResponseWithValidityData`, signed by the node key, and new vectors
+  refuse a missing or stale response, a response embedding another amount or
+  nonce or re-serialized content, and one that reports the transfer invalid.
+  A broadcast with no `confirm` of its own is refused.
+- The DEM-1 signed `content.nonce` must be a JSON integer, the only form
+  demosdk signs; the pinned node admits a decimal-string nonce but never
+  applies it. A new vector refuses one.
+- The §9.5.9 insufficient-balance failure mode is `permanent` only before the
+  first egress. A `confirm` that refuses the transfer after it has carried
+  the signed bytes is DEM-5 `substrate`: the node holds the bytes, so the
+  handler keeps the hash and only re-reads.
 - A DEM-4 failure proof built on plain RPC reads is the payer's terminal
   classification only. It is APR `closed-cannot-settle` reconciliation
   evidence only when FV-5 authenticates the failed record at its `bft-final`
@@ -1157,7 +1175,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 197-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 204-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope

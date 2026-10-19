@@ -25,6 +25,17 @@ The format used per release:
   64-byte Ed25519 value, which a verifier implementing `ecdsa-secp256k1`
   rejects as `fail` instead of the expected `indeterminate`. Only those two
   values and the two set hashes change.
+- **Cross-corpus signature consistency check** — a new test walks every
+  committed corpus file and checks each registered-algorithm signature value
+  against CORE §B.7 with the channel oracle's checker. It fails when a
+  capability-dependent case (`error`/`indeterminate` for an unsupported or
+  unavailable algorithm) carries a value an implementing verifier would `fail`,
+  or when a §B.7-violating value is not expected to `fail` and the case does not
+  say it is about malformed input. Three known offenders are listed with their
+  follow-ups: the placeholder values in the modelled
+  `legacy-agreement-admission-v0.8` signature objects and the placeholder
+  signatures in the released `settlement-evidence-payment-success.json` fixture
+  and `rating-record.json` example.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

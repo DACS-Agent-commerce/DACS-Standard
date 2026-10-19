@@ -13,6 +13,19 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — verifier-independent signature vectors and corpus-wide CI checks
+
+- **Registered-algorithm "unavailable" vectors carry valid values** (CORE §B.7
+  SIG-6; DACS-5 SPA; DACS-1 RSC) — without changing any verdict, the
+  `ecdsa-secp256k1` signature in `spa-supported-channel-algorithm-unavailable`
+  (`reputation-participation-admission-v0.7`) and in
+  `rsc-wrong-signature-algorithm` (`revocation-state-completeness-v0.8`) is now
+  a canonical DER low-S value over the same payload, signed with the public
+  channel-corpus secp256k1 fixture key. Both previously held a relabelled
+  64-byte Ed25519 value, which a verifier implementing `ecdsa-secp256k1`
+  rejects as `fail` instead of the expected `indeterminate`. Only those two
+  values and the two set hashes change.
+
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
 - **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened

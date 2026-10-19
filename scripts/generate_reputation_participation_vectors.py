@@ -11,6 +11,7 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from generate_channel_message_vectors import deterministic_ecdsa_signature
 from reputation_evidence import (
     artifact_hash,
     decode_canonical_object,
@@ -768,6 +769,15 @@ def channel_changed(base: dict, mutate, *, algorithm: str = "ed25519") -> dict:
     mutate(unsigned)
     message = sign_artifact(unsigned, BUYER_KEY, BUYER, CHANNEL_DOMAIN)
     message["signature"]["algorithm"] = algorithm
+    if algorithm == "ecdsa-secp256k1":
+        # An unavailable registered algorithm still carries a value CORE §B.7
+        # accepts, so a verifier implementing it cannot answer `fail` on the
+        # encoding: canonical DER low-S over the same payload, signed by the
+        # public channel-corpus secp256k1 fixture key, which no resolver
+        # binds to the buyer claim.
+        message["signature"]["value"] = b64url(deterministic_ecdsa_signature(
+            (CHANNEL_DOMAIN + artifact_hash(unsigned)).encode("ascii")
+        ))
     item["authenticatedChannelMessages"] = [message]
     admission = item["participationEvidence"]["admission"]
     admission["obligation"]["source"]["messageHash"] = artifact_hash(message)

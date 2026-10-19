@@ -12,8 +12,10 @@ from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 if __package__:
+    from scripts.generate_channel_message_vectors import deterministic_ecdsa_signature
     from scripts.jcs import canonicalize as jcs_canonicalize
 else:  # Direct execution from scripts/.
+    from generate_channel_message_vectors import deterministic_ecdsa_signature
     from jcs import canonicalize as jcs_canonicalize
 
 
@@ -743,7 +745,15 @@ def build_vectors() -> list[dict]:
     wrong_algorithm = input_for(TARGET_HEAD, TARGET_LEAVES, discovery_status="revoked")
     for item in wrong_algorithm["resolutionContext"]["resolvedMarkers"]:
         if item["revocationRef"]["contentHash"] == TARGET_REF["contentHash"]:
-            item["marker"]["signature"]["algorithm"] = "ecdsa-secp256k1"
+            # The registered algorithm the verifier cannot use still carries a
+            # CORE §B.7 canonical DER low-S value over the marker payload
+            # (public channel-corpus secp256k1 fixture key), so a verifier
+            # implementing it cannot answer `fail` on the encoding.
+            signature = item["marker"]["signature"]
+            signature["algorithm"] = "ecdsa-secp256k1"
+            signature["value"] = b64url(deterministic_ecdsa_signature(
+                (MARKER_DOMAIN + artifact_hash(item["marker"])).encode("ascii")
+            ))
 
     higher_head, higher_leaves = append_head(OTHER_HEAD, OTHER_LEAVES, TARGET, TARGET_REF)
     higher = input_for(OTHER_HEAD, OTHER_LEAVES, conflicting_heads=[history_item(higher_head)])

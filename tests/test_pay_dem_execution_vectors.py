@@ -60,6 +60,7 @@ GUARDS = frozenset({
     "signed-timestamp",
     "signed-ed25519-address",
     "signed-native-edits",
+    "signed-nonce-integer",
     "no-cross-phase-reuse",
     # DEM-2 and the DEMOS-MAPPING §A.2 native-send record profile
     "node-profile-pinned",
@@ -100,6 +101,8 @@ GUARDS = frozenset({
     "no-replacement",
     "confirm-egress-may-broadcast",
     "submission-completes-own-confirm",
+    "broadcast-carries-own-validity-response",
+    "validity-response-binds-retained-transfer",
     # DEM-7
     "consumer-admits-confirmed",
     "consumer-requires-confirmed-record",
@@ -317,6 +320,11 @@ def decode(transaction, off, *, executed: bool = True):
             and all(k in fee for k in FEE_AMOUNTS)
             and (list(fee) != FEE_MEMBERS or not (fee["rpc_address"] is None or isinstance(fee["rpc_address"], str)))):
         return None
+    if not executed and "signed-nonce-integer" not in off:
+        # demosdk signs a JSON integer nonce; the pinned node never applies a string.
+        nonce = content.get("nonce")
+        if not (isinstance(nonce, int) and _safe_integer(nonce)):
+            return None
     if not executed and "signed-timestamp" not in off:
         timestamp = content.get("timestamp")
         if not (_safe_integer(timestamp) and timestamp > 0):
@@ -386,6 +394,33 @@ def authentic(transaction, off=frozenset()) -> bool:
     except (InvalidSignature, ValueError):
         return False
     return True
+
+
+def _exact_json(left, right) -> bool:
+    """Equal as `JSON.stringify` spells them, member order included."""
+    try:
+        return stringify(left) == stringify(right)
+    except (ValueError, TypeError, UnicodeError):
+        return False
+
+
+def embeds_retained(response, transaction) -> bool:
+    """A demosdk 4.0.16 `confirm()` result (RPCResponseWithValidityData) from
+    the pinned node that reports the transaction valid and embeds exactly the
+    retained signed transaction. `confirmTx` answers result 200 even when it
+    refuses, so `valid` decides; the node later executes the embedded copy."""
+    if not (isinstance(response, dict) and response.get("result") == 200
+            and isinstance(response.get("response"), dict) and isinstance(transaction, dict)):
+        return False
+    body = response["response"]
+    data = body.get("data")
+    if not (isinstance(data, dict) and data.get("valid") is True and isinstance(data.get("transaction"), dict)
+            and all(isinstance(body.get(member), dict) for member in ("signature", "rpc_public_key"))):
+        return False
+    embedded = data["transaction"]
+    members = ("content", "hash", "signature")
+    return _exact_json({k: embedded[k] for k in members if k in embedded},
+                       {k: transaction[k] for k in members if k in transaction})
 
 
 def bound(projection, transfer, inclusion, off) -> bool:
@@ -611,6 +646,20 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
             if "no-replacement" not in off:
                 return refused
         elif "no-rebroadcast" not in off:
+            return refused
+    if request != "confirm-retained":
+        # demosdk broadcast(validationData) carries the confirm result, not the
+        # retained transaction, and the pinned node executes the copy embedded
+        # in it. Only this submission's own response may complete it.
+        own = protocol_input.get("confirmResponse")
+        carried = protocol_input.get("validityResponse")
+        if "broadcast-carries-own-validity-response" not in off and (
+            own is None or carried is None or not _exact_json(carried, own)
+        ):
+            return refused
+        if "validity-response-binds-retained-transfer" not in off and not embeds_retained(
+            own, protocol_input["signedTransaction"]
+        ):
             return refused
     for guard, configured in (
         ("broadcast-requires-pinned-node", "pinnedNodeConfigured"),
@@ -1064,6 +1113,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             ("rpc-address-omitted", "signed-fee-members"),
             ("extra-fee-member", "signed-fee-members"),
             ("numeric-rpc-address", "signed-fee-members"),
+            ("string-nonce", "signed-nonce-integer"),
             ("timestamp-missing", "signed-timestamp"),
             ("fractional-timestamp", "signed-timestamp"),
             ("timestamp-zero", "signed-timestamp"),
@@ -1102,6 +1152,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 ("broadcast-signed-fee-object-missing", "signed-os-strings"),
                 ("broadcast-signed-fee-member-missing", "signed-os-strings"),
             ],
+            "Signed `content.nonce` MUST be a JSON integer": [("broadcast-signed-string-nonce", "signed-nonce-integer")],
             "The fee object MUST have exactly the members": [("broadcast-signed-" + name, "signed-fee-members") for name in (
                 "fee-members-reordered", "rpc-address-omitted", "extra-fee-member", "numeric-rpc-address")],
             "The content MUST also carry the members": [timestamp[0], *address, edits[0]],
@@ -1169,11 +1220,117 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         unknown["protocolInput"]["broadcastState"] = "confirm-timed-out"
         self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(unknown))
 
+    def test_broadcast_carries_this_submissions_validity_response(self):
+        # demosdk 4.0.16 broadcast(validationData) sends the confirm result and
+        # the pinned node executes response.data.transaction, so DEM-1 binds
+        # that payload to the retained transfer and DEM-6 to this submission.
+        spec = SPEC.read_text(encoding="utf-8")
+        demos = DEMOS.read_text(encoding="utf-8")
+        self.assertIn("A demosdk `broadcast` does not carry the retained transaction", spec)
+        self.assertIn("carries exactly the validity response that the same submission's `confirm` returned", spec)
+        self.assertIn("*Validity response.*", demos)
+        self.assertIn("the node executes the embedded transaction", demos)
+        control = self.cases["first-broadcast-after-durable-retention"]
+        value = control["protocolInput"]
+        response = value["validityResponse"]
+        # The real RPCResponseWithValidityData shape, signed by the node key.
+        self.assertEqual(["result", "response", "require_reply", "extra"], list(response))
+        self.assertEqual(200, response["result"])
+        self.assertEqual(["data", "signature", "rpc_public_key"], list(response["response"]))
+        data = response["response"]["data"]
+        self.assertEqual(["valid", "reference_block", "message", "gas_operation", "transaction"], list(data))
+        self.assertIs(True, data["valid"])
+        rpc_key = response["response"]["rpc_public_key"]
+        self.assertEqual("ed25519", rpc_key["type"])
+        digest = hashlib.sha256(stringify(data).encode("utf-8")).hexdigest()
+        Ed25519PublicKey.from_public_bytes(bytes.fromhex(rpc_key["data"][2:])).verify(
+            bytes.fromhex(response["response"]["signature"]["data"][2:]), digest.encode("utf-8"))
+        for member in ("content", "hash", "signature"):
+            self.assertEqual(value["signedTransaction"][member], data["transaction"][member])
+        self.assertEqual(response, value["confirmResponse"])
+        # Every broadcast carries a validity response; a confirm carries the
+        # signed transaction and no response.
+        for vector in self.data["vectors"]:
+            if vector["operation"] != "broadcast-gate":
+                continue
+            with self.subTest(payload=vector["name"]):
+                inputs = vector["protocolInput"]
+                if inputs["request"] == "confirm-retained":
+                    self.assertEqual((None, None), (inputs["confirmResponse"], inputs["validityResponse"]))
+                elif vector["name"] != "broadcast-validity-response-missing":
+                    self.assertIsInstance(inputs["validityResponse"], dict)
+        # Missing, stale, other-transaction, refused and re-serialized
+        # responses differ from the control only there, and only the payload
+        # check refuses them.
+        responses = {"confirmResponse", "validityResponse"}
+        for name, guard in (
+            ("broadcast-validity-response-missing", "broadcast-carries-own-validity-response"),
+            ("broadcast-stale-validity-response", "broadcast-carries-own-validity-response"),
+            ("broadcast-validity-response-other-transaction", "validity-response-binds-retained-transfer"),
+            ("broadcast-validity-response-other-nonce", "validity-response-binds-retained-transfer"),
+            ("broadcast-validity-response-not-valid", "validity-response-binds-retained-transfer"),
+            ("broadcast-validity-response-resigned-content", "validity-response-binds-retained-transfer"),
+        ):
+            with self.subTest(name=name):
+                case = self.cases[name]
+                self.assertEqual({k: v for k, v in value.items() if k not in responses},
+                                 {k: v for k, v in case["protocolInput"].items() if k not in responses})
+                self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(case))
+                self.assertEqual([guard], case["guards"])
+                self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(case, {guard}))
+        other = self.cases["broadcast-validity-response-other-transaction"]["protocolInput"]["confirmResponse"]
+        self.assertTrue(authentic(other["response"]["data"]["transaction"]))
+        # A broadcast without a confirm of its own has no response to carry,
+        # whatever response it holds.
+        for held in (response, None):
+            with self.subTest(no_confirm=held is not None):
+                case = json.loads(json.dumps(control))
+                case["protocolInput"].update(broadcastState="never-broadcast", confirmResponse=None, validityResponse=held)
+                self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(case))
+
+        def broken(change):
+            case = json.loads(json.dumps(control))
+            change(case["protocolInput"]["confirmResponse"])
+            case["protocolInput"]["validityResponse"] = case["protocolInput"]["confirmResponse"]
+            return case
+
+        # Malformed or refusing responses fail closed.
+        for label, change in (
+            ("result-400", lambda r: r.update(result=400)),
+            ("valid-string", lambda r: r["response"]["data"].update(valid="true")),
+            ("valid-missing", lambda r: r["response"]["data"].pop("valid")),
+            ("transaction-missing", lambda r: r["response"]["data"].pop("transaction")),
+            ("transaction-null", lambda r: r["response"]["data"].update(transaction=None)),
+            ("rpc-key-missing", lambda r: r["response"].pop("rpc_public_key")),
+            ("signature-missing", lambda r: r["response"].pop("signature")),
+            ("response-not-object", lambda r: r.update(response="ok")),
+            ("embedded-hash-uppercase", lambda r: r["response"]["data"]["transaction"].update(
+                hash=r["response"]["data"]["transaction"]["hash"].upper())),
+            ("embedded-signature-dropped", lambda r: r["response"]["data"]["transaction"].pop("signature")),
+        ):
+            with self.subTest(malformed=label):
+                self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(broken(change)))
+        # The SDK envelope members the profile ignores do not matter.
+        extra = broken(lambda r: r["response"]["data"]["transaction"].update(status="pending", ed25519_signature=None))
+        self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(extra))
+        # The carried response must be the own response, member order included.
+        reordered = json.loads(json.dumps(control))
+        own = reordered["protocolInput"]["confirmResponse"]
+        reordered["protocolInput"]["validityResponse"] = dict(reversed(list(own.items())))
+        self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(reordered))
+
     def test_no_debit_without_pinned_node_and_applied_payment_authority(self):
         # DEM-3 success needs both, so DEM-1 refuses to sign or send without them.
         spec = SPEC.read_text(encoding="utf-8")
         self.assertIn("The handler MUST NOT sign or broadcast a transfer unless its Demos binding configures", spec)
         self.assertIn("Demos binding without pinned nodes or an applied-payment authority → `permanent`", spec)
+        # Balance is permanent only before the first egress; a confirm refusal
+        # after it leaves the signed bytes at a node, so it is DEM-5 substrate.
+        self.assertIn("payer DEM balance insufficient before the first egress (no `confirm` or broadcast has carried "
+                      "the signed transfer) → `permanent`", spec)
+        self.assertIn("a `confirm` that refuses the transfer after its first egress, for example for insufficient "
+                      "balance → `substrate`", spec)
+        self.assertNotIn("payer DEM balance insufficient before broadcast", spec)
         self.assertIn("| `pay-dem` | Not reference-backed", spec)
         self.assertIn("so DEM-1 refuses to sign or send a transfer under it", DEMOS.read_text(encoding="utf-8"))
         for name, guard in (("broadcast-without-applied-payment-authority", "broadcast-requires-applied-payment-authority"),
@@ -1288,17 +1445,21 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         # DEM-1 applies to each call that carries the signed transaction out
         # of the handler: a refusal at broadcast is the same refusal at the
         # demosdk confirm request that precedes it.
+        # The validity-response refusals concern the broadcast payload only.
+        payload = {"broadcast-carries-own-validity-response", "validity-response-binds-retained-transfer"}
         refusals = [
             vector for vector in self.data["vectors"]
             if vector["operation"] == "broadcast-gate" and vector["expected"] != "pass"
             and vector["protocolInput"]["request"] == "broadcast-retained"
-            and vector["protocolInput"]["broadcastState"] == "never-broadcast"
+            and vector["protocolInput"]["broadcastState"] == "confirm-returned"
+            and not payload & set(vector["guards"])
         ]
         self.assertGreater(len(refusals), 40)
         for vector in refusals:
             with self.subTest(name=vector["name"]):
                 confirm = json.loads(json.dumps(vector))
-                confirm["protocolInput"]["request"] = "confirm-retained"
+                confirm["protocolInput"].update(request="confirm-retained", broadcastState="never-broadcast",
+                                                confirmResponse=None, validityResponse=None)
                 self.assertEqual(evaluate(vector), evaluate(confirm))
                 self.assertEqual(("pass", {"broadcastPermitted": True}),
                                  evaluate(confirm, {"retention-before-first-egress"}))
@@ -1468,12 +1629,13 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     self.assertFalse(want["broadcastPermitted"])
                     self.assertFalse(want["replacementPermitted"])
                 if vector["operation"] == "broadcast-gate" and want["broadcastPermitted"]:
-                    # Nothing has left the handler, or this broadcast completes
-                    # the uninterrupted submission whose confirm just returned.
+                    # Nothing has left the handler before this confirm, or this
+                    # broadcast completes the uninterrupted submission whose
+                    # confirm just returned. A demosdk broadcast needs a
+                    # validity response, so it is never the first egress.
                     state = vector["protocolInput"]["broadcastState"]
                     request = vector["protocolInput"]["request"]
                     self.assertIn((state, request), {
-                        ("never-broadcast", "broadcast-retained"),
                         ("never-broadcast", "confirm-retained"),
                         ("confirm-returned", "broadcast-retained"),
                     })

@@ -386,6 +386,42 @@ def signed(
 
 # The hash of the default signed transfer, which every default record cites.
 TX_HASH = signed()["hash"]
+# The pinned node that answers the handler's `confirm`; it signs its validity data.
+RPC_SIGNER = _signing_key("rpc-node")
+CONFIRM_REFERENCE_BLOCK = BLOCK - 1
+
+
+def validity_response(
+    transaction: dict[str, Any],
+    *,
+    valid: bool = True,
+    reference_block: int = CONFIRM_REFERENCE_BLOCK,
+) -> dict[str, Any]:
+    """demosdk 4.0.16 `confirm()` result (`RPCResponseWithValidityData`) from
+    a node at 61b8e75: `confirmTx` embeds the transaction it received, in the
+    SDK envelope, and signs SHA-256 of `JSON.stringify(data)` with its key.
+    `broadcast(validationData)` sends this object, and the node executes
+    `response.data.transaction`."""
+    envelope = {key: transaction[key] for key in ("content", "signature", "hash") if key in transaction}
+    data = {
+        "valid": valid,
+        "reference_block": reference_block,
+        "message": ("[Tx Validation] Transaction signature verified\n" if valid
+                    else "[Tx Validation] [BALANCE ERROR] Insufficient balance\n"),
+        "gas_operation": None,
+        "transaction": dict(envelope, status="", blockNumber=None),
+    }
+    digest = hashlib.sha256(stringify(data).encode("utf-8")).hexdigest()
+    return {
+        "result": 200,
+        "response": {
+            "data": data,
+            "signature": {"type": "ed25519", "data": "0x" + RPC_SIGNER.sign(digest.encode("utf-8")).hex()},
+            "rpc_public_key": {"type": "ed25519", "data": "0x" + _key(RPC_SIGNER)},
+        },
+        "require_reply": False,
+        "extra": None,
+    }
 
 
 def gate(
@@ -399,12 +435,25 @@ def gate(
     signed_transaction: dict[str, Any] | None = None,
     retained_elsewhere: list[dict[str, Any]] | None = None,
     durable: bool = True,
-    broadcast_state: str = "never-broadcast",
+    broadcast_state: str | None = None,
     request: str = "broadcast-retained",
     pinned_node: bool = True,
     applied_authority: bool = True,
     phase_context: dict[str, Any] | None = None,
+    confirm_response: Any = _OMIT,
+    carried_response: Any = _OMIT,
 ) -> dict[str, Any]:
+    """A `confirm` request carries the signed transaction itself. A demosdk
+    `broadcast` carries a validity response: by default the one this
+    submission's `confirm` returned, embedding the signed transaction."""
+    transaction = signed() if signed_transaction is None else signed_transaction
+    broadcasting = request != "confirm-retained"
+    if broadcast_state is None:
+        broadcast_state = "confirm-returned" if broadcasting else "never-broadcast"
+    if confirm_response is _OMIT:
+        confirm_response = validity_response(transaction) if broadcasting else None
+    if carried_response is _OMIT:
+        carried_response = confirm_response
     return _vector(
         name, "broadcast-gate",
         {
@@ -412,12 +461,14 @@ def gate(
             # The Demos binding's configuration for the phase's network.
             "pinnedNodeConfigured": pinned_node,
             "appliedPaymentAuthorityConfigured": applied_authority,
-            "signedTransaction": signed() if signed_transaction is None else signed_transaction,
+            "signedTransaction": transaction,
             "retainedTransfer": retained() if transfer is None else transfer,
             "hashRetainedForOtherPhases": retained_elsewhere or [],
             "retentionDurable": durable,
             "broadcastState": broadcast_state,
+            "confirmResponse": confirm_response,
             "request": request,
+            "validityResponse": carried_response,
         },
         expected, {"broadcastPermitted": expected == "pass"}, rule, guards, note,
     )
@@ -837,11 +888,13 @@ def build_vectors() -> list[dict[str, Any]]:
         ),
         # First-broadcast gate.
         gate(
-            "first-broadcast-after-durable-retention", "pass", "DEM-1", ["first-broadcast-allowed"],
-            "The single broadcast is allowed once the signed transfer is durably retained for this phase.",
+            "first-broadcast-after-durable-retention", "pass", "DEM-1",
+            ["first-broadcast-allowed", "submission-completes-own-confirm"],
+            "The single broadcast, carrying its own confirm's validity response, is allowed once the signed transfer is durably retained for this phase.",
         ),
         gate(
-            "broadcast-prefixed-send-argument", "pass", "DEM-1", ["first-broadcast-allowed"],
+            "broadcast-prefixed-send-argument", "pass", "DEM-1",
+            ["first-broadcast-allowed", "submission-completes-own-confirm"],
             "demosdk passes the send recipient through as given; a 0x-prefixed argument gets no second 0x in the credit edit.",
             **consistent(send_content(nonce=NONCE, amount=AMOUNT_OS, data=["native", {"nativeOperation": "send", "args": ["0x" + PAYEE_KEY, AMOUNT_OS]}])),
         ),
@@ -1189,6 +1242,9 @@ def build_vectors() -> list[dict[str, Any]]:
          {"timestamp": str(TIMESTAMP)}),
         ("numeric-rpc-address", "signed-fee-members", "rpc_address is null or a string, never a number.",
          {"transaction_fee": dict(SDK_FEES, rpc_address=0)}),
+        ("string-nonce", "signed-nonce-integer",
+         "demosdk signs a numeric nonce; the pinned node's consensus filter compares it with === and never applies a decimal string.",
+         {"nonce": str(NONCE)}),
         # The edits name F = content.from, as an implementation that defaults
         # the missing member to the sender would regenerate them.
         ("ed25519-address-missing", "signed-ed25519-address",
@@ -1319,8 +1375,34 @@ def build_vectors() -> list[dict[str, Any]]:
              request="confirm-retained", durable=False),
         gate("broadcast-completes-own-confirm", "pass", "DEM-1/DEM-6",
              ["first-broadcast-allowed", "submission-completes-own-confirm"],
-             "The one broadcast that completes the uninterrupted submission whose confirm just returned.",
+             "The one broadcast that completes the uninterrupted submission whose confirm just returned, carrying that confirm's validity response.",
              broadcast_state="confirm-returned"),
+        # demosdk broadcast(validationData) sends the confirm result, and the
+        # pinned node executes the transaction embedded in it.
+        gate("broadcast-validity-response-missing", "fail", "DEM-1/DEM-6",
+             ["broadcast-carries-own-validity-response"],
+             "A broadcast that carries no validity response sends nothing the handler retained.",
+             carried_response=None),
+        gate("broadcast-stale-validity-response", "fail", "DEM-1/DEM-6",
+             ["broadcast-carries-own-validity-response"],
+             "A validity response from an earlier confirm is not the one this submission's confirm returned.",
+             carried_response=validity_response(signed(), reference_block=CONFIRM_REFERENCE_BLOCK - 4)),
+        gate("broadcast-validity-response-other-transaction", "fail", "DEM-1/DEM-6",
+             ["validity-response-binds-retained-transfer"],
+             "The node executes the embedded transaction: a same-sender payment of another amount is not the retained transfer.",
+             confirm_response=validity_response(signed(send_content(nonce=NONCE, amount=OTHER_AMOUNT_OS, amount_os=OTHER_AMOUNT_OS)))),
+        gate("broadcast-validity-response-other-nonce", "fail", "DEM-1/DEM-6",
+             ["validity-response-binds-retained-transfer"],
+             "An embedded transfer with another nonce is another transaction, however it is signed.",
+             confirm_response=validity_response(signed(send_content(nonce=NONCE + 1, amount=AMOUNT_OS)))),
+        gate("broadcast-validity-response-not-valid", "fail", "DEM-1/DEM-6",
+             ["validity-response-binds-retained-transfer"],
+             "confirmTx answers result 200 with valid false when it refuses the transfer; that response completes nothing.",
+             confirm_response=validity_response(signed(), valid=False)),
+        gate("broadcast-validity-response-resigned-content", "fail", "DEM-1/DEM-6",
+             ["validity-response-binds-retained-transfer"],
+             "Embedded content re-serialized in another member order hashes differently from the retained signed bytes.",
+             confirm_response=validity_response(dict(signed(), content=dict(reversed(list(signed()["content"].items())))))),
         gate("rebroadcast-after-interrupted-confirm-refused", "fail", "DEM-6",
              ["confirm-egress-may-broadcast", "no-rebroadcast"],
              "After a confirm timeout, error or restart the node may have submitted the bytes; only re-reads follow.",
@@ -1425,9 +1507,11 @@ def document() -> dict[str, Any]:
             "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity",
             "recordRead": "getTxByHash read: found (record and node pin), not-found or unavailable; appliedTransfer (networkId, genesisHash, blockId, txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs) and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived in production from status or edits",
             "otherGates": "verdicts of the FV, SB-1 and PB checks that compose with DEM-7 before delivery",
-            "request": "the call about to carry the signed transaction out of the handler: confirm-retained (demosdk confirm/confirmTx), broadcast-retained or broadcast-replacement; any other value is refused",
+            "request": "the call about to carry the signed transaction out of the handler: confirm-retained (demosdk confirm/confirmTx, which carries signedTransaction), broadcast-retained or broadcast-replacement (demosdk broadcast, which carries validityResponse); any other value is refused",
             "signPermitted": "pre-sign-gate result, DEM-1 before demosdk pay()/sign(): the input holds no signed transaction; false with ok false and errorClass permanent is the handler's PC-4 result, and nothing is signed or sent",
             "broadcastState": "never-broadcast (nothing has left the handler), confirm-returned (this uninterrupted submission's confirm just returned), confirm-sent-interrupted (a confirm was sent, then a timeout, error or restart) or maybe-broadcast; any other value is refused",
+            "confirmResponse": "the demosdk 4.0.16 confirm() result (RPCResponseWithValidityData) that the current submission's confirm returned to the handler, even late, or null; null for a confirm request",
+            "validityResponse": "what the demosdk broadcast(validationData) call carries, or null for a confirm request; the pinned node executes its response.data.transaction, so it must be exactly confirmResponse, with result 200, valid true and an embedded transaction whose content, hash and signature serialize as signedTransaction",
             "pinnedNodeConfigured": "the Demos binding pins nodes under the native-send record profile for the phase's network; anything but true is refused",
             "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",
             "proofAuthentication": "how the DEM-4 proof's failed record was obtained: fv5-bft-final (FV-5-authenticated at its bft-final inclusion) or rpc-read; anything else is not authenticated",

@@ -400,6 +400,38 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertNotEqual(result["comparisonHash"]["standard"], result["comparisonHash"]["vendored"])
         self.assertIn(f"  comparison: declared-encoding-sha256+parsed-json ({encoding})\n", CHECKER.render_text(report))
 
+    def test_fallback_uses_any_verified_encoding_the_copy_reproduces(self):
+        # Sorted ASCII-only members verify under all four encodings. Reordered
+        # members still reproduce the declared hash under the sorted-keys ones,
+        # so the copy matches and the report names the encoding that matched.
+        name = "wide-int-v0.1"
+        data = make_set(name, [{"input": BIG, "name": "w1"}])
+        verifying = [encoding for encoding in CHECKER.CANONICAL_ENCODINGS
+                     if hashlib.sha256(CHECKER.canonical_encoding(data["vectors"], encoding)).hexdigest()
+                     == data["hash"]]
+        self.assertEqual(verifying, list(CHECKER.CANONICAL_ENCODINGS))
+        write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
+        reordered = [{"name": "w1", "input": BIG}]
+        write_json(self.vendored_set(name), dict(data, vectors=reordered))
+        code, report = self.run_checker()
+        result = self.result_for(report, name)
+        self.assertEqual((code, result["status"], result["changes"]), (0, "match", []))
+        self.assertEqual(result["hashEncoding"], "compact sorted-keys (ascii)")
+        self.assertEqual(result["comparisonHash"], {"standard": data["hash"], "vendored": data["hash"]})
+        self.assertIn(f"MATCH    {name}  (declared-encoding-sha256+parsed-json: compact sorted-keys (ascii))",
+                      CHECKER.render_text(report))
+        # Unchanged order still uses the first verified encoding.
+        write_json(self.vendored_set(name), data)
+        code, report = self.run_checker()
+        self.assertEqual((code, self.result_for(report, name)["hashEncoding"]),
+                         (0, "compact insertion-order (ascii)"))
+        # A value edit reproduces the hash under no encoding: drift, under the first one.
+        write_json(self.vendored_set(name), dict(data, vectors=[{"input": BIG, "name": "w2"}]))
+        code, report = self.run_checker()
+        result = self.result_for(report, name)
+        self.assertEqual((code, result["changes"], result["hashEncoding"]),
+                         (1, ["vectors"], "compact insertion-order (ascii)"))
+
     def test_fallback_encodings_are_the_validator_compact_forms(self):
         vectors = [{"b": "é", "a": BIG}]
         expected = {
@@ -522,10 +554,16 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(report["files"], [])
         self.assertIsNone(report["summary"]["files"])
         self.assertEqual(report["summary"]["ignoredJson"], {"standard": 1, "vendored": 2})
-        self.assertIn("Ignored JSON files (--sets-only): 1 standard, 2 vendored.", CHECKER.render_text(report))
+        # Each ignored vendored file is named, so none is dropped silently.
+        self.assertEqual(report["ignoredVendored"], ["another-golden.json", "golden.json"])
+        self.assertIn("Ignored JSON files (--sets-only): 1 standard, 2 vendored.\n"
+                      "  ignored vendored: another-golden.json\n"
+                      "  ignored vendored: golden.json", CHECKER.render_text(report))
         code, report = self.run_checker()
         self.assertEqual(code, 1)
         self.assertFalse(report["setsOnly"])
+        self.assertEqual(report["ignoredVendored"], [])
+        self.assertNotIn("ignored vendored", CHECKER.render_text(report))
 
     def test_sets_only_ignores_json_without_a_set_member(self):
         # --sets-only counts other JSON as ignored, even when it uses a set
@@ -547,11 +585,47 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("metadata.json: vector set needs a str 'spec' member", report["error"])
         metadata.unlink()
-        # A vendored set that lost its set member is ignored, so its set is missing.
+        # A vendored set that lost its set member keeps its file name, so it is
+        # bad input rather than ignored (test_damaged_copy_named_after_a_standard_set_is_bad_input).
         self.edit_vendored("alpha-v0.1", lambda data: data.pop("set"))
         code, report = self.run_checker("--sets-only")
-        self.assertEqual((code, self.result_for(report, "alpha-v0.1")["status"]), (1, "missing"))
-        self.assertEqual(report["summary"]["ignoredJson"], {"standard": 1, "vendored": 2})
+        self.assertEqual(code, 2)
+        self.assertIn("security/alpha-v0.1.json: vector set needs a str 'set' member", report["error"])
+
+    def test_damaged_copy_named_after_a_standard_set_is_bad_input(self):
+        # Sets are named after their file stem, so a vendored file with a Standard
+        # set's file name must hold a complete set in every mode, flat or not.
+        flat = self.tmp / "flat"
+        flat.mkdir()
+        for path in (self.vendored / "security").glob("*.json"):
+            shutil.copy(path, flat / path.name)
+        alpha = STANDARD_SETS["alpha-v0.1"]
+        damages = {
+            "lost set member": ({key: value for key, value in alpha.items() if key != "set"},
+                                "vector set needs a str 'set' member"),
+            "lost set member and truncated": (
+                dict({key: value for key, value in alpha.items() if key != "set"}, vectors=[]),
+                "vector set needs a str 'set' member"),
+            "wrapped in a list": ([alpha], "is not a vector set, but has the file name of the Standard's set "
+                                           "'alpha-v0.1'"),
+            "no set member at all": ({"notes": "emptied"}, "is not a vector set, but has the file name"),
+        }
+        modes = ((), ("--sets-only",), ("--subset",), ("--subset", "--sets-only"))
+        for layout, base, relative in (("security", self.vendored, "security/alpha-v0.1.json"),
+                                       ("flat", flat, "alpha-v0.1.json")):
+            for label, (damaged, message) in damages.items():
+                for args in modes:
+                    with self.subTest(layout=layout, damage=label, args=args):
+                        copy_dir = self.tmp / "damaged" / layout / label.replace(" ", "-") / "-".join(args)
+                        shutil.copytree(base, copy_dir)
+                        write_json(copy_dir / relative, damaged)
+                        code, report = self.run_checker(*args, vendored=copy_dir)
+                        self.assertEqual(code, 2, report)
+                        self.assertIn(f"vendored {relative}: {message}", report["error"])
+        # Any other name keeps the documented --sets-only behaviour: it is ignored.
+        write_json(flat / "alpha-notes.json", [alpha])
+        code, report = self.run_checker("--subset", "--sets-only", vendored=flat)
+        self.assertEqual((code, report["ignoredVendored"]), (0, ["alpha-notes.json"]))
 
     def test_text_report_names_each_problem(self):
         self.vendored_set("alpha-v0.1").unlink()

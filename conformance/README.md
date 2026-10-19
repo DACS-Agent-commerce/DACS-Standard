@@ -65,16 +65,20 @@ clone may not have done.
 
 Point the tool at the directory holding vector sets, such as `vectors/`,
 rather than a copy of the whole `conformance/` tree. Incomplete set objects
-and symlinked subdirectories are bad input.
+and symlinked subdirectories are bad input. Each Standard set is named after
+its file stem, so a vendored file with the file name of a Standard set that
+does not hold a complete set, such as one that lost its `set` member or is
+wrapped in an array, is also bad input, in every mode.
 
 Other JSON files under `vectors/`, such as `golden.json`, the
 `dacs-v0.1-*` paths and `examples/`, are matched by their path relative to
 that directory and compared as type-strict parsed JSON. Each is reported as
 matching, drifted (naming its changed top-level members), missing or extra.
 For a copy that holds only the vector sets, `--sets-only` compares the sets
-alone and counts other JSON files as ignored. In that mode only an object
-with a `set` member is a set, so other JSON that uses a member such as
-`hash` is ignored; every file must still parse.
+alone and counts other JSON files as ignored, naming each ignored vendored
+file. In that mode only an object with a `set` member, or a file named after
+a Standard set, is a set, so other JSON that uses a member such as `hash` is
+ignored; every file must still parse.
 
 For a copy that holds selected sets or files, `--subset` still reports the
 sets and files it does not hold as missing, but they do not fail the run;
@@ -118,7 +122,9 @@ Both modes also compare type-strict parsed values: Unicode normalization,
 parsed values; spelling and precision lost during parsing are not compared.
 Formatting is ignored. Canonical hashing ignores object member order; the
 fallback mode must reproduce a declared hash under a validator-accepted
-encoding.
+encoding. When the parsed vectors are equal and reproduce it under any
+encoding that verifies the Standard's hash, the checker uses and names that
+encoding; otherwise it uses the first verified one.
 
 Exit 0 means every set and compared file matches, exit 1 means drift
 (including missing sets and files, unless `--subset`), and

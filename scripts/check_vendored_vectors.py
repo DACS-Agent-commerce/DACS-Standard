@@ -16,15 +16,18 @@ Sets are found recursively under ``conformance/vectors/`` in the Standard
 checkout (its working tree, or ``--rev``) and under the vendored directory,
 and are matched by their ``set`` name, so the vendored layout may be flat or
 keep the ``security/`` subdirectory. An object with any required set member
-must have all five members.
+must have all five members. Each Standard set is named after its file stem,
+so a vendored file with the file name of a Standard set must hold a complete
+set in every mode.
 
 Every other JSON file, such as ``golden.json``, the ``dacs-v0.1-*`` paths and
 ``examples/``, is matched by its path relative to the vectors directory and
 compared as type-strict parsed JSON. Such a file is reported as ``match``,
 ``drifted``, ``missing`` or ``extra``. ``--sets-only`` compares sets alone and
-counts other JSON files as ignored, for a vendored copy that holds sets only.
-In that mode only an object with a ``set`` member is a set, so other JSON that
-uses a member such as ``hash`` is ignored; every file must still parse.
+counts other JSON files as ignored, naming the vendored ones, for a vendored
+copy that holds sets only. In that mode only an object with a ``set`` member,
+or a file named after a Standard set, is a set, so other JSON that uses a
+member such as ``hash`` is ignored; every file must still parse.
 
 ``--subset`` is for a vendored copy that holds selected sets or files. Sets
 and files in the Standard but not vendored are still reported as
@@ -50,7 +53,9 @@ any of these differ:
   Numbers compare as parsed Python values, preserving int/float types; numeric
   spelling and precision lost during parsing are not compared. Canonical
   hashing ignores member order; the fallback must reproduce a declared hash
-  under a validator-accepted encoding. The Standard's verified encoding can
+  under a validator-accepted encoding. When equal vectors reproduce it under
+  any encoding that verifies the Standard's hash, that encoding is used and
+  reported; otherwise the first one is. The Standard's verified encoding can
   also hash a vendored copy whose own declared hash is stale or edited.
   When the Standard's vectors canonicalize and the vendored ones do not,
   the vectors differ and the set is drifted. The same holds when the
@@ -74,7 +79,8 @@ file is drifted, missing (unless ``--subset``) or extra, 2 on any
 uncheckable set, including a missing or extra one, or bad input
 (unreadable paths or revision, symlinked subdirectories,
 invalid or excessively nested JSON, a set file missing a required member,
-or two files declaring the same set). Exit 2 takes precedence over drift.
+a file named after a Standard set that is not a set, or two files declaring
+the same set). Exit 2 takes precedence over drift.
 
 Dependency-free stdlib, matching the other validators.
 """
@@ -200,14 +206,25 @@ def parse_set(data: Any, label: str, sets_only: bool = False) -> VectorSet | Non
 
 
 def index_sets(
-    files: list[tuple[str, bytes]], side: str, sets_only: bool = False
+    files: list[tuple[str, bytes]], side: str, sets_only: bool = False,
+    set_files: dict[str, str] | None = None,
 ) -> tuple[dict[str, VectorSet], dict[str, Any]]:
-    """Split parsed files into sets keyed by name and other JSON keyed by path."""
+    """Split parsed files into sets keyed by name and other JSON keyed by path.
+
+    ``set_files`` maps the file names of the Standard's sets to their set
+    names. A file with one of those names must hold a complete set in every
+    mode, so a damaged copy is bad input rather than ignored or missing.
+    """
     sets: dict[str, VectorSet] = {}
     others: dict[str, Any] = {}
     for label, raw in files:
         data = parse_json(raw, f"{side} {label}")
-        vector_set = parse_set(data, f"{side} {label}", sets_only)
+        expected = (set_files or {}).get(label.rsplit("/", 1)[-1])
+        vector_set = parse_set(data, f"{side} {label}", sets_only and expected is None)
+        if vector_set is None and expected is not None:
+            raise BadInput(
+                f"{side} {label}: is not a vector set, but has the file name of the Standard's set {expected!r}"
+            )
         if vector_set is None:
             others[label] = data
             continue
@@ -331,7 +348,12 @@ def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
         )
         if not uncheckable:
             comparison = "declared-encoding-sha256+parsed-json"
-            encoding = standard.declared_encodings[0]
+            # Equal parsed vectors can still differ in member order, which only
+            # the insertion-order encodings hash, so use the first verified
+            # encoding under which the vendored vectors reproduce the declared hash.
+            encoding = next((candidate for candidate in standard.declared_encodings
+                             if exact and vendored.encoded_hashes.get(candidate) == standard.declared_hash),
+                            standard.declared_encodings[0])
             note = f"canonical_json unavailable ({note}); compared using {encoding}"
             hashes = {}
             for side, vector_set in (("standard", standard), ("vendored", vendored)):
@@ -422,7 +444,10 @@ def check(
     standard_sets, standard_others = index_sets(standard_files, "standard", sets_only)
     if not standard_sets:
         raise BadInput(f"no vector sets found under {VECTORS_DIR} in the Standard checkout")
-    vendored_sets, vendored_others = index_sets(read_tree(vendored_dir), "vendored", sets_only)
+    # The validator names each set after its file stem, so a vendored file is
+    # held to the Standard's file names, not only to what it declares itself.
+    set_files = {vector_set.path.rsplit("/", 1)[-1]: name for name, vector_set in standard_sets.items()}
+    vendored_sets, vendored_others = index_sets(read_tree(vendored_dir), "vendored", sets_only, set_files)
     if subset and not vendored_sets and (sets_only or not vendored_others):
         # With missing entries not failing, an empty selection would pass vacuously.
         held = "vector sets" if sets_only else "vector sets or other JSON files"
@@ -474,6 +499,7 @@ def check(
         "summary": summary,
         "sets": results,
         "files": files,
+        "ignoredVendored": sorted(vendored_others) if sets_only else [],
     }
 
 
@@ -560,6 +586,8 @@ def render_text(report: dict[str, Any]) -> str:
         lines.append(
             f"Ignored JSON files (--sets-only): {ignored['standard']} standard, {ignored['vendored']} vendored."
         )
+        for path in report["ignoredVendored"]:
+            lines.append(f"  ignored vendored: {path}")
     else:
         lines.append(
             f"{files['standard']} other standard JSON files, {files['vendored']} vendored: "

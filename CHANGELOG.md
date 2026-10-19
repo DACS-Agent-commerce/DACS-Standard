@@ -27,7 +27,7 @@ The format used per release:
   `indeterminate` decision instead of the catch-all `error`. The pay-dem
   conformance oracle compares the same way, and oversized record, nonce,
   applied-debit, phase and consumer amounts reach a decision. The corpora
-  contain 184 pay-dem and 173 settlement-finality cases.
+  contain 197 pay-dem and 176 settlement-finality cases.
 - The DEM-1 signed transaction must be the complete demosdk 4.0.16 native-send
   envelope that the pinned node admits. It carries a positive integer
   `timestamp`, `from_ed25519_address`, a fee object with exactly `network_fee`,
@@ -62,9 +62,27 @@ The format used per release:
   evidence only when FV-5 authenticates the failed record at its `bft-final`
   inclusion. DEM-2 says that the handler's inclusion observation may be a
   plain pinned-node read, which the pin does not authenticate.
+- The handler's DEM-3 applied-payment authority, like the consumer's, must
+  name the phase's pinned network (`networkId`, `genesisHash`) and the
+  inclusion observation's block ID. The pay-dem fixtures carry both, and new
+  vectors refuse an authority from another network or genesis, one naming
+  another block ID at the same height, and one with no observed block ID, on
+  the handler and the consumer path. A test requires a refused vector for each
+  member of the binding on both paths.
+- The DEM-1 refusal before signing has its own `pre-sign-gate` vectors. Their
+  input holds no signed transaction, and a binding without pinned nodes or an
+  applied-payment authority must return `ok: false` with
+  `errorClass: "permanent"`, never `substrate`. A test also checks that every
+  DEM-1 refusal at `broadcast` is the same refusal at `confirm`, and an unknown
+  `request` value is refused.
+- DEMOS-MAPPING §A.2 notes that `confirmTx` admission also regenerates edits
+  with the node's bundled demosdk 4.0.12, and that the demosdk `payAndWait` and
+  `transferAndWait` helpers cannot produce a conformant handler.
 - Migration: a handler that confirms before journaling, or that resends or
   replaces after an interrupted `confirm`, must journal first and re-read
   only. A handler without applied-payment authority must not offer `pay-dem`.
+  A runner of the earlier 184-case corpus must pass the phase network and the
+  inclusion block ID to its applied-payment check.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
@@ -1139,7 +1157,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 184-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 197-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope
@@ -1152,7 +1170,7 @@ The format used per release:
   (draft hash `da86e204…`), has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
   set is identified by its `hash`, not by its name alone. In
-  `settlement-finality-verification` (173 cases), transaction inclusion and
+  `settlement-finality-verification` (176 cases), transaction inclusion and
   execution-result authentication are verified separately. The fixture uses
   independently pinned threshold result signatures over the full Demos record,
   network, block identity, transaction reference and committed payment debit

@@ -156,6 +156,26 @@ class VendoredVectorDriftTests(unittest.TestCase):
         code, report = self.run_checker("--sets-only")
         self.assertEqual((code, self.result_for(report, "alpha-v0.1")["status"]), (1, "drifted"))
 
+        # A member that only gained or lost a list element, or gained a nested key, is drift too.
+        beta = STANDARD_SETS["beta-v0.1"]
+        write_json(self.standard / "conformance" / "vectors" / "security" / "beta-v0.1.json", beta)
+        write_json(self.vendored_set("beta-v0.1"), beta)
+        alpha = dict(STANDARD_SETS["alpha-v0.1"], agreement={"parties": ["a"]}, publicKeys={"seller": "AAAA"})
+        for label, standard_member, vendored_member in (
+            ("appended element", {"agreement": {"parties": ["a"]}}, {"agreement": {"parties": ["a", "b"]}}),
+            ("dropped element", {"agreement": {"parties": ["a", "b"]}}, {"agreement": {"parties": ["a"]}}),
+            ("vendored-only key", {"publicKeys": {"seller": "AAAA"}},
+             {"publicKeys": {"seller": "AAAA", "buyer": "CCCC"}}),
+        ):
+            with self.subTest(label=label):
+                write_json(self.standard / "conformance" / "vectors" / "security" / "alpha-v0.1.json",
+                           dict(alpha, **standard_member))
+                write_json(self.vendored_set("alpha-v0.1"), dict(alpha, **vendored_member))
+                code, report = self.run_checker()
+                result = self.result_for(report, "alpha-v0.1")
+                self.assertEqual((code, result["status"], result["changes"], result["members"]),
+                                 (1, "drifted", ["members"], list(standard_member)))
+
     def test_non_set_json_files_are_compared_by_path(self):
         standard_vectors = self.standard / "conformance" / "vectors"
         golden = {"negotiate": [{"id": "neg-ps3", "expect": "fail"}], "signing": {}}
@@ -166,6 +186,23 @@ class VendoredVectorDriftTests(unittest.TestCase):
         code, report = self.run_checker()
         self.assertEqual(code, 0)
         self.assertEqual([f["status"] for f in report["files"]], ["match", "match"])
+
+        # Keeping every shared value does not hide an appended, dropped or added entry.
+        two_cases = {"negotiate": golden["negotiate"] + [{"id": "neg-band", "expect": "pass"}], "signing": {}}
+        noted = {"negotiate": [dict(golden["negotiate"][0], note="local")], "signing": {}}
+        for label, standard_golden, vendored_golden in (
+            ("appended case", golden, two_cases),
+            ("dropped case", two_cases, golden),
+            ("vendored-only key", golden, noted),
+        ):
+            with self.subTest(label=label):
+                write_json(standard_vectors / "golden.json", standard_golden)
+                write_json(self.vendored / "golden.json", vendored_golden)
+                code, report = self.run_checker()
+                self.assertEqual(code, 1)
+                self.assertEqual(self.result_for_file(report, "golden.json"),
+                                 {"path": "golden.json", "status": "drifted", "members": ["negotiate"]})
+        write_json(standard_vectors / "golden.json", golden)
 
         edited = copy.deepcopy(golden)
         edited["negotiate"][0]["expect"] = "pass"
@@ -260,6 +297,9 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(self.result_for(report, "alpha-v0.1")["changes"], ["spec"])
         self.assertEqual(self.result_for(report, "beta-v0.1")["changes"], ["hash"])
+        text = CHECKER.render_text(report)
+        self.assertIn("  spec: standard 'DACS-4 §9.5.9'\n        vendored 'DACS-4 v0.7 §9.5.9'\n", text)
+        self.assertIn(f"  hash: standard {STANDARD_SETS['beta-v0.1']['hash']}, vendored {'0' * 64}\n", text)
 
     def test_refused_canonical_hash_uses_verified_declared_encoding(self):
         name = "wide-int-v0.1"
@@ -338,6 +378,28 @@ class VendoredVectorDriftTests(unittest.TestCase):
                     self.assertIsNone(result["comparisonHash"]["vendored"])
                     self.assertIn(f"vendored: cannot be hashed using {encoding} (", result["comparisonNote"])
 
+    def test_fallback_reordered_members_under_insertion_order_encoding_are_drift(self):
+        # Parsed values ignore member order, but an insertion-order encoding
+        # hashes it, so reordered members no longer reproduce the declared hash.
+        name = "wide-int-v0.1"
+        encoding = "compact insertion-order (ascii)"
+        data = make_set(name, [{"name": "w1", "input": BIG}])
+        self.assertEqual(data["hash"], hashlib.sha256(CHECKER.canonical_encoding(data["vectors"], encoding)).hexdigest())
+        write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
+        reordered = [{"input": BIG, "name": "w1"}]
+        self.assertTrue(CHECKER.same_json(data["vectors"], reordered))
+        write_json(self.vendored_set(name), dict(data, vectors=reordered))
+        code, report = self.run_checker()
+        result = self.result_for(report, name)
+        self.assertEqual((code, result["status"], result["changes"]), (1, "drifted", ["vectors"]))
+        self.assertEqual((result["comparison"], result["hashEncoding"]),
+                         ("declared-encoding-sha256+parsed-json", encoding))
+        self.assertEqual(result["comparisonHash"],
+                         {"standard": data["hash"],
+                          "vendored": hashlib.sha256(CHECKER.canonical_encoding(reordered, encoding)).hexdigest()})
+        self.assertNotEqual(result["comparisonHash"]["standard"], result["comparisonHash"]["vendored"])
+        self.assertIn(f"  comparison: declared-encoding-sha256+parsed-json ({encoding})\n", CHECKER.render_text(report))
+
     def test_fallback_encodings_are_the_validator_compact_forms(self):
         vectors = [{"b": "é", "a": BIG}]
         expected = {
@@ -376,10 +438,14 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual((code, result["status"]), (2, "uncheckable"))
         self.assertTrue(report["uncheckable"])
         self.assertIn("no canonical or verified declared-encoding hash", result["comparisonNote"])
+        self.assertIn(f"UNCHECKABLE  {name}  (hash unavailable: ", CHECKER.render_text(report))
+        self.assertNotIn("observed differences", CHECKER.render_text(report))
         # A valid hash on the vendored side cannot choose the Standard's rule.
         write_json(self.vendored_set(name), make_set(name, [{"input": BIG}]))
         code, report = self.run_checker()
         self.assertEqual((code, self.result_for(report, name)["status"]), (2, "uncheckable"))
+        self.assertEqual(self.result_for(report, name)["changes"], ["hash"])
+        self.assertIn("  observed differences: hash", CHECKER.render_text(report))
 
     def test_canonical_unicode_equality_does_not_hide_drift(self):
         name = "unicode-v0.1"
@@ -582,6 +648,18 @@ class VendoredVectorDriftTests(unittest.TestCase):
                 code, report = self.run_checker(*args, **kwargs)
                 self.assertEqual(code, 2)
                 self.assertIn("error", report)
+        # Without --json the error goes to stderr alone.
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = CHECKER.main([str(self.tmp / "absent"), "--standard", str(self.standard)])
+        self.assertEqual((code, out.getvalue()), (2, ""))
+        self.assertTrue(err.getvalue().startswith("error: "), err.getvalue())
+        self.assertIn("absent is not a directory", err.getvalue())
+        # A git that cannot start is bad input, with its cause kept.
+        with mock.patch.object(CHECKER.subprocess, "run", side_effect=OSError("no git executable")):
+            code, report = self.run_checker("--rev", V04_COMMIT, standard=ROOT)
+        self.assertEqual(code, 2)
+        self.assertIn("cannot run git: no git executable", report["error"])
 
 
 class RepositoryVectorSetTests(unittest.TestCase):

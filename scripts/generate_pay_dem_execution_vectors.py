@@ -56,6 +56,13 @@ LARGE_AMOUNT_OS = "9007199254740993"  # above 2^53 - 1: the node serves a string
 # Longer than Python's 4,300-digit int() limit: readers compare it by spelling.
 OVERSIZED_OS = "9" * 4301
 CANONICAL = re.compile(r"0|[1-9][0-9]*")
+# The phase's Demos network as its binding pins it (FV `demos:mainnet` naming).
+NETWORK = {"networkId": "demos:mainnet", "genesisHash": _hex("genesis:demos:mainnet")}
+
+
+def block_id(number: int) -> str:
+    """The synthetic block ID (block hash) of a block number."""
+    return _hex("block:" + str(number))
 
 # Read-only node2.demos.sh `getTxByHash` responses, 2026-10-17. The node
 # reported `stabilisation@61b8e75aa8db` (dirty). These are observations that
@@ -156,7 +163,7 @@ def record(status: str, content: dict[str, Any] | None = None, **changes: Any) -
 
 def found(
     value: dict[str, Any], *, authenticated: bool | None = None, node: str = "pinned",
-    applied: bool = True,
+    applied: bool = True, applied_block_id: str | None = None,
 ) -> dict[str, Any]:
     read: dict[str, Any] = {"state": "found", "nodeProfile": node, "record": value}
     if node == "unpinned":
@@ -171,6 +178,8 @@ def found(
         amount_os = amount if isinstance(amount, str) and CANONICAL.fullmatch(amount) else str(int(amount))
         read["appliedTransferAuthenticated"] = True
         read["appliedTransfer"] = {
+            "networkId": NETWORK["networkId"], "genesisHash": NETWORK["genesisHash"],
+            "blockId": applied_block_id or block_id(int(value["blockNumber"])),
             "txHash": value["hash"].removeprefix("0x").lower(), "blockNumber": int(value["blockNumber"]),
             "sender": content["from"].removeprefix("0x").lower(),
             "recipient": content["to"].removeprefix("0x").lower(),
@@ -181,7 +190,7 @@ def found(
 
 NOT_FOUND = {"state": "not-found"}
 UNAVAILABLE = {"state": "unavailable"}
-INCLUDED_AT_BLOCK = {"blockNumber": BLOCK}
+INCLUDED_AT_BLOCK = {"blockNumber": BLOCK, "blockId": block_id(BLOCK)}
 
 
 def handler_want(expected: str) -> dict[str, Any]:
@@ -239,6 +248,7 @@ def classify(
     return _vector(
         name, "classify-execution",
         {
+            "network": NETWORK,
             "retainedTransfer": retained() if transfer is None else transfer,
             "statusIndex": status_index,
             "inclusionObservation": inclusion,
@@ -271,6 +281,7 @@ def resume(
     return _vector(
         name, "resume-phase",
         {
+            "network": NETWORK,
             "retainedTransfer": retained(),
             "retainedFailureProof": proof,
             "statusIndex": status_index,
@@ -412,6 +423,35 @@ def gate(
     )
 
 
+def pre_sign(
+    name: str,
+    expected: str,
+    guards: list[str],
+    note: str,
+    *,
+    pinned_node: Any = True,
+    applied_authority: Any = True,
+) -> dict[str, Any]:
+    """DEM-1 before `pay()`/`sign()`: the input holds no signed transaction,
+    and a refusal is the PC-4 result itself."""
+    refused = expected != "pass"
+    return _vector(
+        name, "pre-sign-gate",
+        {
+            "phase": phase(),
+            "pinnedNodeConfigured": pinned_node,
+            "appliedPaymentAuthorityConfigured": applied_authority,
+        },
+        expected,
+        {
+            "signPermitted": not refused,
+            "ok": False if refused else None,
+            "errorClass": "permanent" if refused else None,
+        },
+        "DEM-1", guards, note,
+    )
+
+
 def consistent(
     content: dict[str, Any] | None = None,
     signer: Ed25519PrivateKey = PAYER_SIGNER,
@@ -436,6 +476,8 @@ def _admit_input(read: dict[str, Any], status_index: str) -> dict[str, Any]:
             "txRef": {"kind": "demos", "txHash": TX_HASH, "blockNumber": BLOCK},
         },
         "phase": phase(),
+        "network": NETWORK,
+        "inclusionObservation": INCLUDED_AT_BLOCK,
         "statusIndex": status_index,
         "recordRead": read,
     }
@@ -456,6 +498,8 @@ def admit(
     protocol_input = _admit_input(read, status_index)
     if signed_evidence is not None:
         protocol_input["signedEvidence"] = signed_evidence
+        # A live block's ID is not in the fixture: the observation names its number only.
+        protocol_input["inclusionObservation"] = {"blockNumber": signed_evidence["txRef"]["blockNumber"]}
     if phase_context is not None:
         protocol_input["phase"] = phase_context
     # DEM-7 alone is one gate: it never authorizes delivery by itself.
@@ -624,7 +668,8 @@ def build_vectors() -> list[dict[str, Any]]:
         classify(
             "confirmed-wrong-block", "indeterminate", unbound, ["bind-block"] + unresolved,
             "A record in a different block from the inclusion observation is unbound.",
-            read=found(record("confirmed", blockNumber=BLOCK + 1)),
+            # The authority names the observed block ID, so only the DEM-2 block binding refuses it.
+            read=found(record("confirmed", blockNumber=BLOCK + 1), applied_block_id=block_id(BLOCK)),
         ),
         classify(
             "confirmed-wrong-sender", "indeterminate", unbound, ["bind-sender"] + unresolved,
@@ -703,8 +748,10 @@ def build_vectors() -> list[dict[str, Any]]:
             read=found(record("confirmed", _apply(payload, {"data": ["native", {"nativeOperation": "burn", "args": [PAYEE_KEY, AMOUNT_OS]}]}))),
         ),
         classify(
-            "confirmed-without-inclusion-observation", "indeterminate", unbound, ["bind-block", "bind-requires-inclusion"],
-            "Without an inclusion observation the record's block cannot be bound.",
+            # Skipping only the DEM-2 block check still leaves the applied-payment
+            # authority without a block ID to bind, so bind-block alone does not flip it.
+            "confirmed-without-inclusion-observation", "indeterminate", unbound, ["bind-requires-inclusion"],
+            "Without an inclusion observation neither the record's block nor the applied-payment authority's block ID can be bound.",
             read=found(record("confirmed")), status_index="pending", inclusion=None,
         ),
         classify(
@@ -792,6 +839,11 @@ def build_vectors() -> list[dict[str, Any]]:
         gate(
             "first-broadcast-after-durable-retention", "pass", "DEM-1", ["first-broadcast-allowed"],
             "The single broadcast is allowed once the signed transfer is durably retained for this phase.",
+        ),
+        gate(
+            "broadcast-prefixed-send-argument", "pass", "DEM-1", ["first-broadcast-allowed"],
+            "demosdk passes the send recipient through as given; a 0x-prefixed argument gets no second 0x in the credit edit.",
+            **consistent(send_content(nonce=NONCE, amount=AMOUNT_OS, data=["native", {"nativeOperation": "send", "args": ["0x" + PAYEE_KEY, AMOUNT_OS]}])),
         ),
         gate(
             "broadcast-before-durable-retention", "fail", "DEM-1", ["broadcast-requires-durable-retention"],
@@ -1173,14 +1225,19 @@ def build_vectors() -> list[dict[str, Any]]:
                            "All other gates passing cannot authorize delivery without proof of applied payment.",
                            read=found(record("confirmed", send_content(gcr_edits=[])), authenticated=True, applied=False),
                            dem7_passed=False))
-    for suffix, changes in (
-        ("unauthenticated", {"appliedTransferAuthenticated": False}),
-        ("zero-credit", {"payeeCreditOs": "0"}),
-        ("zero-debit", {"payerDebitOs": "0"}),
-        ("wrong-hash", {"txHash": OTHER_TX_HASH}),
-        ("wrong-block", {"blockNumber": BLOCK + 1}),
-        ("wrong-sender", {"sender": OTHER_KEY}),
-        ("wrong-recipient", {"recipient": OTHER_KEY}),
+    # Each member of the DEMOS-MAPPING §A.2 applied-payment binding, on the
+    # handler (DEM-3) and the consumer (DEM-7) path.
+    for suffix, changes, binding in (
+        ("unauthenticated", {"appliedTransferAuthenticated": False}, []),
+        ("zero-credit", {"payeeCreditOs": "0"}, []),
+        ("zero-debit", {"payerDebitOs": "0"}, []),
+        ("wrong-hash", {"txHash": OTHER_TX_HASH}, []),
+        ("wrong-block", {"blockNumber": BLOCK + 1}, []),
+        ("wrong-sender", {"sender": OTHER_KEY}, []),
+        ("wrong-recipient", {"recipient": OTHER_KEY}, []),
+        ("other-network", {"networkId": "demos:testnet"}, ["applied-transfer-binds-network"]),
+        ("other-genesis", {"genesisHash": _hex("genesis:demos:other")}, ["applied-transfer-binds-network"]),
+        ("other-block-id", {"blockId": _hex("block:other-at-" + str(BLOCK))}, ["applied-transfer-binds-block-id"]),
     ):
         read = found(record("confirmed"))
         if suffix == "unauthenticated":
@@ -1188,13 +1245,41 @@ def build_vectors() -> list[dict[str, Any]]:
         else:
             read["appliedTransfer"].update(changes)
         vectors.append(classify("confirmed-applied-transfer-" + suffix, "indeterminate", "DEM-3/DEM-5",
-                                ["success-requires-applied-transfer"] + unresolved,
-                                "Applied payment authority must authenticate this exact native send.", read=read))
+                                ["success-requires-applied-transfer"] + binding + unresolved,
+                                "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block.",
+                                read=read))
         vectors.append(admit("consumer-applied-transfer-" + suffix,
                              "indeterminate" if suffix == "unauthenticated" else "fail", "DEM-7/FV-5",
-                             ["consumer-requires-confirmed-record", "success-requires-applied-transfer"]
+                             ["consumer-requires-confirmed-record", "success-requires-applied-transfer"] + binding
                              + ([] if suffix == "unauthenticated" else ["consumer-authenticated-contradiction-fails"]),
                              "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate.", read=read))
+    vectors.append(classify("confirmed-inclusion-without-block-id", "indeterminate", "DEM-3/DEM-5",
+                            ["applied-transfer-binds-block-id", "success-requires-applied-transfer"] + unresolved,
+                            "Without the inclusion block's ID the applied-payment authority binds no block identity.",
+                            read=found(record("confirmed")), inclusion={"blockNumber": BLOCK}))
+    consumer_without_block_id = admit("consumer-inclusion-without-block-id", "indeterminate", "DEM-7",
+                                      ["applied-transfer-binds-block-id", "consumer-requires-confirmed-record",
+                                       "success-requires-applied-transfer"],
+                                      "A consumer without the inclusion block's ID cannot bind the applied-payment authority.",
+                                      read=found(record("confirmed")))
+    consumer_without_block_id["protocolInput"]["inclusionObservation"] = {"blockNumber": BLOCK}
+    vectors.append(consumer_without_block_id)
+    # DEM-1 before signing: a binding that cannot reach DEM-3 success is a
+    # permanent refusal, and nothing is signed.
+    vectors += [
+        pre_sign("sign-with-pinned-node-and-applied-payment-authority", "pass", ["sign-allowed-when-configured"],
+                 "A binding that pins nodes and configures applied-payment authority lets the handler sign."),
+        pre_sign("sign-without-pinned-node", "fail", ["binding-refusal-is-permanent", "sign-requires-pinned-node"],
+                 "Without a pinned node no record binds: ok false, permanent, before pay() or sign().",
+                 pinned_node=False),
+        pre_sign("sign-without-applied-payment-authority", "fail",
+                 ["binding-refusal-is-permanent", "sign-requires-applied-payment-authority"],
+                 "Without applied-payment authority DEM-3 success is unreachable: ok false, permanent, nothing signed.",
+                 applied_authority=False),
+        pre_sign("sign-without-binding", "fail", ["binding-refusal-is-permanent"],
+                 "With neither configured the refusal is still permanent, never substrate.",
+                 pinned_node=False, applied_authority=False),
+    ]
 
     ref = {"kind": "demos", "txHash": TX_HASH, "blockNumber": BLOCK}
     for name, value, legacy, expected in (
@@ -1336,10 +1421,12 @@ def document() -> dict[str, Any]:
         },
         "fixtureVocabulary": {
             "statusIndex": "getTransactionStatus state for the retained hash (included, pending or unknown); never decisive",
-            "inclusionObservation": "block identified for the retained hash, or null",
-            "recordRead": "getTxByHash read: found (record and node pin), not-found or unavailable; appliedTransfer and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived in production from status or edits",
+            "network": "the phase's Demos network (networkId, genesisHash) as its binding pins it; applied-payment authority must name the same network, and a missing or malformed one binds nothing",
+            "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity",
+            "recordRead": "getTxByHash read: found (record and node pin), not-found or unavailable; appliedTransfer (networkId, genesisHash, blockId, txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs) and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived in production from status or edits",
             "otherGates": "verdicts of the FV, SB-1 and PB checks that compose with DEM-7 before delivery",
-            "request": "the call about to carry the signed transaction out of the handler: confirm-retained (demosdk confirm/confirmTx), broadcast-retained or broadcast-replacement",
+            "request": "the call about to carry the signed transaction out of the handler: confirm-retained (demosdk confirm/confirmTx), broadcast-retained or broadcast-replacement; any other value is refused",
+            "signPermitted": "pre-sign-gate result, DEM-1 before demosdk pay()/sign(): the input holds no signed transaction; false with ok false and errorClass permanent is the handler's PC-4 result, and nothing is signed or sent",
             "broadcastState": "never-broadcast (nothing has left the handler), confirm-returned (this uninterrupted submission's confirm just returned), confirm-sent-interrupted (a confirm was sent, then a timeout, error or restart) or maybe-broadcast; any other value is refused",
             "pinnedNodeConfigured": "the Demos binding pins nodes under the native-send record profile for the phase's network; anything but true is refused",
             "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",

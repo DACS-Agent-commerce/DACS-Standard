@@ -169,7 +169,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(173, self.data["count"])
+        self.assertEqual(176, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -352,6 +352,12 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 self.assertEqual("confirmed", record["status"])
                 self.assertEqual([], record["content"]["gcr_edits"])
                 self.assertEqual(expected, self.evaluate_case(case)["decision"])
+        # An authenticated applied transfer that does not decode is indeterminate, not a contradiction.
+        for suffix in ("extra-member", "numeric-debit", "noncanonical-credit"):
+            with self.subTest(suffix=suffix):
+                result = self.evaluate_case(self.cases["fv-bft-final-applied-transfer-" + suffix])
+                self.assertEqual("indeterminate", result["decision"])
+                self.assertIn("Demos applied transfer does not decode", result["reason"])
         control = copy.deepcopy(self.cases["fv-bft-final-canonical-success"])
         control["input"]["context"]["observation"]["executionResult"]["appliedTransfer"]["payeeCreditOs"] = "0"
         result = self.evaluate_case(control)
@@ -368,6 +374,17 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         for value in (True, 7.5, -1, float("inf"), float("nan"), 2**53):
             with self.subTest(value=value):
                 record["content"]["nonce"] = value
+                self.assertIsNone(_demos_native_send(record))
+        # The safe-integer bounds themselves decode.
+        for value in (0, 2**53 - 1):
+            with self.subTest(bound=value):
+                record["content"]["nonce"] = value
+                self.assertEqual(str(value), _demos_native_send(record)["nonce"])
+        # blockNumber is a JSON number, never a decimal string, even a canonical one.
+        record["content"]["nonce"] = 7
+        for value in (str(projection["blockNumber"]), True):
+            with self.subTest(block=value):
+                record["blockNumber"] = value
                 self.assertIsNone(_demos_native_send(record))
 
     def test_oversized_demos_decimals_return_a_decision(self):

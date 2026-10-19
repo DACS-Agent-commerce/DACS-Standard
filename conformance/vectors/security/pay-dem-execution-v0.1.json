@@ -11,10 +11,12 @@
   },
   "fixtureVocabulary": {
     "statusIndex": "getTransactionStatus state for the retained hash (included, pending or unknown); never decisive",
-    "inclusionObservation": "block identified for the retained hash, or null",
-    "recordRead": "getTxByHash read: found (record and node pin), not-found or unavailable; appliedTransfer and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived in production from status or edits",
+    "network": "the phase's Demos network (networkId, genesisHash) as its binding pins it; applied-payment authority must name the same network, and a missing or malformed one binds nothing",
+    "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity",
+    "recordRead": "getTxByHash read: found (record and node pin), not-found or unavailable; appliedTransfer (networkId, genesisHash, blockId, txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs) and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived in production from status or edits",
     "otherGates": "verdicts of the FV, SB-1 and PB checks that compose with DEM-7 before delivery",
-    "request": "the call about to carry the signed transaction out of the handler: confirm-retained (demosdk confirm/confirmTx), broadcast-retained or broadcast-replacement",
+    "request": "the call about to carry the signed transaction out of the handler: confirm-retained (demosdk confirm/confirmTx), broadcast-retained or broadcast-replacement; any other value is refused",
+    "signPermitted": "pre-sign-gate result, DEM-1 before demosdk pay()/sign(): the input holds no signed transaction; false with ok false and errorClass permanent is the handler's PC-4 result, and nothing is signed or sent",
     "broadcastState": "never-broadcast (nothing has left the handler), confirm-returned (this uninterrupted submission's confirm just returned), confirm-sent-interrupted (a confirm was sent, then a timeout, error or restart) or maybe-broadcast; any other value is refused",
     "pinnedNodeConfigured": "the Demos binding pins nodes under the native-send record profile for the phase's network; anything but true is refused",
     "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",
@@ -22,13 +24,17 @@
     "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) for every otherwise admitted pay-dem record; derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error",
     "guards": "checks whose removal makes this vector fail"
   },
-  "count": 184,
-  "hash": "b60669c726b6b4e3654983bb83529f9b6bb8b03477e6056534553479fde6de70",
+  "count": 197,
+  "hash": "35447fc5af7fc5184d4b0fda3f23f4865e09d0b90a463e4f938bfb6ebb0f2342",
   "vectors": [
     {
       "name": "included-confirmed",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -40,7 +46,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -70,6 +77,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -105,6 +115,10 @@
       "name": "node2-confirmed-record",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -222,6 +236,10 @@
       "name": "confirmed-integer-nonce-binds",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -233,7 +251,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -263,6 +282,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -298,6 +320,10 @@
       "name": "confirmed-large-string-amount-binds",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -309,7 +335,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -339,6 +366,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -374,6 +404,10 @@
       "name": "confirmed-unprefixed-parties-bind",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -385,7 +419,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -415,6 +450,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -450,6 +488,10 @@
       "name": "included-failed",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -461,7 +503,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -491,6 +534,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -528,6 +574,10 @@
       "name": "node2-included-failed-record",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -620,6 +670,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "88d9b5b315c48957b2798bdc990957d0e780c6922f8e89109a43916a4531406a",
             "txHash": "85b8fcdcee48822742a39e1b9877f5e2f8dde36430e8e486e3a8b0c9a7744cbd",
             "blockNumber": 480877,
             "sender": "c0a58599ceaeba18f9c450133631cce4c45f4dc7a59c8026331504da3a913c2a",
@@ -657,6 +710,10 @@
       "name": "included-pending",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -668,7 +725,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -698,6 +756,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -733,6 +794,10 @@
       "name": "included-record-not-found",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -744,7 +809,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "not-found"
@@ -777,6 +843,10 @@
       "name": "included-record-unavailable",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -788,7 +858,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "unavailable"
@@ -820,6 +891,10 @@
       "name": "included-alias",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -831,7 +906,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -861,6 +937,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -897,6 +976,10 @@
       "name": "finalized-alias",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -908,7 +991,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -938,6 +1022,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -974,6 +1061,10 @@
       "name": "success-alias",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -985,7 +1076,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1015,6 +1107,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1051,6 +1146,10 @@
       "name": "confirmed-case-variant",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1062,7 +1161,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1092,6 +1192,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1128,6 +1231,10 @@
       "name": "confirmed-unpinned-node",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1139,7 +1246,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1170,6 +1278,9 @@
           "selfReportedCommit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1206,6 +1317,10 @@
       "name": "failed-unpinned-node",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1217,7 +1332,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1248,6 +1364,9 @@
           "selfReportedCommit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1285,6 +1404,10 @@
       "name": "confirmed-wrong-hash",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1296,7 +1419,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1326,6 +1450,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "935a9f844685c90ba8c634c2a00bb43b4d55fa4bcb73704cdd4c6b83c7b3fab9",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1362,6 +1489,10 @@
       "name": "confirmed-wrong-nonce",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1373,7 +1504,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1403,6 +1535,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1439,6 +1574,10 @@
       "name": "confirmed-wrong-block",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1450,7 +1589,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1480,6 +1620,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 43,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1516,6 +1659,10 @@
       "name": "confirmed-wrong-sender",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1527,7 +1674,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1557,6 +1705,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
@@ -1593,6 +1744,10 @@
       "name": "confirmed-wrong-recipient",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1604,7 +1759,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1634,6 +1790,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1670,6 +1829,10 @@
       "name": "confirmed-wrong-amount",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1681,7 +1844,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1711,6 +1875,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1747,6 +1914,10 @@
       "name": "confirmed-missing-nonce",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1758,7 +1929,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1787,6 +1959,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1823,6 +1998,10 @@
       "name": "confirmed-boolean-nonce",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1834,7 +2013,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1864,6 +2044,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1900,6 +2083,10 @@
       "name": "confirmed-fractional-nonce",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1911,7 +2098,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -1941,6 +2129,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -1977,6 +2168,10 @@
       "name": "confirmed-leading-zero-nonce",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -1988,7 +2183,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2018,6 +2214,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2054,6 +2253,10 @@
       "name": "confirmed-fractional-amount",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2065,7 +2268,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2095,6 +2299,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2131,6 +2338,10 @@
       "name": "confirmed-noncanonical-amount",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2142,7 +2353,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2172,6 +2384,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2208,6 +2423,10 @@
       "name": "confirmed-prefixed-hash",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2219,7 +2438,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2249,6 +2469,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2285,6 +2508,10 @@
       "name": "confirmed-uppercase-sender",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2296,7 +2523,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2326,6 +2554,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2362,6 +2593,10 @@
       "name": "confirmed-sender-alias-mismatch",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2373,7 +2608,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2403,6 +2639,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2439,6 +2678,10 @@
       "name": "confirmed-payload-recipient-mismatch",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2450,7 +2693,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2480,6 +2724,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2516,6 +2763,10 @@
       "name": "confirmed-payload-amount-mismatch",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2527,7 +2778,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2557,6 +2809,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2593,6 +2848,10 @@
       "name": "confirmed-not-native-send",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2604,7 +2863,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2634,6 +2894,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2670,6 +2933,10 @@
       "name": "confirmed-without-inclusion-observation",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2709,6 +2976,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2735,15 +3005,18 @@
       },
       "rule": "DACS-4 §9.5.9 DEM-2/DEM-5",
       "guards": [
-        "bind-block",
         "bind-requires-inclusion"
       ],
-      "note": "Without an inclusion observation the record's block cannot be bound."
+      "note": "Without an inclusion observation neither the record's block nor the applied-payment authority's block ID can be bound."
     },
     {
       "name": "failed-wrong-nonce",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2755,7 +3028,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2785,6 +3059,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2822,6 +3099,10 @@
       "name": "failed-missing-nonce",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2833,7 +3114,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2862,6 +3144,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2898,6 +3183,10 @@
       "name": "failed-wrong-block",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2909,7 +3198,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -2939,6 +3229,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "40448ab3ca7e9f92f9ec52793c425868ba9c7e1360d9a64da3b547eb5ac7f2bb",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 43,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -2976,6 +3269,10 @@
       "name": "failed-wrong-amount",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -2987,7 +3284,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -3017,6 +3315,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -3054,6 +3355,10 @@
       "name": "failed-wrong-hash",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3065,7 +3370,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -3095,6 +3401,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "935a9f844685c90ba8c634c2a00bb43b4d55fa4bcb73704cdd4c6b83c7b3fab9",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -3132,6 +3441,10 @@
       "name": "failed-wrong-sender",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3143,7 +3456,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -3173,6 +3487,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
@@ -3210,6 +3527,10 @@
       "name": "failed-wrong-recipient",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3221,7 +3542,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -3251,6 +3573,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -3288,6 +3613,10 @@
       "name": "failed-without-inclusion-observation",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3327,6 +3656,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -3363,6 +3695,10 @@
       "name": "transfer-unknown-not-rebroadcast",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3403,6 +3739,10 @@
       "name": "resume-reuses-failure-proof",
       "operation": "resume-phase",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3441,7 +3781,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "unavailable"
@@ -3474,6 +3815,10 @@
       "name": "resume-corrupted-failure-proof",
       "operation": "resume-phase",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3512,7 +3857,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "not-found"
@@ -3547,6 +3893,10 @@
       "name": "resume-corrupted-failure-proof-recipient",
       "operation": "resume-phase",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3585,7 +3935,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "not-found"
@@ -3620,6 +3971,10 @@
       "name": "resume-corrupted-failure-proof-block",
       "operation": "resume-phase",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3658,7 +4013,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "not-found"
@@ -3693,6 +4049,10 @@
       "name": "resume-corrupted-failure-proof-status",
       "operation": "resume-phase",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3731,7 +4091,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "not-found"
@@ -3765,6 +4126,10 @@
       "name": "resume-without-proof-not-found",
       "operation": "resume-phase",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3806,6 +4171,10 @@
       "name": "resume-without-proof-confirmed",
       "operation": "resume-phase",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -3818,7 +4187,8 @@
         "retainedFailureProof": null,
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -3848,6 +4218,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -3985,6 +4358,113 @@
         "first-broadcast-allowed"
       ],
       "note": "The single broadcast is allowed once the signed transfer is durably retained for this phase."
+    },
+    {
+      "name": "broadcast-prefixed-send-argument",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "3c89f2ebbb04723eba4a938397b976b87275c7a76a2a971a6d79451b3cf72b71",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x5f799a6abc4ceb2bd6d13578ad225d46aa5d8c9c54b624f785849fd7dd20d0c96d6bd37395acfea2c20b41258fdad3f1f535dc3cc66c40421c0cb943b429250f"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "3c89f2ebbb04723eba4a938397b976b87275c7a76a2a971a6d79451b3cf72b71",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "request": "broadcast-retained"
+      },
+      "expected": "pass",
+      "want": {
+        "broadcastPermitted": true
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "first-broadcast-allowed"
+      ],
+      "note": "demosdk passes the send recipient through as given; a 0x-prefixed argument gets no second 0x in the credit edit."
     },
     {
       "name": "broadcast-before-durable-retention",
@@ -6902,6 +7382,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -6931,6 +7419,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -6973,6 +7464,13 @@
             "amount": "9.5",
             "currency": "DEM"
           }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 498447
         },
         "statusIndex": "included",
         "recordRead": {
@@ -7087,6 +7585,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "not-found"
@@ -7126,6 +7632,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -7155,6 +7669,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -7198,6 +7715,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "unavailable"
@@ -7237,6 +7762,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -7266,6 +7799,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -7310,6 +7846,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -7339,6 +7883,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -7383,6 +7930,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -7412,6 +7967,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -7456,6 +8014,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -7486,6 +8052,9 @@
           "selfReportedCommit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -7530,6 +8099,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -7560,6 +8137,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -7604,6 +8184,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -7634,6 +8222,9 @@
           "authenticated": false,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -7678,6 +8269,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -7708,6 +8307,9 @@
           "authenticated": false,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -7752,6 +8354,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -7782,6 +8392,9 @@
           "authenticated": false,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "40448ab3ca7e9f92f9ec52793c425868ba9c7e1360d9a64da3b547eb5ac7f2bb",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 43,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -7826,6 +8439,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -7856,6 +8477,9 @@
           "authenticated": false,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
@@ -7900,6 +8524,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -7930,6 +8562,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -7975,6 +8610,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8005,6 +8648,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8050,6 +8696,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8080,6 +8734,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8130,6 +8787,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8159,6 +8824,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8210,6 +8878,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8240,6 +8916,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8291,6 +8970,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8321,6 +9008,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8372,6 +9062,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8402,6 +9100,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8453,6 +9154,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8483,6 +9192,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8534,6 +9246,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8564,6 +9284,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8625,6 +9348,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8655,6 +9386,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8719,6 +9453,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8749,6 +9491,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8812,6 +9557,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8842,6 +9595,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8903,6 +9659,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -8933,6 +9697,9 @@
           "authenticated": true,
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -8975,6 +9742,10 @@
       "name": "confirmed-non-native-type",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -8986,7 +9757,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -9016,6 +9788,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -9052,6 +9827,10 @@
       "name": "confirmed-uppercase-recipient",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -9063,7 +9842,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -9093,6 +9873,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -9129,6 +9912,10 @@
       "name": "confirmed-uppercase-send-argument",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -9140,7 +9927,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -9170,6 +9958,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -9207,6 +9998,10 @@
       "name": "confirmed-non-native-tag",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -9218,7 +10013,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -9248,6 +10044,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -9284,6 +10083,10 @@
       "name": "confirmed-extra-send-member",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -9295,7 +10098,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -9326,6 +10130,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -9362,6 +10169,10 @@
       "name": "confirmed-extra-send-argument",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -9373,7 +10184,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -9404,6 +10216,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -9459,6 +10274,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -9488,6 +10311,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -11961,6 +12787,10 @@
       "name": "confirmed-string-block-number",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -11972,7 +12802,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -12002,6 +12833,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -12038,6 +12872,10 @@
       "name": "confirmed-unproven-missing-edits",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -12049,7 +12887,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -12125,6 +12964,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -12170,6 +13017,10 @@
       "name": "confirmed-unproven-empty-edits",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -12181,7 +13032,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -12258,6 +13110,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -12304,6 +13164,10 @@
       "name": "confirmed-unproven-malformed-edits",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -12315,7 +13179,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -12392,6 +13257,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -12457,6 +13330,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -12512,6 +13393,10 @@
       "name": "confirmed-applied-transfer-unauthenticated",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -12523,7 +13408,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -12553,6 +13439,9 @@
           },
           "appliedTransferAuthenticated": false,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -12583,7 +13472,7 @@
         "success-requires-record",
         "unresolved-authorizes-nothing"
       ],
-      "note": "Applied payment authority must authenticate this exact native send."
+      "note": "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block."
     },
     {
       "name": "consumer-applied-transfer-unauthenticated",
@@ -12607,6 +13496,14 @@
             "amount": "1.5",
             "currency": "DEM"
           }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "statusIndex": "included",
         "recordRead": {
@@ -12637,6 +13534,9 @@
           },
           "appliedTransferAuthenticated": false,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -12662,6 +13562,10 @@
       "name": "confirmed-applied-transfer-zero-credit",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -12673,7 +13577,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -12703,6 +13608,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -12733,7 +13641,7 @@
         "success-requires-record",
         "unresolved-authorizes-nothing"
       ],
-      "note": "Applied payment authority must authenticate this exact native send."
+      "note": "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block."
     },
     {
       "name": "consumer-applied-transfer-zero-credit",
@@ -12757,6 +13665,14 @@
             "amount": "1.5",
             "currency": "DEM"
           }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "statusIndex": "included",
         "recordRead": {
@@ -12787,6 +13703,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -12813,6 +13732,10 @@
       "name": "confirmed-applied-transfer-zero-debit",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -12824,7 +13747,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -12854,6 +13778,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -12884,7 +13811,7 @@
         "success-requires-record",
         "unresolved-authorizes-nothing"
       ],
-      "note": "Applied payment authority must authenticate this exact native send."
+      "note": "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block."
     },
     {
       "name": "consumer-applied-transfer-zero-debit",
@@ -12908,6 +13835,14 @@
             "amount": "1.5",
             "currency": "DEM"
           }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "statusIndex": "included",
         "recordRead": {
@@ -12938,6 +13873,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -12964,6 +13902,10 @@
       "name": "confirmed-applied-transfer-wrong-hash",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -12975,7 +13917,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -13005,6 +13948,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "935a9f844685c90ba8c634c2a00bb43b4d55fa4bcb73704cdd4c6b83c7b3fab9",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -13035,7 +13981,7 @@
         "success-requires-record",
         "unresolved-authorizes-nothing"
       ],
-      "note": "Applied payment authority must authenticate this exact native send."
+      "note": "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block."
     },
     {
       "name": "consumer-applied-transfer-wrong-hash",
@@ -13059,6 +14005,14 @@
             "amount": "1.5",
             "currency": "DEM"
           }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "statusIndex": "included",
         "recordRead": {
@@ -13089,6 +14043,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "935a9f844685c90ba8c634c2a00bb43b4d55fa4bcb73704cdd4c6b83c7b3fab9",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -13115,6 +14072,10 @@
       "name": "confirmed-applied-transfer-wrong-block",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -13126,7 +14087,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -13156,6 +14118,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 43,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -13186,7 +14151,7 @@
         "success-requires-record",
         "unresolved-authorizes-nothing"
       ],
-      "note": "Applied payment authority must authenticate this exact native send."
+      "note": "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block."
     },
     {
       "name": "consumer-applied-transfer-wrong-block",
@@ -13210,6 +14175,14 @@
             "amount": "1.5",
             "currency": "DEM"
           }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "statusIndex": "included",
         "recordRead": {
@@ -13240,6 +14213,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 43,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -13266,6 +14242,10 @@
       "name": "confirmed-applied-transfer-wrong-sender",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -13277,7 +14257,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -13307,6 +14288,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
@@ -13337,7 +14321,7 @@
         "success-requires-record",
         "unresolved-authorizes-nothing"
       ],
-      "note": "Applied payment authority must authenticate this exact native send."
+      "note": "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block."
     },
     {
       "name": "consumer-applied-transfer-wrong-sender",
@@ -13361,6 +14345,14 @@
             "amount": "1.5",
             "currency": "DEM"
           }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "statusIndex": "included",
         "recordRead": {
@@ -13391,6 +14383,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
@@ -13417,6 +14412,696 @@
       "name": "confirmed-applied-transfer-wrong-recipient",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3/DEM-5",
+      "guards": [
+        "success-requires-applied-transfer",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block."
+    },
+    {
+      "name": "consumer-applied-transfer-wrong-recipient",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000"
+          }
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-authenticated-contradiction-fails",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
+    },
+    {
+      "name": "confirmed-applied-transfer-other-network",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:testnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3/DEM-5",
+      "guards": [
+        "applied-transfer-binds-network",
+        "success-requires-applied-transfer",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block."
+    },
+    {
+      "name": "consumer-applied-transfer-other-network",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:testnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000"
+          }
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "applied-transfer-binds-network",
+        "consumer-authenticated-contradiction-fails",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
+    },
+    {
+      "name": "confirmed-applied-transfer-other-genesis",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "91d35a73db815165e78406dc8d9c3a364a2669ea7679a2bb50801197c7fc22c1",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3/DEM-5",
+      "guards": [
+        "applied-transfer-binds-network",
+        "success-requires-applied-transfer",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block."
+    },
+    {
+      "name": "consumer-applied-transfer-other-genesis",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "91d35a73db815165e78406dc8d9c3a364a2669ea7679a2bb50801197c7fc22c1",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000"
+          }
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "applied-transfer-binds-network",
+        "consumer-authenticated-contradiction-fails",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
+    },
+    {
+      "name": "confirmed-applied-transfer-other-block-id",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "d075d56c7a34f40b57daa9ef54c193d1d947163a082e56476d878fd1592ec803",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000"
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3/DEM-5",
+      "guards": [
+        "applied-transfer-binds-block-id",
+        "success-requires-applied-transfer",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block."
+    },
+    {
+      "name": "consumer-applied-transfer-other-block-id",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeProfile": "pinned",
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "d075d56c7a34f40b57daa9ef54c193d1d947163a082e56476d878fd1592ec803",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000"
+          }
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "applied-transfer-binds-block-id",
+        "consumer-authenticated-contradiction-fails",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
+    },
+    {
+      "name": "confirmed-inclusion-without-block-id",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -13458,10 +15143,13 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
-            "recipient": "443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
             "payerDebitOs": "1500000000",
             "payeeCreditOs": "1500000000"
           }
@@ -13484,14 +15172,15 @@
       },
       "rule": "DACS-4 §9.5.9 DEM-3/DEM-5",
       "guards": [
+        "applied-transfer-binds-block-id",
         "success-requires-applied-transfer",
         "success-requires-record",
         "unresolved-authorizes-nothing"
       ],
-      "note": "Applied payment authority must authenticate this exact native send."
+      "note": "Without the inclusion block's ID the applied-payment authority binds no block identity."
     },
     {
-      "name": "consumer-applied-transfer-wrong-recipient",
+      "name": "consumer-inclusion-without-block-id",
       "operation": "admit-evidence",
       "protocolInput": {
         "signedEvidence": {
@@ -13512,6 +15201,13 @@
             "amount": "1.5",
             "currency": "DEM"
           }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42
         },
         "statusIndex": "included",
         "recordRead": {
@@ -13542,27 +15238,152 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
-            "recipient": "443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
             "payerDebitOs": "1500000000",
             "payeeCreditOs": "1500000000"
           }
         }
       },
-      "expected": "fail",
+      "expected": "indeterminate",
       "want": {
         "dem7GatePassed": false,
         "deliveryAuthorized": false
       },
-      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "rule": "DACS-4 §9.5.9 DEM-7",
       "guards": [
-        "consumer-authenticated-contradiction-fails",
+        "applied-transfer-binds-block-id",
         "consumer-requires-confirmed-record",
         "success-requires-applied-transfer"
       ],
-      "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
+      "note": "A consumer without the inclusion block's ID cannot bind the applied-payment authority."
+    },
+    {
+      "name": "sign-with-pinned-node-and-applied-payment-authority",
+      "operation": "pre-sign-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true
+      },
+      "expected": "pass",
+      "want": {
+        "signPermitted": true,
+        "ok": null,
+        "errorClass": null
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "sign-allowed-when-configured"
+      ],
+      "note": "A binding that pins nodes and configures applied-payment authority lets the handler sign."
+    },
+    {
+      "name": "sign-without-pinned-node",
+      "operation": "pre-sign-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": false,
+        "appliedPaymentAuthorityConfigured": true
+      },
+      "expected": "fail",
+      "want": {
+        "signPermitted": false,
+        "ok": false,
+        "errorClass": "permanent"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "binding-refusal-is-permanent",
+        "sign-requires-pinned-node"
+      ],
+      "note": "Without a pinned node no record binds: ok false, permanent, before pay() or sign()."
+    },
+    {
+      "name": "sign-without-applied-payment-authority",
+      "operation": "pre-sign-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": false
+      },
+      "expected": "fail",
+      "want": {
+        "signPermitted": false,
+        "ok": false,
+        "errorClass": "permanent"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "binding-refusal-is-permanent",
+        "sign-requires-applied-payment-authority"
+      ],
+      "note": "Without applied-payment authority DEM-3 success is unreachable: ok false, permanent, nothing signed."
+    },
+    {
+      "name": "sign-without-binding",
+      "operation": "pre-sign-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": false,
+        "appliedPaymentAuthorityConfigured": false
+      },
+      "expected": "fail",
+      "want": {
+        "signPermitted": false,
+        "ok": false,
+        "errorClass": "permanent"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "binding-refusal-is-permanent"
+      ],
+      "note": "With neither configured the refusal is still permanent, never substrate."
     },
     {
       "name": "sb1-demos-canonical",
@@ -14908,6 +16729,10 @@
       "name": "record-oversized-amount",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -14919,7 +16744,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -14949,6 +16775,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -14985,6 +16814,10 @@
       "name": "record-oversized-nonce",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -14996,7 +16829,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -15026,6 +16860,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -15062,6 +16899,10 @@
       "name": "applied-transfer-oversized-debit",
       "operation": "classify-execution",
       "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
         "retainedTransfer": {
           "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
           "phaseIndex": 1,
@@ -15073,7 +16914,8 @@
         },
         "statusIndex": "included",
         "inclusionObservation": {
-          "blockNumber": 42
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
         },
         "recordRead": {
           "state": "found",
@@ -15103,6 +16945,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -15158,6 +17003,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -15187,6 +17040,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -15231,6 +17087,14 @@
             "currency": "DEM"
           }
         },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
         "statusIndex": "included",
         "recordRead": {
           "state": "found",
@@ -15260,6 +17124,9 @@
           },
           "appliedTransferAuthenticated": true,
           "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",

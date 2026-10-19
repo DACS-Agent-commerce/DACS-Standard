@@ -37,6 +37,10 @@ WORKFLOW = ROOT / ".github/workflows/validate.yml"
 # removal must change its result.
 GUARDS = frozenset({
     # DEM-1
+    "sign-allowed-when-configured",
+    "sign-requires-pinned-node",
+    "sign-requires-applied-payment-authority",
+    "binding-refusal-is-permanent",
     "first-broadcast-allowed",
     "retention-before-first-egress",
     "broadcast-requires-pinned-node",
@@ -79,6 +83,8 @@ GUARDS = frozenset({
     "success-requires-record",
     "success-requires-exact-confirmed",
     "success-requires-applied-transfer",
+    "applied-transfer-binds-network",
+    "applied-transfer-binds-block-id",
     # DEM-4
     "failure-is-permanent",
     "failure-requires-binding",
@@ -152,6 +158,14 @@ ADDRESS = re.compile(r"(?:0x)?([0-9a-f]{64})")
 DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)")
 SIGNATURE = re.compile(r"0x[0-9a-f]{128}")
 RETAINED = {"jobId", "phaseIndex", "txHash", "nonce", "sender", "recipient", "amountOs"}
+# DEMOS-MAPPING §A.2 applied-payment authority: network, inclusion block
+# identity, transaction, parties, and the committed debit and credit.
+APPLIED_TRANSFER = frozenset({
+    "networkId", "genesisHash", "blockId", "txHash", "blockNumber", "sender", "recipient",
+    "payerDebitOs", "payeeCreditOs",
+})
+NETWORK = frozenset({"networkId", "genesisHash"})
+REQUESTS = frozenset({"confirm-retained", "broadcast-retained", "broadcast-replacement"})
 FEE_AMOUNTS = ("network_fee", "rpc_fee", "additional_fee")
 # The pinned node's RPC ingress rebuilds the fee object in this order before
 # it re-derives the hash (src/forks/serializerGate.ts).
@@ -409,20 +423,37 @@ def is_confirmed(status, off) -> bool:
     return status == "confirmed"
 
 
-def applied(read, projection, off) -> str:
+def applied(read, projection, protocol_input, off) -> str:
+    """DEMOS-MAPPING §A.2 applied-payment authority for the handler (DEM-3) and
+    the consumer (DEM-7): it names the phase's network, the observed inclusion
+    block ID, the projected transaction and parties, and a debit and credit of
+    the OS amount. Without the network or block ID to compare it binds nothing."""
     if "success-requires-applied-transfer" in off:
         return "pass"
     proof = read.get("appliedTransfer")
     if not (
         read.get("appliedTransferAuthenticated") is True
         and isinstance(proof, dict)
-        and set(proof) == {"txHash", "blockNumber", "sender", "recipient", "payerDebitOs", "payeeCreditOs"}
+        and set(proof) == APPLIED_TRANSFER
         and all(isinstance(proof[k], str) and DECIMAL.fullmatch(proof[k])
                 for k in ("payerDebitOs", "payeeCreditOs"))
     ):
         return "indeterminate"
+    expected = {k: projection[k] for k in ("txHash", "blockNumber", "sender", "recipient")}
+    if "applied-transfer-binds-network" not in off:
+        network = protocol_input.get("network")
+        if not (isinstance(network, dict) and set(network) == NETWORK
+                and all(isinstance(network[k], str) and network[k] for k in NETWORK)):
+            return "indeterminate"
+        expected.update(network)
+    if "applied-transfer-binds-block-id" not in off:
+        inclusion = protocol_input.get("inclusionObservation")
+        block_id = inclusion.get("blockId") if isinstance(inclusion, dict) else None
+        if not (isinstance(block_id, str) and HASH.fullmatch(block_id)):
+            return "indeterminate"
+        expected["blockId"] = block_id
     if (not _safe_integer(proof["blockNumber"])
-            or any(proof[k] != projection[k] for k in ("txHash", "blockNumber", "sender", "recipient"))
+            or any(proof[k] != value for k, value in expected.items())
             or any(proof[k] != projection["amountOs"] for k in ("payerDebitOs", "payeeCreditOs"))):
         return "fail"
     return "pass"
@@ -458,13 +489,22 @@ def classify(protocol_input: dict, off) -> tuple[str, dict]:
     record = read.get("record") if read.get("state") == "found" else None
     projection = decode(record, off) if record is not None else None
     status = projection["status"] if projection else None
+    if protocol_input["inclusionObservation"] is None and "bind-requires-inclusion" in off and projection:
+        # The wrong implementation fills a missing observation from the record
+        # and the applied-payment authority it was given.
+        proof = read.get("appliedTransfer")
+        protocol_input = dict(protocol_input, inclusionObservation={
+            "blockNumber": projection["blockNumber"],
+            "blockId": proof.get("blockId") if isinstance(proof, dict) else None,
+        })
     is_bound = pinned(read, off) and bound(
         projection,
         protocol_input["retainedTransfer"],
         protocol_input["inclusionObservation"],
         off,
     )
-    if is_bound and is_confirmed(status, off) and applied(read, projection, off) == "pass" and "success-branch" not in off:
+    if (is_bound and is_confirmed(status, off) and applied(read, projection, protocol_input, off) == "pass"
+            and "success-branch" not in off):
         return handler_result("pass", protocol_input, off)
     if status == "failed" and (is_bound or "failure-requires-binding" in off):
         if "failure-is-permanent" not in off:
@@ -526,11 +566,30 @@ def complete_transfer(transfer) -> bool:
     )
 
 
+def pre_sign_gate(protocol_input: dict, off) -> tuple[str, dict]:
+    """DEM-1 before signing: a Demos binding without pinned nodes or an
+    applied-payment authority cannot reach DEM-3 success, so the handler
+    returns ok false, errorClass permanent, and signs nothing."""
+    for guard, configured in (
+        ("sign-requires-pinned-node", "pinnedNodeConfigured"),
+        ("sign-requires-applied-payment-authority", "appliedPaymentAuthorityConfigured"),
+    ):
+        if protocol_input.get(configured) is not True and guard not in off:
+            # The wrong implementation reports the refusal as a retryable substrate fault.
+            error_class = "substrate" if "binding-refusal-is-permanent" in off else "permanent"
+            return "fail", {"signPermitted": False, "ok": False, "errorClass": error_class}
+    if "sign-allowed-when-configured" in off:
+        return "fail", {"signPermitted": False, "ok": False, "errorClass": "permanent"}
+    return "pass", {"signPermitted": True, "ok": None, "errorClass": None}
+
+
 def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
     """DEM-1 at the first egress of the signed transaction (a `confirm`
     request or the broadcast) for the authenticated phase, then DEM-6."""
     refused = ("fail", {"broadcastPermitted": False})
     request = protocol_input["request"]
+    if request not in REQUESTS:
+        return refused
     if request == "confirm-retained" and "retention-before-first-egress" in off:
         # The wrong implementation checks DEM-1 only at `broadcast` and sends
         # the signed bytes to `confirmTx` unchecked.
@@ -627,7 +686,7 @@ def dem7(protocol_input: dict, off) -> str:
     )
     status = projection["status"]
     if is_bound and is_confirmed(status, off):
-        decision = applied(read, projection, off)
+        decision = applied(read, projection, protocol_input, off)
         if decision != "pass":
             return "indeterminate" if "consumer-authenticated-contradiction-fails" in off else decision
         return "indeterminate" if "consumer-admits-confirmed" in off else "pass"
@@ -737,6 +796,7 @@ OPERATIONS = {
     "classify-execution": classify,
     "resume-phase": resume,
     "apr-reconciliation-evidence": apr_evidence,
+    "pre-sign-gate": pre_sign_gate,
     "broadcast-gate": broadcast_gate,
     "admit-evidence": admit,
     "admit-for-delivery": admit_for_delivery,
@@ -862,8 +922,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
 
     def test_inclusion_alone_never_succeeds_or_authorizes(self):
         for vector in self.data["vectors"]:
-            if vector["operation"] in {"broadcast-gate", "project-settlement-id", "resolve-settlement-group",
-                                       "apr-reconciliation-evidence"}:
+            if vector["operation"] in {"pre-sign-gate", "broadcast-gate", "project-settlement-id",
+                                       "resolve-settlement-group", "apr-reconciliation-evidence"}:
                 continue
             read = vector["protocolInput"]["recordRead"]
             record = read.get("record") if read.get("state") == "found" else None
@@ -977,11 +1037,20 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 served = self.cases[name]["protocolInput"]["recordRead"]["record"]["content"]
                 self.assertTrue(edits_match(served))
         permitted = [vector["name"] for vector in self.data["vectors"] if vector["want"].get("broadcastPermitted")]
-        self.assertEqual(["first-broadcast-after-durable-retention", "confirm-after-durable-retention",
-                          "broadcast-completes-own-confirm"], permitted)
+        self.assertEqual(["first-broadcast-after-durable-retention", "broadcast-prefixed-send-argument",
+                          "confirm-after-durable-retention", "broadcast-completes-own-confirm"], permitted)
         for name in permitted:
             with self.subTest(name=name):
-                self.assertEqual(content, self.cases[name]["protocolInput"]["signedTransaction"]["content"])
+                signed_content = self.cases[name]["protocolInput"]["signedTransaction"]["content"]
+                if name == "broadcast-prefixed-send-argument":
+                    # demosdk passes a 0x-prefixed send argument through; the
+                    # credit edit names the same account as the control.
+                    self.assertEqual("0x" + generator.PAYEE_KEY, signed_content["data"][1]["args"][0])
+                    self.assertEqual(content["gcr_edits"], signed_content["gcr_edits"])
+                    self.assertEqual({k: v for k, v in content.items() if k != "data"},
+                                     {k: v for k, v in signed_content.items() if k != "data"})
+                    continue
+                self.assertEqual(content, signed_content)
 
     def test_each_missing_or_misshaped_envelope_member_is_refused(self):
         control = self.cases["first-broadcast-after-durable-retention"]
@@ -1128,6 +1197,120 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 with self.subTest(name=vector["name"]):
                     self.assertIs(True, vector["protocolInput"]["pinnedNodeConfigured"])
                     self.assertIs(True, vector["protocolInput"]["appliedPaymentAuthorityConfigured"])
+        # Before pay()/sign(): the refusal is the PC-4 result ok false,
+        # errorClass permanent, and there is no signed transaction to send.
+        self.assertIn('the handler MUST return `ok: false` with `errorClass: "permanent"` before it signs', spec)
+        refused = {"ok": False, "errorClass": "permanent", "signPermitted": False}
+        presign = {name: vector for name, vector in self.cases.items() if vector["operation"] == "pre-sign-gate"}
+        self.assertEqual({"sign-with-pinned-node-and-applied-payment-authority", "sign-without-pinned-node",
+                          "sign-without-applied-payment-authority", "sign-without-binding"}, set(presign))
+        for name, vector in presign.items():
+            with self.subTest(name=name):
+                self.assertEqual({"phase", "pinnedNodeConfigured", "appliedPaymentAuthorityConfigured"},
+                                 set(vector["protocolInput"]))
+                if vector["expected"] == "pass":
+                    self.assertEqual(("pass", {"signPermitted": True, "ok": None, "errorClass": None}), evaluate(vector))
+                    continue
+                self.assertEqual(("fail", refused), evaluate(vector))
+                # A handler that refuses as a retryable substrate fault pauses
+                # under ST-7 instead of ending the phase: it fails the vector.
+                self.assertEqual(("fail", dict(refused, errorClass="substrate")),
+                                 evaluate(vector, {"binding-refusal-is-permanent"}))
+        for name, guard in (("sign-without-pinned-node", "sign-requires-pinned-node"),
+                            ("sign-without-applied-payment-authority", "sign-requires-applied-payment-authority")):
+            with self.subTest(name=name):
+                self.assertTrue(evaluate(self.cases[name], {guard})[1]["signPermitted"])
+        for member in ("pinnedNodeConfigured", "appliedPaymentAuthorityConfigured"):
+            for value in (None, "true", 1, False):
+                with self.subTest(presign=member, value=value):
+                    case = json.loads(json.dumps(presign["sign-with-pinned-node-and-applied-payment-authority"]))
+                    if value is None:
+                        del case["protocolInput"][member]
+                    else:
+                        case["protocolInput"][member] = value
+                    self.assertEqual(("fail", refused), evaluate(case))
+
+    def test_applied_payment_authority_binds_every_member_on_both_paths(self):
+        # DEMOS-MAPPING §A.2: the authority binds the network, the inclusion
+        # block identity, the transaction and block number, both parties and
+        # the debit and credit. Each member has a vector on the handler (DEM-3)
+        # and the consumer (DEM-7) path that differs from the passing control
+        # in that member alone and does not pass.
+        demos = DEMOS.read_text(encoding="utf-8")
+        self.assertIn("The authority MUST bind the same network, inclusion block identity, transaction hash and block number", demos)
+        for prefix, control_name, refused in (
+            ("confirmed-applied-transfer-", "included-confirmed", "indeterminate"),
+            ("consumer-applied-transfer-", "consumer-confirmed-gate-passes", "fail"),
+        ):
+            control = self.cases[control_name]
+            self.assertEqual("pass", evaluate(control)[0])
+            proof = control["protocolInput"]["recordRead"]["appliedTransfer"]
+            self.assertEqual(APPLIED_TRANSFER, set(proof))
+            self.assertEqual(control["protocolInput"]["network"],
+                             {k: proof[k] for k in ("networkId", "genesisHash")})
+            self.assertEqual(control["protocolInput"]["inclusionObservation"]["blockId"], proof["blockId"])
+            witnessed = set()
+            for name, vector in self.cases.items():
+                if not name.startswith(prefix):
+                    continue
+                varied = vector["protocolInput"]["recordRead"].get("appliedTransfer", {})
+                differs = {k for k in APPLIED_TRANSFER if varied.get(k) != proof[k]}
+                rest = {k: v for k, v in vector["protocolInput"].items() if k != "recordRead"}
+                if len(differs) == 1 and rest == {k: v for k, v in control["protocolInput"].items() if k != "recordRead"}:
+                    with self.subTest(name=name):
+                        self.assertEqual(refused, evaluate(vector)[0])
+                        self.assertIn("success-requires-applied-transfer", vector["guards"])
+                    witnessed |= differs
+            self.assertEqual(APPLIED_TRANSFER, witnessed, prefix)
+            # The phase network and the observed block ID are inputs: missing
+            # or malformed ones bind nothing, on both paths.
+            for change in ({"network": None}, {"network": {"networkId": proof["networkId"]}},
+                           {"network": dict(control["protocolInput"]["network"], extra="x")},
+                           {"network": {"networkId": "", "genesisHash": proof["genesisHash"]}},
+                           {"inclusionObservation": {"blockNumber": generator.BLOCK}},
+                           {"inclusionObservation": {"blockNumber": generator.BLOCK, "blockId": proof["blockId"].upper()}},
+                           {"inclusionObservation": {"blockNumber": generator.BLOCK, "blockId": None}}):
+                with self.subTest(control=control_name, change=str(change)[:60]):
+                    case = json.loads(json.dumps(control))
+                    for key, value in change.items():
+                        if value is None:
+                            del case["protocolInput"][key]
+                        else:
+                            case["protocolInput"][key] = value
+                    self.assertEqual("indeterminate", evaluate(case)[0])
+        # Resume re-reads under the same binding.
+        resumed = json.loads(json.dumps(self.cases["resume-without-proof-confirmed"]))
+        self.assertEqual("pass", evaluate(resumed)[0])
+        resumed["protocolInput"]["recordRead"]["appliedTransfer"]["networkId"] = "demos:testnet"
+        self.assertEqual("indeterminate", evaluate(resumed)[0])
+
+    def test_every_dem1_refusal_holds_at_the_confirm_egress(self):
+        # DEM-1 applies to each call that carries the signed transaction out
+        # of the handler: a refusal at broadcast is the same refusal at the
+        # demosdk confirm request that precedes it.
+        refusals = [
+            vector for vector in self.data["vectors"]
+            if vector["operation"] == "broadcast-gate" and vector["expected"] != "pass"
+            and vector["protocolInput"]["request"] == "broadcast-retained"
+            and vector["protocolInput"]["broadcastState"] == "never-broadcast"
+        ]
+        self.assertGreater(len(refusals), 40)
+        for vector in refusals:
+            with self.subTest(name=vector["name"]):
+                confirm = json.loads(json.dumps(vector))
+                confirm["protocolInput"]["request"] = "confirm-retained"
+                self.assertEqual(evaluate(vector), evaluate(confirm))
+                self.assertEqual(("pass", {"broadcastPermitted": True}),
+                                 evaluate(confirm, {"retention-before-first-egress"}))
+
+    def test_unknown_request_is_refused(self):
+        control = self.cases["first-broadcast-after-durable-retention"]
+        self.assertIn("any other value is refused", self.data["fixtureVocabulary"]["request"])
+        for request in ("broadcast", "Broadcast-Retained", "confirm", None, ""):
+            with self.subTest(request=request):
+                case = json.loads(json.dumps(control))
+                case["protocolInput"]["request"] = request
+                self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(case))
 
     def test_plain_rpc_failure_proof_is_not_apr_reconciliation_evidence(self):
         spec = SPEC.read_text(encoding="utf-8")
@@ -1237,11 +1420,17 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         long_name = "9" * 4301
         for value, spelling in (
             ({"n": None, "t": True, "f": False}, '{"n":null,"t":true,"f":false}'),
-            ({"4294967295": 1, "a": 2, "4294967294": 3, "0": 4}, '{"0":4,"4294967294":3,"4294967295":1,"a":2}'),
+            # 4294967295 follows "a" in insertion order, so treating it as an index would move it.
+            ({"a": 2, "4294967295": 1, "4294967294": 3, "0": 4}, '{"0":4,"4294967294":3,"a":2,"4294967295":1}'),
             ({long_name: 1, "1": 2}, '{"1":2,"' + long_name + '":1}'),
         ):
             with self.subTest(value=spelling[:40]):
                 self.assertEqual(spelling, stringify(value))
+        # A member name that is not a string is not JSON.
+        for value in ({1: "x"}, {"a": 1, 2: "y"}, (1, 2)):
+            with self.subTest(value=repr(value)):
+                with self.assertRaises(ValueError):
+                    stringify(value)
         for number, spelling in ((1e-7, "1e-7"), (1.0, "1"), (1e-6, "0.000001"), (-0.0, "0")):
             with self.subTest(number=number):
                 body = generator.send_content(nonce=generator.NONCE, amount=generator.AMOUNT_OS, extra=number)

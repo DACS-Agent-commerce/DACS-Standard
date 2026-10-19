@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 184 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 197 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -92,7 +92,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 173 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 176 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1247,7 +1247,7 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-184 candidate vectors pin native-DEM settlement on execution, not inclusion.
+197 candidate vectors pin native-DEM settlement on execution, not inclusion.
 The node's status index may label a transaction `included` while its
 transaction record is `failed`, so the index is never decisive. Records use
 the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
@@ -1261,7 +1261,7 @@ package; the live records are observations, not that pin.
 A `classify-execution` case passes only for a record from a pinned node that
 decodes and whose projected hash, nonce, sender, recipient and OS amount
 equal the retained signed transfer, whose block equals the inclusion
-observation, whose status is exactly `confirmed`, and whose committed payment debit and payee credit have independently authenticated state-transition authority. The live confirmed RPC sample remains indeterminate without that authority. A record bound the same
+observation, whose status is exactly `confirmed`, and whose committed payment debit and payee credit have independently authenticated state-transition authority. That authority must name the phase's pinned `network` (`networkId`, `genesisHash`) and the inclusion observation's `blockId`; one from another network, genesis or block ID at the same height, or one with no observed block ID to compare, is `indeterminate`. The live confirmed RPC sample remains indeterminate without that authority. A record bound the same
 way with status `failed` is a durable `permanent` failure without
 `settlementFinality`. Missing, unavailable, pending, aliased, case-variant,
 mismatched, undecodable (missing, boolean, fractional or leading-zero
@@ -1277,6 +1277,10 @@ and recover a confirmed transfer by re-reading the retained hash.
 `apr-reconciliation-evidence` cases accept a DEM-4 proof as APR
 `closed-cannot-settle` evidence only when FV-5 authenticates its failed record
 at the `bft-final` inclusion; a plain RPC read is `indeterminate`.
+`pre-sign-gate` cases check DEM-1 before demosdk `pay()`/`sign()`: their
+input holds no signed transaction, and a binding without pinned nodes or an
+applied-payment authority is `signPermitted: false` with `ok: false` and
+`errorClass: "permanent"`, never `substrate`.
 `broadcast-gate` cases check DEM-1 at the first egress of the signed bytes,
 either the demosdk `confirm` request or the broadcast. They allow that egress
 only for a complete, durable DEM-1 retention for the authenticated phase, under
@@ -1315,7 +1319,7 @@ collides, and an admitted reference that cannot be projected is `error`.
 
 `project-settlement-id` cases derive `demos:{txHash}` from raw references, reject malformed or noncanonical current hashes, and collapse verified legacy spelling. `resolve-settlement-group` derives both raw IDs before grouping: one hash under two jobs, including a canonical and a verified legacy spelling, leaves both indeterminate, while distinct hashes pass. Admitted references retain their raw transaction references rather than a prefiltered same-hash tuple list.
 
-The synthetic `appliedTransfer` attests `txHash`, `blockNumber`, `sender`, `recipient`, `payerDebitOs` and `payeeCreditOs`. Both amounts are canonical OS strings and must equal the payment amount; fees are separate. The FV independent-result signature covers this transition together with the network, block identity and full record. Production authorities must verify committed state application rather than infer it from the record.
+The synthetic `appliedTransfer` attests `networkId`, `genesisHash`, `blockId`, `txHash`, `blockNumber`, `sender`, `recipient`, `payerDebitOs` and `payeeCreditOs`. The handler and consumer cases compare every member: a test requires, on both paths, a refused vector that differs from the passing control in that member alone. Both amounts are canonical OS strings and must equal the payment amount; fees are separate. In the FV corpus the independent-result signature covers this transition together with the network, block identity and full record, and an authenticated transfer that does not decode is `indeterminate`. Production authorities must verify committed state application rather than infer it from the record.
 
 Each vector's `guards` lists exactly the oracle checks whose removal changes
 its result. The test asserts that list for every vector and that every guard

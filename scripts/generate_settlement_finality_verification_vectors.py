@@ -1560,6 +1560,10 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         ("wrong-block", {"blockNumber": 101}, "fail"),
         ("wrong-sender", {"sender": other_key}, "fail"),
         ("wrong-recipient", {"recipient": other_key}, "fail"),
+        # An authenticated transfer that does not decode is no evidence either way.
+        ("extra-member", {"feeOs": "1000000000"}, "indeterminate"),
+        ("numeric-debit", {"payerDebitOs": 5000000000}, "indeterminate"),
+        ("noncanonical-credit", {"payeeCreditOs": "05000000000"}, "indeterminate"),
     ):
         value = demos_record(gcr_edits=[])
         observation = value["context"]["observation"]
@@ -1570,6 +1574,8 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
             proof["appliedTransfer"].update(replacement)
         factory.sign_execution_result(observation)
         vectors.append(case("fv-bft-final-applied-transfer-" + suffix, expected,
+                            "an authenticated applied transfer that does not decode proves nothing"
+                            if suffix in {"extra-member", "numeric-debit", "noncanonical-credit"} else
                             "confirmed and empty edits cannot substitute for an authenticated applied debit and payee credit", value))
 
     # Raw body binding: each contradiction is inside a freshly authenticated block.

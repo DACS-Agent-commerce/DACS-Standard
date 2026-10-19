@@ -23,8 +23,8 @@ say this through those placeholder values.
 
 Both pin the coordinated v0.4 release: the annotated tag `v0.4` named in
 [PROFILE](../../spec/PROFILE.md), at commit `4bb9e48`, with the conformance
-manifest at that commit. They scope each claim to what its cited cases
-exercise, and no capability is exercised fully enough at that pin for a
+manifest at that commit. They scope each claim's result to what its cited
+cases exercise, and no capability is exercised fully enough at that pin for a
 passing claim:
 
 - `fixed-price` cites every golden §8.5.x case that applies to it, but no case
@@ -38,8 +38,9 @@ passing claim:
 - `pay-dem`, with a single candidate case, is `partial` and claimed only as
   `implemented`. No v0.4 case exercises the §9.5.9 procedure, whose step 5
   returns success on the `included` state; a Demos node also reports
-  `included` for a failed transfer. Open draft PR #432 proposes settling only
-  on an executed transaction record, as the
+  `included` for a failed transfer. Open draft PR #432 (head `518d30b`,
+  2026-10-19) proposes settling only on an executed transaction record with
+  independently authenticated applied-payment authority, as the
   [FP-DEM map](../../docs/fp-dem-current-rules.md#known-gaps) records;
 - the `demos-native:DEM` rail is claimed against its DACS-4 §9.4.2 registry
   entry with the `pay-dem` case, as `implemented`. No v0.4 case exercises a
@@ -61,13 +62,19 @@ that is `conformance-tested` reports the whole capability (§14.10), but none
 of its three fixed-price cases exercises the §8.4.1 procedure, PS-1 or PS-2,
 and its PS-3 golden case covers only PS-3's negotiable band-centre clause,
 not the pattern/pricing compatibility. Its fixed-price claim, which names
-PS-3, is therefore `partial` and claimed only as `implemented`, as in the
+PS-1..PS-3, is therefore `partial` and claimed only as `implemented`, as in the
 `fixed-price-pay-dem-*` examples. Its `pay-x402` evidence is
 the single golden pass case `settlement-x402-pass`, which exercises none of
 the X402-1..X402-4 rejection paths in DACS-4 §9.5.7 or the SB-1..SB-3 session
 binding in §9.5.8, so `pay-x402` is `partial` and claimed only as
 `implemented`. Like the DEM rail claims, it claims its `x402:default` rail
 against the §9.4.2 registry entry, since RD-1..RD-5 are rail-author duties.
+
+All the examples follow one rule for `ruleRefs`: an `implemented` claim names
+the rules its role implements, whether or not a cited case exercises them;
+its `result`, the capability's `testStatus` and the cited cases say how much
+of that is tested. So both seller examples name PS-1..PS-3 for fixed-price,
+and the `pay-x402` claim names SB-1..SB-3.
 
 This scoping is the examples' own choice. IM-4 requires only that cited case
 ids exist in the pinned conformance manifest, and the validator does not check

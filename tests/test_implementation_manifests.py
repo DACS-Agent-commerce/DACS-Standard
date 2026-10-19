@@ -122,7 +122,9 @@ class ImplementationManifestTests(unittest.TestCase):
                      "None of the six exercises DV-1..DV-4",
                      "above its 128 KB soft limit; the Demos node itself enforces 1 MiB",
                      "step 5 returns success on the `included` state; a Demos node also reports "
-                     "`included` for a failed transfer. Open draft PR #432"):
+                     "`included` for a failed transfer. Open draft PR #432",
+                     "Open draft PR #432 (head `518d30b`, 2026-10-19) proposes settling only on an executed "
+                     "transaction record with independently authenticated applied-payment authority"):
             self.assertIn(text, flat)
 
     def test_x402_example_makes_no_passing_claim(self):
@@ -137,7 +139,7 @@ class ImplementationManifestTests(unittest.TestCase):
         fixed = next(claim for claim in manifest["claims"] if claim["capabilityRefs"] == ["fixed-price"])
         capability = next(cap for cap in manifest["capabilities"] if cap["ref"] == "fixed-price")
         self.assertEqual((fixed["result"], fixed["ruleRefs"], capability["testStatus"]),
-                         ("implemented", ["PS-3"], "partial"))
+                         ("implemented", ["PS-1", "PS-2", "PS-3"], "partial"))
         cases = {case for ref in fixed["evidenceRefs"] for case in runs[ref]["caseIds"]}
         self.assertIn("neg-ps3-fixed-over-negotiable", cases)
         self.assertEqual({tiers[case] for case in cases}, {"golden"})
@@ -172,6 +174,27 @@ class ImplementationManifestTests(unittest.TestCase):
         self.assertIn("| x402:default | pay-x402 |", git_show(manifest["profile"]["commit"], "spec/DACS-4-SETTLE.md")
                       .split("#### 9.4.2 ", 1)[1].split("\n#### ", 1)[0])
         self.assertIn("claims its `x402:default` rail against the §9.4.2 registry entry", " ".join(readme.split()))
+
+    def test_examples_share_one_rule_for_implemented_rule_refs(self):
+        # An implemented claim names the rules its role implements; the result,
+        # testStatus and cited cases say how much is tested. So the two seller
+        # examples name the same PS-* rules although no cited case exercises PS-1 or PS-2.
+        fixed_price = {}
+        for name in ("fixed-price-x402-seller.json", "fixed-price-pay-dem-seller.json"):
+            manifest = load_example(name)
+            claim = next(claim for claim in manifest["claims"] if claim["capabilityRefs"] == ["fixed-price"])
+            self.assertEqual((claim["result"], claim["roles"]), ("implemented", ["seller"]), name)
+            fixed_price[name] = sorted(rule for rule in claim["ruleRefs"] if rule.startswith("PS-"))
+        self.assertEqual(list(fixed_price.values()), [["PS-1", "PS-2", "PS-3"]] * 2, fixed_price)
+        pay_x402 = next(claim for claim in load_example()["claims"] if claim["capabilityRefs"] == ["pay-x402"])
+        self.assertEqual(pay_x402["ruleRefs"], ["DACS-4-9.5.7", "SB-1", "SB-2", "SB-3"])
+        flat = " ".join((EXAMPLE_DIR / "README.md").read_text(encoding="utf-8").split())
+        for text in ("All the examples follow one rule for `ruleRefs`: an `implemented` claim names the rules "
+                     "its role implements, whether or not a cited case exercises them;",
+                     "So both seller examples name PS-1..PS-3 for fixed-price, and the `pay-x402` claim names "
+                     "SB-1..SB-3.",
+                     "Its fixed-price claim, which names PS-1..PS-3, is therefore `partial`"):
+            self.assertIn(text, flat)
 
     def seller_example(self):
         manifest = load_example("fixed-price-pay-dem-seller.json")

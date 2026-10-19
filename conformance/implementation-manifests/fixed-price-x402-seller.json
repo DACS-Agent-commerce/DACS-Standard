@@ -35,7 +35,7 @@
       "roles": ["seller"],
       "modules": ["DACS-3"],
       "capabilityRefs": ["fixed-price"],
-      "ruleRefs": ["PS-3"],
+      "ruleRefs": ["PS-1", "PS-2", "PS-3"],
       "evidenceRefs": ["fixed-price-vectors"]
     },
     {

@@ -198,14 +198,18 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
                 table_rows(self.text, "## Known gaps")}
         kind, sections, what = rows["#432"]
         self.assertEqual((kind, sections), ("draft PR", "§9.5.9, §9.5.1, §9.5.8, §9.7.0"))
-        self.assertIn("executed transaction record", what)
+        # A draft PR moves, so its summary names the head and date it describes.
+        self.assertTrue(what.startswith("At head `518d30b` (2026-10-19): "), what)
+        self.assertIn("executed transaction record (status `confirmed`, carrying the edits of its send)", what)
+        self.assertIn("independently authenticated applied-payment authority (DEM-1..DEM-7)", what)
         self.assertIn("`included` status is not settlement", what)
         settle = self.sources["DACS-4-SETTLE.md"].split("#### 9.5.9 pay-dem", 1)[1].split("\n#### ", 1)[0]
         self.assertIn("5. On the transaction reaching the terminal **`included`** state", settle)
         note = self.text.split("#432 concerns the payment step itself.", 1)[1].split("\n\n", 1)[0]
         note = " ".join(note.split())
         for text in ("§9.5.9 step 5 returns success once the transfer reaches the terminal `included` state",
-                     "`kynesyslabs/node` at `61b8e75aa8db5e408c49e1c3a89db4d673f45578`",
+                     "`kynesyslabs/node` at `61b8e75aa8db5e408c49e1c3a89db4d673f45578` (on its "
+                     "`stabilisation` line, not the default `testnet` branch)",
                      "`@kynesyslabs/demosdk` 4.0.16 (npm integrity `sha512-",
                      "report a failed transfer as settled",
                      "an observation of a live node, not a pin",
@@ -214,7 +218,7 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
         self.assertIn("other\nthan the pull request adding this map were enumerated on 2026-10-18", self.text)
 
     def test_gaps_record_the_storage_program_cap_difference(self):
-        # The pin says 128 KB in four places; the pinned node and SDK enforce
+        # The pin's spec says 128 KB in four places and two docs repeat it; the pinned node and SDK enforce
         # 1 MiB, and draft PR #426 restates 128 KB as a stricter DACS soft limit.
         delivery = self.sources["DACS-4-SETTLE.md"].split("#### 9.6.1 ", 1)[1].split("\n#### ", 1)[0]
         self.assertIn("Storage Programs have a 128 KB cap", delivery)
@@ -233,9 +237,24 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
                      "DACS-5 §10.4.2 (bundles MUST fit within it), in DEMOS-MAPPING §A.2 (\"128 KB cap\") "
                      "and in the GLOSSARY entry for Storage Program (\"128 KB soft cap\")",
                      "The Demos node enforces 1 MiB (`STORAGE_PROGRAM_MAX_SIZE_BYTES = 1048576`",
-                     "Open draft PR #426 proposes stating 128 KB in all four places as a DACS soft limit "
-                     "of 131,072 bytes, stricter than the 1 MB substrate cap"):
+                     "at `kynesyslabs/node` `61b8e75`, `stabilisation` line)",
+                     "Two non-normative docs also say \"128 KB cap\" in their SR-2 rows: "
+                     "`docs/builders-guide.md` and `docs/flow-trace.md`.",
+                     "Open draft PR #426 (head `b2d32bb`, 2026-10-19) proposes stating 128 KB in all four "
+                     "places as a DACS soft limit of 131,072 bytes, stricter than the 1 MB substrate cap, "
+                     "rewrites both docs the same way"):
             self.assertIn(text, gaps)
+        # Those are every 128 KB statement at the pin: four in spec/, two in docs/.
+        listed = subprocess.run(["git", "-C", str(ROOT), "grep", "-l", "128 KB", PIN, "--", "spec", "docs"],
+                                capture_output=True, text=True, check=True).stdout.split()
+        self.assertEqual(sorted(name.split(":", 1)[1] for name in listed),
+                         ["docs/builders-guide.md", "docs/flow-trace.md", "spec/DACS-4-SETTLE.md",
+                          "spec/DACS-5-VERIFY.md", "spec/DEMOS-MAPPING.md", "spec/GLOSSARY.md"])
+        for name in ("builders-guide.md", "flow-trace.md"):
+            doc = subprocess.run(["git", "-C", str(ROOT), "show", f"{PIN}:docs/{name}"],
+                                 capture_output=True, text=True, check=True).stdout
+            row = next(line for line in doc.splitlines() if line.startswith("| **SR-2** Anchored storage"))
+            self.assertIn("128 KB cap", row)
         self.assertNotIn("No open issue tracks the difference.", gaps)
         rows = {number: (kind, sections) for number, kind, sections, _what in
                 table_rows(self.text, "## Known gaps")}

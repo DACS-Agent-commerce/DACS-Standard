@@ -112,24 +112,42 @@ python3 -m unittest tests.test_signature_vector_consistency tests.test_guard_wit
 
 **Signature consistency.** `tests/test_signature_vector_consistency.py` walks
 every JSON file under `conformance/` and checks each signature object whose
-`algorithm` is in the spec's registered enum against CORE §B.7 (SIG-6 spelling,
-64-byte Ed25519, canonical DER low-S `ecdsa-secp256k1`), using the channel
-oracle's checker. A case expecting `error` or `indeterminate` for an unsupported
-or unavailable algorithm must carry a value an implementing verifier accepts,
-and a §B.7-violating value must be expected to `fail` unless the case says it
-is about malformed input; each offender is reported with file, case and reason.
-Fix offenders through their generator; only a released file or an agreed
-follow-up goes in the commented `ALLOWED_OFFENDERS` list, and a stale entry fails.
+`algorithm` is in the spec's registered enum with `tests/signature_encoding.py`,
+which shares its SIG-6 decoder and ECDSA format check with the channel oracle.
+A case is any object carrying `expected` or `verdict`, wherever it sits. The
+check compares each defect with the verdict the case expects and never reads
+case wording:
+
+- a SIG-6 wire defect (CORE §B.7) is found by every verifier, so the case must
+  expect `error`, `fail` or `reject`;
+- a format defect (a 64-byte Ed25519 value; for `ecdsa-secp256k1`, the
+  canonical DER low-S profile the channel corpus pins in its key fixture, which
+  CORE §B.7 does not yet name) is found only by a verifier that checks that
+  format and answers `fail`, so the case must expect `fail` or `reject`.
+  `sr1-aggregate` is checked at the wire stage only.
+
+A corpus whose spec maps every signature failure to one verdict (DACS-1 RSC-7)
+declares it in `SIGNATURE_FAILURE_VERDICTS`. A case where a `key:` claim signs
+under another registered algorithm without expecting a rejection must be listed,
+with its reason, in `KEY_CLAIM_RELABELS`. Each offender is reported with file,
+case, path and reason. Fix offenders through their generator; only a value that
+cannot decide its case, a released file or an agreed follow-up goes in the
+commented `ALLOWED_OFFENDERS` list, scoped to its cases, rules, algorithm and
+values, and a stale entry fails.
 
 **Guard witnesses.** A corpus whose cases are said to catch a rule declares
 `GUARD_WITNESSES` in its test module (case → guard, a context manager that
 removes that guard from the reference, and control cases) and is listed in
 `tests/test_guard_witnesses.py`. Each case must keep its committed verdict with
 the guard and change without it, while the controls keep theirs. A CHANGELOG or
-corpus README paragraph saying each or every case catches its rule must carry
-`<!-- guard-witness-claim: corpus=<set> cases=<a>,<b> [unwitnessed=<c>] -->`
-inside the paragraph; every listed case needs a witness entry and every case the
-paragraph names must be listed, so either add the witness or narrow the claim.
+corpus README paragraph saying each, every or all of its cases catch their rule
+must carry
+`<!-- guard-witness-claim: corpus=<set> cases=<a>,<b> [controls=<c>] -->`
+inside the paragraph. Every listed case needs a witness entry, every `controls`
+case must be a declared control, and every case the paragraph names must be in
+one of the two. `unwitnessed=<d>` only covers a named case in a paragraph that
+makes no such claim; in a claiming paragraph it is refused, so either add the
+witness or narrow the claim.
 
 ```sh
 python3 - <<'PYTEST'

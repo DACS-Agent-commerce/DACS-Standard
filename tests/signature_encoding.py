@@ -1,20 +1,31 @@
-"""Shared CORE §B.7 signature-value encoding checks for the test oracles.
+"""Shared signature-value encoding checks for the test oracles.
 
-One implementation of the SIG-6 wire spelling and of the algorithm-specific
-value formats this repository pins, used by the canonical channel-message
-oracle (``test_channel_message_vectors.verify_algorithm``) and by the
-cross-corpus consistency test (``test_signature_vector_consistency``).
+The canonical channel-message oracle (``test_channel_message_vectors``) and the
+cross-corpus consistency test (``test_signature_vector_consistency``) share the
+SIG-6 decoder and the ECDSA format check below.  A defect has one of two
+stages, which decide the verdicts a case may expect:
 
-* SIG-6 (every algorithm): unpadded RFC 4648 §5 Base64URL whose decoded bytes
-  re-encode to exactly the same string.
-* ``ed25519``: 64 raw bytes (RFC 8032), as pinned by the
-  ``signature-value-encoding-v0.1`` corpus.
-* ``ecdsa-secp256k1``: canonical DER ``SEQUENCE {r, s}`` with
-  ``1 <= r < n`` and low-S ``1 <= s <= n/2``, as pinned by the channel corpus
-  (``signatureEncoding: canonical-DER-low-S``).  A 64-byte fixed-width
-  ``r || s`` value is not DER and is rejected.
-* ``sr1-aggregate``: the SR-1 aggregate format is substrate-defined, so only
-  the SIG-6 wire spelling is checked here.
+* ``wire`` — CORE §B.7 SIG-6, every algorithm: the value is not unpadded
+  RFC 4648 §5 Base64URL whose decoded bytes re-encode to exactly the same
+  string.  Every verifier finds this before any algorithm or key question.
+* ``format`` — the decoded bytes are not the algorithm's signature format.
+  CORE §B.7 leaves "decoded length and internal signature format"
+  algorithm-specific and requires a verifier to validate them; it does not
+  name the formats.  The formats checked here are the ones this repository
+  pins:
+
+  * ``ed25519``: 64 raw bytes (RFC 8032 §5.1.6), as the
+    ``signature-value-encoding-v0.1`` corpus pins;
+  * ``ecdsa-secp256k1``: canonical DER ``SEQUENCE {r, s}`` with
+    ``1 <= r < n`` and low-S ``1 <= s <= n/2`` (n from SEC 2 §2.4.1), the
+    profile the channel corpus pins in its authenticated key fixture
+    (``signatureEncoding: canonical-DER-low-S``).  No spec text states it for
+    every envelope yet; open PR #426 proposes that §B.7 text.  A 64-byte
+    fixed-width ``r || s`` value is not DER and is a format defect;
+  * ``sr1-aggregate``: the SR-1 aggregate format is substrate-defined, so only
+    the wire stage is checked.  (The channel oracle verifies its own
+    ``sr1-aggregate`` fixture as a 64-byte Ed25519 signature; that is the
+    channel corpus's fixture model, not an SR-1 format rule.)
 """
 from __future__ import annotations
 
@@ -30,9 +41,14 @@ BASE64URL = re.compile(r"^[A-Za-z0-9_-]+$")
 SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 ED25519_SIGNATURE_BYTES = 64
 CHECKED_ALGORITHMS = frozenset({"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
-# Signature-envelope type lines such as
+WIRE = "wire"
+FORMAT = "format"
+# Signature-envelope type members such as
 #   algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
-ALGORITHM_UNION = re.compile(r'^\s*algorithm:\s*("[^"]+"(?:\s*\|\s*"[^"]+")*)', re.M)
+# including `algorithm?:` and unions continued on following `|` lines.
+ALGORITHM_MEMBER = re.compile(r"^\s*algorithm\??\s*:(.*)$")
+UNION_CONTINUATION = re.compile(r"^\s*\|")
+STRING_LITERAL = re.compile(r'"([^"]+)"')
 
 
 def decode_b64url(value):
@@ -62,27 +78,60 @@ def ecdsa_secp256k1_format_violation(signature):
     return None
 
 
-def signature_value_violation(algorithm, value):
-    """Return why ``value`` breaks CORE §B.7 for ``algorithm``, else ``None``."""
+def signature_value_defect(algorithm, value):
+    """Return ``(stage, reason)`` for a defective ``value``, else ``None``.
+
+    ``stage`` is ``WIRE`` (SIG-6 spelling) or ``FORMAT`` (decoded bytes are
+    not ``algorithm``'s pinned signature format).
+    """
     if algorithm not in CHECKED_ALGORITHMS:
-        raise ValueError("no CORE §B.7 value checker for %r" % (algorithm,))
+        raise ValueError("no signature value checker for %r" % (algorithm,))
     try:
         raw = decode_b64url(value)
     except ValueError as exc:
-        return "SIG-6: %s" % exc
+        return WIRE, "SIG-6: %s" % exc
     if algorithm == "ed25519" and len(raw) != ED25519_SIGNATURE_BYTES:
-        return "ed25519 value decodes to %d bytes, not 64" % len(raw)
+        return FORMAT, "ed25519 value decodes to %d bytes, not 64" % len(raw)
     if algorithm == "ecdsa-secp256k1":
         violation = ecdsa_secp256k1_format_violation(raw)
         if violation is not None:
-            return "ecdsa-secp256k1 value: %s" % violation
+            return FORMAT, "ecdsa-secp256k1 value: %s" % violation
     return None
 
 
+def algorithm_unions(text):
+    """Yield the literal set of every ``algorithm`` type member in ``text``.
+
+    Raises ``ValueError`` for an ``algorithm`` member whose type is not a union
+    of string literals, so a registration this parser cannot read fails
+    instead of silently registering nothing.
+    """
+    lines = text.splitlines()
+    for number, line in enumerate(lines):
+        match = ALGORITHM_MEMBER.match(line)
+        if match is None:
+            continue
+        union = [match.group(1)]
+        for following in lines[number + 1:]:
+            if not UNION_CONTINUATION.match(following):
+                break
+            union.append(following)
+        joined = " ".join(union).strip().rstrip(";,").strip()
+        literals = STRING_LITERAL.findall(joined)
+        if not literals or re.sub(r'"[^"]+"|\|', "", joined).strip():
+            raise ValueError(
+                "line %d: cannot read the algorithm member %r" % (number + 1, line.strip())
+            )
+        yield frozenset(literals)
+
+
 def registered_signature_algorithms(root=ROOT):
-    """Union of every ``algorithm:`` envelope enum in the published spec."""
+    """Union of every ``algorithm`` envelope enum in the published spec."""
     found = set()
     for path in sorted((root / "spec").glob("*.md")):
-        for union in ALGORITHM_UNION.findall(path.read_text(encoding="utf-8")):
-            found.update(re.findall(r'"([^"]+)"', union))
+        try:
+            for union in algorithm_unions(path.read_text(encoding="utf-8")):
+                found.update(union)
+        except ValueError as exc:
+            raise ValueError("%s: %s" % (path.name, exc)) from None
     return frozenset(found)

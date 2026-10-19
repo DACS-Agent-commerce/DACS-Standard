@@ -184,8 +184,8 @@ class GuardWitnessTests(unittest.TestCase):
             "\n<!-- guard-witness-claim: %s cases=buyer-seller-role-rebinding -->" % lab
         )
         self.assertEqual(
-            ["X.md:1: names missing-era-proof, which the marker neither lists "
-             "as witnessed nor as unwitnessed"],
+            ["X.md:1: names missing-era-proof, which the marker lists neither "
+             "as witnessed nor as a control"],
             guard_witness.claim_problems({"X.md": omitted}, reg),
         )
         glob = (
@@ -201,6 +201,74 @@ class GuardWitnessTests(unittest.TestCase):
                     {"X.md": "text <!-- guard-witness-claim: %s -->" % bad}, reg
                 )))
 
+    def test_unwitnessed_cases_contradict_a_claim(self):
+        # The PDE paragraph as reviewed: "each ... fails at the
+        # delivery-signature guard" while the marker left the two
+        # binding-only cases unwitnessed. Removing PDE-2 leaves them `fail`,
+        # so the claim was false and the marker must not certify it.
+        reg = registry()
+        corpus = "corpus=phase-bound-delivery-evidence-v0.7"
+        coherent = (
+            "credential-ref-anchor-locator-signature-mutation,"
+            "credential-ref-content-hash-signature-mutation,"
+            "credential-ref-signer-signature-mutation,"
+            "credential-access-model-signature-mutation,"
+            "credential-cleartext-hash-signature-mutation"
+        )
+        binding_only = (
+            "credential-ref-anchor-kind-signature-mutation,"
+            "credential-renewal-seq-signature-mutation"
+        )
+        claim = (
+            "- adds seven `credential-*-signature-mutation` cases. Each keeps a "
+            "valid bundle and fails at the delivery-signature guard, so "
+            "skipping the delivery signature turns them into `pass`.\n"
+        )
+        reviewed = claim + "  <!-- guard-witness-claim: %s cases=%s unwitnessed=%s -->" % (
+            corpus, coherent, binding_only,
+        )
+        self.assertEqual(
+            ["X.md:1: claims each case catches its rule but leaves %s unwitnessed; "
+             "witness it, list it as a control, or narrow the claim" % name
+             for name in binding_only.split(",")],
+            guard_witness.claim_problems({"X.md": reviewed}, reg),
+        )
+        # Naming them as declared controls is backed: the harness shows the
+        # PDE-2 removal leaves them `fail`.
+        controlled = claim + "  <!-- guard-witness-claim: %s cases=%s controls=%s -->" % (
+            corpus, coherent, binding_only,
+        )
+        self.assertEqual([], guard_witness.claim_problems({"X.md": controlled}, reg))
+        # A control that is not declared as one is refused.
+        undeclared = claim + "  <!-- guard-witness-claim: %s cases=%s controls=%s,%s -->" % (
+            corpus, coherent, binding_only, "delivery-signature-mutation",
+        )
+        self.assertEqual(
+            ["X.md:1: control delivery-signature-mutation is not a declared control"],
+            guard_witness.claim_problems({"X.md": undeclared}, reg),
+        )
+        # Outside a claiming paragraph `unwitnessed=` still just covers a name.
+        plain = (
+            "The `credential-ref-anchor-kind-signature-mutation` case changes "
+            "only the binding leaf.\n<!-- guard-witness-claim: %s cases=%s "
+            "unwitnessed=credential-ref-anchor-kind-signature-mutation -->"
+            % (corpus, "credential-ref-signer-signature-mutation")
+        )
+        self.assertEqual([], guard_witness.claim_problems({"X.md": plain}, reg))
+
+    def test_harness_compares_the_declared_set(self):
+        with tempfile.TemporaryDirectory() as directory:
+            witnesses = self._toy_witnesses(
+                directory, {"rule-violation": "rule"},
+                {"rule": lambda: _toy_off("rule")}, {"rule": ("control",)},
+            )
+            document = json.loads(witnesses.path.read_text(encoding="utf-8"))
+            document["set"] = "toy-v2"
+            witnesses.path.write_text(json.dumps(document), encoding="utf-8")
+            [problem] = guard_witness.witness_failures(witnesses)
+            self.assertIn("does not name", problem)
+            self.assertIn("'toy-v2'", problem)
+
     def test_claim_detector_recognises_witness_phrasings(self):
         for text in (
             "Each new case is one a verifier ignoring its rule gets wrong.",
@@ -208,6 +276,14 @@ class GuardWitnessTests(unittest.TestCase):
             "Every added case pins its rule.",
             "Each case fails, and skipping the signature check turns them into `pass`.",
             "Each negative is replayed against a verifier missing only its named LAB guard.",
+            # The two corpus README claims the reviewed head left unmarked.
+            "Five named non-passing cases each isolate one LAB guard:",
+            "Each negative carries otherwise valid signed bundles, bindings and "
+            "finalized receipts: a verifier that omits only its named guard accepts it.",
+            "Every new case fails only when its guard is removed.",
+            "Each added case is rejected by exactly one guard; removing that "
+            "guard makes it pass.",
+            "All five negatives catch their rule.",
         ):
             with self.subTest(text=text):
                 self.assertTrue(guard_witness.is_witness_claim(text))

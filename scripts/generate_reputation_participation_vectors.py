@@ -762,6 +762,21 @@ def rating_changed(
     return item
 
 
+def ecdsa_fixture_value(unsigned: dict) -> str:
+    """A canonical DER low-S ecdsa-secp256k1 value over the channel payload.
+
+    Signed by the public channel-corpus secp256k1 fixture key, which no
+    resolver binds to the buyer claim, so the value has no wire or format
+    defect but authenticates nobody here.  It removes only the encoding
+    question: the signer stays the buyer's ``key:`` (Ed25519) claim, so the
+    `indeterminate` verdicts that use it assume a resolver that does not
+    implement ecdsa-secp256k1, as their notes say.
+    """
+    return b64url(deterministic_ecdsa_signature(
+        (CHANNEL_DOMAIN + artifact_hash(unsigned)).encode("ascii")
+    ))
+
+
 def channel_changed(base: dict, mutate, *, algorithm: str = "ed25519") -> dict:
     item = copy.deepcopy(base)
     unsigned = copy.deepcopy(item["authenticatedChannelMessages"][0])
@@ -770,14 +785,7 @@ def channel_changed(base: dict, mutate, *, algorithm: str = "ed25519") -> dict:
     message = sign_artifact(unsigned, BUYER_KEY, BUYER, CHANNEL_DOMAIN)
     message["signature"]["algorithm"] = algorithm
     if algorithm == "ecdsa-secp256k1":
-        # An unavailable registered algorithm still carries a value CORE §B.7
-        # accepts, so a verifier implementing it cannot answer `fail` on the
-        # encoding: canonical DER low-S over the same payload, signed by the
-        # public channel-corpus secp256k1 fixture key, which no resolver
-        # binds to the buyer claim.
-        message["signature"]["value"] = b64url(deterministic_ecdsa_signature(
-            (CHANNEL_DOMAIN + artifact_hash(unsigned)).encode("ascii")
-        ))
+        message["signature"]["value"] = ecdsa_fixture_value(unsigned)
     item["authenticatedChannelMessages"] = [message]
     admission = item["participationEvidence"]["admission"]
     admission["obligation"]["source"]["messageHash"] = artifact_hash(message)
@@ -1074,6 +1082,7 @@ def build_vectors() -> list[dict]:
         unrelated_unsigned, BUYER_KEY, BUYER, CHANNEL_DOMAIN
     )
     unrelated_unavailable["signature"]["algorithm"] = "ecdsa-secp256k1"
+    unrelated_unavailable["signature"]["value"] = ecdsa_fixture_value(unrelated_unsigned)
     unrelated_sources["authenticatedChannelMessages"].append(unrelated_unavailable)
     vectors.append(vector(
         "spa-rfq-unrelated-malformed-and-unavailable-sources-ignored", "pass",

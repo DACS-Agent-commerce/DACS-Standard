@@ -20,13 +20,18 @@ its committed verdict), then with the guard removed: every witness case must
 give a different verdict and every control must keep its own, so a removal
 that breaks the reference wholesale does not count.
 
-A CHANGELOG or corpus README paragraph that says each/every case catches its
-rule must carry a marker naming the corpus and the witnessed cases::
+A CHANGELOG or corpus README paragraph that says each/every/all of its cases
+catch their rule must carry a marker naming the corpus and the witnessed
+cases::
 
-    <!-- guard-witness-claim: corpus=<set> cases=<a>,<b> [unwitnessed=<c>] -->
+    <!-- guard-witness-claim: corpus=<set> cases=<a>,<b> [controls=<c>] -->
 
-Every listed case needs a witness entry, and every backticked case name (or
-``*`` glob) in that paragraph must appear in ``cases`` or ``unwitnessed``.
+Every listed case needs a witness entry, every ``controls`` case must be a
+declared control (so the harness shows the guard removal leaves it unchanged),
+and every backticked case name (or ``*`` glob) in that paragraph must appear
+in ``cases`` or ``controls``.  ``unwitnessed=<d>`` covers a named case in a
+paragraph that makes no such claim; in a claiming paragraph it contradicts the
+claim and is refused, so narrow the claim or add the witness.
 """
 from __future__ import annotations
 
@@ -56,8 +61,10 @@ class CorpusWitnesses:
 def witness_failures(witnesses):
     """Return every reason the declared witnesses do not hold (empty if they do)."""
     problems = []
-    if Path(witnesses.path).stem != witnesses.corpus:
-        problems.append("corpus %r does not name %s" % (witnesses.corpus, witnesses.path))
+    declared_set = json.loads(Path(witnesses.path).read_text(encoding="utf-8")).get("set")
+    if not witnesses.corpus == Path(witnesses.path).stem == declared_set:
+        problems.append("corpus %r does not name %s (set %r)"
+                        % (witnesses.corpus, witnesses.path, declared_set))
     vectors = witnesses.vectors()
     for name in [*witnesses.cases, *(c for cs in witnesses.controls.values() for c in cs)]:
         if name not in vectors:
@@ -98,15 +105,19 @@ def witness_failures(witnesses):
 
 
 # A paragraph claims its cases catch their rule when it quantifies over them
-# (each/every) and uses one of these phrasings.
-CLAIM_QUANTIFIER = re.compile(r"\b(?:each|every)\b", re.IGNORECASE)
+# (each/every/all) and uses one of these phrasings.
+CLAIM_QUANTIFIER = re.compile(r"\b(?:each|every|all)\b", re.IGNORECASE)
+_GUARD = r"(?:own\s+|named\s+)?(?:[\w-]+\s+)?(?:rule|guard|check)"
 CLAIM_PHRASE = re.compile(
     r"\bgets?\s+(?:it\s+|them\s+)?wrong\b"
-    r"|\bverifier\s+(?:that\s+)?(?:ignor|skipp|omitt|dropp|miss|lack)\w*\b[^.;]{0,60}?\b(?:rule|guard|check)"
+    r"|\bverifier\s+(?:that\s+)?(?:ignor|skip|omit|drop|miss|lack)\w*\b[^.;]{0,60}?\b(?:rule|guard|check)"
     r"|\bmissing\s+only\s+(?:its|their)\b[^.;]{0,30}?\b(?:rule|guard|check)"
-    r"|\b(?:skipping|removing|dropping|disabling|ignoring)\b[^.;]{0,60}?\bturns\s+(?:it|them|each)\b"
-    r"|\b(?:catch|catches|pin|pins|witness|witnesses|isolate|isolates)\s+(?:its|their)\s+(?:own\s+|named\s+)?(?:[\w-]+\s+)?(?:rule|guard)\b"
-    r"|\bonly\s+by\s+(?:its|their)\s+(?:own\s+|named\s+)?(?:[\w-]+\s+)?(?:rule|guard)\b",
+    r"|\b(?:skipping|removing|dropping|disabling|ignoring)\b[^.;]{0,60}?\b(?:turns|makes)\s+(?:it|them|each)\b"
+    r"|\b(?:catch|catches|pin|pins|witness|witnesses|isolate|isolates)\s+"
+    r"(?:its|their|one|exactly\s+one)\s+" + _GUARD + r"\b"
+    r"|\bonly\s+by\s+(?:its|their)\s+" + _GUARD + r"\b"
+    r"|\bby\s+exactly\s+one\s+(?:rule|guard|check)\b"
+    r"|\bonly\s+when\s+(?:its|their)\s+" + _GUARD + r"\s+(?:is|are)\s+(?:removed|dropped|skipped|disabled)\b",
     re.IGNORECASE,
 )
 MARKER = re.compile(r"<!--\s*guard-witness-claim:(.*?)-->", re.DOTALL)
@@ -152,12 +163,16 @@ def parse_marker(body):
         if not sep or key in fields:
             raise ValueError("malformed guard-witness-claim token %r" % token)
         fields[key] = value
-    unknown = set(fields) - {"corpus", "cases", "unwitnessed"}
+    unknown = set(fields) - {"corpus", "cases", "controls", "unwitnessed"}
     if unknown or "corpus" not in fields or not fields.get("cases"):
-        raise ValueError("guard-witness-claim needs corpus= and cases= only")
+        raise ValueError(
+            "guard-witness-claim needs corpus= and cases=, and allows only "
+            "controls= and unwitnessed="
+        )
     return (
         fields["corpus"],
         [c for c in fields["cases"].split(",") if c],
+        [c for c in fields.get("controls", "").split(",") if c],
         [c for c in fields.get("unwitnessed", "").split(",") if c],
     )
 
@@ -173,14 +188,15 @@ def claim_problems(documents, registry):
         for line, block in markdown_blocks(text):
             where = "%s:%d" % (label, line)
             markers = MARKER.findall(block)
-            if is_witness_claim(block) and not markers:
+            claim = is_witness_claim(block)
+            if claim and not markers:
                 problems.append(
                     "%s: claims each case catches its rule but has no "
                     "guard-witness-claim marker" % where
                 )
             for body in markers:
                 try:
-                    corpus, cases, unwitnessed = parse_marker(body)
+                    corpus, cases, controls, unwitnessed = parse_marker(body)
                 except ValueError as exc:
                     problems.append("%s: %s" % (where, exc))
                     continue
@@ -191,13 +207,23 @@ def claim_problems(documents, registry):
                 if corpus not in names_by_corpus:
                     names_by_corpus[corpus] = set(witnesses.vectors())
                 names = names_by_corpus[corpus]
+                declared_controls = {c for cs in witnesses.controls.values() for c in cs}
                 for case in cases:
                     if case not in witnesses.cases:
                         problems.append("%s: %s has no guard witness entry" % (where, case))
+                for case in controls:
+                    if case not in declared_controls:
+                        problems.append("%s: control %s is not a declared control" % (where, case))
                 for case in unwitnessed:
                     if case not in names:
                         problems.append("%s: unwitnessed %s is not a %s case" % (where, case, corpus))
-                covered = set(cases) | set(unwitnessed)
+                    elif claim:
+                        problems.append(
+                            "%s: claims each case catches its rule but leaves %s "
+                            "unwitnessed; witness it, list it as a control, or "
+                            "narrow the claim" % (where, case)
+                        )
+                covered = set(cases) | set(controls) | set(unwitnessed)
                 for token in BACKTICKED.findall(MARKER.sub(" ", block)):
                     named = fnmatch.filter(names, token) if "*" in token else (
                         [token] if token in names else []
@@ -205,7 +231,7 @@ def claim_problems(documents, registry):
                     for case in named:
                         if case not in covered:
                             problems.append(
-                                "%s: names %s, which the marker neither lists as "
-                                "witnessed nor as unwitnessed" % (where, case)
+                                "%s: names %s, which the marker lists neither as "
+                                "witnessed nor as a control" % (where, case)
                             )
     return problems

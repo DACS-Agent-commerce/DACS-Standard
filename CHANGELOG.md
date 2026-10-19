@@ -13,36 +13,53 @@ The format used per release:
 
 ## [Unreleased]
 
-### Fixed — verifier-independent signature vectors and corpus-wide CI checks
+### Fixed — signature-value encoding in SPA vectors and corpus-wide CI checks
 
-- **Registered-algorithm "unavailable" vectors carry valid values** (CORE §B.7
-  SIG-6; DACS-5 SPA; DACS-1 RSC) — without changing any verdict, the
+- **SPA `ecdsa-secp256k1` envelopes carry well-formed values** (DACS-5 SPA;
+  channel-corpus ECDSA profile) — without changing any verdict, the
   `ecdsa-secp256k1` signature in `spa-supported-channel-algorithm-unavailable`
-  (`reputation-participation-admission-v0.7`) and in
-  `rsc-wrong-signature-algorithm` (`revocation-state-completeness-v0.8`) is now
-  a canonical DER low-S value over the same payload, signed with the public
-  channel-corpus secp256k1 fixture key. Both previously held a relabelled
-  64-byte Ed25519 value, which a verifier implementing `ecdsa-secp256k1`
-  rejects as `fail` instead of the expected `indeterminate`. Only those two
-  values and the two set hashes change.
+  and in the unselected source of
+  `spa-rfq-unrelated-malformed-and-unavailable-sources-ignored`
+  (`reputation-participation-admission-v0.7`) is now a canonical DER low-S
+  value over the same payload, signed with the public channel-corpus secp256k1
+  fixture key. Both previously held a relabelled 64-byte Ed25519 value, which
+  is not a DER signature, so a verifier that implements `ecdsa-secp256k1`
+  rejected it on format alone. This removes only the encoding question: the
+  signer is still the buyer's `key:` (Ed25519) claim, so the first case's
+  `indeterminate` still assumes a resolver without `ecdsa-secp256k1`, as its
+  note says, and is not verifier-independent (see the signer-claim inventory
+  below). Only those two values and the set hash change.
 - **Cross-corpus signature consistency check** — a new test walks every
-  committed corpus file and checks each registered-algorithm signature value
-  against CORE §B.7 with the channel oracle's checker. It fails when a
-  capability-dependent case (`error`/`indeterminate` for an unsupported or
-  unavailable algorithm) carries a value an implementing verifier would `fail`,
-  or when a §B.7-violating value is not expected to `fail` and the case does not
-  say it is about malformed input. Three known offenders are listed with their
-  follow-ups: the placeholder values in the modelled
+  committed corpus file and checks each registered-algorithm signature value,
+  then compares the defect with the verdict the case expects; it never reads
+  case wording. A SIG-6 wire defect (CORE §B.7) is found by every verifier, so
+  its case must expect `error`, `fail` or `reject`. A format defect (decoded
+  bytes that are not the algorithm's signature) is found only by a verifier
+  that checks that format and then answers `fail`, so its case must expect
+  `fail` or `reject`. The formats are a 64-byte Ed25519 value and, for
+  `ecdsa-secp256k1`, the canonical DER low-S profile the channel corpus pins in
+  its key fixture; CORE §B.7 leaves formats algorithm-specific and does not
+  yet name that profile. `sr1-aggregate` is checked at the wire stage only. A
+  case is any object carrying `expected` or `verdict`, whatever list or map
+  holds it. `revocation-state-completeness-v0.8` declares DACS-1 RSC-7 (any RSC
+  failure is `indeterminate`). Kept on purpose, each scoped to its rules,
+  algorithm and values: the placeholder values in the modelled
   `legacy-agreement-admission-v0.8` signature objects and the placeholder
   signatures in the released `settlement-evidence-payment-success.json` fixture
-  and `rating-record.json` example.
+  and `rating-record.json` example (each with a follow-up), and the
+  deliberately invalid descriptor copies in `registry-bootstrap-v0.1`. Every
+  case where a `key:` claim signs under another registered algorithm without
+  expecting a rejection is pinned with its reason; three SPA cases there
+  remain verifier-dependent and carry follow-ups.
 - **Guard-witness convention** — a corpus test module can declare, per case,
   the reference guard the case witnesses; CI removes that guard and requires
   the case's verdict to change while declared controls keep theirs. The LAB
   (`current-use-reputation-v1`) and PDE credential signature-bypass witnesses
   use it. A witness claim in the CHANGELOG or a corpus README now has to name
-  its witnessed cases in a `guard-witness-claim` marker, and every named case
-  needs a witness entry. See CONTRIBUTING "Validation".
+  its witnessed cases in a `guard-witness-claim` marker: every listed case
+  needs a witness entry, a case the paragraph names but does not witness must
+  be a declared control, and a claiming paragraph cannot leave a case
+  unwitnessed. See CONTRIBUTING "Validation".
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
@@ -425,14 +442,15 @@ The format used per release:
   `credential-*-signature-mutation` cases to
   `phase-bound-delivery-evidence-v0.7` (150 cases), one for each
   `credentialDelivery` leaf. Each keeps a valid bundle and resolvable reference
-  and fails at the delivery-signature guard. The locator, content-hash,
-  signer, access-model and cleartext-hash cases are otherwise coherent
-  deliveries, so a pinned witness shows that skipping the delivery signature
-  turns them into `pass`. The anchor-kind and renewal cases change only the
-  binding leaf (private delivery admits only a storage-program anchor, and the
-  vectors model no authenticated renewal re-payment), so PDE-5 rejects them as
-  well.
-  <!-- guard-witness-claim: corpus=phase-bound-delivery-evidence-v0.7 cases=credential-ref-anchor-locator-signature-mutation,credential-ref-content-hash-signature-mutation,credential-ref-signer-signature-mutation,credential-access-model-signature-mutation,credential-cleartext-hash-signature-mutation unwitnessed=credential-ref-anchor-kind-signature-mutation,credential-renewal-seq-signature-mutation -->
+  and is rejected by the delivery-signature check. Only the locator,
+  content-hash, signer, access-model and cleartext-hash cases witness that
+  check: they are otherwise coherent deliveries, so a pinned witness shows that
+  skipping the delivery signature turns them into `pass`. The anchor-kind and
+  renewal cases change only the binding leaf (private delivery admits only a
+  storage-program anchor, and the vectors model no authenticated renewal
+  re-payment), so PDE-5 rejects them too and they stay `fail` without the
+  signature check; they are controls, not delivery-signature witnesses.
+  <!-- guard-witness-claim: corpus=phase-bound-delivery-evidence-v0.7 cases=credential-ref-anchor-locator-signature-mutation,credential-ref-content-hash-signature-mutation,credential-ref-signer-signature-mutation,credential-access-model-signature-mutation,credential-cleartext-hash-signature-mutation controls=credential-ref-anchor-kind-signature-mutation,credential-renewal-seq-signature-mutation -->
 
 ### Fixed — delivery closure reference validation
 

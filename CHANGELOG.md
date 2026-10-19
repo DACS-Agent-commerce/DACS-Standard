@@ -30,8 +30,8 @@ The format used per release:
   vectors in both corpora cover each spelling the §A.2 profile projects alike:
   a `0x`-prefixed or bare `send` recipient argument (whose credit edit names it
   with a single `0x`), bare or prefixed party keys, a string or integer nonce,
-  and a string or number amount up to 2^53 − 1. The corpora contain 238 pay-dem
-  and 193 settlement-finality cases.
+  and a string or number amount up to 2^53 − 1. The corpora contain 241 pay-dem
+  and 194 settlement-finality cases.
 - The DEMOS-MAPPING §A.2 profile covers only a network whose sealed genesis
   leaves the `gasFeeSeparation` fork unscheduled (`activationHeight: null`).
   With that fork active the pinned node stores fee-distribution edits before
@@ -64,7 +64,26 @@ The format used per release:
   clause is removed; another release needs a profile revision.
 - DEM-7 SB-2 derives the SB-1 identifier of every admitted reference before
   comparing, collapsing verified legacy spellings. An admitted reference
-  without an identifier is `error`, never skipped. Only an FV-5-authenticated
+  without an identifier is `error`, never skipped. Every consumer applies
+  SB-2 over its presented evidence set, as SB-2 scopes it: only the payee's
+  check before delivery adds its own earlier `pay-dem` admissions, which it
+  presents as input to that check. Settlement accounting, including the
+  DACS-5 derivation, never adds unpresented history, so a re-run reproduces
+  its result from its own contents. DEM-3 defines
+  settlement accounting as a consumer's counting of evidence as the payment
+  of its `(jobId, phaseIndex)`. The new `sb2-demos-unpresented-admission-not-added`
+  vector pins this, and every `resolve-settlement-group` input now carries
+  `consumerAdmissions` (empty unless the case tests it).
+- DEMOS-MAPPING §A.2 no longer restates consumer outcomes that DEM-7 decides:
+  a fee-separated record, or one on a network whose genesis was replaced,
+  never establishes payment, and DEM-7 decides an authenticated contradicting
+  authority `fail` whatever the record's edits, as both oracles already did.
+  New `*-fee-separated-edits-uncommitted-payment` vectors on the handler,
+  consumer and FV paths pin this order. DEM-6 names no resume of a terminal
+  session: after `failed-substrate`, or `settle-failed` after DEM-4, a read of
+  the retained hash is a post-terminal read that changes no session state.
+  DEM-1 retains the signed transaction itself, which the broadcast's
+  validity response is compared with. Only an FV-5-authenticated
   bound `failed` record makes consumer evidence `fail`; a plain RPC read of
   one is `indeterminate`.
 - DEM-1 holds at the signed transaction's first egress: any call that carries
@@ -1209,8 +1228,9 @@ The format used per release:
   `pay-dem` previously returned success once the transaction reached
   `included`. The Demos status index can label a transaction `included` while
   its transaction record is `failed`, so a failed transfer could count as
-  payment. Before its only broadcast, a handler now durably retains the signed
-  hash, nonce, sender, recipient and OS amount for the authenticated
+  payment. Before the signed transaction first leaves it, a handler now
+  durably retains it with its hash, nonce, sender, recipient and OS amount
+  for the authenticated
   `(jobId, phaseIndex)`. The sender is the payer's paying key, the recipient
   is the payee address and the amount is the phase amount, and the retained
   values must equal the signed transaction's, whose hash and Ed25519
@@ -1227,8 +1247,9 @@ The format used per release:
   or send a replacement transfer (DEM-6). Consumers, including the payee
   before delivery, and FV-5 require the same confirmed binding (DEM-7). DEM-7
   alone authorizes no delivery. `pay-dem` is listed among the §9.5.8 rails
-  without session binding, so consumers apply SB-2 to `demos:{txHash}` across
-  every evidence set they have admitted.
+  without session binding, so the payee's check before delivery applies SB-2
+  to `demos:{txHash}` over the evidence together with its own earlier
+  admissions; other consumers apply it over their presented set.
 - **Demos native-send record profile** (Demos mapping §A.2) — records are
   compared by projected value, not by JSON member type. The profile maps the
   node's `getTxByHash` members to the hash, nonce, sender, recipient, OS amount
@@ -1245,7 +1266,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 228-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 241-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope
@@ -1258,7 +1279,7 @@ The format used per release:
   (draft hash `da86e204…`), has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
   set is identified by its `hash`, not by its name alone. In
-  `settlement-finality-verification` (176 cases), transaction inclusion and
+  `settlement-finality-verification` (194 cases), transaction inclusion and
   execution-result authentication are verified separately. The fixture uses
   independently pinned threshold result signatures over the full Demos record,
   network, block identity, transaction reference and committed payment debit

@@ -1,18 +1,26 @@
 """Non-normative PC-1 input gate, AMEND-1 target consumer and RTB-1 rail check.
 
-Bindings, the session orchestrator, the session's `startedAt` and pinned
-rail-registry version, the amendment's anchored address, the rail steward and
-the resolver/network pins are verifier-owned arguments, never selected from
-phase input, target members or receipts. Finality uses a synthetic test proof
-profile (`settlement-vector-anchor-finality:`), not a production Demos proof.
-This module makes no live rail calls and implements no refund ledger. A
-`valid` result admits the target under AMEND-1 only. AMEND-2/3, amendment
-writer authorization, and a transition or finality-bound target's §9.7
-reservation or FV-1..FV-10 authority remain the enclosing consumer's
-responsibility. PhaseBinding does not carry the signed Listing's agreement-kind
-selection; the enclosing verifier must enforce that selection and
-require/verify the identityBindingCompanions for either identity-bound
-agreement kind.
+Bindings (including the signed Listing's identity-bound agreement selection),
+the session orchestrator and its native receipt writer, the session's
+`startedAt` and pinned rail-registry version, the amendment's anchored
+address, the rail steward and registry writer, and the resolver/network pins
+are verifier-owned arguments, never selected from phase input, target members
+or receipts. Finality uses a synthetic test proof profile
+(`settlement-vector-anchor-finality:`), not a production Demos proof; its
+`blockRef.timestamp` is CORE SR2-6 consensus time in unix milliseconds.
+Values reach this module as object models: the caller owns CORE CF-5 raw-byte
+admission of resolved artifacts (`raw_json_profile.loads`), and the embedded
+finality proof is admitted here from its own bytes. Only `ed25519` signatures
+are implemented; another registered `ComponentSignature` algorithm leaves the
+decision `indeterminate`. This module makes no live rail calls and implements
+no refund ledger. A `valid` result admits the target under AMEND-1 only.
+AMEND-2/3, amendment writer authorization, and a transition or finality-bound
+target's §9.7 reservation or FV-1..FV-10 authority remain the enclosing
+consumer's responsibility. For an identity-bound agreement PC-1 checks only
+the companion shape; the IBH-1..IBH-5 rerun against the retained Identify/Vet
+admission stays with the enclosing verifier. RTB-1 here covers PA-2
+single-signer rails; PA-1 in-code rails are out of its scope and PA-3
+multisig steward signatures are not modelled.
 """
 from __future__ import annotations
 
@@ -20,6 +28,7 @@ import base64
 import binascii
 import hashlib
 import json
+import math
 import re
 import sys
 import unicodedata
@@ -34,6 +43,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from dacs_reference import cf4_encode  # noqa: E402
 from jcs import canonicalize  # noqa: E402
+import raw_json_profile  # noqa: E402
 
 
 PAYMENT_PHASES = frozenset({
@@ -77,7 +87,7 @@ _CHAIN_FINALITY_KINDS = frozenset({"block-depth", "commitment-level", "bft-final
 _METERED_QUANTITY = re.compile(r"(0|[1-9][0-9]*)\Z")
 
 # Every recognized DACS-4 evidence selector, and the AMEND-1 target arms among
-# them: (signature domain, complete closed arm shape predicate name).
+# them: (signature domain, complete arm shape predicate name).
 EVIDENCE_SELECTORS = (
     "evidenceVersion", "legacyTransitionEvidenceVersion",
     "deliveryEvidenceVersion", "finalityBoundEvidenceVersion",
@@ -98,7 +108,24 @@ REGISTRY_INDEX_ADDRESS = "dacs4:registry:v0.1"
 # authenticates an AnchorReceipt's own fields. Not a DACS wire domain.
 ANCHOR_TEST_DOMAIN = b"settlement-vector-anchor-finality:"
 ANCHOR_TEST_KIND = "test-anchor-finality"
+# Bound on decoded proof bytes, checked before JSON admission.
+MAX_PROOF_BYTES = 64 * 1024
 SAFE_INT_MAX = 2**53 - 1
+# ComponentSignature algorithms (DACS-4 §9.7); only ed25519 is implemented.
+REGISTERED_ALGORITHMS = frozenset({"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
+_IDENTITY_BOUND_SELECTORS = frozenset({
+    "identityBoundAgreementVersion", "identityBoundPayeeAgreementVersion",
+})
+# DACS-4 §9.7 ordinary SettlementEvidence members. The ordinary arm keeps
+# unknown optional members under CORE SIG-5 (older-reads-newer); the
+# transition and finality-bound arms are closed.
+_SETTLEMENT_EVIDENCE_MEMBERS = frozenset({
+    "evidenceVersion", "jobId", "phase", "outcome", "observedAt", "signature",
+    "reason", "paymentTxRefs", "paymentAmount", "paymentFee",
+    "deliverableContentHash", "deliverableAnchor", "attestationRef",
+    "settlementFinality", "amendmentRefs", "supersedesEvidenceRef",
+})
+_HEIGHT = re.compile(r"(0|[1-9][0-9]*)\Z")
 
 
 def _shapes():
@@ -111,18 +138,25 @@ def _shapes():
 
 @dataclass(frozen=True)
 class PhaseBinding:
-    """Authenticated invocation metadata supplied by the enclosing verifier."""
+    """Authenticated invocation metadata supplied by the enclosing verifier.
+
+    `identity_bound` is the signed Listing phase's selection of either
+    identity-bound agreement kind (DACS-4 §9.5.1).
+    """
     phase: str
+    identity_bound: bool = False
 
 
 class InputArmError(ValueError):
     pass
 
 
-def _party_valid(shape, value, key_member: str, *, closed: bool) -> bool:
-    members = {"bundleHash", "primaryClaim", key_member}
-    if (not isinstance(value, dict) or not members <= set(value)
-            or (closed and set(value) != members)
+class InputAuthorityUnavailable(RuntimeError):
+    """§9.5.1: required identity-binding authority is missing: indeterminate."""
+
+
+def _party_valid(shape, value, key_member: str) -> bool:
+    if (not isinstance(value, dict) or not {"bundleHash", "primaryClaim", key_member} <= set(value)
             or not shape._sha256_hex(value["bundleHash"])
             or not shape._claim_reference_shape_valid(value["primaryClaim"])):
         return False
@@ -131,13 +165,29 @@ def _party_valid(shape, value, key_member: str, *, closed: bool) -> bool:
     return shape._nonempty_jcs_string(value["payeeAddress"])
 
 
-def _listing_ref_valid(shape, value, *, closed: bool) -> bool:
-    members = {"listingId", "version", "contentHash"}
-    return (isinstance(value, dict) and members <= set(value)
-            and (not closed or set(value) == members)
+def _listing_ref_valid(shape, value) -> bool:
+    return (isinstance(value, dict) and {"listingId", "version", "contentHash"} <= set(value)
             and shape._nonempty_jcs_string(value["listingId"])
             and shape._safe_nonnegative_integer(value["version"], positive=True)
             and shape._sha256_hex(value["contentHash"]))
+
+
+def _price_term_valid(shape, value) -> bool:
+    """PriceTerm's declared members typed; unknown members stay open (SIG-5)."""
+    return (isinstance(value, dict) and shape._price_term_shape_valid(
+        {key: item for key, item in value.items() if key in {"amount", "currency", "unit"}})
+            and ("unit" not in value or shape._nonempty_jcs_string(value["unit"])))
+
+
+def _attestation_ref_valid(shape, value) -> bool:
+    """AttestationRef's declared members typed; unknown members stay open (SIG-5)."""
+    if not isinstance(value, dict) or not isinstance(value.get("anchor"), dict):
+        return False
+    projected = {key: item for key, item in value.items()
+                 if key in {"anchor", "contentHash", "signer"}}
+    projected["anchor"] = {key: item for key, item in value["anchor"].items()
+                           if key in {"kind", "locator"}}
+    return shape._attestation_ref_shape_valid(projected)
 
 
 def _agreement_valid(shape, value) -> bool:
@@ -160,7 +210,7 @@ def _agreement_valid(shape, value) -> bool:
     channel = value.get("derivedFromChannel")
     metered = terms.get("meteredQuantity") if isinstance(terms, dict) else None
     return (shape._nonempty_jcs_string(value["jobId"])
-            and _listing_ref_valid(shape, value["listingRef"], closed=False)
+            and _listing_ref_valid(shape, value["listingRef"])
             and isinstance(value["parties"], list) and bool(value["parties"])
             and all(isinstance(party, dict)
                     and shape._string_member(party.get("role"),
@@ -168,13 +218,13 @@ def _agreement_valid(shape, value) -> bool:
                     and (shape._sha256_hex(party.get("bundleHash")) if identity_bound
                          else shape._nonempty_jcs_string(party.get("bundleHash")))
                     and shape._claim_reference_shape_valid(party.get("primaryClaim"))
-                    and shape._attestation_ref_shape_valid(party.get("vetRecordRef"))
+                    and _attestation_ref_valid(shape, party.get("vetRecordRef"))
                     and ("encryptionKey" not in party
                          or shape._nonempty_jcs_string(party["encryptionKey"]))
                     for party in value["parties"])
             and isinstance(terms, dict) and {"deliverable", "price", "deadline", "rail"} <= set(terms)
             and _agreement_deliverable_valid(shape, terms["deliverable"])
-            and shape._price_term_shape_valid(terms["price"])
+            and _price_term_valid(shape, terms["price"])
             and shape._safe_nonnegative_integer(terms["deadline"])
             and _payment_rail_ref_valid(shape, terms["rail"])
             and ("meteredQuantity" not in terms
@@ -191,11 +241,11 @@ def _agreement_valid(shape, value) -> bool:
                  and all(_payout_binding_valid(shape, entry) for entry in terms["payoutBindings"])
                  if payout else "payoutBindings" not in terms and "priorPaymentDispositionRef" not in terms)
             and ("priorPaymentDispositionRef" not in terms
-                 or shape._attestation_ref_shape_valid(terms["priorPaymentDispositionRef"]))
+                 or _attestation_ref_valid(shape, terms["priorPaymentDispositionRef"]))
             and (sealed or "selectionReceiptRef" not in value)
             and shape._string_member(value["derivedFromPattern"], {"sealed-envelope"} if sealed
                                      else {"fixed-price", "rfq", "sealed-envelope"})
-            and (not sealed or shape._attestation_ref_shape_valid(value.get("selectionReceiptRef")))
+            and (not sealed or _attestation_ref_valid(shape, value.get("selectionReceiptRef")))
             and shape._safe_nonnegative_integer(value["generatedAt"])
             and isinstance(value["signatures"], list) and bool(value["signatures"])
             and all(isinstance(signature, dict)
@@ -326,7 +376,7 @@ def _chain_finality_valid(shape, value, kind: str | None = None) -> bool:
         return shape._safe_nonnegative_integer(value.get("requiredDepth"), positive=True)
     if value["kind"] == "commitment-level":
         return shape._string_member(value.get("requiredCommitment"), {"processed", "confirmed", "finalized"})
-    return (shape._attestation_ref_shape_valid(value.get("validatorSetRef"))
+    return (_attestation_ref_valid(shape, value.get("validatorSetRef"))
             and all(shape._safe_nonnegative_integer(value.get(key), positive=True)
                     for key in ("quorumNumerator", "quorumDenominator")))
 
@@ -384,7 +434,7 @@ def _session_context_valid(shape, value) -> bool:
             and {"jobId", "listingRef", "recipeRegistryVersion", "railRegistryVersion",
                  "parties", "priorPhaseOutputs", "startedAt"} <= set(value)
             and shape._nonempty_jcs_string(value["jobId"])
-            and _listing_ref_valid(shape, value["listingRef"], closed=False)
+            and _listing_ref_valid(shape, value["listingRef"])
             and shape._safe_nonnegative_integer(value["recipeRegistryVersion"])
             and shape._safe_nonnegative_integer(value["railRegistryVersion"])
             and isinstance(value["parties"], list) and bool(value["parties"])
@@ -393,7 +443,7 @@ def _session_context_valid(shape, value) -> bool:
                     and shape._sha256_hex(party.get("bundleHash"))
                     and shape._claim_reference_shape_valid(party.get("primaryClaim"))
                     and ("vetRecordRef" not in party
-                         or shape._attestation_ref_shape_valid(party["vetRecordRef"]))
+                         or _attestation_ref_valid(shape, party["vetRecordRef"]))
                     for party in value["parties"])
             and isinstance(value["priorPhaseOutputs"], dict)
             and shape._safe_nonnegative_integer(value["startedAt"]))
@@ -413,15 +463,29 @@ def check_payment_input(binding: PhaseBinding, phase_input: Any) -> None:
     if not (shape._nonempty_jcs_string(phase_input["jobId"])
             and _agreement_valid(shape, phase_input["agreement"])
             and _rail_valid(shape, phase_input["rail"])
-            and _party_valid(shape, phase_input["payer"], "payingKey", closed=False)
-            and _party_valid(shape, phase_input["payee"], "payeeAddress", closed=False)
-            and shape._price_term_shape_valid(phase_input["amount"])):
+            and _party_valid(shape, phase_input["payer"], "payingKey")
+            and _party_valid(shape, phase_input["payee"], "payeeAddress")
+            and _price_term_valid(shape, phase_input["amount"])):
         raise InputArmError("payment input member is not its declared type")
     if not _session_context_valid(shape, phase_input["sessionContext"]):
         raise InputArmError("sessionContext is not SessionContext")
-    if ("identityBindingCompanions" in phase_input
-            and not isinstance(phase_input["identityBindingCompanions"], list)):
+    # §9.5.1: the signed Listing's selection or the agreement's own
+    # discriminator selects the IdentityBoundPaymentPhaseInput path.
+    identity_bound = any(key in phase_input["agreement"] for key in _IDENTITY_BOUND_SELECTORS)
+    if binding.identity_bound and not identity_bound:
+        raise InputArmError("agreement is not the identity-bound kind the Listing selects")
+    companions = phase_input.get("identityBindingCompanions")
+    if "identityBindingCompanions" in phase_input and not isinstance(companions, list):
         raise InputArmError("identityBindingCompanions is not an array")
+    if not identity_bound:
+        return
+    # Missing companion authority is §9.5.1 `indeterminate`, not a PC-1
+    # rejection; a supplied but malformed companion is a type rejection.
+    if not companions:
+        raise InputAuthorityUnavailable("identity-bound payment input lacks identityBindingCompanions")
+    if not all(isinstance(item, dict) and isinstance(item.get("identityBundle"), dict)
+               and isinstance(item.get("compositeRecord"), dict) for item in companions):
+        raise InputArmError("identityBindingCompanions entry is not an IdentityBoundAgreementCompanion")
 
 
 def dispatch_payment(binding: PhaseBinding, phase_input: Any, handler: Callable) -> dict:
@@ -430,6 +494,9 @@ def dispatch_payment(binding: PhaseBinding, phase_input: Any, handler: Callable)
         check_payment_input(binding, phase_input)
     except InputArmError as exc:
         return {"status": "rejected", "ok": False, "errorClass": "permanent",
+                "reason": str(exc)}
+    except InputAuthorityUnavailable as exc:
+        return {"status": "indeterminate", "ok": False, "errorClass": "substrate",
                 "reason": str(exc)}
     return handler(phase_input)
 
@@ -470,19 +537,30 @@ def b64u_decode(value: Any) -> bytes:
     return raw
 
 
-def is_pure_json(value: Any) -> bool:
-    """NFC strings and safe integers only (CORE CF-1, §B.2)."""
+def _well_formed(text: str) -> bool:
+    return not any(0xD800 <= ord(character) <= 0xDFFF for character in text)
+
+
+def in_number_profile(value: Any) -> bool:
+    """CORE §B.2 value model: finite numbers, integral or fractional, of
+    magnitude at most 2**53 - 1, and well-formed strings and member names.
+
+    Values need not already be NFC: CF-1 normalizes string values (never
+    member names) while hashing, which `jcs.canonicalize` does.
+    """
     if value is None or isinstance(value, bool):
         return True
     if isinstance(value, str):
-        return unicodedata.normalize("NFC", value) == value
+        return _well_formed(value)
     if isinstance(value, int):
         return abs(value) <= SAFE_INT_MAX
+    if isinstance(value, float):
+        return math.isfinite(value) and abs(value) <= SAFE_INT_MAX
     if isinstance(value, list):
-        return all(is_pure_json(item) for item in value)
+        return all(in_number_profile(item) for item in value)
     if isinstance(value, dict):
-        return all(isinstance(key, str) and unicodedata.normalize("NFC", key) == key
-                   and is_pure_json(item) for key, item in value.items())
+        return all(isinstance(key, str) and _well_formed(key) and in_number_profile(item)
+                   for key, item in value.items())
     return False
 
 
@@ -515,14 +593,18 @@ def verify_embedded(value: dict, public_keys: dict, domain: bytes) -> None:
     """Verify `signature` over domain || content hash (CORE §B.7)."""
     signature = value.get("signature")
     if not isinstance(signature, dict):
-        raise Unknown("missing signature")
-    if signature.get("algorithm") != "ed25519":
-        raise Invalid("unsupported signature algorithm")
+        raise Invalid("missing signature")
+    algorithm = signature.get("algorithm")
+    if algorithm not in REGISTERED_ALGORITHMS:
+        raise Invalid("unregistered signature algorithm")
+    if algorithm != "ed25519":
+        # Registered but not implemented here: another verifier may decide it.
+        raise Unknown(f"signature algorithm {algorithm} is not implemented by this verifier")
     encoded_key = _public_key(public_keys, signature.get("signer"))
     if encoded_key is None:
         raise Unknown(f"no authenticated key for {signature.get('signer')}")
-    if not is_pure_json(value):
-        raise Invalid("signed value is not NFC-normalized safe-integer JSON")
+    if not in_number_profile(value):
+        raise Invalid("signed value is outside the CORE §B.2 value model")
     key, raw = b64u_decode(encoded_key), b64u_decode(signature.get("value"))
     if len(key) != 32 or len(raw) != 64:
         raise Invalid("Ed25519 key or signature has the wrong length")
@@ -533,38 +615,53 @@ def verify_embedded(value: dict, public_keys: dict, domain: bytes) -> None:
         raise Invalid("invalid signature") from exc
 
 
-def _verify_finality_proof(receipt: dict, *, public_keys: dict, network_authority: str,
-                           network_id: str, proof_profile: str, validator_set_id: str) -> None:
-    """Authenticate an AnchorReceipt's own fields (CORE SR2-4) before use.
+def _verify_finality_proof(receipt: dict, *, writer: str, public_keys: dict,
+                           network_authority: str, network_id: str, proof_profile: str,
+                           validator_set_id: str) -> None:
+    """Authenticate an AnchorReceipt's own fields (CORE SR2-4) and its writer.
 
-    The synthetic proof is a network-authority-signed copy of the receipt's
-    binding tuple. Every failure here means the receipt is not authentic.
+    The synthetic proof is a network-authority-signed copy of every receipt
+    member except `evidence`, so `state`, `observationDisposition`,
+    `substrate` and `finalityProfile` are bound too. A receipt from a writer
+    other than the verifier-owned `writer` proves publication, not authority
+    (CORE SR2-11). Every failure here discards the receipt.
     """
     if receipt.get("substrate") != network_id or receipt.get("finalityProfile") != proof_profile:
         raise Invalid("AnchorReceipt network or finality profile is not pinned")
-    for key in ("logicalAddress", "nativeAddress", "contentHash", "writer", "nonce"):
+    for key in ("logicalAddress", "nativeAddress", "contentHash", "writer"):
         if not isinstance(receipt.get(key), str) or not receipt[key]:
             raise Invalid(f"AnchorReceipt {key} is malformed")
+    # CORE §5.1: nonce is required only where the substrate uses one.
+    if "nonce" in receipt and (not isinstance(receipt["nonce"], str) or not receipt["nonce"]):
+        raise Invalid("AnchorReceipt nonce is malformed")
     transaction = receipt.get("transactionRef")
     if (not isinstance(transaction, dict) or set(transaction) != {"kind", "value"}
             or not all(isinstance(item, str) and item for item in transaction.values())):
         raise Invalid("AnchorReceipt transactionRef is malformed")
     if type(receipt.get("observedAt")) is not int or not 0 <= receipt["observedAt"] <= SAFE_INT_MAX:
         raise Invalid("AnchorReceipt observedAt is malformed")
+    # SR2-6: consensus time is blockRef.timestamp in unix ms; a finalized
+    # receipt carries it, and a present height is canonical decimal.
     block = receipt.get("blockRef")
     if (not isinstance(block, dict) or not isinstance(block.get("id"), str) or not block["id"]
             or type(block.get("timestamp")) is not int
-            or not 0 <= block["timestamp"] <= SAFE_INT_MAX):
+            or not 0 <= block["timestamp"] <= SAFE_INT_MAX
+            or ("height" in block and (not isinstance(block["height"], str)
+                                       or _HEIGHT.fullmatch(block["height"]) is None))):
         raise Invalid("AnchorReceipt blockRef is malformed")
     evidence = receipt.get("evidence")
     if not isinstance(evidence, dict):
         raise Invalid("AnchorReceipt carries no finality proof")
     if evidence.get("kind") != ANCHOR_TEST_KIND:
         raise Invalid("AnchorReceipt finality proof kind is not the pinned profile's")
+    raw = b64u_decode(evidence.get("value"))
+    if len(raw) > MAX_PROOF_BYTES:
+        raise Invalid("AnchorReceipt finality proof exceeds the byte limit")
     try:
-        proof = json.loads(b64u_decode(evidence.get("value")).decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise Invalid("AnchorReceipt finality proof is not encoded JSON") from exc
+        # CORE CF-5: admit the proof from its exact bytes.
+        proof = raw_json_profile.loads(raw)
+    except raw_json_profile.RawJsonProfileError as exc:
+        raise Invalid(f"AnchorReceipt finality proof is not admitted JSON: {exc}") from exc
     if not isinstance(proof, dict):
         raise Invalid("AnchorReceipt finality proof is not an object")
     try:
@@ -573,21 +670,16 @@ def _verify_finality_proof(receipt: dict, *, public_keys: dict, network_authorit
         raise Invalid(f"AnchorReceipt finality proof is unverifiable: {exc}") from exc
     require_signer(proof, network_authority)
     expected = {
-        "logicalAddress": receipt["logicalAddress"],
-        "nativeAddress": receipt["nativeAddress"],
-        "contentHash": receipt["contentHash"],
-        "transactionRef": transaction,
-        "writer": receipt["writer"],
-        "nonce": receipt["nonce"],
-        "state": receipt.get("state"),
-        "blockRef": block,
+        "receipt": {key: value for key, value in receipt.items() if key != "evidence"},
         "networkId": network_id,
         "proofProfile": proof_profile,
         "validatorSetId": validator_set_id,
     }
     if set(proof) != set(expected) | {"signature"} or any(
-            proof[key] != value for key, value in expected.items()):
+            canonicalize(proof[key]) != canonicalize(value) for key, value in expected.items()):
         raise Invalid("AnchorReceipt finality proof does not bind the receipt's fields")
+    if receipt["writer"] != writer:
+        raise Invalid("AnchorReceipt writer is not the authorized writer")
 
 
 def _established_finalized(receipt: Any) -> bool:
@@ -600,18 +692,20 @@ def _established_finalized(receipt: Any) -> bool:
 
 def consume_amendment_target(
     amendment: dict, resolve: Callable[[dict], dict | None], *,
-    amendment_address: str, orchestrator: str,
+    amendment_address: str, orchestrator: str, writer: str,
     public_keys: dict, network_authority: str, network_id: str,
     proof_profile: str, validator_set_id: str,
 ) -> tuple[str, str]:
     """Resolve, establish finality, hash, then select/verify the AMEND-1 arm.
 
     The resolver returns {artifact, anchorReceipt}; absent, unfinalized or
-    inauthentic receipts, or bytes that differ from an authentic anchor binding
-    the reference's hash, leave the target pending. Contradictory established
-    proofs are violations.
-    `orchestrator` is the authenticated session phase orchestrator and
-    `amendment_address` the amendment's own anchored logical address.
+    inauthentic receipts, receipts from another writer, or bytes that differ
+    from an authentic anchor binding the reference's hash, leave the target
+    pending. Contradictory established proofs are violations.
+    `orchestrator` is the authenticated session phase orchestrator, `writer`
+    its verifier-owned native receipt writer, and `amendment_address` the
+    amendment's own anchored logical address. The reference's locator may be
+    the receipt's logical PC-2 payment address or its native address.
     No AMEND-4 reject-versus-flag policy is selected here.
     """
     shape = _shapes()
@@ -622,10 +716,12 @@ def consume_amendment_target(
         target_ref = amendment.get("amendsEvidenceRef")
         if not shape._attestation_ref_shape_valid(target_ref):
             raise Invalid("amendment target reference malformed")
+        if not shape._nonempty_jcs_string(amendment.get("jobId")):
+            raise Invalid("amendment jobId malformed")
         try:
             resolved = resolve(target_ref)
-        except OSError as exc:
-            # Keep the cause: a timeout, a not-found and a refusal differ.
+        except Exception as exc:  # noqa: BLE001 - any resolver failure is unavailability
+            # Keep the cause: a timeout, a not-found, a refusal or a bad reply differ.
             raise Unknown(f"amendment target unavailable ({type(exc).__name__}: {exc})") from exc
         if not isinstance(resolved, dict):
             raise Unknown("amendment target unavailable")
@@ -633,21 +729,27 @@ def consume_amendment_target(
         anchor = resolved.get("anchorReceipt")
         if not isinstance(target, dict) or not _established_finalized(anchor):
             raise Unknown("amendment target not anchored and finalized")
-        # CORE SR2-4/SR2-12: receipt fields are assertions until its proof binds
-        # them, so authenticate the receipt's own tuple first. A forged or
-        # mismatched receipt is discarded, leaving the target pending.
+        # CORE SR2-4/SR2-11/SR2-12: receipt fields are assertions until its
+        # proof binds them, and only the orchestrator's writer has authority
+        # over the payment address. A forged, mismatched or outsider receipt
+        # is discarded, leaving the target pending.
         try:
-            if anchor.get("logicalAddress") != target_ref["anchor"]["locator"]:
+            locator = target_ref["anchor"]["locator"]
+            if locator not in (anchor.get("logicalAddress"), anchor.get("nativeAddress")):
                 raise Invalid("AnchorReceipt is for another address")
+            if not str(anchor.get("logicalAddress")).startswith(
+                    f"dacs4:payment:{cf4_encode(amendment['jobId'])}:"):
+                raise Invalid("AnchorReceipt is not for a PC-2 payment address of this job")
             _verify_finality_proof(
-                anchor, public_keys=public_keys, network_authority=network_authority,
-                network_id=network_id, proof_profile=proof_profile,
-                validator_set_id=validator_set_id,
+                anchor, writer=writer, public_keys=public_keys,
+                network_authority=network_authority, network_id=network_id,
+                proof_profile=proof_profile, validator_set_id=validator_set_id,
             )
         except (Invalid, ValueError, TypeError, KeyError) as exc:
             raise Unknown(f"amendment target anchor is not authentic: {exc}") from exc
-        # PC-2's payment address is single-write, so an authentic anchor binding
-        # another hash means the reference names other content.
+        # PC-2's payment address is single-write, so an authentic anchor by
+        # the authorized writer binding another hash means the reference
+        # names other content.
         if anchor["contentHash"] != target_ref["contentHash"]:
             raise Invalid("authentic amendment target anchor binds another content hash")
         # CORE B.2 / DACS-4 9.7: content hashes omit only signature. No target
@@ -668,7 +770,11 @@ def consume_amendment_target(
         # Every evidence arm is signed by the session's phase orchestrator.
         require_signer(target, orchestrator)
         verify_embedded(target, public_keys, domain)
-        if not getattr(shape, shape_name)(target):
+        # The ordinary arm keeps unknown optional members (CORE SIG-5); the
+        # transition and finality-bound arms are closed.
+        checked = ({key: value for key, value in target.items() if key in _SETTLEMENT_EVIDENCE_MEMBERS}
+                   if selector == "evidenceVersion" else target)
+        if not getattr(shape, shape_name)(checked):
             raise Invalid(f"amendment target is not its {selector} arm")
         if "signer" in target_ref:
             require_signer(target, target_ref["signer"])
@@ -691,24 +797,55 @@ def consume_amendment_target(
 
 # ---- RTB-1 --------------------------------------------------------------------
 
-def rail_address(rail: dict) -> str:
-    return f"dacs4:rail:{cf4_encode(rail['railId'])}:{rail['railVersion']}"
+_REGISTRY_ANCHOR_KINDS = frozenset({"storage-program", "ipfs", "https"})
+
+
+def _nfc(value: str) -> str:
+    return unicodedata.normalize("NFC", value)
+
+
+def _index_entry_valid(shape, entry) -> bool:
+    """CORE RegistryIndexEntry: id, exact version, native anchor, content hash."""
+    anchor = entry.get("anchor") if isinstance(entry, dict) else None
+    return (isinstance(entry, dict) and {"id", "version", "anchor", "contentHash"} <= set(entry)
+            and isinstance(entry["id"], str) and bool(entry["id"]) and _well_formed(entry["id"])
+            and shape._safe_nonnegative_integer(entry["version"], positive=True)
+            and isinstance(anchor, dict) and anchor.get("kind") in _REGISTRY_ANCHOR_KINDS
+            and isinstance(anchor.get("locator"), str) and bool(anchor["locator"])
+            and shape._sha256_hex(entry["contentHash"]))
+
+
+def _authentic_finalized(receipt: Any, label: str, **pins) -> dict:
+    """Return an established finalized receipt only after its proof and writer verify."""
+    if not _established_finalized(receipt):
+        raise Unknown(f"{label} has no finalized anchor binding")
+    try:
+        _verify_finality_proof(receipt, **pins)
+    except (Invalid, ValueError, TypeError, KeyError) as exc:
+        raise Unknown(f"{label} anchor is not authentic: {exc}") from exc
+    return receipt
 
 
 def resolve_session_rail(
     session: dict, rail_ref: dict, rail: dict, authority: dict, *,
-    public_keys: dict, steward: str, network_authority: str, network_id: str,
-    proof_profile: str, validator_set_id: str,
+    public_keys: dict, steward: str, registry_writer: str, network_authority: str,
+    network_id: str, proof_profile: str, validator_set_id: str,
 ) -> tuple[str, str]:
-    """Resolve an existing session's PA-2/PA-3 rail under DACS-4 §9.4.3 RTB-1.
+    """Resolve an existing session's PA-2 rail under DACS-4 §9.4.3 and RTB-1.
 
     `session` carries the authenticated `startedAt` and pinned
-    `railRegistryVersion`; `authority` carries the registry index snapshot and
-    the finalized index and definition AnchorReceipts. A missing index,
-    receipt or finalized binding does not resolve the rail (`indeterminate`);
-    an authenticated contradiction, including authority later than the
-    session start, is `rejected`.
+    `railRegistryVersion`; `authority` carries the registry index snapshot
+    (CORE `RegistryIndexSnapshot` shape, `revision` = the pinned version) and
+    the finalized index and definition AnchorReceipts, both written by the
+    verifier-owned `registry_writer`. The agreement's exact `railVersion` pin,
+    otherwise the unique greatest version listed for the rail ID, selects the
+    entry; the definition receipt is matched by its native address to that
+    entry's anchor locator (SR2-10). A missing, unfinalized, inauthentic or
+    outsider binding, or an internally inconsistent index, does not resolve
+    the rail (`indeterminate`); an authenticated contradiction, including
+    authority later than the session start, is `rejected`.
     """
+    shape = _shapes()
     try:
         if not all(isinstance(value, dict) for value in (session, rail_ref, rail)):
             raise Invalid("session pins, rail reference and rail definition must be objects")
@@ -724,46 +861,53 @@ def resolve_session_rail(
         # RD-1: the definition is the steward's, under the rail domain.
         verify_embedded(rail, public_keys, RAIL_DOMAIN)
         require_signer(rail, steward)
+        pins = {"writer": registry_writer, "public_keys": public_keys,
+                "network_authority": network_authority, "network_id": network_id,
+                "proof_profile": proof_profile, "validator_set_id": validator_set_id}
+        # The index is read only after its finalized binding authenticates it.
+        _authentic_finalized(index_receipt, REGISTRY_INDEX_ADDRESS, **pins)
+        if index_receipt["logicalAddress"] != REGISTRY_INDEX_ADDRESS:
+            raise Unknown("index receipt is for another address")
+        if index_receipt["contentHash"] != sha256_hex(jcs_bytes(index)):
+            raise Invalid(f"authentic {REGISTRY_INDEX_ADDRESS} anchor binds other content")
         # The index must be the session's own pinned snapshot: a later index
         # can inform a new session but not rewrite this one's rail authority.
-        if (set(index) != {"registryVersion", "logicalAddress", "entries"}
-                or index["logicalAddress"] != REGISTRY_INDEX_ADDRESS
-                or not isinstance(index["entries"], list)):
+        if (index.get("registryIndexVersion") != "1" or index.get("registryKind") != "rail"
+                or not isinstance(index.get("entries"), list)
+                or not all(_index_entry_valid(shape, entry) for entry in index["entries"])):
             raise Invalid("rail-registry index snapshot is malformed")
-        if type(index["registryVersion"]) is not int or index["registryVersion"] != registry_version:
+        if type(index.get("revision")) is not int or index["revision"] != registry_version:
             raise Invalid("index is not the session's pinned registry snapshot")
-        entries = [entry for entry in index["entries"]
-                   if isinstance(entry, dict) and entry.get("railId") == rail["railId"]]
-        if len(entries) != 1 or not isinstance(entries[0].get("versions"), list):
-            raise Invalid("pinned index does not list this rail exactly once")
-        entry = entries[0]
-        selected = rail_ref.get("railVersion", entry.get("latestVersion"))
-        if rail_ref.get("railId") != rail["railId"] or type(selected) is not int \
-                or rail["railVersion"] != selected:
+        keys = [(_nfc(entry["id"]), entry["version"]) for entry in index["entries"]]
+        if len(keys) != len(set(keys)):
+            raise Unknown("pinned index lists one rail version more than once")
+        # §9.4.3 step 2: NFC comparison keys; an exact pin, else the unique
+        # greatest numeric version. No hint member selects a version.
+        rail_id = rail_ref.get("railId")
+        if not isinstance(rail_id, str) or not isinstance(rail["railId"], str) \
+                or _nfc(rail_id) != _nfc(rail["railId"]):
+            raise Invalid("definition is not the rail the agreement names")
+        listed = [entry for entry in index["entries"] if _nfc(entry["id"]) == _nfc(rail_id)]
+        if not listed:
+            raise Invalid("pinned index does not list this rail")
+        if "railVersion" in rail_ref:
+            if not shape._safe_nonnegative_integer(rail_ref["railVersion"], positive=True):
+                raise Invalid("agreement railVersion pin is malformed")
+            listed = [entry for entry in listed if entry["version"] == rail_ref["railVersion"]]
+            if not listed:
+                raise Invalid("pinned index does not list the agreement's rail version")
+        entry = max(listed, key=lambda item: item["version"])
+        if rail["railVersion"] != entry["version"] or type(rail["railVersion"]) is not int:
             raise Invalid("definition is not the version the agreement selects")
-        versions = [item for item in entry["versions"]
-                    if isinstance(item, dict) and item.get("railVersion") == selected]
-        if (len(versions) != 1 or versions[0].get("logicalAddress") != rail_address(rail)
-                or versions[0].get("contentHash") != content_hash(rail)):
+        if content_hash(rail) != entry["contentHash"]:
             raise Invalid("pinned index does not select this definition")
-        # Both bindings must be finalized and authentic before any field,
-        # including the timestamp, is read from them.
-        for receipt, logical, digest in (
-            (index_receipt, REGISTRY_INDEX_ADDRESS, sha256_hex(jcs_bytes(index))),
-            (rail_receipt, rail_address(rail), content_hash(rail)),
-        ):
-            if not _established_finalized(receipt):
-                raise Unknown(f"{logical} has no finalized anchor binding")
-            try:
-                _verify_finality_proof(
-                    receipt, public_keys=public_keys, network_authority=network_authority,
-                    network_id=network_id, proof_profile=proof_profile,
-                    validator_set_id=validator_set_id,
-                )
-            except (Invalid, ValueError, TypeError, KeyError) as exc:
-                raise Unknown(f"{logical} anchor is not authentic: {exc}") from exc
-            if receipt["logicalAddress"] != logical or receipt["contentHash"] != digest:
-                raise Invalid(f"authentic {logical} anchor binds other content")
+        # The definition binding must be finalized and authentic before any
+        # field, including the timestamp, is read from it.
+        _authentic_finalized(rail_receipt, "rail definition", **pins)
+        if rail_receipt["nativeAddress"] != entry["anchor"]["locator"]:
+            raise Unknown("definition receipt is for another native address")
+        if rail_receipt["contentHash"] != entry["contentHash"]:
+            raise Invalid("authentic rail definition anchor binds other content")
         accepted_at = rail["governance"]["acceptedAt"]
         if (type(accepted_at) is not int or accepted_at > started_at
                 or index_receipt["blockRef"]["timestamp"] > started_at

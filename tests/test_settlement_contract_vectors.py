@@ -18,13 +18,17 @@ from jcs import canonicalize
 # Enclosing handler metadata is fixed outside the phase input.
 BINDINGS = {
     "ordinary": ref.PhaseBinding("pay-dem"),
+    # The signed Listing phase selected an identity-bound agreement (§9.5.1).
+    "identity-bound": ref.PhaseBinding("pay-dem", identity_bound=True),
 }
 # PC-1 input arms and AMEND-1 target arms the fixture exercises.
 ARMS = ("ordinary",)
 TARGET_ARMS = ("ordinary", "legacy-transition", "finality-bound")
-# Target arms whose shape is open (keeps unknown members); every DACS-4 v0.x
-# arm is closed.
-OPEN_TARGET_ARMS: dict[str, str] = {}
+# Target arms whose shape is open (keeps unknown members under CORE SIG-5):
+# ordinary SettlementEvidence. The transition and finality-bound arms are closed.
+OPEN_TARGET_ARMS: dict[str, str] = {"ordinary": "valid"}
+# Shape-only IdentityBoundAgreementCompanion placeholders (IBH is out of scope).
+COMPANIONS = [{"identityBundle": {}, "compositeRecord": {}}]
 # Complete delivery records that pass their arm and fail only the pay-* rule.
 DELIVERY_TARGETS = ("ordinary-delivery-target",)
 # Verifier-owned trust pins for the synthetic finality proofs. They are
@@ -82,21 +86,23 @@ class SettlementContractTests(unittest.TestCase):
         cls.data = json.loads(generator.OUTPUT.read_text())
         cls.rails = json.loads(generator.RAIL_OUTPUT.read_text())
 
-    def consume(self, vector, resolver=None, *, orchestrator=None):
+    def consume(self, vector, resolver=None, *, orchestrator=None, writer=None, keys=None):
         return ref.consume_amendment_target(
             vector["amendment"], resolver or (lambda _: vector["resolved"]),
             amendment_address=vector["amendmentAddress"],
             orchestrator=orchestrator or self.data["orchestrator"],
-            public_keys=self.data["publicKeys"], **TRUST,
+            writer=writer or self.data["orchestratorWriter"],
+            public_keys=keys or self.data["publicKeys"], **TRUST,
         )
 
     def resolve_rail(self, case, **change):
         pins = {"public_keys": self.rails["publicKeys"], "steward": self.rails["steward"],
-                **TRUST, **change}
+                "registry_writer": self.rails["registryWriter"], **TRUST, **change}
         return ref.resolve_session_rail(
             case["session"], case["railRef"], case["rail"], case["authority"], **pins)
 
     def test_payment_arm_vectors_reject_before_handler_and_preserve_input(self):
+        dispositions = {"rejected": "permanent", "indeterminate": "substrate"}
         for vector in self.data["phaseInputs"]:
             with self.subTest(vector=vector["name"]):
                 value = copy.deepcopy(vector["input"])
@@ -105,13 +111,50 @@ class SettlementContractTests(unittest.TestCase):
                 result = ref.dispatch_payment(BINDINGS[vector["binding"]], value, rail)
                 self.assertEqual(result["status"], vector["expected"])
                 self.assertEqual(value, before)
-                if vector["expected"] == "rejected":
+                if vector["expected"] in dispositions:
                     rail.assert_not_called()
                     self.assertIs(result["ok"], False)
-                    self.assertEqual(result["errorClass"], "permanent")
+                    self.assertEqual(result["errorClass"], dispositions[vector["expected"]])
                 else:
                     rail.assert_called_once_with(value)
                     self.assertIs(rail.call_args.args[0], value)
+
+    def test_identity_binding_companions_keep_the_ibh_dispositions(self):
+        # §9.5.1 and the IBH corpus: missing companions are `indeterminate`
+        # (no rail call, errorClass substrate); a supplied malformed companion
+        # is refused before any rail call.
+        corpus = json.loads((ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json").read_text())
+        base = corpus["scenarios"]["identityBoundAgreement"]["paymentInput"]
+        vectors = {v["name"]: v for v in corpus["vectors"]}
+        self.assertEqual(vectors["malformed-payment-07-missing"]["expected"], "indeterminate")
+        self.assertEqual(vectors["malformed-supplied-companion-is-not-missing-authority"]["expected"], "error")
+        missing = {k: v for k, v in base.items() if k != "identityBindingCompanions"}
+        for binding in BINDINGS.values():
+            for value, status, error_class in (
+                    (missing, "indeterminate", "substrate"),
+                    ({**base, "identityBindingCompanions": []}, "indeterminate", "substrate"),
+                    ({**base, "identityBindingCompanions": [{}]}, "rejected", "permanent")):
+                with self.subTest(binding=binding, companions=value.get("identityBindingCompanions", "<missing>")):
+                    handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                    result = ref.dispatch_payment(binding, copy.deepcopy(value), handler)
+                    self.assertEqual((result["status"], result["ok"], result["errorClass"]),
+                                     (status, False, error_class))
+                    handler.assert_not_called()
+            handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+            self.assertEqual(ref.dispatch_payment(binding, copy.deepcopy(base), handler)["status"], "accepted")
+        spec = " ".join((ROOT / "spec/DACS-4-SETTLE.md").read_text().split())
+        self.assertIn("a missing or empty `identityBindingCompanions` is missing authority", spec)
+
+    def test_golden_payment_fixture_input_is_illustrative(self):
+        # conformance/README: the golden input abbreviates the agreement and
+        # session context, so a conforming PC-1 handler rejects it.
+        golden = json.loads((ROOT / "conformance/fixtures/settlement-evidence-payment-success.json").read_text())
+        handler = mock.Mock()
+        result = ref.dispatch_payment(ref.PhaseBinding("pay-evm-erc20"), golden["paymentInput"], handler)
+        self.assertEqual((result["status"], result["errorClass"]), ("rejected", "permanent"))
+        handler.assert_not_called()
+        self.assertIn("is not a PC-1 handler input and a conforming handler rejects it",
+                      (ROOT / "conformance/README.md").read_text())
 
     def test_identity_binding_payment_authorization_members_keep_their_arm(self):
         corpus = json.loads((ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json").read_text())
@@ -197,13 +240,14 @@ class SettlementContractTests(unittest.TestCase):
                        + [{"signatures": [{**agreement["signatures"][0], "algorithm": value}]}
                           for value in ("ed25519", "ecdsa-secp256k1", "sr1-aggregate")]):
             inputs.append({**accepted, "agreement": {**agreement, **change}})
+        # An identity-bound agreement carries its companions (§9.5.1).
         for selector in ("identityBoundAgreementVersion", "agreementVersion"):
-            inputs.append({**accepted, "agreement": {selector: "1", **{
+            inputs.append({**accepted, "identityBindingCompanions": COMPANIONS, "agreement": {selector: "1", **{
                 k: v for k, v in agreement.items() if k != "agreementVersion"}}})
         payout = {**agreement["terms"], "payoutBindings": [{
             "railId": rail["railId"], "phaseIndex": 0, "payeeAddress": "seller-address"}]}
         for selector in ("payeeBoundAgreementVersion", "identityBoundPayeeAgreementVersion"):
-            inputs.append({**accepted, "agreement": {selector: "1", **{
+            inputs.append({**accepted, "identityBindingCompanions": COMPANIONS, "agreement": {selector: "1", **{
                 k: v for k, v in agreement.items() if k != "agreementVersion"}, "terms": payout}})
         for party in ("buyer", "seller", "orchestrator"):
             session = accepted["sessionContext"]
@@ -291,6 +335,8 @@ class SettlementContractTests(unittest.TestCase):
 
     def test_agreement_nested_members_and_arm_exclusions(self):
         base = next(v["input"] for v in self.data["phaseInputs"] if v["name"] == "ordinary-input")
+        # An identity-bound agreement carries its companions (§9.5.1).
+        base = {**base, "identityBindingCompanions": COMPANIONS}
         agreement = base["agreement"]
         for selector in ("agreementVersion", "identityBoundAgreementVersion", "payeeBoundAgreementVersion",
                          "identityBoundPayeeAgreementVersion", "sealedSelectionAgreementVersion"):
@@ -516,8 +562,12 @@ class SettlementContractTests(unittest.TestCase):
                        "do not gate settlement (DACS-3 §8.5.2, FS-3)",
                        "the rail's `railId` must be 1–64 printable ASCII characters (0x21–0x7E, case-sensitive",
                        "These are declared-type checks: a profile's further value domains",
-                       "three DACS-4 v0.x target arms use closed shapes and reject unknown members"):
+                       "The transition and finality-bound target arms use closed shapes and reject "
+                       "unknown members; ordinary `SettlementEvidence` keeps unknown optional members "
+                       "under CORE SIG-5"):
             self.assertIn(phrase, changed)
+        spec = " ".join((ROOT / "spec/DACS-4-SETTLE.md").read_text().split())
+        self.assertIn("ordinary `SettlementEvidence` keeps unknown optional members under CORE SIG-5", spec)
 
     def test_inauthentic_target_anchor_leaves_the_amendment_pending(self):
         # CORE SR2-4/SR2-12: an inauthentic receipt is discarded, not a violation.
@@ -545,7 +595,11 @@ class SettlementContractTests(unittest.TestCase):
                 resolver = mock.Mock(return_value=vector["resolved"])
                 result, reason = self.consume(vector, resolver)
                 self.assertEqual(result, vector["expected"], reason)
-                resolver.assert_called_once_with(vector["amendment"]["amendsEvidenceRef"])
+                if "signature" in vector["amendment"]:
+                    resolver.assert_called_once_with(vector["amendment"]["amendsEvidenceRef"])
+                else:
+                    # A malformed amendment is decided before any resolution.
+                    resolver.assert_not_called()
                 if result == "valid":
                     record = vector["resolved"]["artifact"]
                     self.assertRegex(vector["amendmentAddress"],
@@ -600,8 +654,13 @@ class SettlementContractTests(unittest.TestCase):
 
     def test_unavailable_resolver_does_not_record_a_violation(self):
         vector = next(v for v in self.data["amendmentTargets"] if v["name"] == "ordinary-target")
+        import http.client
+        # Any resolver failure is unavailability, never a violation or a crash.
         for exception in (TimeoutError("timeout"), FileNotFoundError("not found"),
-                          ConnectionRefusedError("refused")):
+                          ConnectionRefusedError("refused"), ValueError("bad reply"),
+                          json.JSONDecodeError("bad json", "{", 1), KeyError("artifact"),
+                          TypeError("bad type"), http.client.IncompleteRead(b"x", 10),
+                          RuntimeError("closed")):
             with self.subTest(exception=type(exception).__name__):
                 resolver = mock.Mock(side_effect=exception)
                 result, reason = self.consume(vector, resolver)
@@ -680,14 +739,180 @@ class SettlementContractTests(unittest.TestCase):
         self.assertEqual(self.resolve_rail(case, steward="did:dacs:test:seller")[0], "rejected")
         self.assertEqual(self.resolve_rail(case, network_authority="did:dacs:test:seller")[0],
                          "indeterminate")
+        # Another registry writer leaves the receipts without authority (SR2-11).
+        self.assertEqual(self.resolve_rail(case, registry_writer="native:outsider-writer-1")[0],
+                         "indeterminate")
+        target = next(v for v in self.data["amendmentTargets"] if v["name"] == "ordinary-target")
+        result, reason = self.consume(target, writer="native:outsider-writer-1")
+        self.assertEqual(result, "indeterminate")
+        self.assertIn("AnchorReceipt writer is not the authorized writer", reason)
+
+    def test_unpinned_selection_is_the_unique_greatest_listed_version(self):
+        # §9.4.3 step 2; a hint member in the snapshot selects nothing.
+        names = {c["name"]: c for c in self.rails["cases"]}
+        greatest, older = names["unpinned-selects-greatest-version"], names["unpinned-older-version-rejected"]
+        self.assertEqual(greatest["authority"]["railRegistryIndex"]["entries"],
+                         older["authority"]["railRegistryIndex"]["entries"])
+        self.assertEqual([e["version"] for e in greatest["authority"]["railRegistryIndex"]["entries"]], [1, 2])
+        self.assertEqual(self.resolve_rail(greatest)[0], "verified")
+        self.assertEqual(self.resolve_rail(older),
+                         ("rejected", "definition is not the version the agreement selects"))
+        self.assertEqual(names["latest-hint-is-inert"]["authority"]["railRegistryIndex"]["latestVersion"], 1)
+        self.assertEqual(self.resolve_rail(names["latest-hint-is-inert"])[0], "rejected")
+        self.assertEqual(self.resolve_rail(names["pinned-older-version"])[0], "verified")
+        self.assertEqual(self.resolve_rail(names["railref-other-rail-id"]),
+                         ("rejected", "definition is not the rail the agreement names"))
+        self.assertEqual(self.resolve_rail(names["index-duplicate-version"])[0], "indeterminate")
+        self.assertEqual(self.resolve_rail(names["index-entry-not-object"]),
+                         ("rejected", "rail-registry index snapshot is malformed"))
+
+    def resign_receipt(self, receipt, **change):
+        """An authentic copy of `receipt` with `change` applied and re-proven."""
+        body = {k: v for k, v in receipt.items() if k != "evidence"}
+        body.update(change)
+        for key in [k for k, v in change.items() if v is ...]:
+            body.pop(key)
+        proof = generator.sign({"receipt": body, "networkId": TRUST["network_id"],
+                                "proofProfile": TRUST["proof_profile"],
+                                "validatorSetId": TRUST["validator_set_id"]},
+                               "network", ref.ANCHOR_TEST_DOMAIN)
+        return {**body, "evidence": {"kind": ref.ANCHOR_TEST_KIND,
+                                     "value": generator.b64u(ref.jcs_bytes(proof))}}
+
+    def test_receipt_fields_are_checked_even_when_proven(self):
+        vector = next(v for v in self.data["amendmentTargets"] if v["name"] == "ordinary-target")
+        receipt = vector["resolved"]["anchorReceipt"]
+        # The unchanged re-proof verifies, so each failure below is the edit's.
+        self.assertEqual(self.consume({**vector, "resolved": {
+            **vector["resolved"], "anchorReceipt": self.resign_receipt(receipt)}})[0], "valid")
+        self.assertEqual(self.consume({**vector, "resolved": {
+            **vector["resolved"], "anchorReceipt": self.resign_receipt(receipt, nonce=...)}})[0], "valid")
+        for change in ({"substrate": "demos:mainnet"}, {"finalityProfile": "other-profile"},
+                       {"nonce": ""}, {"nonce": 300}, {"writer": ""}, {"writer": 1},
+                       {"transactionRef": {**receipt["transactionRef"], "extra": "x"}},
+                       {"transactionRef": {"kind": "", "value": "tx"}},
+                       {"blockRef": "x"}, {"blockRef": {**receipt["blockRef"], "height": "0750"}},
+                       {"blockRef": {k: v for k, v in receipt["blockRef"].items() if k != "timestamp"}},
+                       {"observedAt": -1}):
+            with self.subTest(change=change):
+                resolved = {**vector["resolved"], "anchorReceipt": self.resign_receipt(receipt, **change)}
+                result, reason = self.consume({**vector, "resolved": resolved})
+                self.assertEqual(result, "indeterminate")
+                self.assertTrue(reason.startswith("amendment target anchor is not authentic"), reason)
+        # Oversized or non-CF-5 proof bytes are refused before JSON decoding.
+        for raw, message in ((b" " * (ref.MAX_PROOF_BYTES + 1), "exceeds the byte limit"),
+                             (b'{"a":1,"a":2}', "not admitted JSON")):
+            with self.subTest(proof=raw[:20]):
+                bad = {**receipt, "evidence": {**receipt["evidence"], "value": generator.b64u(raw)}}
+                result, reason = self.consume({**vector, "resolved": {**vector["resolved"], "anchorReceipt": bad}})
+                self.assertEqual(result, "indeterminate")
+                self.assertIn(message, reason)
+
+    def test_signed_values_follow_the_core_b2_value_model(self):
+        # CORE §B.2: finite fractions and integers within 2**53 - 1; CF-1 NFC
+        # applies to string values while hashing and never to member names.
+        keys = {generator.CLAIMS["orchestrator"]: generator.PUBLIC_KEYS[generator.CLAIMS["orchestrator"]]}
+        for value in (2**53 - 1, -(2**53 - 1), None, True, False, 1.5, -0.25, "café", {"café": 1}):
+            with self.subTest(accepted=value):
+                signed = generator.sign({"value": value}, "orchestrator", b"test:")
+                ref.verify_embedded(signed, keys, b"test:")
+        # NFC and NFD spellings of a value hash alike; member names stay distinct.
+        self.assertEqual(ref.content_hash({"v": "café"}), ref.content_hash({"v": "café"}))
+        self.assertNotEqual(ref.content_hash({"café": 1}), ref.content_hash({"café": 1}))
+        for value in (2**53, -(2**53), float(2**53), float("nan"), float("inf"), "\ud800", {"\ud800": 1}):
+            with self.subTest(rejected=repr(value)):
+                signed = {"value": value, "signature": generator.sign({}, "orchestrator", b"test:")["signature"]}
+                with self.assertRaises(ref.Invalid):
+                    ref.verify_embedded(signed, keys, b"test:")
+
+    def test_signer_key_lookup_uses_cf3_identity(self):
+        keys = self.data["publicKeys"]
+        orchestrator = generator.CLAIMS["orchestrator"]
+        signed = generator.sign({"value": 1}, "orchestrator", b"test:")
+        # A parameterized signer resolves to the published identity's key.
+        signed["signature"]["signer"] = orchestrator + "?role=x"
+        ref.verify_embedded(signed, keys, b"test:")
+        # An unpublished signer is missing authority, not a violation.
+        with self.assertRaises(ref.Unknown):
+            ref.verify_embedded({**signed, "signature": {**signed["signature"],
+                                                         "signer": "did:dacs:test:unknown"}}, keys, b"test:")
+        # Two published keys for one identity are ambiguous authority.
+        twin = {**keys, orchestrator + "?role=y": keys[orchestrator], orchestrator + "?role=z": keys[orchestrator]}
+        twin.pop(orchestrator)
+        with self.assertRaises(ref.Invalid):
+            ref.verify_embedded(signed, twin, b"test:")
+        vector = next(v for v in self.data["amendmentTargets"] if v["name"] == "ordinary-target")
+        unpublished = {k: v for k, v in keys.items() if k != generator.CLAIMS["seller"]}
+        self.assertEqual(self.consume(vector, keys=unpublished)[0], "indeterminate")
+        self.assertEqual(self.consume(vector, orchestrator=orchestrator + "?role=x")[0], "valid")
+
+    def test_reference_signer_must_be_the_target_signer(self):
+        # An amendsEvidenceRef `signer` other than the target's signer violates.
+        vector = copy.deepcopy(next(v for v in self.data["amendmentTargets"] if v["name"] == "ordinary-target"))
+        amendment = {k: v for k, v in vector["amendment"].items() if k != "signature"}
+        for signer, expected in ((generator.CLAIMS["orchestrator"], "valid"),
+                                 (generator.CLAIMS["seller"], "violation")):
+            with self.subTest(signer=signer):
+                amendment["amendsEvidenceRef"] = {**amendment["amendsEvidenceRef"], "signer": signer}
+                signed = generator.sign(amendment, "seller", ref.AMENDMENT_DOMAIN)
+                self.assertEqual(self.consume({**vector, "amendment": signed})[0], expected)
+
+    def test_nested_rail_member_types_and_declared_values(self):
+        base = next(v["input"] for v in self.data["phaseInputs"] if v["name"] == "ordinary-input")
+        for member, value in (("asset", "x"), ("network", "x"), ("governance", "x"),
+                              ("network", {"kind": "evm", "chainId": 0, "rpcAttestation": "evm-rpc"})):
+            with self.subTest(member=member, value=value):
+                handler = mock.Mock()
+                result = ref.dispatch_payment(BINDINGS["ordinary"], {**base, "rail": {**base["rail"], member: value}}, handler)
+                self.assertEqual(result["status"], "rejected")
+                handler.assert_not_called()
+        finality = json.loads((ROOT / "conformance/vectors/security/settlement-finality-verification.json").read_text())
+        rail = next(v["input"]["rail"] for v in finality["vectors"] if v["expected"] == "pass"
+                    and v["input"]["rail"]["consumerFinalityProfile"]["model"] == "commitment-level")
+        profile = rail["consumerFinalityProfile"]
+        for level in ("processed", "confirmed", "finalized"):
+            with self.subTest(requiredCommitment=level):
+                value = {**base, "rail": {**rail, "consumerFinalityProfile": {
+                    **profile, "settlement": {**profile["settlement"], "requiredCommitment": level}}}}
+                ref.check_payment_input(BINDINGS["ordinary"], value)
+
+    def test_generator_check_gate_detects_drift(self):
+        import contextlib
+        import io
+        import subprocess
+        import tempfile
+        run = subprocess.run([sys.executable, str(ROOT / "scripts/generate_settlement_contract_vectors.py"), "--check"],
+                             capture_output=True, text=True, cwd=ROOT, check=False)
+        self.assertEqual((run.returncode, run.stdout.strip()), (0, "OK: settlement contract fixtures"))
+        for name in ("OUTPUT", "RAIL_OUTPUT"):
+            with self.subTest(drifted=name), tempfile.TemporaryDirectory() as tmp:
+                copies = {}
+                for other in ("OUTPUT", "RAIL_OUTPUT"):
+                    path = Path(tmp) / getattr(generator, other).name
+                    path.write_text(getattr(generator, other).read_text())
+                    copies[other] = path
+                copies[name].write_text(copies[name].read_text().replace('"fixtureVersion": "1"', '"fixtureVersion": "2"', 1))
+                out = io.StringIO()
+                with mock.patch.object(generator, "OUTPUT", copies["OUTPUT"]), \
+                        mock.patch.object(generator, "RAIL_OUTPUT", copies["RAIL_OUTPUT"]), \
+                        mock.patch.object(generator, "ROOT", Path(tmp)), \
+                        mock.patch.object(sys, "argv", ["generator", "--check"]), \
+                        contextlib.redirect_stdout(out):
+                    self.assertEqual(generator.main(), 1)
+                self.assertIn(f"FAILED: {copies[name].name} differs from its generator", out.getvalue())
 
     def test_rtb1_text_binds_every_rail_consumer(self):
         spec = " ".join((ROOT / "spec/DACS-4-SETTLE.md").read_text().split())
-        for phrase in ("**(RTB-1) Rail-authority time bound.** For PA-2 or PA-3",
+        for phrase in ("**(RTB-1) Rail-authority time bound.** When a consumer resolves a session's PA-2 or PA-3 rail",
+                       "`blockRef.timestamp` (CORE SR2-6 consensus time, unix milliseconds)",
                        "MUST each be no later than the authenticated session `startedAt`",
+                       "written by the registry's authorized writer; a receipt from another writer is discarded",
                        "without the pinned index membership and both finalized anchor bindings do not resolve a rail",
-                       "MUST NOT rewrite the rail authority of an existing session"):
+                       "MUST NOT rewrite the rail authority of an existing session",
+                       "uses the rail so resolved as verifier-owned session state"):
             self.assertIn(phrase, spec)
+        # The fixture pins the receipt time unit it uses.
+        self.assertIn("blockRef.timestamp is CORE SR2-6 consensus time in unix ms", self.rails["inputModel"])
         changelog = (ROOT / "CHANGELOG.md").read_text()
         heading = "### Changed — general normative changes in candidate DACS-4 v0.8 (every profile)"
         changed = " ".join(changelog.split(heading, 1)[1].split("\n### ", 1)[0].split())

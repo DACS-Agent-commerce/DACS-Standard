@@ -1253,13 +1253,17 @@ The format used per release:
 These are general normative changes: they bind every rail consumer, pay-*
 handler, and amendment consumer.
 
-- **Rail resolution** (DACS-4 §9.4.3 RTB-1) — for PA-2 or PA-3, the
-  registry-index and definition receipts' finalized timestamps and the
+- **Rail resolution** (DACS-4 §9.4.3 RTB-1) — when a consumer resolves a
+  session's PA-2 or PA-3 rail, the registry-index and definition receipts'
+  `blockRef.timestamp` (CORE SR2-6 consensus time, unix ms) and the
   definition's authenticated `governance.acceptedAt` MUST each be no later than
-  the authenticated session `startedAt`, and a later
+  the authenticated session `startedAt`, both receipts MUST be authentic
+  finalized receipts by the registry's authorized writer, and a later
   index or definition MUST NOT rewrite the rail authority of an existing
   session. A steward-signed definition without the pinned index membership and
-  both finalized anchor bindings does not resolve a rail.
+  both finalized anchor bindings does not resolve a rail. Later consumers of
+  that session's rail (FV-1 `railDefinitionRef`, DACS-5 current use) use the
+  rail so resolved as verifier-owned session state.
 - **Payment input** (DACS-4 §9.5.1 PC-1) — every pay-* handler MUST reject a
   `PaymentPhaseInput` that lacks `sessionContext` or another required member,
   or carries one of the wrong type, including the `AgreementArtifact` and
@@ -1279,7 +1283,11 @@ handler, and amendment consumer.
   These are declared-type checks: a profile's further value domains (an exact
   HTTPS `statusEndpointOrigin`, duplicate-free `authorityRefs` and
   `captureStatuses`, the quorum ratio) stay with FV-1, which makes a malformed
-  profile `error`.
+  profile `error`. Within these checks a declared `string` is non-empty NFC and
+  a digest member is 64 lowercase hex characters. For an identity-bound
+  agreement, missing or empty `identityBindingCompanions` keep the §9.5.1
+  `indeterminate` result (`errorClass: "substrate"`, no rail call); a malformed
+  companion is a PC-1 rejection.
 - **Amendment target** (DACS-4 §9.7.1 AMEND-1) — an amendment consumer MUST
   resolve `amendsEvidenceRef` and recompute its content hash before reading any
   target member. The target may now be `SettlementEvidence`,
@@ -1288,19 +1296,27 @@ handler, and amendment consumer.
   signature domain; `DeliveryEvidence` is not a target. The signer MUST be the
   session's phase orchestrator, the target MUST be a complete record of its
   arm, and the amendment address's `{evidenceHash}` segment MUST equal the
-  target's content hash. An unavailable, unanchored or unfinalized target, or
-  resolved bytes that differ from an authentic anchor, leaves the amendment
-  `indeterminate`, as does an anchor receipt whose proof does not bind its own
-  fields. Only an authentic anchor that binds another content hash is a
-  violation. The three DACS-4 v0.x target arms use closed shapes and reject
-  unknown members.
+  target's content hash. The reference's locator may be the PC-2 logical
+  payment address or the receipt's native address. An unavailable, unanchored
+  or unfinalized target, resolved bytes that differ from an authentic anchor,
+  an anchor receipt whose proof does not bind its own fields (including
+  `observationDisposition`), a receipt from a writer other than the
+  orchestrator's, an equivocation, or a registered signature algorithm the
+  consumer does not implement leaves the amendment `indeterminate`. Only an
+  authentic anchor by the orchestrator's writer that binds another content
+  hash is a violation. The transition and finality-bound target arms use
+  closed shapes and reject unknown members; ordinary `SettlementEvidence` keeps
+  unknown optional members under CORE SIG-5.
 - **Reference and fixtures** — the non-normative
   `scripts/settlement_contract_reference.py` and the deterministic
   `conformance/fixtures/settlement/payment-input-amendment-v0.1.json` (PC-1
   inputs and AMEND-1 targets) and `rail-authority-time-bound-v0.1.json`
   (RTB-1) pin these rules; CONFORMANCE-PLAN maps each MUST to its cases. The
-  golden `settlement-evidence-payment-success.json` payment input is
-  illustrative, not a PC-1 handler input.
+  RTB-1 fixture's index uses CORE's `RegistryIndexSnapshot` entry shape and
+  selects an exact pin or the unique greatest listed version. The fixture
+  verifier implements only `ed25519`. The golden
+  `settlement-evidence-payment-success.json` payment input is illustrative,
+  not a PC-1 handler input, and a test pins that the reference rejects it.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

@@ -1511,6 +1511,17 @@ The format used per release:
   vectors (67 → 69): the pay-dem member's admission entry removed
   (`indeterminate`) and a re-signed delivery member at `atomicEvidenceVersion`
   `"2"` with a passing admission for its exact bytes (`rejected`).
+- **Audit finalisation needs the ST-11 publications** (DACS-5 ST-11, AWB-10)
+  — the audit reference no longer accepts `audit-pending → finalised` from the
+  two Work receipts and operation proofs alone. It also requires the `pay-dem`
+  and `deliver-storage-program` `AtomicSettlementEvidenceV1` records bound to
+  those Work operations, each with its own finalized AWS-28 publication, and
+  the buyer- and seller-signed completed bundle that references exactly those
+  records, with a finalized anchor at its role-specific address and a matching
+  `BundleBinding`. A missing piece keeps the session `audit-pending`
+  (`indeterminate`); finalising without it is rejected. Adds 12 Atomic vectors
+  (525 → 537). The six earlier audit-surface vectors now carry the closure;
+  their verdicts do not change.
 
 ### Changed — general normative changes in candidate DACS-4 v0.8 (every profile)
 

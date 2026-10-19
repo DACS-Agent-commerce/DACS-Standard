@@ -19,7 +19,7 @@ import difflib
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "scripts") not in sys.path:
@@ -522,7 +522,7 @@ def commitment_anchor_receipt(record: dict[str, Any]) -> dict[str, Any]:
 
 def registry_anchor_receipt(
     logical_address: str, value: dict[str, Any], *, label: str, nonce: str,
-    block_timestamp: int = 1_799_999_750_000,
+    block_timestamp: int = 1_799_999_750_000, state: str = "finalized",
 ) -> dict[str, Any]:
     content_hash = ref.sha256_hex(ref.jcs_bytes(value))
     receipt = {
@@ -539,7 +539,7 @@ def registry_anchor_receipt(
         },
         "writer": "native:registry-relay-1",
         "nonce": nonce,
-        "state": "finalized",
+        "state": state,
         "observationDisposition": "established",
         "observedAt": block_timestamp + 1_000,
         "blockRef": {
@@ -3821,6 +3821,67 @@ def bundle_binding(intent: dict[str, Any], role: str, storage: dict[str, Any]) -
     )
 
 
+def published_evidence(
+    evidence: dict[str, Any], address: str, **publication_options: Any,
+) -> dict[str, Any]:
+    """An Atomic settlement record with its own AWS-28 publication receipt."""
+    return {
+        "evidence": evidence, "evidenceAddress": address,
+        "publication": atomic_publication(evidence, address, **publication_options),
+    }
+
+
+def sign_bundle(bundle: dict[str, Any], roles: Iterable[str]) -> dict[str, Any]:
+    """Bundle signatures over the evidence-bound bundle domain (DACS-5 §10.4.1)."""
+    out = {k: v for k, v in copy.deepcopy(bundle).items() if k != "signatures"}
+    message = ref._EVIDENCE_BOUND_BUNDLE_DOMAIN + ref.bundle_hash(out).encode("ascii")
+    out["signatures"] = [
+        {"party": CLAIMS[role], "algorithm": "ed25519",
+         "value": ref.b64u(ref.ed25519_sign(SEEDS[role], message))}
+        for role in roles
+    ]
+    return out
+
+
+def role_bundle(
+    intent: dict[str, Any], entries: list[dict[str, Any]], *, role: str = "seller",
+    outcome: str = "completed", faulted: str = "none",
+    signers: Iterable[str] = ("buyer", "seller"),
+) -> dict[str, Any]:
+    """A role-specific EvidenceBoundFaultAttestationBundle copy whose
+    settlementEvidence[] references the published Atomic records."""
+    bundle = {
+        "evidenceBoundFaultBundleVersion": "1", "jobId": intent["jobId"],
+        "outcome": outcome, "faultedParty": faulted, "anchoredByRole": role,
+        "parties": [
+            {"role": party, "primaryClaim": CLAIMS[party]} for party in ("buyer", "seller")
+        ],
+        "settlementEvidence": [
+            {"anchor": {"kind": "storage-program",
+                        "locator": entry["publication"]["anchorReceipt"]["nativeAddress"]},
+             "contentHash": ref.atomic_evidence_hash(entry["evidence"])}
+            for entry in entries
+        ],
+    }
+    return sign_bundle(bundle, signers)
+
+
+def published_bundle(
+    intent: dict[str, Any], bundle: dict[str, Any], *, state: str = "finalized",
+    anchored: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """The bundle copy, its anchor at the role-specific logical address, and
+    the role holder's BundleBinding."""
+    role = bundle["anchoredByRole"]
+    anchor = registry_anchor_receipt(
+        ref.bundle_logical_address(intent["jobId"], role), anchored or bundle,
+        label=f"bundle-{role}", nonce="960", block_timestamp=1_800_000_045_000,
+        state=state,
+    )
+    return {"bundle": bundle, "anchorReceipt": anchor,
+            "bundleBinding": bundle_binding(intent, role, anchor)}
+
+
 def audit_dependency_proofs(
     label: str, receipt: dict[str, Any],
 ) -> list[dict[str, Any]]:
@@ -3926,6 +3987,19 @@ def audit_role_vectors() -> list[dict[str, Any]]:
         "contentHash": ref.sha256_hex(audit_bytes.encode()), "canonicalBytes": audit_bytes,
     }
     audit_native_ref = {"kind": "demos-transaction", "value": "audit-tx-1"}
+    # DACS-5 ST-11: each Atomic evidence record and the completed bundle carry
+    # their own finalized publication; the Work receipts do not replace them.
+    pay_evidence = settlement_evidence(purchase, purchase_receipt, "payment")
+    pay_entry = published_evidence(pay_evidence, ref.atomic_evidence_address(
+        pay_evidence, purchase_receipt["paymentSlot"]["after"]["generation"]))
+    delivery_evidence = settlement_evidence(completion, receipt, "delivery")
+    delivery_entry = published_evidence(
+        delivery_evidence, ref.atomic_evidence_address(delivery_evidence))
+    completed_bundle = role_bundle(purchase, [pay_entry, delivery_entry])
+    st11_closure = {
+        "settlementEvidence": [pay_entry, delivery_entry],
+        "bundle": published_bundle(purchase, completed_bundle),
+    }
     audit_evidence = {
         "purchaseIntent": purchase,
         "purchaseReceipt": purchase_receipt,
@@ -3935,6 +4009,7 @@ def audit_role_vectors() -> list[dict[str, Any]]:
             audit_dependency_proofs("purchase", purchase_receipt)
             + audit_dependency_proofs("completion", receipt)
         ),
+        "st11Closure": st11_closure,
         "sessionStateBefore": "audit-pending",
         "sessionStateAfter": "finalised",
         "publicKeys": PUBLIC_KEYS,
@@ -3978,6 +4053,46 @@ def audit_role_vectors() -> list[dict[str, Any]]:
     overwrite_audit["replayAnchor"]["contentHash"] = ref.sha256_hex(
         overwrite_audit["replayAnchor"]["canonicalBytes"].encode()
     )
+
+    # ST-11 closure cases: each starts from the complete passing audit tail
+    # and removes, unfinalizes or mismatches one required artifact.
+    def closure_case(edit: Any, state_after: str = "finalised") -> dict[str, Any]:
+        value = copy.deepcopy(audit)
+        edit(value["st11Closure"])
+        value["sessionStateAfter"] = state_after
+        return value
+
+    no_closure = copy.deepcopy(audit)
+    del no_closure["st11Closure"]
+    closure_pending = copy.deepcopy(no_closure)
+    closure_pending["sessionStateAfter"] = "audit-pending"
+    other_job = "01K1DPA0000000000000000001"
+    other_completion = completion_intent(final_receipt(purchase_intent(other_job)), other_job)
+    other_delivery = settlement_evidence(other_completion, final_receipt(other_completion), "delivery")
+    other_entry = published_evidence(other_delivery, ref.atomic_evidence_address(other_delivery))
+    closure_cases = {
+        "publication-missing": closure_case(
+            lambda c: c["settlementEvidence"][0].pop("publication")),
+        "publication-unfinalized": closure_case(lambda c: c["settlementEvidence"][0].update(
+            publication=atomic_publication(pay_evidence, pay_entry["evidenceAddress"], state="included"))),
+        "publication-unfinalized-pending": closure_case(lambda c: c["settlementEvidence"][0].update(
+            publication=atomic_publication(pay_evidence, pay_entry["evidenceAddress"], state="included")),
+            state_after="audit-pending"),
+        "evidence-not-this-work": closure_case(lambda c: c.update(
+            settlementEvidence=[pay_entry, other_entry],
+            bundle=published_bundle(purchase, role_bundle(purchase, [pay_entry, other_entry])))),
+        "bundle-missing": closure_case(lambda c: c.pop("bundle")),
+        "bundle-signature-missing": closure_case(lambda c: c.update(bundle=published_bundle(
+            purchase, role_bundle(purchase, [pay_entry, delivery_entry], signers=("seller",))))),
+        "bundle-anchor-unfinalized": closure_case(lambda c: c.update(
+            bundle=published_bundle(purchase, completed_bundle, state="included"))),
+        "bundle-anchor-other-content": closure_case(lambda c: c.update(bundle=published_bundle(
+            purchase, completed_bundle, anchored=role_bundle(purchase, [pay_entry])))),
+        "bundle-evidence-ref-mismatch": closure_case(lambda c: c.update(
+            bundle=published_bundle(purchase, role_bundle(purchase, [pay_entry])))),
+        "bundle-binding-mismatch": closure_case(lambda c: c["bundle"].update(bundleBinding=bundle_binding(
+            purchase, "seller", {**c["bundle"]["anchorReceipt"], "nativeAddress": "stor-other-copy"}))),
+    }
     return [
         vector("awb-completion-receipt-not-final", ["AWB-1"], "role-anchor", completion_only, "fail", "Completion receipt alone cannot finalize DACS-5."),
         vector("awb-work-carried-bundle-profile-deferred", ["AWB-2", "AWB-3", "AWB-4", "AWB-5", "AWB-6", "AWB-7"], "role-anchor", base, "indeterminate", "The conditional Work-carried bundle proof chain is deferred until a later exact Work profile standardizes bundle bytes and authorization.", boundary_rules=["AWB-2", "AWB-3", "AWB-4", "AWB-5", "AWB-6", "AWB-7"]),
@@ -3989,7 +4104,19 @@ def audit_role_vectors() -> list[dict[str, Any]]:
         vector("awb-bundlebinding-missing", ["AWB-4", "AWB-7"], "role-anchor", missing_binding, "indeterminate", "Missing role binding evidence is indeterminate rather than inferred."),
         vector("awb-anchor-content-mismatch", ["AWB-2", "AWB-5", "AWB-7"], "role-anchor", wrong_content, "indeterminate", "No v1 Work profile carries the actual receipt-dependent bundle content to test this conditional proof chain."),
         vector("awb-receipt-dependent-bundle-in-completion", ["AWB-2"], "role-anchor", bundle_in_completion, "fail", "Receipt-dependent bundle bytes cannot be authored inside Completion Work."),
-        vector("awb-idempotent-nonpaying-audit-tail", ["AWB-1", "AWB-2", "AWB-8", "AWB-9", "AWB-10"], "audit", audit, "pass", "The audit tail establishes final role anchoring by verifying both finalized Works and every dependency proof before publishing without payment.", boundary_rules=["AWB-8", "AWB-10"]),
+        vector("awb-idempotent-nonpaying-audit-tail", ["AWB-1", "AWB-2", "AWB-8", "AWB-9", "AWB-10"], "audit", audit, "pass", "The audit tail establishes final role anchoring by verifying both finalized Works, every dependency proof, each Atomic evidence record's own finalized publication and the signed, anchored and bound completed bundle before publishing without payment.", boundary_rules=["AWB-8", "AWB-10"]),
+        vector("awb-audit-finalised-without-st11-closure", ["AWB-10"], "audit", no_closure, "fail", "Verified Work receipts and operation proofs alone cannot move the session to finalised: the ST-11 evidence publications and completed bundle are required."),
+        vector("awb-audit-st11-closure-pending", ["AWB-10"], "audit", closure_pending, "indeterminate", "Without the ST-11 publication closure the session stays audit-pending and the audit result is indeterminate.", boundary_rules=["AWB-10"]),
+        vector("awb-audit-evidence-publication-missing", ["AWB-10"], "audit", closure_cases["publication-missing"], "fail", "Atomic payment evidence without its own publication receipt cannot finalise the session; the Work receipt does not replace it."),
+        vector("awb-audit-evidence-publication-unfinalized", ["AWB-10"], "audit", closure_cases["publication-unfinalized"], "fail", "An authentic but not yet finalized evidence publication keeps the session audit-pending, so finalising it is premature."),
+        vector("awb-audit-evidence-publication-unfinalized-pending", ["AWB-10"], "audit", closure_cases["publication-unfinalized-pending"], "indeterminate", "An evidence publication that is authentic but only included keeps the session audit-pending; it is not a rejection.", boundary_rules=["AWB-10"]),
+        vector("awb-audit-evidence-not-this-work", ["AWB-10"], "audit", closure_cases["evidence-not-this-work"], "fail", "Published delivery evidence for another job's Completion cannot satisfy this session's ST-11 closure, even inside a re-signed bundle."),
+        vector("awb-audit-bundle-missing", ["AWB-10"], "audit", closure_cases["bundle-missing"], "fail", "Finalising without the completed bundle and its own finalized receipt is premature."),
+        vector("awb-audit-bundle-signature-missing", ["AWB-10"], "audit", closure_cases["bundle-signature-missing"], "fail", "A completed bundle lacking the buyer's signature has not obtained all required signatures."),
+        vector("awb-audit-bundle-anchor-unfinalized", ["AWB-10"], "audit", closure_cases["bundle-anchor-unfinalized"], "fail", "An authentic but only included bundle anchor is not the finalized receipt ST-11 requires."),
+        vector("awb-audit-bundle-anchor-other-content", ["AWB-10"], "audit", closure_cases["bundle-anchor-other-content"], "fail", "An authentic bundle anchor that binds other bundle bytes contradicts the presented completed bundle."),
+        vector("awb-audit-bundle-evidence-ref-mismatch", ["AWB-10"], "audit", closure_cases["bundle-evidence-ref-mismatch"], "fail", "A completed bundle whose settlementEvidence omits the published delivery record does not reference the exact evidence set."),
+        vector("awb-audit-bundle-binding-mismatch", ["AWB-10"], "audit", closure_cases["bundle-binding-mismatch"], "fail", "A BundleBinding naming another native address does not bind the anchored completed bundle."),
         vector("awb-audit-dependency-proof-missing", ["AWB-2", "AWB-10"], "audit", missing_dependency_proof, "indeterminate", "A missing Purchase or Completion operation proof leaves the session audit-pending and audit finalisation indeterminate.", boundary_rules=["AWB-2", "AWB-10"]),
         vector("awb-audit-premature-finalisation", ["AWB-10"], "audit", premature_finalisation, "fail", "The session cannot leave audit-pending while a Purchase or Completion operation proof is missing.", boundary_rules=["AWB-10"]),
         vector("awb-audit-replay-no-duplicate", ["AWB-9"], "audit", replay_audit, "pass", "An authenticated exact lifecycle replay produces no duplicate effect."),

@@ -100,6 +100,7 @@ _LISTING_DOMAIN = b"dacs-listing:v1:"
 _COMMITMENT_DOMAIN = b"dacs-finality-commitment:v1:"
 _COMPOSITE_DOMAIN = b"dacs-composite:v1:"
 _AMENDMENT_DOMAIN = b"dacs-amendment:v1:"
+_EVIDENCE_BOUND_BUNDLE_DOMAIN = b"dacs-evidence-bound-fault-bundle:v1:"
 
 
 class Invalid(ValueError):
@@ -2164,10 +2165,11 @@ def _verify_anchor_receipt(
     receipt: dict[str, Any], *, logical: str, content_hash: str,
     public_keys: dict[str, str], network_authority: str,
     network_id: str, proof_profile: str, validator_set_id: str,
+    state: str = "finalized",
 ) -> None:
     required = {
         "receiptVersion": "1", "logicalAddress": logical,
-        "contentHash": content_hash, "state": "finalized",
+        "contentHash": content_hash, "state": state,
         "observationDisposition": "established",
     }
     if any(receipt.get(k) != v for k, v in required.items()):
@@ -2216,7 +2218,7 @@ def _verify_anchor_receipt(
         "transactionRef": receipt.get("transactionRef"),
         "writer": receipt.get("writer"),
         "nonce": receipt.get("nonce"),
-        "state": "finalized",
+        "state": state,
         "blockRef": receipt.get("blockRef"),
         "networkId": network_id,
         "proofProfile": proof_profile,
@@ -3887,6 +3889,250 @@ def evaluate_role_anchor(data: dict[str, Any]) -> None:
         raise Invalid("anchoredByRole mismatch")
     if data.get("roleSource") == "outer-submitter":
         raise Invalid("outer submitter/native writer cannot establish DACS role")
+def atomic_evidence_hash(evidence: dict[str, Any]) -> str:
+    """DACS-4 §9.7.3 `atomic_evidence_hash`: JCS of the evidence without its signature."""
+    return sha256_hex(jcs_bytes({k: v for k, v in evidence.items() if k != "signature"}))
+
+
+def bundle_hash(bundle: dict[str, Any]) -> str:
+    """DACS-5 §10.4.1 attestation-bundle hash: omits `signatures` and `anchoredByRole`."""
+    return sha256_hex(jcs_bytes({
+        k: v for k, v in bundle.items() if k not in {"signatures", "anchoredByRole"}
+    }))
+
+
+def bundle_logical_address(job_id: str, role: str) -> str:
+    """DACS-5 §10.4.2 role-specific logical bundle address."""
+    return "stor-" + sha256_hex(f"{job_id}-bundle-{role}".encode("ascii"))
+
+
+def _role_claims(intent: dict[str, Any]) -> dict[str, str]:
+    """Role holders named by the receipt-authenticated Work intent."""
+    return {entry["role"]: claim_key(entry["signer"]) for entry in intent["roleRoster"]}
+
+
+def _verify_published_evidence(
+    entry: Any, intent: dict[str, Any], receipt: dict[str, Any],
+    operation_kind: str, orchestrator: str, data: dict[str, Any],
+) -> None:
+    """Bind one successful Atomic settlement record to its finalized Work
+    operation and to its own finalized AWS-28 publication (DACS-5 ST-11)."""
+    if not isinstance(entry, dict) or not isinstance(entry.get("evidence"), dict):
+        raise Unknown(f"published {operation_kind} settlement evidence unavailable")
+    # Authenticate the capability before reading its proof profile or pins.
+    network_authority = _network_authority(data)
+    evidence = entry["evidence"]
+    validate_schema(evidence, "atomic-settlement-evidence-v1.schema.json")
+    if [key for key in EVIDENCE_SELECTORS if key in evidence] != ["atomicEvidenceVersion"]:
+        raise Invalid("Atomic evidence discriminator must be the only evidence selector")
+    verify_embedded(evidence, data["publicKeys"], EVIDENCE_DOMAIN)
+    require_signer(evidence, orchestrator)
+    if evidence.get("outcome") != "success":
+        raise Invalid("settlement evidence does not record the committed operation's success")
+    for field in ("networkId", "jobId", "railId", "phaseIndex"):
+        if type(evidence.get(field)) is not type(intent.get(field)) or evidence.get(field) != intent.get(field):
+            raise Invalid(f"settlement evidence {field} does not match the verified Work")
+    leaves = [
+        leaf for leaf in receipt["operationResults"]
+        if leaf.get("operationKind") == operation_kind
+    ]
+    if len(leaves) != 1 or leaves[0].get("status") != "committed":
+        raise Invalid("verified Work lacks one committed settlement operation")
+    leaf = leaves[0]
+    index = leaf["operationIndex"]
+    expected_ref = {
+        "kind": "demos-work-operation-v1", "networkId": receipt["networkId"],
+        "workId": receipt["workId"], "operationIndex": index,
+        "operationId": leaf["operationId"], "operationKind": operation_kind,
+    }
+    if any(evidence["operationRef"].get(k) != v for k, v in expected_ref.items()):
+        raise Invalid("settlement evidence names another Work operation")
+    expected_receipt_hash = receipt_hash(receipt)
+    receipt_ref = evidence["workReceiptRef"]
+    if (
+        receipt_ref.get("networkId") != receipt["networkId"]
+        or receipt_ref.get("workId") != receipt["workId"]
+        or receipt_ref.get("receiptCommitment") != receipt["receiptCommitment"]
+        or receipt_ref.get("contentHash") != expected_receipt_hash
+    ):
+        raise Invalid("settlement evidence names another Work receipt")
+    proof = evidence["operationProof"]
+    expected_subject = {
+        "networkId": receipt["networkId"], "workId": receipt["workId"],
+        "winningAttemptId": receipt["winningAttempt"]["attemptId"],
+        "operationReceiptRoot": receipt["operationReceiptRoot"],
+        "operationIndex": index, "operationId": leaf["operationId"],
+        "operationKind": operation_kind, "receiptContentHash": expected_receipt_hash,
+    }
+    if any(proof["subject"].get(k) != v for k, v in expected_subject.items()):
+        raise Invalid("settlement operation proof subject mismatch")
+    if proof.get("proofProfile") != data["capability"].get("proofProfile"):
+        raise Invalid("unsupported operation proof profile")
+    try:
+        path = json.loads(b64u_decode(proof["value"]).decode("utf-8"))
+    except (Invalid, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise Invalid("operation proof value encoding invalid") from exc
+    if not isinstance(path, list) or not verify_inclusion(leaf, path, receipt["operationReceiptRoot"]):
+        raise Invalid("operation receipt inclusion path invalid")
+    generation = (
+        receipt.get("paymentSlot", {}).get("after", {}).get("generation")
+        if evidence.get("phase") == "pay-dem" else None
+    )
+    verify_atomic_evidence_address(entry.get("evidenceAddress"), evidence, generation)
+    publication = entry.get("publication")
+    anchor = publication.get("anchorReceipt") if isinstance(publication, dict) else None
+    if not isinstance(anchor, dict) or anchor.get("state") != "finalized":
+        raise Unknown("Atomic evidence publication is not finalized")
+    _verify_atomic_publication(
+        publication, evidence, entry["evidenceAddress"], data["publicKeys"],
+        network_authority=network_authority, network_id=intent["networkId"],
+        proof_profile=data.get("expectedProofProfile"),
+        validator_set_id=data["capability"]["validatorSetId"],
+    )
+
+
+def _bundle_roles(bundle: dict[str, Any], roster: dict[str, str]) -> set[str]:
+    parties = bundle.get("parties")
+    if not isinstance(parties, list) or not parties:
+        raise Invalid("bundle parties are malformed")
+    roles = set()
+    for party in parties:
+        role = party.get("role") if isinstance(party, dict) else None
+        # DACS-5 BundleParty roles; the payer is not a bundle party.
+        if (role in roles or role not in {"buyer", "seller", "orchestrator"}
+                or role not in roster or not claim_equal(party.get("primaryClaim"), roster[role])):
+            raise Invalid("bundle parties differ from the Work's role holders")
+        roles.add(role)
+    return roles
+
+
+def _bundle_signature_missing(bundle: dict[str, Any], role: str, roster: dict[str, str],
+                              public_keys: dict[str, str]) -> bool:
+    """Verify `role`'s bundle signature; True when that role has not signed."""
+    signatures = bundle.get("signatures")
+    if not isinstance(signatures, list):
+        raise Invalid("bundle signatures are malformed")
+    matches = [
+        item for item in signatures
+        if isinstance(item, dict) and claim_equal(item.get("party"), roster[role])
+    ]
+    if not matches:
+        return True
+    if len(matches) != 1 or matches[0].get("algorithm") != "ed25519":
+        raise Invalid("bundle signature for a role is duplicated or unsupported")
+    key = _public_key_for_claim(public_keys, roster[role])
+    if key is None:
+        raise Unknown(f"no authenticated key for bundle signer {role}")
+    message = _EVIDENCE_BOUND_BUNDLE_DOMAIN + bundle_hash(bundle).encode("ascii")
+    if not ed25519_verify(
+        _ed25519_public_bytes(key), message, _ed25519_signature_bytes(matches[0].get("value", ""))
+    ):
+        raise Invalid(f"invalid {role} bundle signature")
+    return False
+
+
+def _verify_role_bundle_publication(
+    entry: dict[str, Any], bundle: dict[str, Any], roster: dict[str, str],
+    data: dict[str, Any], network_id: str, states: Iterable[str],
+) -> None:
+    """The role-specific copy's own anchor and its BundleBinding (§10.4.2)."""
+    role = bundle["anchoredByRole"]
+    receipt = entry.get("anchorReceipt")
+    if not isinstance(receipt, dict) or receipt.get("state") not in set(states):
+        raise Unknown("role-specific bundle anchor is not established")
+    network_authority = _network_authority(data)
+    capability = data["capability"]
+    logical = bundle_logical_address(bundle["jobId"], role)
+    _verify_anchor_receipt(
+        receipt, logical=logical, content_hash=sha256_hex(jcs_bytes(bundle)),
+        public_keys=data["publicKeys"], network_authority=network_authority,
+        network_id=network_id, proof_profile=data.get("expectedProofProfile"),
+        validator_set_id=capability["validatorSetId"], state=receipt["state"],
+    )
+    binding = entry.get("bundleBinding")
+    if not isinstance(binding, dict):
+        raise Unknown("BundleBinding unavailable")
+    verify_embedded(binding, data["publicKeys"], _BINDING_TEST_DOMAIN)
+    require_signer(binding, roster[role])
+    expected = {
+        "bindingVersion": "1", "jobId": bundle["jobId"], "role": role,
+        "logicalAddress": logical, "nativeAddress": receipt["nativeAddress"],
+        "contentHash": receipt["contentHash"],
+    }
+    if any(binding.get(k) != v for k, v in expected.items()):
+        raise Invalid("BundleBinding does not bind the anchored bundle copy")
+
+
+def _evidence_refs(bundle: dict[str, Any]) -> list[tuple[str, str]]:
+    refs = bundle.get("settlementEvidence")
+    if not isinstance(refs, list) or not all(_valid_attestation_ref(item) for item in refs):
+        raise Invalid("bundle settlementEvidence is malformed")
+    return [(item["anchor"]["locator"], item["contentHash"]) for item in refs]
+
+
+def _published_ref(entry: dict[str, Any]) -> tuple[str, str]:
+    return (entry["publication"]["anchorReceipt"]["nativeAddress"],
+            atomic_evidence_hash(entry["evidence"]))
+
+
+def _verify_st11_closure(
+    data: dict[str, Any], purchase_intent: dict[str, Any], purchase_receipt: dict[str, Any],
+    completion_intent: dict[str, Any], completion_receipt: dict[str, Any],
+) -> None:
+    """DACS-5 ST-11 items 1, 2, 4 and 5 for the Atomic Purchase/Completion pair.
+
+    The Work receipts prove the business operations; each Atomic evidence
+    artifact and the completed bundle still need their own finalized
+    publication before `audit-pending → finalised`.
+    """
+    closure = data.get("st11Closure")
+    if not isinstance(closure, dict):
+        raise Unknown("ST-11 publication closure unavailable")
+    roster = _role_claims(purchase_intent)
+    entries = closure.get("settlementEvidence")
+    if not isinstance(entries, list):
+        raise Unknown("published Atomic settlement evidence unavailable")
+    by_phase: dict[str, Any] = {}
+    for entry in entries:
+        phase = entry.get("evidence", {}).get("phase") if isinstance(entry, dict) else None
+        if phase not in {"pay-dem", "deliver-storage-program"} or phase in by_phase:
+            raise Invalid("ST-11 evidence set is not exactly the Purchase payment and Completion delivery")
+        by_phase[phase] = entry
+    for phase, intent, receipt, kind in (
+        ("pay-dem", purchase_intent, purchase_receipt, "native-dem-transfer"),
+        ("deliver-storage-program", completion_intent, completion_receipt, "storage-program-put"),
+    ):
+        _verify_published_evidence(by_phase.get(phase), intent, receipt, kind, roster["orchestrator"], data)
+    bundle_entry = closure.get("bundle")
+    bundle = bundle_entry.get("bundle") if isinstance(bundle_entry, dict) else None
+    if not isinstance(bundle, dict):
+        raise Unknown("completed bundle unavailable")
+    if (
+        bundle.get("evidenceBoundFaultBundleVersion") != "1"
+        or bundle.get("jobId") != purchase_intent["jobId"]
+        or bundle.get("outcome") != "completed"
+        or bundle.get("faultedParty") != "none"
+        or bundle.get("anchoredByRole") not in {"buyer", "seller"}
+    ):
+        raise Invalid("bundle is not this job's completed EvidenceBoundFaultAttestationBundle")
+    roles = _bundle_roles(bundle, roster)
+    if roles != {"buyer", "seller"}:
+        raise Invalid("completed bundle parties are not the buyer and seller")
+    refs = _evidence_refs(bundle)
+    expected_refs = {_published_ref(entry) for entry in by_phase.values()}
+    if len(refs) != len(expected_refs) or set(refs) != expected_refs:
+        raise Invalid("bundle settlementEvidence differs from the published Atomic evidence")
+    missing = [
+        role for role in ("buyer", "seller")
+        if _bundle_signature_missing(bundle, role, roster, data["publicKeys"])
+    ]
+    if missing:
+        raise Unknown("required completed-bundle signature unavailable: " + ", ".join(missing))
+    _verify_role_bundle_publication(
+        bundle_entry, bundle, roster, data, purchase_intent["networkId"], ("finalized",)
+    )
+
+
 def evaluate_audit(data: dict[str, Any]) -> None:
     operations = data.get("operations")
     if not isinstance(operations, list):
@@ -3979,6 +4225,18 @@ def evaluate_audit(data: dict[str, Any]) -> None:
                 "audit-pending cannot transition before dependency proofs are complete"
             )
         raise Unknown("audit dependency proof set is incomplete")
+    # AWB-10 / DACS-5 ST-11: the Work receipts and operation proofs do not
+    # replace each evidence record's own publication or the completed bundle.
+    try:
+        _verify_st11_closure(
+            data, purchase_intent, purchase_receipt, completion_intent, completion_receipt,
+        )
+    except Unknown:
+        if data.get("sessionStateAfter") != "audit-pending":
+            raise Invalid(
+                "audit-pending cannot transition before the ST-11 publication closure is complete"
+            )
+        raise
     if (
         data.get("sessionStateBefore") != "audit-pending"
         or data.get("sessionStateAfter") != "finalised"

@@ -123,7 +123,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 525)
+        self.assertEqual(vector_count, 537)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(

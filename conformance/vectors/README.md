@@ -115,6 +115,9 @@ v0.1 conformance requirements:
   context is a fixture precondition only: this pack does not query either
   native chain, establish reveal transaction finality, or authenticate a
   production rail/finality provider.
+- `conformance/fixtures/delivery-remedy/` — signed synthetic release/refund
+  lifecycle cases and DRC-1 through DRC-13, DRC-22, and DREB-24 capability evidence for the #356
+  review candidate. It explicitly registers no rail or deployment.
 
 ## Validate locally
 
@@ -125,6 +128,8 @@ python3 scripts/validate_conformance_vectors.py
 python3 scripts/validate_domain_separators.py
 python3 scripts/validate_rule_ids.py
 python3 scripts/validate_spec_tables.py
+python3 scripts/generate_delivery_remedy_candidate_vectors.py --check
+python3 scripts/verify_delivery_remedy_candidate_vectors.py
 python3 scripts/generate_htlc9_st8_pack.py --check
 python3 scripts/verify_htlc9_st8_pack.py
 ```

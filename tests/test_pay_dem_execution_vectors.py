@@ -135,6 +135,7 @@ GUARDS = frozenset({
     "sb1-demos-canonical",
     "sb1-demos-shape",
     "sb2-group-raw-references",
+    "sb2-presented-set-only",
 })
 
 # The expected PC-4 result of each handler class, written out here rather
@@ -905,7 +906,13 @@ def project_id(protocol_input, off):
 
 
 def resolve_group(protocol_input, off):
+    """SB-2 over the presented records only: settlement accounting and the
+    DACS-5 derivation never add the consumer's other admissions."""
     records = protocol_input["records"]
+    if "sb2-presented-set-only" in off:
+        # The wrong implementation adds its own earlier admissions, so its
+        # result cannot be reproduced from the presented set.
+        records = records + protocol_input["consumerAdmissions"]
     keys = [demos_id(record["txRef"], off, legacy=record.get("legacy", False)) for record in records]
     if None in keys:
         return "error", {"records": []}
@@ -1901,7 +1908,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         authenticated authority shows the rolled-back, unchanged balances."""
         spec = SPEC.read_text(encoding="utf-8")
         demos = DEMOS.read_text(encoding="utf-8")
-        self.assertIn("For a bound `confirmed` record, independently authenticated applied-payment authority that contradicts them is `fail`", spec)
+        self.assertIn("For a bound `confirmed` record, whatever its edits, independently authenticated applied-payment authority that contradicts them is `fail`", spec)
         self.assertIn("A bound `failed` record is decided by the two `failed` rules above, whatever the authority reports.", spec)
         self.assertIn("A bound `failed` record stays under DEM-4 for the handler and under DEM-7's `failed` rules for a consumer, whatever the authority reports.", demos)
         checked = 0
@@ -2079,7 +2086,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("(`pay-evm-erc20`, `pay-solana-spl`, `pay-ap2`, `pay-x402`, `pay-dem`)", spec)
         self.assertNotIn('the tx reached the terminal "included" state', spec)
         self.assertNotIn("differently typed", spec)
-        self.assertIn("by itself it authorizes neither delivery nor settlement accounting", spec)
+        self.assertIn("by itself it authorizes neither delivery nor *settlement accounting*", spec)
         self.assertIn("MUST NOT broadcast a transaction that the profile does not authenticate", spec)
         self.assertIn("authenticate the full result record independently", spec)
         self.assertIn("primary party signing key\n  MUST NOT substitute", spec)
@@ -2108,6 +2115,74 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("refuses a native transaction whose edits differ", demos)
         self.assertIn("A bound `failed` record from an ordinary RPC read is `indeterminate`.", spec)
         self.assertIn("collapsing a verified legacy spelling", spec)
+
+    def test_sb2_history_is_the_payees_delivery_input_only(self):
+        """SB-2 is scoped to the presented set and DACS-5 derivations must be
+        reproducible from their own contents. Only the payee's delivery check
+        adds its own admissions, and it presents them as input; settlement
+        accounting and the DACS-5 derivation never add unpresented history."""
+        spec = SPEC.read_text(encoding="utf-8")
+        dem7 = spec[spec.index("**(DEM-7) Consumer admission.**"):spec.index("**Finality.** Demos")]
+        self.assertNotIn("across every `pay-dem` evidence set it has admitted", spec)
+        self.assertIn("Every consumer applies SB-2 to `demos:{txHash}` over its presented evidence set", dem7)
+        self.assertIn("Before delivery, the payee MUST present to that check, together with the evidence "
+                      "for this phase, every `pay-dem` evidence it has itself admitted", dem7)
+        self.assertIn("This history rule is the payee's delivery check alone.", dem7)
+        self.assertIn("Settlement accounting, including the DACS-5 derivation, MUST NOT add evidence from outside "
+                      "the presented set it accounts over", dem7)
+        self.assertIn("Settlement accounting is any consumer's counting of evidence as the payment of its "
+                      "`(jobId, phaseIndex)`", spec)
+        self.assertIn("The check is scoped to the consumer's complete **presented evidence set**", spec)
+        # A deriver that once admitted H for X still counts Y when only Y is
+        # presented; the payee, which presents its own admission, does not deliver.
+        derivation = self.cases["sb2-demos-unpresented-admission-not-added"]
+        records, history = (derivation["protocolInput"][k] for k in ("records", "consumerAdmissions"))
+        self.assertEqual([r["txRef"] for r in records], [a["txRef"] for a in history])
+        self.assertNotEqual([r["jobId"] for r in records], [a["jobId"] for a in history])
+        self.assertEqual("pass", evaluate(derivation)[0])
+        self.assertEqual("indeterminate", evaluate(derivation, {"sb2-presented-set-only"})[0])
+        payee = self.cases["delivery-hash-admitted-for-another-job"]
+        self.assertEqual("indeterminate", evaluate(payee)[0])
+        self.assertFalse(evaluate(payee)[1]["deliveryAuthorized"])
+        # Every other derivation vector presents no extra history.
+        for vector in self.data["vectors"]:
+            if vector["operation"] == "resolve-settlement-group" and vector is not derivation:
+                with self.subTest(name=vector["name"]):
+                    self.assertEqual([], vector["protocolInput"]["consumerAdmissions"])
+
+    def test_restated_outcomes_defer_to_dem7(self):
+        """DEMOS-MAPPING §A.2 must not restate a consumer outcome that DEM-7
+        decides otherwise: an authenticated contradicting authority is fail
+        whatever the record's edits, for a fee-separated record too, while the
+        handler stays indeterminate. DEM-6 names no resume of a terminal session."""
+        spec = SPEC.read_text(encoding="utf-8")
+        demos = DEMOS.read_text(encoding="utf-8")
+        self.assertNotIn("is outside this profile and stays `indeterminate` under DEM-3 and DEM-7", demos)
+        self.assertNotIn("its records stay `indeterminate`, never a false success", demos)
+        self.assertIn("which DEM-7 decides `fail` whatever the record's edits", demos)
+        self.assertIn("binds another genesis than the phase's pinned network decides `fail` under DEM-7", demos)
+        self.assertIn("For a bound `confirmed` record, whatever its edits, independently authenticated "
+                      "applied-payment authority that contradicts them is `fail`", spec)
+        self.assertNotIn("a resume after `failed-substrate`", spec)
+        self.assertNotIn("any resume after DEM-4", spec)
+        self.assertIn("is a post-terminal read that changes no session state", spec)
+        self.assertIn("the signed transaction itself and its hash, signed nonce", spec)
+        consumer = self.cases["consumer-fee-separated-edits-uncommitted-payment"]
+        handler = self.cases["confirmed-fee-separated-edits-uncommitted-payment"]
+        for vector in (consumer, handler):
+            with self.subTest(name=vector["name"]):
+                read = vector["protocolInput"]["recordRead"]
+                self.assertGreater(len(read["record"]["content"]["gcr_edits"]), 4)
+                self.assertEqual(generator.committed_change(generator.ROLLED_BACK),
+                                 (read["appliedTransfer"]["payerDebitOs"], read["appliedTransfer"]["payeeCreditOs"]))
+        self.assertEqual("fail", evaluate(consumer)[0])
+        self.assertEqual("indeterminate", evaluate(handler)[0])
+        # Removing the edit check changes nothing: the authority decides first.
+        self.assertEqual("fail", evaluate(consumer, {"confirmed-requires-send-edits"})[0])
+        # A genesis replaced after signing: the authority names another genesis.
+        replaced = json.loads(json.dumps(self.cases["consumer-confirmed-gate-passes"]))
+        replaced["protocolInput"]["recordRead"]["appliedTransfer"]["genesisHash"] = "f" * 64
+        self.assertEqual("fail", evaluate(replaced)[0])
 
 
 if __name__ == "__main__":

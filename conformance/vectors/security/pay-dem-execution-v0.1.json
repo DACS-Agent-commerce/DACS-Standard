@@ -31,11 +31,11 @@
     "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",
     "gasFeeSeparationUnscheduled": "the Demos binding attests, from that network's sealed genesis, that the gasFeeSeparation fork is unscheduled (activationHeight null); RPC does not report it, and with it active the node stores fee edits before the send's four, so anything but true (a scheduled height, an attestation the binding does not hold) is refused",
     "proofAuthentication": "how the DEM-4 proof's failed record was obtained: fv5-bft-final (FV-5-authenticated at its bft-final inclusion) or rpc-read; anything else is not authenticated",
-    "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) for every otherwise admitted pay-dem record; derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error",
+    "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) of pay-dem records the consumer admitted earlier. For admit-for-delivery they are the payee's own admissions, which its delivery check presents with the evidence: derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error. For resolve-settlement-group they lie outside the presented records, and settlement accounting and the DACS-5 derivation never add them",
     "guards": "checks whose removal makes this vector fail"
   },
-  "count": 238,
-  "hash": "298cfa1aaf66d51906dcf120e8437eac9691a3dee256756c4d46c5ad7a3ce738",
+  "count": 241,
+  "hash": "e688bed4bad82df31e61e6fb40295f2facee7d105dc66eba284c42895a6834c3",
   "vectors": [
     {
       "name": "included-confirmed",
@@ -3335,6 +3335,182 @@
         "unresolved-authorizes-nothing"
       ],
       "note": "A record from a network with gasFeeSeparation active carries fee edits before the send's four: outside the profile."
+    },
+    {
+      "name": "confirmed-fee-separated-edits-uncommitted-payment",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                  "amount": 500000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23",
+                  "amount": 500000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "0",
+            "payeeCreditOs": "0",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "1000000000000000000000000000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000000000000000",
+              "feeOs": "0"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3/DEM-5",
+      "guards": [
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A fee-separated record whose authenticated committed balances did not move is still only unresolved for the handler."
     },
     {
       "name": "confirmed-four-edits-uncommitted-payment",
@@ -18496,6 +18672,183 @@
       "note": "A record carrying gasFeeSeparation fee edits before the send's four is outside the profile and not admitted."
     },
     {
+      "name": "consumer-fee-separated-edits-uncommitted-payment",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                  "amount": 500000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23",
+                  "amount": 500000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "0",
+            "payeeCreditOs": "0",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "1000000000000000000000000000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000000000000000",
+              "feeOs": "0"
+            }
+          }
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-authenticated-contradiction-fails",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Authenticated committed balances that did not move refute a fee-separated record: DEM-7 decides the contradiction whatever the edits."
+    },
+    {
       "name": "consumer-four-edits-uncommitted-payment",
       "operation": "admit-evidence",
       "protocolInput": {
@@ -33471,7 +33824,8 @@
               "blockNumber": 43
             }
           }
-        ]
+        ],
+        "consumerAdmissions": []
       },
       "expected": "indeterminate",
       "want": {
@@ -33516,7 +33870,8 @@
               "blockNumber": 42
             }
           }
-        ]
+        ],
+        "consumerAdmissions": []
       },
       "expected": "pass",
       "want": {
@@ -33561,7 +33916,8 @@
             },
             "legacy": true
           }
-        ]
+        ],
+        "consumerAdmissions": []
       },
       "expected": "indeterminate",
       "want": {
@@ -33583,6 +33939,49 @@
         "sb2-group-raw-references"
       ],
       "note": "Derive keys before grouping; no job, block or legacy spelling may split one transfer."
+    },
+    {
+      "name": "sb2-demos-unpresented-admission-not-added",
+      "operation": "resolve-settlement-group",
+      "protocolInput": {
+        "records": [
+          {
+            "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQS",
+            "phaseIndex": 1,
+            "txRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            }
+          }
+        ],
+        "consumerAdmissions": [
+          {
+            "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+            "phaseIndex": 1,
+            "txRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            }
+          }
+        ]
+      },
+      "expected": "pass",
+      "want": {
+        "records": [
+          {
+            "settlementTxId": "demos:2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "decision": "pass"
+          }
+        ]
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/SB-2",
+      "guards": [
+        "sb1-demos-id",
+        "sb2-presented-set-only"
+      ],
+      "note": "Accounting over a presented set never adds the consumer's other admissions; only the payee's delivery check presents them."
     },
     {
       "name": "confirm-after-durable-retention",

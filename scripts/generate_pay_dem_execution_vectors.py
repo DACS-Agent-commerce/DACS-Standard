@@ -904,6 +904,11 @@ def build_vectors() -> list[dict[str, Any]]:
             "A record from a network with gasFeeSeparation active carries fee edits before the send's four: outside the profile.",
             read=found(record("confirmed", edits=fee_separated_edits(send_content(), TX_HASH))),
         ),
+        classify(
+            "confirmed-fee-separated-edits-uncommitted-payment", "indeterminate", "DEM-3/DEM-5", unresolved,
+            "A fee-separated record whose authenticated committed balances did not move is still only unresolved for the handler.",
+            read=found(record("confirmed", edits=fee_separated_edits(send_content(), TX_HASH)), state=ROLLED_BACK),
+        ),
         # A confirmed record that carries its send's four edits, while the
         # authenticated committed state shows no payment: the edits are the
         # claim, the committed balances are the evidence.
@@ -1352,6 +1357,12 @@ def build_vectors() -> list[dict[str, Any]]:
             read=found(record("confirmed", edits=fee_separated_edits(send_content(), TX_HASH))),
         ),
         admit(
+            "consumer-fee-separated-edits-uncommitted-payment", "fail", "DEM-7/FV-5",
+            ["consumer-authenticated-contradiction-fails", "consumer-requires-confirmed-record", "success-requires-applied-transfer"],
+            "Authenticated committed balances that did not move refute a fee-separated record: DEM-7 decides the contradiction whatever the edits.",
+            read=found(record("confirmed", edits=fee_separated_edits(send_content(), TX_HASH)), state=ROLLED_BACK),
+        ),
+        admit(
             "consumer-four-edits-uncommitted-payment", "fail", "DEM-7/FV-5",
             ["consumer-authenticated-contradiction-fails", "consumer-requires-confirmed-record", "success-requires-applied-transfer"],
             "Authenticated committed balances unchanged by a confirmed send with all four edits refute the payment.",
@@ -1660,10 +1671,22 @@ def build_vectors() -> list[dict[str, Any]]:
         records = [{"jobId": job, "phaseIndex": PHASE_INDEX, "txRef": item} for job, item in zip((JOB_ID, OTHER_JOB_ID), refs)]
         if name == "legacy-spelling-collision":
             records[1]["legacy"] = True
-        vectors.append(_vector("sb2-demos-" + name, "resolve-settlement-group", {"records": records}, expected,
+        vectors.append(_vector("sb2-demos-" + name, "resolve-settlement-group", {"records": records, "consumerAdmissions": []},
+                               expected,
                                {"records": [{"settlementTxId": "demos:" + item["txHash"].removeprefix("0x").lower(),
                                              "decision": expected} for item in refs]},
                                "DEM-7/SB-1/SB-2", [], "Derive keys before grouping; no job, block or legacy spelling may split one transfer."))
+    # Settlement accounting and the DACS-5 derivation group the presented set
+    # only: an earlier admission of the same hash for another job that is not
+    # presented must not change the result, or a re-run of the derivation from
+    # its own contents could not reproduce its metrics.
+    vectors.append(_vector(
+        "sb2-demos-unpresented-admission-not-added", "resolve-settlement-group",
+        {"records": [{"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX, "txRef": ref}],
+         "consumerAdmissions": [{"jobId": JOB_ID, "phaseIndex": PHASE_INDEX, "txRef": ref}]},
+        "pass", {"records": [{"settlementTxId": "demos:" + TX_HASH, "decision": "pass"}]},
+        "DEM-7/SB-2", [],
+        "Accounting over a presented set never adds the consumer's other admissions; only the payee's delivery check presents them."))
     # DEM-1 is checked at the first egress of the signed bytes, including the
     # demosdk confirm (confirmTx) request; DEM-6 starts there.
     vectors += [
@@ -1813,6 +1836,7 @@ def build_vectors() -> list[dict[str, Any]]:
             vector["guards"] = sorted(
                 ["sb1-demos-id"]
                 + (["sb2-group-raw-references"] if vector["expected"] == "indeterminate" else [])
+                + (["sb2-presented-set-only"] if vector["protocolInput"]["consumerAdmissions"] else [])
                 + (["sb1-demos-shape"] if vector["name"].endswith("-legacy-spelling-collision") else [])
             )
     return vectors
@@ -1855,7 +1879,7 @@ def document() -> dict[str, Any]:
             "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",
             "gasFeeSeparationUnscheduled": "the Demos binding attests, from that network's sealed genesis, that the gasFeeSeparation fork is unscheduled (activationHeight null); RPC does not report it, and with it active the node stores fee edits before the send's four, so anything but true (a scheduled height, an attestation the binding does not hold) is refused",
             "proofAuthentication": "how the DEM-4 proof's failed record was obtained: fv5-bft-final (FV-5-authenticated at its bft-final inclusion) or rpc-read; anything else is not authenticated",
-            "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) for every otherwise admitted pay-dem record; derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error",
+            "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) of pay-dem records the consumer admitted earlier. For admit-for-delivery they are the payee's own admissions, which its delivery check presents with the evidence: derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error. For resolve-settlement-group they lie outside the presented records, and settlement accounting and the DACS-5 derivation never add them",
             "guards": "checks whose removal makes this vector fail",
         },
         "count": len(vectors),

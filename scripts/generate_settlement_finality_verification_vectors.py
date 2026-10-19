@@ -1709,6 +1709,11 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     vectors.append(case("fv-bft-final-confirmed-fee-separated-edits", "indeterminate",
                         "a confirmed send carrying gasFeeSeparation fee edits before its four is outside the record profile",
                         demos_record(gcr_edits=fee_edits + full)))
+    # DEM-7 decides an authenticated contradiction before the edits: the same
+    # fee-separated record over committed balances that did not move is `fail`.
+    vectors.append(case("fv-bft-final-confirmed-fee-separated-edits-uncommitted-payment", "fail",
+                        "authenticated committed balances unchanged by a fee-separated confirmed send refute the payment",
+                        demos_record(gcr_edits=fee_edits + full, state=rolled_back)))
     # A confirmed send that carries all four edits while the authenticated
     # committed balances did not move: the edits are the claim, not the payment.
     vectors.append(case("fv-bft-final-confirmed-four-edits-uncommitted-payment", "fail",

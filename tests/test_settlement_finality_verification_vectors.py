@@ -169,7 +169,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(193, self.data["count"])
+        self.assertEqual(194, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -447,7 +447,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         for suffix, expected, reason in (
             ("missing-edits", "fail", "applied transfer contradicts the native send"),
             ("empty-edits", "fail", "applied transfer contradicts the native send"),
-            ("copied-authority", "indeterminate", "lacks its send's edits"),
+            ("copied-authority", "indeterminate", "does not carry exactly its send's four edits"),
         ):
             with self.subTest(suffix=suffix):
                 case = self.cases["fv-bft-final-confirmed-no-op-" + suffix]
@@ -470,6 +470,27 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 changed = copy.deepcopy(content)
                 mutate(changed)
                 self.assertFalse(_demos_send_edits_match(changed))
+
+    def test_fee_separated_record_follows_the_dem7_order(self):
+        """A fee-separated record establishes no payment. DEM-7 decides an
+        authenticated contradicting authority `fail` whatever the edits, as
+        the pay-dem consumer gate does; one that reports the payment leaves
+        the record `indeterminate`."""
+        for name, expected, reason in (
+            ("fv-bft-final-confirmed-fee-separated-edits", "indeterminate",
+             "does not carry exactly its send's four edits"),
+            ("fv-bft-final-confirmed-fee-separated-edits-uncommitted-payment", "fail",
+             "applied transfer contradicts the native send"),
+        ):
+            with self.subTest(case=name):
+                case = self.cases[name]
+                record = case["input"]["context"]["observation"]["executionResult"]["record"]
+                self.assertEqual("confirmed", record["status"])
+                self.assertGreater(len(record["content"]["gcr_edits"]), 4)
+                self.assertFalse(_demos_send_edits_match(record["content"]))
+                outcome = self.evaluate_case(case)
+                self.assertEqual((expected, expected), (case["expected"], outcome["decision"]))
+                self.assertIn(reason, outcome["reason"])
 
     def test_execution_result_only_on_a_demos_native_send(self):
         case = self.cases["fv-block-depth-execution-result-not-native-send"]
@@ -533,7 +554,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertTrue(_demos_send_edits_match(content))
         for name, decision, reason in (
             ("fv-bft-final-send-argument-prefixed", "pass", "chain observation verified"),
-            ("fv-bft-final-send-argument-prefixed-credit-double-prefix", "indeterminate", "lacks its send's edits"),
+            ("fv-bft-final-send-argument-prefixed-credit-double-prefix", "indeterminate", "does not carry exactly its send's four edits"),
             ("fv-bft-final-unprefixed-parties-bind", "pass", "chain observation verified"),
             ("fv-bft-final-integer-nonce-binds", "pass", "chain observation verified"),
             ("fv-bft-final-string-amount-binds", "pass", "chain observation verified"),

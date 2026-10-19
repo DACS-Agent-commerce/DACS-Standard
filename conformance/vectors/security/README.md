@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 238 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 241 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -92,7 +92,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 193 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 194 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1247,7 +1247,7 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-238 candidate vectors pin native-DEM settlement on execution, not inclusion.
+241 candidate vectors pin native-DEM settlement on execution, not inclusion.
 The node's status index may label a transaction `included` while its
 transaction record is `failed`, so the index is never decisive. Records use
 the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
@@ -1343,15 +1343,17 @@ committed nothing), while an unauthenticated mismatched or `failed` read stays
 authority reports. The record
 hash, block, payer, payee and amount are each bound under their own guard. `admit-for-delivery`
 cases authorize delivery only when DEM-7 passes on an FV-5-authenticated
-record and the FV, SB-1 and PB verdicts pass, and when the consumer has not
+record and the FV, SB-1 and PB verdicts pass, and when the payee has not
 already admitted the same `demos:{txHash}` for another `(jobId, phaseIndex)`
-(SB-2; `pay-dem` has no settlement-side job binding). Admitted references are
-projected through SB-1 first: a verified legacy spelling of the same hash
-collides, and an admitted reference that cannot be projected is `error`.
+(SB-2; `pay-dem` has no settlement-side job binding). The payee's delivery
+check presents its own admissions (`consumerAdmissions`) with the evidence,
+and they are projected through SB-1 first: a verified legacy spelling of the
+same hash collides, and an admitted reference that cannot be projected is
+`error`.
 
-`project-settlement-id` cases derive `demos:{txHash}` from raw references, reject malformed or noncanonical current hashes, and collapse verified legacy spelling. `resolve-settlement-group` derives both raw IDs before grouping: one hash under two jobs, including a canonical and a verified legacy spelling, leaves both indeterminate, while distinct hashes pass. Admitted references retain their raw transaction references rather than a prefiltered same-hash tuple list.
+`project-settlement-id` cases derive `demos:{txHash}` from raw references, reject malformed or noncanonical current hashes, and collapse verified legacy spelling. `resolve-settlement-group` derives both raw IDs before grouping: one hash under two jobs, including a canonical and a verified legacy spelling, leaves both indeterminate, while distinct hashes pass. Admitted references retain their raw transaction references rather than a prefiltered same-hash tuple list. Settlement accounting and the DACS-5 derivation group only the presented `records`: `sb2-demos-unpresented-admission-not-added` passes although the consumer once admitted the same hash for another job outside that set (guard `sb2-presented-set-only`), so a re-run from the presented set reproduces the result.
 
-The synthetic `appliedTransfer` attests `networkId`, `genesisHash`, `blockId`, `txHash`, `blockNumber`, `sender`, `recipient`, `payerDebitOs`, `payeeCreditOs` and `committedBalances` (`payerBeforeOs`, `payerAfterOs`, `payeeBeforeOs`, `payeeAfterOs`, `feeOs`). The handler and consumer cases compare every member: a test requires, on both paths, a refused vector that differs from the passing control in that member alone, where a varied debit or credit carries the committed balances it is the change of. All amounts are canonical OS strings. The debit must be `payerBeforeOs - payerAfterOs - feeOs` and the credit `payeeAfterOs - payeeBeforeOs`, compared by exact decimal arithmetic; figures that are not that change establish nothing (`indeterminate`, guard `applied-transfer-is-committed-change`). Both must equal the payment amount. In the FV corpus the independent-result signature covers this transition together with the network, block identity and full record, and an authenticated transfer that does not decode is `indeterminate`. The generators take the committed balances from each scenario's own pre-state and outcome (`applied`, `rolled-back` or `no-op`, with an explicit amount), never from the record's amount, status or edits; a test rewrites a record's edits and amount and checks that the fixture authority does not move. `confirmed-four-edits-uncommitted-payment` and its consumer and FV counterparts carry a record with all four send edits over unchanged committed balances: the handler is `indeterminate`, consumers and FV are `fail`. Partial and reordered edit lists (`confirmed-partial-edits`, `confirmed-reordered-edit-members` and counterparts) are refused even with a paying authority. Production authorities must verify committed state application rather than infer it from the record.
+The synthetic `appliedTransfer` attests `networkId`, `genesisHash`, `blockId`, `txHash`, `blockNumber`, `sender`, `recipient`, `payerDebitOs`, `payeeCreditOs` and `committedBalances` (`payerBeforeOs`, `payerAfterOs`, `payeeBeforeOs`, `payeeAfterOs`, `feeOs`). The handler and consumer cases compare every member: a test requires, on both paths, a refused vector that differs from the passing control in that member alone, where a varied debit or credit carries the committed balances it is the change of. All amounts are canonical OS strings. The debit must be `payerBeforeOs - payerAfterOs - feeOs` and the credit `payeeAfterOs - payeeBeforeOs`, compared by exact decimal arithmetic; figures that are not that change establish nothing (`indeterminate`, guard `applied-transfer-is-committed-change`). Both must equal the payment amount. In the FV corpus the independent-result signature covers this transition together with the network, block identity and full record, and an authenticated transfer that does not decode is `indeterminate`. The generators take the committed balances from each scenario's own pre-state and outcome (`applied`, `rolled-back` or `no-op`, with an explicit amount), never from the record's amount, status or edits; a test rewrites a record's edits and amount and checks that the fixture authority does not move. `confirmed-four-edits-uncommitted-payment` and its consumer and FV counterparts carry a record with all four send edits over unchanged committed balances: the handler is `indeterminate`, consumers and FV are `fail`. The `*-fee-separated-edits-uncommitted-payment` counterparts show the same order for a fee-separated record: DEM-7 decides the authenticated contradiction `fail` whatever the edits, and the handler stays `indeterminate`. Partial and reordered edit lists (`confirmed-partial-edits`, `confirmed-reordered-edit-members` and counterparts) are refused even with a paying authority. Production authorities must verify committed state application rather than infer it from the record.
 
 Each vector's `guards` lists exactly the oracle checks whose removal changes
 its result. The test asserts that list for every vector and that every guard
@@ -2024,7 +2026,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
 
-193 candidate cases execute consumer-verifiable settlement finality for
+194 candidate cases execute consumer-verifiable settlement finality for
 block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
 liquidity-tank profiles. The consumer derives the model and strength from the
 exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is

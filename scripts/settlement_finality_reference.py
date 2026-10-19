@@ -1128,7 +1128,7 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
             or applied_transfer["payeeCreditOs"] != amount_os):
         return "fail", "authenticated Demos applied transfer contradicts the native send (DEM-7)"
     if not _demos_send_edits_match(record["content"]):
-        return "indeterminate", "confirmed Demos record lacks its send's edits, a no-op apply (DEM-7)"
+        return "indeterminate", "confirmed Demos record does not carry exactly its send's four edits (DEM-7)"
     return "pass", "authenticated Demos record binds a confirmed native send"
 
 

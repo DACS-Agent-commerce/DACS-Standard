@@ -12,7 +12,10 @@ reservation or FV-1..FV-10 authority remain the enclosing consumer's
 responsibility. PhaseBinding does not carry the signed Listing's agreement-kind
 selection; the enclosing verifier must enforce that selection and
 require/verify the identityBindingCompanions for either identity-bound
-agreement kind.
+agreement kind. The binding alone selects the PC-1 arm: only a capability-gated
+CORE §5.2 `dacs-purchase-v1` `pay-dem` uses the closed
+`AtomicPaymentPhaseInputV1`, and an Atomic AMEND-1 target is checked against
+its open normative schema.
 """
 from __future__ import annotations
 
@@ -42,6 +45,11 @@ PAYMENT_PHASES = frozenset({
 })
 ORDINARY_INPUT_MEMBERS = frozenset({
     "jobId", "rail", "agreement", "payer", "payee", "amount", "sessionContext",
+})
+ATOMIC_INPUT_MEMBERS = ORDINARY_INPUT_MEMBERS - {"sessionContext"} | {"atomicSessionContext"}
+_ATOMIC_CONTEXT_MEMBERS = frozenset({
+    "contextVersion", "jobId", "listingRef", "recipeRegistryVersion",
+    "railRegistryVersion", "parties", "priorPhaseOutputsHash", "startedAt",
 })
 _AMENDMENT_ADDRESS = re.compile(
     r"dacs4:amendment:([^:]+):([0-9a-f]{64}):(0|[1-9][0-9]*)\Z"
@@ -77,10 +85,12 @@ _CHAIN_FINALITY_KINDS = frozenset({"block-depth", "commitment-level", "bft-final
 _METERED_QUANTITY = re.compile(r"(0|[1-9][0-9]*)\Z")
 
 # Every recognized DACS-4 evidence selector, and the AMEND-1 target arms among
-# them: (signature domain, complete closed arm shape predicate name).
+# them: (signature domain, complete closed arm shape predicate name, or the
+# open normative schema of the Atomic arm).
 EVIDENCE_SELECTORS = (
     "evidenceVersion", "legacyTransitionEvidenceVersion",
     "deliveryEvidenceVersion", "finalityBoundEvidenceVersion",
+    "atomicEvidenceVersion",
 )
 _TARGET_ARMS = {
     "evidenceVersion": (b"dacs-evidence:v1:", "_settlement_evidence_shape_valid"),
@@ -90,6 +100,8 @@ _TARGET_ARMS = {
     "finalityBoundEvidenceVersion": (
         b"dacs-finality-bound-evidence:v1:",
         "_finality_bound_settlement_evidence_shape_valid"),
+    "atomicEvidenceVersion": (
+        b"dacs-atomic-evidence:v1:", "atomic-settlement-evidence-v1.schema.json"),
 }
 AMENDMENT_DOMAIN = b"dacs-amendment:v1:"
 RAIL_DOMAIN = b"dacs-rail:v1:"
@@ -113,6 +125,13 @@ def _shapes():
 class PhaseBinding:
     """Authenticated invocation metadata supplied by the enclosing verifier."""
     phase: str
+    work_profile: str | None = None
+    capability_gated: bool = False
+
+    @property
+    def atomic(self) -> bool:
+        return (self.phase == "pay-dem" and self.capability_gated
+                and self.work_profile == "dacs-purchase-v1")
 
 
 class InputArmError(ValueError):
@@ -399,28 +418,54 @@ def _session_context_valid(shape, value) -> bool:
             and shape._safe_nonnegative_integer(value["startedAt"]))
 
 
+def _atomic_session_context_valid(shape, value) -> bool:
+    return (isinstance(value, dict) and set(value) == _ATOMIC_CONTEXT_MEMBERS
+            and value["contextVersion"] == "1"
+            and shape._nonempty_jcs_string(value["jobId"])
+            and _listing_ref_valid(shape, value["listingRef"], closed=True)
+            and shape._safe_nonnegative_integer(value["recipeRegistryVersion"])
+            and shape._safe_nonnegative_integer(value["railRegistryVersion"])
+            and isinstance(value["parties"], list)
+            and [party.get("role") if isinstance(party, dict) else None
+                 for party in value["parties"]] == ["buyer", "seller", "orchestrator"]
+            and all(set(party) == {"role", "primaryClaim"}
+                    and shape._claim_reference_shape_valid(party["primaryClaim"])
+                    for party in value["parties"])
+            and shape._sha256_hex(value["priorPhaseOutputsHash"])
+            and shape._safe_nonnegative_integer(value["startedAt"]))
+
+
 def check_payment_input(binding: PhaseBinding, phase_input: Any) -> None:
+    # Select the arm before accessing even a single input member.
+    atomic = binding.atomic
     if binding.phase not in PAYMENT_PHASES:
         raise InputArmError("binding is not a payment phase")
     if not isinstance(phase_input, dict):
         raise InputArmError("payment input is not an object")
-    if "sessionContext" not in phase_input:
-        raise InputArmError("payment input lacks sessionContext")
+    if atomic:
+        if set(phase_input) != ATOMIC_INPUT_MEMBERS:
+            raise InputArmError("Atomic payment input is not its closed arm")
+    elif "sessionContext" not in phase_input or "atomicSessionContext" in phase_input:
+        raise InputArmError("ordinary payment input requires only its session arm")
     shape = _shapes()
-    # Unknown members stay open under CORE SIG-5.
-    if not ORDINARY_INPUT_MEMBERS <= set(phase_input):
+    # Ordinary members stay open under CORE SIG-5; the Atomic arm is closed.
+    closed = atomic
+    if not ORDINARY_INPUT_MEMBERS - {"sessionContext"} <= set(phase_input):
         raise InputArmError("payment input lacks a required member")
     if not (shape._nonempty_jcs_string(phase_input["jobId"])
             and _agreement_valid(shape, phase_input["agreement"])
             and _rail_valid(shape, phase_input["rail"])
-            and _party_valid(shape, phase_input["payer"], "payingKey", closed=False)
-            and _party_valid(shape, phase_input["payee"], "payeeAddress", closed=False)
+            and _party_valid(shape, phase_input["payer"], "payingKey", closed=closed)
+            and _party_valid(shape, phase_input["payee"], "payeeAddress", closed=closed)
             and shape._price_term_shape_valid(phase_input["amount"])):
         raise InputArmError("payment input member is not its declared type")
-    if not _session_context_valid(shape, phase_input["sessionContext"]):
+    if atomic:
+        if not _atomic_session_context_valid(shape, phase_input["atomicSessionContext"]):
+            raise InputArmError("atomicSessionContext is not AtomicPaymentSessionContextV1")
+    elif not _session_context_valid(shape, phase_input["sessionContext"]):
         raise InputArmError("sessionContext is not SessionContext")
-    if ("identityBindingCompanions" in phase_input
-            and not isinstance(phase_input["identityBindingCompanions"], list)):
+    elif ("identityBindingCompanions" in phase_input
+          and not isinstance(phase_input["identityBindingCompanions"], list)):
         raise InputArmError("identityBindingCompanions is not an array")
 
 
@@ -598,6 +643,15 @@ def _established_finalized(receipt: Any) -> bool:
 
 # ---- AMEND-1 ------------------------------------------------------------------
 
+def _arm_shape_valid(shape, shape_name: str, target: dict) -> bool:
+    """A DACS-4 v0.x arm's closed shape, or the Atomic arm's open normative schema."""
+    if shape_name.endswith(".schema.json"):
+        import atomic_work_reference as atomic
+        atomic.validate_schema(target, shape_name)
+        return True
+    return getattr(shape, shape_name)(target)
+
+
 def consume_amendment_target(
     amendment: dict, resolve: Callable[[dict], dict | None], *,
     amendment_address: str, orchestrator: str,
@@ -668,7 +722,7 @@ def consume_amendment_target(
         # Every evidence arm is signed by the session's phase orchestrator.
         require_signer(target, orchestrator)
         verify_embedded(target, public_keys, domain)
-        if not getattr(shape, shape_name)(target):
+        if not _arm_shape_valid(shape, shape_name, target):
             raise Invalid(f"amendment target is not its {selector} arm")
         if "signer" in target_ref:
             require_signer(target, target_ref["signer"])
@@ -676,7 +730,8 @@ def consume_amendment_target(
             raise Invalid("amendment target job mismatch")
         if target.get("phase") not in PAYMENT_PHASES:
             raise Invalid("amendment target is not a payment phase")
-        # Every arm's {evidenceHash} is its signature-omitting content hash.
+        # Every arm's {evidenceHash} is its signature-omitting content hash
+        # (atomic_evidence_hash for an Atomic target).
         address = (_AMENDMENT_ADDRESS.fullmatch(amendment_address)
                    if isinstance(amendment_address, str) else None)
         if (address is None or address.group(1) != amendment.get("jobId")

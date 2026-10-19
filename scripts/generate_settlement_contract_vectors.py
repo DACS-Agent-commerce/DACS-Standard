@@ -16,6 +16,7 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+import generate_atomic_work_vectors as atomic
 import settlement_contract_reference as ref
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,6 +44,7 @@ AGREEMENT_DOMAIN = b"dacs-agreement:v1:"
 EVIDENCE_DOMAIN = b"dacs-evidence:v1:"
 LEGACY_DOMAIN = b"dacs-legacy-transition-evidence:v1:"
 FINALITY_DOMAIN = b"dacs-finality-bound-evidence:v1:"
+ATOMIC_DOMAIN = b"dacs-atomic-evidence:v1:"
 
 
 def b64u(raw: bytes) -> str:
@@ -176,8 +178,32 @@ def ordinary_payment_input() -> dict:
     }
 
 
+def atomic_payment_input(ordinary: dict) -> dict:
+    """The same invocation as AtomicPaymentPhaseInputV1 (DACS-4 §9.5.1).
+
+    Its `atomicSessionContext` is the closed projection of the ordinary
+    SessionContext: fixed buyer/seller/orchestrator order, claims only, and
+    `priorPhaseOutputsHash` in place of the outputs.
+    """
+    session = ordinary["sessionContext"]
+    by_role = {party["role"]: party for party in session["parties"]}
+    return {
+        **{key: ordinary[key] for key in ("jobId", "agreement", "rail", "payer", "payee", "amount")},
+        "atomicSessionContext": {
+            "contextVersion": "1", "jobId": session["jobId"], "listingRef": session["listingRef"],
+            "recipeRegistryVersion": session["recipeRegistryVersion"],
+            "railRegistryVersion": session["railRegistryVersion"],
+            "parties": [{"role": role, "primaryClaim": by_role[role]["primaryClaim"]}
+                        for role in ("buyer", "seller", "orchestrator")],
+            "priorPhaseOutputsHash": ref.sha256_hex(ref.jcs_bytes(session["priorPhaseOutputs"])),
+            "startedAt": session["startedAt"],
+        },
+    }
+
+
 def build_fixture():
     ordinary_input = ordinary_payment_input()
+    atomic_input = atomic_payment_input(ordinary_input)
     inputs = []
 
     def phase(name, binding, value, expected):
@@ -185,11 +211,27 @@ def build_fixture():
                        "input": value, "expected": expected})
 
     phase("ordinary-input", "ordinary", ordinary_input, "accepted")
+    phase("atomic-input", "atomic", atomic_input, "accepted")
+    # The authenticated binding, never an input member, selects the arm.
+    phase("ordinary-receives-atomic", "ordinary", atomic_input, "rejected")
+    phase("atomic-receives-ordinary", "atomic", ordinary_input, "rejected")
+    mixed = {**ordinary_input, "atomicSessionContext": atomic_input["atomicSessionContext"]}
+    for binding in ("ordinary", "atomic"):
+        phase(binding + "-receives-both-contexts", binding, mixed, "rejected")
+    for binding in ("ungated-purchase", "completion", "other-payment"):
+        phase(binding + "-uses-ordinary-arm", binding, atomic_input, "rejected")
+        phase(binding + "-accepts-ordinary-arm", binding, ordinary_input, "accepted")
     phase("ordinary-keeps-unknown-members", "ordinary",
           {**ordinary_input, "paymentAuthorization": {"opaque": True}}, "accepted")
+    phase("atomic-rejects-unknown-member", "atomic",
+          {**atomic_input, "paymentAuthorization": {}}, "rejected")
     missing = copy.deepcopy(ordinary_input)
     missing.pop("sessionContext")
     phase("ordinary-context-missing", "ordinary", missing, "rejected")
+    for member in atomic_input:
+        missing = copy.deepcopy(atomic_input)
+        missing.pop(member)
+        phase("atomic-missing-" + member, "atomic", missing, "rejected")
     for member in ("jobId", "agreement", "rail", "payer", "payee", "amount"):
         missing = copy.deepcopy(ordinary_input)
         missing.pop(member)
@@ -350,9 +392,43 @@ def build_fixture():
          {"rail": {k: v for k, v in rail.items() if k != "governance"}}),
     ):
         phase(label, "ordinary", {**ordinary_input, **change}, "rejected")
+    # The Atomic arm is closed, and its own members are typed the same way.
+    context = atomic_input["atomicSessionContext"]
 
-    # Nested declared types are checked before a rail call.
-    for binding, base in (("ordinary", ordinary_input),):
+    def atomic_context(**change):
+        return {"atomicSessionContext": {**context, **change}}
+
+    for label, change in (
+        ("atomic-null-payer", {"payer": None}),
+        ("atomic-payer-extra-member", {"payer": {**atomic_input["payer"], "note": "x"}}),
+        ("atomic-paying-key-malformed", {"payer": {**atomic_input["payer"], "payingKey": "not a claim"}}),
+        ("atomic-payee-bundle-hash-uppercase",
+         {"payee": {**atomic_input["payee"], "bundleHash": atomic_input["payee"]["bundleHash"].upper()}}),
+        ("atomic-agreement-null", {"agreement": None}),
+        ("atomic-context-version-2", atomic_context(contextVersion="2")),
+        ("atomic-context-parties-reordered", atomic_context(parties=context["parties"][::-1])),
+        ("atomic-context-party-bundle-hash", atomic_context(parties=[
+            {**context["parties"][0], "bundleHash": atomic_input["payer"]["bundleHash"]},
+            *context["parties"][1:]])),
+        ("atomic-context-started-at-string", atomic_context(startedAt=str(context["startedAt"]))),
+        ("atomic-context-listing-ref-extra-member",
+         atomic_context(listingRef={**context["listingRef"], "note": "x"})),
+        ("atomic-context-listing-ref-version-zero",
+         atomic_context(listingRef={**context["listingRef"], "version": 0})),
+        ("atomic-empty-agreement", {"agreement": {}}),
+        ("atomic-empty-rail", {"rail": {}}),
+        ("atomic-agreement-two-discriminators",
+         {"agreement": {**agreement, "payeeBoundAgreementVersion": "1"}}),
+        ("atomic-agreement-price-zero", {"agreement": {**agreement, "terms": {**agreement["terms"], "price": {
+            **agreement["terms"]["price"], "amount": "0"}}}}),
+        ("atomic-rail-phase-handler-alternative", {"rail": {**rail, "phaseHandler": "pay-alternative"}}),
+        ("atomic-rail-anchoring-unknown",
+         {"rail": {**rail, "governance": {**rail["governance"], "anchoring": "none"}}}),
+    ):
+        phase(label, "atomic", {**atomic_input, **change}, "rejected")
+
+    # Nested declared types are checked in both dispatch arms before a rail call.
+    for binding, base in (("ordinary", ordinary_input), ("atomic", atomic_input)):
         for label, change in (
             ("rail-native-dem-without-decimals", rail_with(asset={"kind": "native-dem", "symbol": "DEM"})),
             ("rail-native-dem-without-symbol", rail_with(asset={"kind": "native-dem", "decimals": 9})),
@@ -447,7 +523,15 @@ def build_fixture():
     phase("ordinary-session-listing-ref-without-content-hash", "ordinary", {
         **ordinary_input, "sessionContext": {**session, "listingRef": {
             k: v for k, v in session["listingRef"].items() if k != "contentHash"}}}, "rejected")
+    phase("atomic-context-listing-ref-not-object", "atomic", {
+        **atomic_input, **atomic_context(listingRef=1)}, "rejected")
 
+    # Atomic payment and delivery evidence from the Atomic Purchase/Completion fixtures.
+    purchase = atomic.purchase_intent(JOB_ID)
+    receipt = atomic.final_receipt(purchase)
+    atomic_target = atomic.settlement_evidence(purchase, receipt, "payment")
+    completion = atomic.completion_intent(receipt, JOB_ID)
+    atomic_delivery = atomic.settlement_evidence(completion, atomic.final_receipt(completion), "delivery")
     ordinary_target = {
         "evidenceVersion": "1", "jobId": JOB_ID, "phase": "pay-dem",
         "outcome": "success", "paymentTxRefs": [{"kind": "demos", "txHash": "ab" * 32, "blockNumber": 750}],
@@ -513,19 +597,22 @@ def build_fixture():
 
     for label, base, domain, selector, other in (
         ("ordinary", ordinary_target, EVIDENCE_DOMAIN, "evidenceVersion", LEGACY_DOMAIN),
+        ("atomic", atomic_target, ATOMIC_DOMAIN, "atomicEvidenceVersion", EVIDENCE_DOMAIN),
         ("legacy-transition", legacy_target, LEGACY_DOMAIN, "legacyTransitionEvidenceVersion", EVIDENCE_DOMAIN),
         ("finality-bound", finality_target, FINALITY_DOMAIN, "finalityBoundEvidenceVersion", LEGACY_DOMAIN),
     ):
         target_case(label + "-target", base, domain, "valid")
-        # Every DACS-4 v0.x arm is closed: an unknown member is a violation.
+        # The DACS-4 v0.x arms are closed; the Atomic schema keeps unknown
+        # signed members under SIG-5.
         target_case(label + "-unknown-member", {**base, "futureMember": {"note": "preserve signed bytes"}},
-                    domain, "violation")
+                    domain, "valid" if label == "atomic" else "violation")
         target_case(label + "-unsupported-version", {**base, selector: "2"}, domain, "violation")
         target_case(label + "-wrong-domain", base, other, "violation")
         target_case(label + "-wrong-job", {**base, "jobId": "01K1DPA0000000000000000009"}, domain, "violation")
         # Every evidence arm is orchestrator-signed; a known seller key is not authority.
         target_case(label + "-seller-signed", base, domain, "violation", signer="seller")
-        delivery = ordinary_delivery if label == "ordinary" else {**base, "phase": "deliver-storage-program"}
+        delivery = {"ordinary": ordinary_delivery, "atomic": atomic_delivery}.get(
+            label, {**base, "phase": "deliver-storage-program"})
         target_case(label + "-delivery-target", delivery, domain, "violation")
         for state in ("unavailable", "unanchored", "included"):
             target_case(label + "-" + state, base, domain, "indeterminate", resolution=state)
@@ -553,12 +640,17 @@ def build_fixture():
                 address=lambda digest: f"dacs4:amendment:{JOB_ID}:{digest}:3")
     target_case("ordinary-projection-phase", {**ordinary_target, "phase": "pay-alternative"},
                 EVIDENCE_DOMAIN, "violation")
+    target_case("atomic-malformed-member", {k: v for k, v in atomic_target.items() if k != "workReceiptRef"},
+                ATOMIC_DOMAIN, "violation")
     target_case("ordinary-malformed-outcome", {**ordinary_target, "outcome": "unknown"},
                 EVIDENCE_DOMAIN, "violation")
     no_selector = {k: v for k, v in ordinary_target.items() if k not in ref.EVIDENCE_SELECTORS}
     target_case("no-selector", no_selector, EVIDENCE_DOMAIN, "violation")
     target_case("dual-selectors", {**ordinary_target, "legacyTransitionEvidenceVersion": "1"},
                 EVIDENCE_DOMAIN, "violation")
+    # The Atomic arm is open, so only selector exclusivity refuses a second selector.
+    target_case("atomic-dual-selectors", {**atomic_target, "evidenceVersion": "1"},
+                ATOMIC_DOMAIN, "violation")
     target_case("unsupported-selector", {**no_selector, "deliveryEvidenceVersion": "1"},
                 EVIDENCE_DOMAIN, "violation")
     target_case("all-selectors", {**ordinary_target, **{key: "1" for key in ref.EVIDENCE_SELECTORS}},

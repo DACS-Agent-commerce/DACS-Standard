@@ -15,18 +15,23 @@ import generate_settlement_contract_vectors as generator
 import settlement_contract_reference as ref
 from jcs import canonicalize
 
-# Enclosing handler metadata is fixed outside the phase input.
+# Enclosing handler metadata is fixed outside the phase input. The fixtures
+# cannot choose a profile by adding or removing an input member.
 BINDINGS = {
     "ordinary": ref.PhaseBinding("pay-dem"),
+    "atomic": ref.PhaseBinding("pay-dem", "dacs-purchase-v1", True),
+    "ungated-purchase": ref.PhaseBinding("pay-dem", "dacs-purchase-v1", False),
+    "completion": ref.PhaseBinding("pay-dem", "dacs-completion-v1", True),
+    "other-payment": ref.PhaseBinding("pay-evm-erc20", "dacs-purchase-v1", True),
 }
 # PC-1 input arms and AMEND-1 target arms the fixture exercises.
-ARMS = ("ordinary",)
-TARGET_ARMS = ("ordinary", "legacy-transition", "finality-bound")
+ARMS = ("ordinary", "atomic")
+TARGET_ARMS = ("ordinary", "atomic", "legacy-transition", "finality-bound")
 # Target arms whose shape is open (keeps unknown members); every DACS-4 v0.x
 # arm is closed.
-OPEN_TARGET_ARMS: dict[str, str] = {}
+OPEN_TARGET_ARMS: dict[str, str] = {"atomic": "valid"}
 # Complete delivery records that pass their arm and fail only the pay-* rule.
-DELIVERY_TARGETS = ("ordinary-delivery-target",)
+DELIVERY_TARGETS = ("ordinary-delivery-target", "atomic-delivery-target")
 # Verifier-owned trust pins for the synthetic finality proofs. They are
 # fixture configuration, never read from the material under test.
 TRUST = {
@@ -124,11 +129,30 @@ class SettlementContractTests(unittest.TestCase):
                     checked += 1
         self.assertGreater(checked, 0)
 
+    def test_binding_is_selected_before_reading_input(self):
+        events = []
+        class Binding:
+            phase = "pay-dem"
+            @property
+            def atomic(self):
+                events.append("binding")
+                return False
+        class Input(dict):
+            def __contains__(self, key):
+                events.append("input")
+                return super().__contains__(key)
+        with self.assertRaises(ref.InputArmError):
+            ref.check_payment_input(Binding(), Input(sessionContext={}))
+        self.assertEqual(events[0], "binding")
+        self.assertIn("input", events)
+
     def test_typed_arm_shape_is_checked_before_handler(self):
         # PC-1 accepts the typed shape, not any object carrying its session key.
         names = {v["name"]: v for v in self.data["phaseInputs"]}
         for name in ("ordinary-empty-session-context", "ordinary-null-payer",
-                     "ordinary-empty-agreement", "ordinary-empty-rail"):
+                     "atomic-null-payer", "atomic-context-parties-reordered",
+                     "ordinary-empty-agreement", "atomic-empty-agreement",
+                     "ordinary-empty-rail", "atomic-empty-rail"):
             with self.subTest(vector=name):
                 rail = mock.Mock()
                 result = ref.dispatch_payment(BINDINGS[names[name]["binding"]],
@@ -140,9 +164,10 @@ class SettlementContractTests(unittest.TestCase):
         # A one-member edit of an accepted input is rejected by that member's
         # own check, so no case passes by tripping an earlier, unrelated one.
         reasons = {"sessionContext": "sessionContext is not SessionContext",
+                   "atomicSessionContext": "atomicSessionContext is not AtomicPaymentSessionContextV1",
                    "identityBindingCompanions": "identityBindingCompanions is not an array"}
         names = {v["name"]: v for v in self.data["phaseInputs"]}
-        bases = {"ordinary": names["ordinary-input"]["input"]}
+        bases = {"ordinary": names["ordinary-input"]["input"], "atomic": names["atomic-input"]["input"]}
         absent, checked = object(), set()
         for vector in self.data["phaseInputs"]:
             base, value = bases.get(vector["binding"]), vector["input"]
@@ -161,7 +186,7 @@ class SettlementContractTests(unittest.TestCase):
                     changed[0], "payment input member is not its declared type"))
                 checked.add(changed[0])
         self.assertTrue({"agreement", "rail", "payer", "payee", "amount", "jobId",
-                         "sessionContext"} <= checked, checked)
+                         "sessionContext", "atomicSessionContext"} <= checked, checked)
 
     def test_agreement_and_rail_accept_every_declared_enumeration_value(self):
         # DACS-3 AgreementArtifact and DACS-4 9.4.1 RailDefinition closed unions.
@@ -516,8 +541,20 @@ class SettlementContractTests(unittest.TestCase):
                        "do not gate settlement (DACS-3 §8.5.2, FS-3)",
                        "the rail's `railId` must be 1–64 printable ASCII characters (0x21–0x7E, case-sensitive",
                        "These are declared-type checks: a profile's further value domains",
-                       "three DACS-4 v0.x target arms use closed shapes and reject unknown members"):
+                       "three DACS-4 v0.x target arms use closed shapes and reject unknown members",
+                       "Atomic targets use the open normative schema (§9.7.3)"):
             self.assertIn(phrase, changed)
+        spec = " ".join((ROOT / "spec/DACS-4-SETTLE.md").read_text().split())
+        self.assertIn("the Atomic arm uses the normative schema in §9.7.3, which admits unknown members", spec)
+
+    def test_atomic_target_needs_one_selector_although_its_arm_is_open(self):
+        # The open Atomic schema keeps unknown members, so exclusivity alone
+        # refuses a second recognized selector.
+        names = {v["name"]: v for v in self.data["amendmentTargets"]}
+        vector = names["atomic-dual-selectors"]
+        self.assertEqual(vector["resolved"]["artifact"]["evidenceVersion"], "1")
+        self.assertEqual(self.consume(vector), (
+            "violation", "amendment target discriminator unsupported or ambiguous"))
 
     def test_inauthentic_target_anchor_leaves_the_amendment_pending(self):
         # CORE SR2-4/SR2-12: an inauthentic receipt is discarded, not a violation.

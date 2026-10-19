@@ -54,6 +54,9 @@ OTHER_AMOUNT_OS = "1500000001"
 NONCE = 9
 BLOCK = 42
 LARGE_AMOUNT_OS = "9007199254740993"  # above 2^53 - 1: the node serves a string
+SAFE_MAX_OS = str(2**53 - 1)  # the largest amount the node serves as a JSON number
+# A send whose recipient argument the client supplied with the optional 0x.
+PREFIXED_SEND = ["native", {"nativeOperation": "send", "args": ["0x" + PAYEE_KEY, AMOUNT_OS]}]
 # Longer than Python's 4,300-digit int() limit: readers compare it by spelling.
 OVERSIZED_OS = "9" * 4301
 OVERSIZED_PAYER_OS = "1" + "0" * 4320  # a committed balance that can pay it
@@ -757,6 +760,17 @@ def build_vectors() -> list[dict[str, Any]]:
             read=found(record("confirmed", send_content(**{"from": PAYER_KEY, "from_ed25519_address": PAYER_KEY, "to": PAYEE_KEY}))),
         ),
         classify(
+            "confirmed-prefixed-send-argument-binds", "pass", "DEM-2/DEM-3", ["success-authorizes-no-delivery", "success-branch"],
+            "A send recipient argument with the 0x prefix projects to the same key; its credit edit names it unchanged.",
+            read=found(record("confirmed", send_content(data=PREFIXED_SEND))),
+        ),
+        classify(
+            "confirmed-safe-max-number-amount-binds", "pass", "DEM-2/DEM-3", ["success-authorizes-no-delivery", "success-branch"],
+            "Up to 2^53 - 1 OS the node serves the amount as a JSON number; that bound itself decodes.",
+            read=found(record("confirmed", send_content(amount_os=SAFE_MAX_OS)), state=committed(amount_os=SAFE_MAX_OS)),
+            transfer=retained(amountOs=SAFE_MAX_OS),
+        ),
+        classify(
             "included-failed", "fail", "DEM-4/DEM-6", ["failure-is-permanent", "failure-proof-retained", "no-replacement", "success-requires-record"],
             "Included is not executed: a bound failed record is a durable permanent failure with no replacement.",
             read=found(record("failed"), state=ROLLED_BACK),
@@ -1201,6 +1215,11 @@ def build_vectors() -> list[dict[str, Any]]:
             "consumer-confirmed-gate-passes", "pass", "DEM-7", ["consumer-admits-confirmed"],
             "A bound confirmed record passes DEM-7 only; it authorizes no delivery by itself.",
             read=found(record("confirmed")),
+        ),
+        admit(
+            "consumer-prefixed-send-argument-admitted", "pass", "DEM-7", ["consumer-admits-confirmed"],
+            "A record whose send recipient argument carries the 0x prefix binds the same payee.",
+            read=found(record("confirmed", send_content(data=PREFIXED_SEND))),
         ),
         admit(
             "consumer-node2-confirmed-refused", "indeterminate", "DEM-7", ["success-requires-applied-transfer", "consumer-requires-confirmed-record"],

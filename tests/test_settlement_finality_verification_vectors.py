@@ -169,7 +169,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(186, self.data["count"])
+        self.assertEqual(192, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -499,6 +499,58 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             with self.subTest(block=value):
                 record["blockNumber"] = value
                 self.assertIsNone(_demos_native_send(record))
+
+    def test_record_spellings_that_project_alike_bind(self):
+        # DEMOS-MAPPING §A.2: each spelling the node may serve projects to the
+        # same value, so a passing record witnesses every one of them.
+        def record(name):
+            return self.cases[name]["input"]["context"]["observation"]["executionResult"]["record"]
+
+        passing = [record(name) for name, case in self.cases.items()
+                   if case["expected"] == "pass" and name.startswith("fv-bft-final-")
+                   and "executionResult" in (case["input"]["context"]["observation"] or {})]
+        contents = [r["content"] for r in passing]
+        for label, present in (
+            ("prefixed send argument", lambda c: c["data"][1]["args"][0].startswith("0x")),
+            ("bare send argument", lambda c: not c["data"][1]["args"][0].startswith("0x")),
+            ("prefixed parties", lambda c: c["from"].startswith("0x") and c["to"].startswith("0x")),
+            ("bare parties", lambda c: not c["from"].startswith("0x") and not c["to"].startswith("0x")),
+            ("string nonce", lambda c: isinstance(c["nonce"], str)),
+            ("integer nonce", lambda c: isinstance(c["nonce"], int)),
+            ("number amount", lambda c: isinstance(c["amount"], int)),
+            ("string amount", lambda c: isinstance(c["amount"], str)),
+            ("2^53 - 1 number amount", lambda c: c["amount"] == 2**53 - 1),
+        ):
+            with self.subTest(spelling=label):
+                self.assertTrue(any(present(c) for c in contents))
+        # T is the send argument with 0x prefixed only when absent: a prefixed
+        # argument's credit edit names it once, and a second prefix is no payment.
+        content = record("fv-bft-final-send-argument-prefixed")["content"]
+        argument = content["data"][1]["args"][0]
+        self.assertEqual("0x" + self.cases["fv-bft-final-canonical-success"]["input"]["context"]["observation"]
+                         ["executionResult"]["record"]["content"]["data"][1]["args"][0], argument)
+        self.assertEqual(argument, content["gcr_edits"][1]["account"])
+        self.assertTrue(_demos_send_edits_match(content))
+        for name, decision, reason in (
+            ("fv-bft-final-send-argument-prefixed", "pass", "chain observation verified"),
+            ("fv-bft-final-send-argument-prefixed-credit-double-prefix", "indeterminate", "lacks its send's edits"),
+            ("fv-bft-final-unprefixed-parties-bind", "pass", "chain observation verified"),
+            ("fv-bft-final-integer-nonce-binds", "pass", "chain observation verified"),
+            ("fv-bft-final-string-amount-binds", "pass", "chain observation verified"),
+            ("fv-bft-final-safe-max-number-amount-binds", "pass", "chain observation verified"),
+        ):
+            with self.subTest(case=name):
+                result = self.evaluate_case(self.cases[name])
+                self.assertEqual((decision, decision), (self.cases[name]["expected"], result["decision"]))
+                self.assertIn(reason, result["reason"])
+        doubled = copy.deepcopy(content)
+        doubled["gcr_edits"][1]["account"] = "0x" + argument
+        self.assertFalse(_demos_send_edits_match(doubled))
+        # One past the bound does not decode; JCS cannot carry it in the corpus.
+        bound = copy.deepcopy(record("fv-bft-final-safe-max-number-amount-binds"))
+        self.assertEqual(str(2**53 - 1), _demos_native_send(bound)["amountOs"])
+        bound["content"].update(amount=2**53, data=["native", {"nativeOperation": "send", "args": [bound["content"]["data"][1]["args"][0], str(2**53)]}])
+        self.assertIsNone(_demos_native_send(bound))
 
     def test_oversized_demos_decimals_return_a_decision(self):
         # Canonical decimals longer than Python's int() digit limit (4300)

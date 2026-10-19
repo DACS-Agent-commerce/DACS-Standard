@@ -26,8 +26,12 @@ The format used per release:
   oversized amount, send argument or debit yields its `fail` or
   `indeterminate` decision instead of the catch-all `error`. The pay-dem
   conformance oracle compares the same way, and oversized record, nonce,
-  applied-debit, phase and consumer amounts reach a decision. The corpora
-  contain 225 pay-dem and 186 settlement-finality cases.
+  applied-debit, phase and consumer amounts reach a decision. Passing record
+  vectors in both corpora cover each spelling the §A.2 profile projects alike:
+  a `0x`-prefixed or bare `send` recipient argument (whose credit edit names it
+  with a single `0x`), bare or prefixed party keys, a string or integer nonce,
+  and a string or number amount up to 2^53 − 1. The corpora contain 228 pay-dem
+  and 192 settlement-finality cases.
 - The DEM-1 signed transaction must be the complete demosdk 4.0.16 native-send
   envelope that the pinned node admits. It carries a positive integer
   `timestamp`, `from_ed25519_address`, a fee object with exactly `network_fee`,
@@ -1225,7 +1229,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 225-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 228-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope

@@ -1700,6 +1700,31 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     vectors.append(case("fv-bft-final-confirmed-four-edits-uncommitted-payment", "fail",
                         "authenticated committed balances unchanged by a confirmed send with all four edits refute the payment",
                         demos_record(state=rolled_back)))
+    # DEMOS-MAPPING §A.2 spellings that project to the same values each bind
+    # on the record path, up to a JSON number of 2^53 - 1 (JCS cannot carry a
+    # larger one, so the tests refuse it in memory). T, the credit edit's
+    # account, is the send argument with `0x` prefixed only when absent.
+    prefixed = send("0x" + payee_key, "5000000000")
+    payer_key = factory.demos_key("buyer")
+    double_prefixed = copy.deepcopy(full)
+    double_prefixed[1]["account"] = "0x0x" + payee_key
+    safe_max = 2**53 - 1
+    for name, expected, note, value in (
+        ("send-argument-prefixed", "pass", "a 0x-prefixed send argument credits the same account",
+         demos_record(data=prefixed)),
+        ("send-argument-prefixed-credit-double-prefix", "indeterminate",
+         "the credit edit of a 0x-prefixed send argument names that argument, never a second prefix",
+         demos_record(data=prefixed, gcr_edits=double_prefixed)),
+        ("unprefixed-parties-bind", "pass", "party keys without 0x project to the same keys",
+         demos_record(**{"from": payer_key, "from_ed25519_address": payer_key, "to": payee_key})),
+        ("integer-nonce-binds", "pass", "a JSON integer nonce projects to the same nonce", demos_record(nonce=7)),
+        ("string-amount-binds", "pass", "a canonical decimal string amount projects to the same OS amount",
+         demos_record(amount="5000000000")),
+        ("safe-max-number-amount-binds", "pass", "a JSON number amount of 2^53 - 1 OS decodes",
+         demos_record(phase_amount="9007199.254740991", amount=safe_max, data=send(payee_key, str(safe_max)),
+                      state=factory.committed(amount_os=str(safe_max)))),
+    ):
+        vectors.append(case("fv-bft-final-" + name, expected, note, value))
     vectors.append(case("fv-block-depth-execution-result-not-native-send", "error",
                         "only a Demos native send carries an execution result; on another chain model the member is malformed",
                         changed("block-depth", lambda v: v["context"]["observation"].__setitem__("executionResult", {}))))

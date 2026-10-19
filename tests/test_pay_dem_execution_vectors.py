@@ -1901,6 +1901,55 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                         content["gcr_edits"] = edits
                     self.assertNotEqual("pass", evaluate(mutated)[0])
 
+    def test_record_spellings_that_project_alike_bind(self):
+        """DEMOS-MAPPING §A.2: every spelling the node may serve projects to the
+        same value, so a passing record read witnesses each one, on the handler
+        and the consumer path."""
+        for operation in ("classify-execution", "admit-evidence"):
+            contents = [vector["protocolInput"]["recordRead"]["record"]["content"] for vector in self.data["vectors"]
+                        if vector["operation"] == operation and vector["expected"] == "pass"]
+            for label, present in (
+                ("prefixed send argument", lambda c: c["data"][1]["args"][0].startswith("0x")),
+                ("bare send argument", lambda c: not c["data"][1]["args"][0].startswith("0x")),
+            ):
+                with self.subTest(operation=operation, spelling=label):
+                    self.assertTrue(any(present(c) for c in contents))
+        contents = [vector["protocolInput"]["recordRead"]["record"]["content"] for vector in self.data["vectors"]
+                    if vector["operation"] == "classify-execution" and vector["expected"] == "pass"]
+        for label, present in (
+            ("prefixed parties", lambda c: c["from"].startswith("0x") and c["to"].startswith("0x")),
+            ("bare parties", lambda c: not c["from"].startswith("0x") and not c["to"].startswith("0x")),
+            ("string nonce", lambda c: isinstance(c["nonce"], str)),
+            ("integer nonce", lambda c: isinstance(c["nonce"], int)),
+            ("number amount", lambda c: isinstance(c["amount"], int)),
+            ("string amount", lambda c: isinstance(c["amount"], str)),
+            ("2^53 - 1 number amount", lambda c: c["amount"] == SAFE_MAX),
+        ):
+            with self.subTest(spelling=label):
+                self.assertTrue(any(present(c) for c in contents))
+        # T is the send argument with 0x prefixed only when absent: a prefixed
+        # argument's credit edit names it once, and a second prefix is no payment.
+        for name in ("confirmed-prefixed-send-argument-binds", "consumer-prefixed-send-argument-admitted"):
+            with self.subTest(name=name):
+                content = self.cases[name]["protocolInput"]["recordRead"]["record"]["content"]
+                argument = content["data"][1]["args"][0]
+                self.assertEqual("0x" + generator.PAYEE_KEY, argument)
+                self.assertEqual(argument, content["gcr_edits"][1]["account"])
+                self.assertTrue(edits_match(content))
+                self.assertEqual("pass", evaluate(self.cases[name])[0])
+                doubled = json.loads(json.dumps(self.cases[name]))
+                doubled["protocolInput"]["recordRead"]["record"]["content"]["gcr_edits"][1]["account"] = "0x" + argument
+                self.assertFalse(edits_match(doubled["protocolInput"]["recordRead"]["record"]["content"]))
+                self.assertEqual("indeterminate", evaluate(doubled)[0])
+        # The 2^53 - 1 bound decodes as a number; one past it does not (JCS
+        # cannot carry it in the corpus, so it is refused in memory).
+        bound = json.loads(json.dumps(self.cases["confirmed-safe-max-number-amount-binds"]))
+        record = bound["protocolInput"]["recordRead"]["record"]
+        self.assertEqual(str(SAFE_MAX), decode(record, frozenset())["amountOs"])
+        record["content"].update(amount=SAFE_MAX + 1, data=["native", {"nativeOperation": "send", "args": [generator.PAYEE_KEY, str(SAFE_MAX + 1)]}])
+        self.assertIsNone(decode(record, frozenset()))
+        self.assertEqual("indeterminate", evaluate(bound)[0])
+
     def test_node_pin_is_the_binding_attested_exact_clean_build(self):
         demos = DEMOS.read_text(encoding="utf-8")
         self.assertTrue(DEMOS_RECORD_PROFILE.endswith("@" + PINNED_BUILD["commit"]))

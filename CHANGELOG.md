@@ -27,7 +27,7 @@ The format used per release:
   `indeterminate` decision instead of the catch-all `error`. The pay-dem
   conformance oracle compares the same way, and oversized record, nonce,
   applied-debit, phase and consumer amounts reach a decision. The corpora
-  contain 217 pay-dem and 180 settlement-finality cases.
+  contain 225 pay-dem and 186 settlement-finality cases.
 - The DEM-1 signed transaction must be the complete demosdk 4.0.16 native-send
   envelope that the pinned node admits. It carries a positive integer
   `timestamp`, `from_ed25519_address`, a fee object with exactly `network_fee`,
@@ -106,13 +106,26 @@ The format used per release:
   missing or empty as a successful no-op. DEM-3, DEM-7, FV-5 and DEMOS-MAPPING
   §A.2 state this; the edit list stays necessary, never sufficient. The pay-dem
   and FV fixtures now serve records with the node's stored `timestamp`, fees
-  and edits, and take the applied-payment debit and credit from a synthetic
-  replay of the pinned apply over a committed pre-state, not from the record's
-  `amount`. New `confirmed-no-op-*` vectors, with consumer and FV-5
-  counterparts, cover a no-op's zero transition (`indeterminate` for the
-  handler, `fail` for consumers) and an authority that copies the amount onto
-  it (`indeterminate`). Tests re-derive every unvaried fixture authority with
-  their own replay.
+  and edits; a `failed` record's edits keep the empty `txhash`, as the pinned
+  apply stamps it only while applying. New `confirmed-no-op-*` vectors, with
+  consumer and FV-5 counterparts, cover a no-op's unchanged balances
+  (`indeterminate` for the handler, `fail` for consumers) and an authority
+  that reports payment for it (`indeterminate`). Partial and reordered edit
+  lists have their own refusing vectors on all three paths.
+- The applied-payment authority establishes the debit and credit from
+  committed state. It authenticates the payer's and payee's balances before
+  and after the transaction's apply and the fee charged, and its debit and
+  credit must be that change (`appliedTransfer.committedBalances`; guard
+  `applied-transfer-is-committed-change`); figures that are not are
+  `indeterminate`. DEM-3, DEM-7, FV-5 and DEMOS-MAPPING §A.2 state this, and
+  the FV reference checks it with exact decimal arithmetic. The fixtures take
+  the committed balances from each scenario's own pre-state and outcome
+  (`applied`, `rolled-back` or `no-op`), never from the record's amount,
+  status or edits, and a test rewrites a record's edits and amount and checks
+  that the authority does not move. New `confirmed-four-edits-*` vectors, with
+  consumer and FV-5 counterparts, carry all four send edits over unchanged
+  committed balances: `indeterminate` for the handler, `fail` for consumers,
+  and `indeterminate` when the authority's figures copy the amount anyway.
 - The node pin is the Demos binding's own build attestation of commit
   `61b8e75` from a clean tree. Each pay-dem read carries `nodeBuild`
   (`source`, `commit`, `tree`), and new vectors on the handler and consumer
@@ -125,15 +138,19 @@ The format used per release:
   `wallet-direct-submission-refused` vectors pin this. DEM-6 states that a
   transport's byte-identical retransmission inside one call, as demosdk
   `_doPost` performs, is the same call: the pinned node deduplicates the hash.
-- DEM-7 states that independently authenticated applied-payment authority
-  contradicting the bound values is `fail` even with a plain-read record, as
-  the consumer vectors already expected. The consumer binding is checked per
+- DEM-7 states that, for a bound `confirmed` record, independently
+  authenticated applied-payment authority contradicting the bound values is
+  `fail` even with a plain-read record, as the consumer vectors already
+  expected. A bound `failed` record keeps its DEM-4 (handler) or DEM-7
+  `failed` (consumer) outcome whatever the authority reports. The consumer binding is checked per
   field (hash, block, payer, payee, amount), and new
   `consumer-wrong-hash-*` vectors pin the record-hash binding.
 - The FV reference accepts `executionResult` only on the Demos native-send
   path, as before FV-5; another chain model with the member is `error`.
 - Migration: a runner of the 204-case corpus must read `nodeBuild` instead of
-  `nodeProfile`, and must check a `confirmed` record's edits.
+  `nodeProfile`, and must check a `confirmed` record's edits. A runner of the
+  217-case corpus must accept `appliedTransfer.committedBalances` and check
+  that the debit and credit are its change.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
@@ -1208,7 +1225,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 217-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 225-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope

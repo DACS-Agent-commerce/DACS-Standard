@@ -17,6 +17,7 @@ from reputation_evidence import (
     encode_canonical_object,
     jcs_hash,
 )
+from secp256k1_fixture import deterministic_ecdsa_signature, fixture_private_value
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -103,6 +104,22 @@ def sign_artifact(
     }
 
 
+def sign_artifact_ecdsa(unsigned: dict, signer: str, domain: str) -> dict:
+    """A registered-algorithm signature the fixture resolver cannot verify,
+    carried in its CORE §B.7 encoding (canonical DER, low S)."""
+    digest = artifact_hash(unsigned)
+    payload = (domain + digest).encode("ascii")
+    return {
+        **copy.deepcopy(unsigned),
+        "signature": {
+            "algorithm": "ecdsa-secp256k1",
+            "signer": signer,
+            "value": b64url(deterministic_ecdsa_signature(ECDSA_FIXTURE_VALUE, payload)),
+        },
+    }
+
+
+ECDSA_FIXTURE_VALUE = fixture_private_value(b"dacs-395-ecdsa-unavailable")
 BUYER_KEY = private_key("dacs-395-buyer")
 SELLER_KEY = private_key("dacs-395-seller")
 OUTSIDER_KEY = private_key("dacs-395-outsider")
@@ -766,8 +783,11 @@ def channel_changed(base: dict, mutate, *, algorithm: str = "ed25519") -> dict:
     unsigned = copy.deepcopy(item["authenticatedChannelMessages"][0])
     unsigned.pop("signature", None)
     mutate(unsigned)
-    message = sign_artifact(unsigned, BUYER_KEY, BUYER, CHANNEL_DOMAIN)
-    message["signature"]["algorithm"] = algorithm
+    if algorithm == "ecdsa-secp256k1":
+        message = sign_artifact_ecdsa(unsigned, BUYER, CHANNEL_DOMAIN)
+    else:
+        message = sign_artifact(unsigned, BUYER_KEY, BUYER, CHANNEL_DOMAIN)
+        message["signature"]["algorithm"] = algorithm
     item["authenticatedChannelMessages"] = [message]
     admission = item["participationEvidence"]["admission"]
     admission["obligation"]["source"]["messageHash"] = artifact_hash(message)
@@ -1060,10 +1080,9 @@ def build_vectors() -> list[dict]:
     unrelated_unsigned = copy.deepcopy(CHANNEL_MESSAGE)
     unrelated_unsigned.pop("signature")
     unrelated_unsigned["body"]["proposedTermsHash"] = "13" * 32
-    unrelated_unavailable = sign_artifact(
-        unrelated_unsigned, BUYER_KEY, BUYER, CHANNEL_DOMAIN
+    unrelated_unavailable = sign_artifact_ecdsa(
+        unrelated_unsigned, BUYER, CHANNEL_DOMAIN
     )
-    unrelated_unavailable["signature"]["algorithm"] = "ecdsa-secp256k1"
     unrelated_sources["authenticatedChannelMessages"].append(unrelated_unavailable)
     vectors.append(vector(
         "spa-rfq-unrelated-malformed-and-unavailable-sources-ignored", "pass",

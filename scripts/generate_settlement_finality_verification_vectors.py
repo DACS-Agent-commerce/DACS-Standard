@@ -1617,9 +1617,12 @@ def build_rejection_vectors(factory: FixtureFactory) -> list[dict]:
     rail("fv-rail-profile-network-differs-from-cluster", "fail", "asset and network name devnet while the signed finality profile settles on solana:mainnet", "commitment-level", lambda r: (r["asset"].__setitem__("cluster", "devnet"), r["network"].__setitem__("cluster", "devnet")))
     rail("fv-rail-provider-endpoint-not-https", "error", "the signed provider endpoint is not an HTTPS URL", "provider-receipt", lambda r: r["network"].__setitem__("providerEndpoint", "http://payments.example"))
 
+    # An unregistered algorithm, so `error` holds for every verifier. A
+    # registered label over these Ed25519 bytes would be a CORE §B.7 encoding
+    # `fail` to a verifier that implements that algorithm.
     envelope = factory.model_input("block-depth")
-    envelope["rail"]["signature"]["algorithm"] = "ecdsa-secp256k1"
-    vectors.append(case("fv-rail-signature-envelope-malformed", "error", "the rail signature envelope names an unsupported algorithm", envelope))
+    envelope["rail"]["signature"]["algorithm"] = "ed448"
+    vectors.append(case("fv-rail-signature-envelope-malformed", "error", "the rail signature envelope names an algorithm outside the registered set", envelope))
 
     # DACS-4 §9.4.3: the phase handler selects the required finality model.
     handler = factory.model_input("commitment-level")

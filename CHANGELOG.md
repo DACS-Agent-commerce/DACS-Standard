@@ -76,7 +76,8 @@ The format used per release:
 ### Fixed — conformance vectors for rules merged in #415–#420
 
 These additions change no normative text unless a bullet says so. Each new
-case is a committed vector that a verifier ignoring its rule gets wrong.
+case is a committed vector that a verifier ignoring its rule gets wrong,
+except where a bullet names the earlier check that decides it.
 
 - **Executable finality-resolution corpus** (DACS-4 §9.7.0; #416 follow-up) —
   every `finality-resolution-context-v1` case now carries its complete
@@ -293,6 +294,32 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   - a malformed `credentialRef` (`error`);
   - an unavailable credential resolution (`indeterminate`) and a malformed
     one (`error`).
+
+  The non-object binding, the extra-member binding and the malformed
+  `credentialRef` are decided by the delivery-evidence shape check, and the
+  malformed resolution by the resolution-collection shape check. Both run
+  before any PDE-5 binding check, so these four cases pin those shape checks,
+  not the PDE-5 binding rules. A verifier that skips PDE-5 but keeps the shape
+  checks still gets them right. `entitlement-record-at-other-renewal-address`
+  is the case that pins a PDE-5 join.
+- **Signature labels match their values** (CORE §B.7) — a fixture labelled
+  `ecdsa-secp256k1` now carries a canonical-DER low-S value that verifies
+  over the exact signed bytes, not relabelled Ed25519 bytes, which §B.7
+  rejects before consulting any key. No verdict changes:
+  - `fv-rail-signature-envelope-malformed` (`error`) names `ed448`, outside
+    the closed `ComponentSignature` algorithm set, so `error` holds for every
+    verifier. Under the `ecdsa-secp256k1` label, a verifier implementing that
+    algorithm would have answered `fail`.
+  - `spa-supported-channel-algorithm-unavailable` and
+    `spa-rfq-unrelated-malformed-and-unavailable-sources-ignored`
+    (`reputation-participation-admission-v0.7`), and
+    `rsc-wrong-signature-algorithm` (`revocation-state-completeness-v0.8`),
+    keep their verdicts. Each still asks whether a registered algorithm the
+    resolver lacks is unavailable.
+  - `tests/test_signature_value_encoding_corpus.py` requires every committed
+    `ecdsa-secp256k1` value to be canonical, except the four
+    `canonical-channel-message-v0.6` cases about that encoding, which expect
+    `fail`.
 - **Channel release pin, ECDSA encoding and SDK wire bytes** (CORE §11.1.2,
   §B.7; DACS-3 §8.3.3) — `canonical-channel-message-v0.6` (63 → 67):
   - The fixture release pin moves from `0d92f664`, whose `spec/PROFILE.md`
@@ -351,8 +378,9 @@ case is a committed vector that a verifier ignoring its rule gets wrong.
   - an EVM source leg on `sha256` and two EVM legs sharing `sha256` (`pass`);
   - a `cosmos:8453` leg whose evidence names EVM chainId 8453 (`error`);
   - a rail without `sourceHashAlgorithm` (`error`);
-  - destination locks 1s and 1ms before and exactly at the pinned source
-    finality, and a rail without `sourceFinalitySec`.
+  - destination locks mined 1s after the source lock (inside the 600s
+    finality interval), 1ms before and exactly at the pinned source-finality
+    instant, and a rail without `sourceFinalitySec`.
 - **Validator checkpoint deferral** (DACS-4 FV-10). A missing validator-set
   checkpoint no longer hides the certificate's own checks: a non-array
   signature list or malformed member is `error`, and an unsupported

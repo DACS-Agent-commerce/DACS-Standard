@@ -244,7 +244,7 @@
     }
   },
   "count": 292,
-  "hash": "7a779289365ca98778d9658d2ceb1e7a006b8c6d9ab0b1a96761a105211cd247",
+  "hash": "85ea31352f43072b01ca0ba913492cda7c3c4b7598b00616971d5480eccbf279",
   "vectors": [
     {
       "name": "fv-block-depth-canonical-success",
@@ -40130,7 +40130,7 @@
     {
       "name": "fv-rail-signature-envelope-malformed",
       "expected": "error",
-      "note": "the rail signature envelope names an unsupported algorithm",
+      "note": "the rail signature envelope names an algorithm outside the registered set",
       "input": {
         "evidence": {
           "finalityBoundEvidenceVersion": "1",
@@ -40218,7 +40218,7 @@
           },
           "signature": {
             "signer": "did:demos:steward",
-            "algorithm": "ecdsa-secp256k1",
+            "algorithm": "ed448",
             "value": "8LGyP8p2pxsAYusnsXFoKP341XHThozUv4ZBca-hUv6EUPOcLfoF48O-TFBol2VxIxbGtJhoz868TwaxZjjYDQ"
           }
         },

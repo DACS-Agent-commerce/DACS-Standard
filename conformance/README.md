@@ -144,7 +144,10 @@ The output map describes the intended DACS-X step-3 policy boundary: a full tran
 - `vectors/golden.json` — pinned outputs: deterministic signature, logical-address encoding, bundle refs/hashes, the §14.4 settlement decision map, and the §14.5 verify verdict/reputation maps. The file also retains proposed dispute/disclosure decision maps/seeds, but those rows are candidate output-only expectations until #99/#351 supply their public inputs and executable contracts.
 - `vectors/security/artifact-reference-shapes-v0.1.json` — the exact
   `AttestationRef` / `ChainTxRef` shape oracle used by
-  `scripts/validate_artifact_shapes.py`.
+  `scripts/validate_artifact_shapes.py`. It checks wire shape only, not the
+  SB-1 spelling of a string member: its `txref-demos` `txHash` is a shape
+  placeholder, and the canonical Demos spelling is checked by the
+  `pay-dem-execution-v0.1` `project-settlement-id` cases.
 - `vectors/golden.json` provenance strings name the verifier-side runner used to construct complex inputs.
 
 The reference-bearing shared fixtures are regenerated with:

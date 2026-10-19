@@ -1695,6 +1695,20 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         vectors.append(case("fv-bft-final-confirmed-" + name, "indeterminate",
                             "a confirmed send whose edits are not exactly its four send edits establishes no payment",
                             demos_record(gcr_edits=edits)))
+    # With `gasFeeSeparation` active the pinned node's apply prepends
+    # fee-distribution edits (feeDistribution.ts shape; the burn/treasury
+    # split is illustrative) and stores them: such a network is outside the
+    # profile, even with the send's four edits last and the payment applied.
+    sender, stamp = full[0]["account"], full[0]["txhash"]
+    treasury = "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23"
+    fee_edits = [{"type": "balance", "operation": operation, "isRollback": False, "account": account,
+                  "amount": amount, "txhash": stamp}
+                 for operation, account, amount in (("remove", sender, 1000000000), ("add", "0x" + "0" * 64, 500000000),
+                                                    ("add", treasury, 500000000), ("remove", sender, 1000000000),
+                                                    ("add", treasury, 1000000000))]
+    vectors.append(case("fv-bft-final-confirmed-fee-separated-edits", "indeterminate",
+                        "a confirmed send carrying gasFeeSeparation fee edits before its four is outside the record profile",
+                        demos_record(gcr_edits=fee_edits + full)))
     # A confirmed send that carries all four edits while the authenticated
     # committed balances did not move: the edits are the claim, not the payment.
     vectors.append(case("fv-bft-final-confirmed-four-edits-uncommitted-payment", "fail",

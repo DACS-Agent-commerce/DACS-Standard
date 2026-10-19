@@ -29,12 +29,13 @@
     "validityResponse": "what the demosdk broadcast(validationData) call carries, or null for a confirm request; the pinned node executes its response.data.transaction, so it must be exactly confirmResponse, with result 200, valid true and an embedded transaction whose content, hash and signature serialize as signedTransaction",
     "pinnedNodeConfigured": "the Demos binding pins nodes under the native-send record profile for the phase's network; anything but true is refused",
     "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",
+    "gasFeeSeparationUnscheduled": "the Demos binding attests, from that network's sealed genesis, that the gasFeeSeparation fork is unscheduled (activationHeight null); RPC does not report it, and with it active the node stores fee edits before the send's four, so anything but true (a scheduled height, an attestation the binding does not hold) is refused",
     "proofAuthentication": "how the DEM-4 proof's failed record was obtained: fv5-bft-final (FV-5-authenticated at its bft-final inclusion) or rpc-read; anything else is not authenticated",
     "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) for every otherwise admitted pay-dem record; derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error",
     "guards": "checks whose removal makes this vector fail"
   },
-  "count": 228,
-  "hash": "c87ae0f1d494e1702142c91aa8fe1910732fe782b43767c98dc92f6969ab8d87",
+  "count": 238,
+  "hash": "298cfa1aaf66d51906dcf120e8437eac9691a3dee256756c4d46c5ad7a3ce738",
   "vectors": [
     {
       "name": "included-confirmed",
@@ -3157,6 +3158,183 @@
         "unresolved-authorizes-nothing"
       ],
       "note": "Edit members in another order serialize differently from the send's edits."
+    },
+    {
+      "name": "confirmed-fee-separated-edits",
+      "operation": "classify-execution",
+      "protocolInput": {
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "statusIndex": "included",
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                  "amount": 500000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23",
+                  "amount": 500000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3/DEM-5",
+      "guards": [
+        "confirmed-requires-send-edits",
+        "success-requires-record",
+        "unresolved-authorizes-nothing"
+      ],
+      "note": "A record from a network with gasFeeSeparation active carries fee edits before the send's four: outside the profile."
     },
     {
       "name": "confirmed-four-edits-uncommitted-payment",
@@ -7963,6 +8141,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -8249,6 +8428,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -8535,6 +8715,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -8820,6 +9001,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -9104,6 +9286,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -9388,6 +9571,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -9672,6 +9856,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -9957,6 +10142,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10242,6 +10428,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10527,6 +10714,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -10812,6 +11000,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11097,6 +11286,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11382,6 +11572,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11667,6 +11858,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -11952,6 +12144,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -12237,6 +12430,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -12522,6 +12716,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -12807,6 +13002,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -13092,6 +13288,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -13377,6 +13574,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -13663,6 +13861,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -13949,6 +14148,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -14222,6 +14422,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -14507,6 +14708,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -14792,6 +14994,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -15077,6 +15280,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -15363,6 +15567,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -15649,6 +15854,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -15938,6 +16144,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -18111,6 +18318,182 @@
         "consumer-requires-confirmed-record"
       ],
       "note": "A record whose edit members are reordered is not admitted."
+    },
+    {
+      "name": "consumer-fee-separated-edits",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                  "amount": 500000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23",
+                  "amount": 500000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "confirmed-requires-send-edits",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "A record carrying gasFeeSeparation fee edits before the send's four is outside the profile and not admitted."
     },
     {
       "name": "consumer-four-edits-uncommitted-payment",
@@ -22202,6 +22585,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "escrow",
@@ -22488,6 +22872,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -22774,6 +23159,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -23060,6 +23446,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -23328,6 +23715,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -23611,6 +23999,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -23897,6 +24286,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -24183,6 +24573,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -24469,6 +24860,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -24755,6 +25147,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -25038,6 +25431,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -25327,6 +25721,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -25610,6 +26005,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -25896,6 +26292,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -26182,6 +26579,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -26468,6 +26866,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -26754,6 +27153,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -27040,6 +27440,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -27326,6 +27727,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -27609,6 +28011,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -27895,6 +28298,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -28079,6 +28483,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -28365,6 +28770,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -28675,6 +29081,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -32739,7 +33146,8 @@
           }
         },
         "pinnedNodeConfigured": true,
-        "appliedPaymentAuthorityConfigured": true
+        "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true
       },
       "expected": "pass",
       "want": {
@@ -32751,7 +33159,7 @@
       "guards": [
         "sign-allowed-when-configured"
       ],
-      "note": "A binding that pins nodes and configures applied-payment authority lets the handler sign."
+      "note": "A binding that pins nodes, configures applied-payment authority and attests gasFeeSeparation unscheduled lets the handler sign."
     },
     {
       "name": "sign-without-pinned-node",
@@ -32769,7 +33177,8 @@
           }
         },
         "pinnedNodeConfigured": false,
-        "appliedPaymentAuthorityConfigured": true
+        "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true
       },
       "expected": "fail",
       "want": {
@@ -32800,7 +33209,8 @@
           }
         },
         "pinnedNodeConfigured": true,
-        "appliedPaymentAuthorityConfigured": false
+        "appliedPaymentAuthorityConfigured": false,
+        "gasFeeSeparationUnscheduled": true
       },
       "expected": "fail",
       "want": {
@@ -32814,6 +33224,69 @@
         "sign-requires-applied-payment-authority"
       ],
       "note": "Without applied-payment authority DEM-3 success is unreachable: ok false, permanent, nothing signed."
+    },
+    {
+      "name": "sign-with-gas-fee-separation-scheduled",
+      "operation": "pre-sign-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": false
+      },
+      "expected": "fail",
+      "want": {
+        "signPermitted": false,
+        "ok": false,
+        "errorClass": "permanent"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "binding-refusal-is-permanent",
+        "sign-requires-gas-fee-separation-unscheduled"
+      ],
+      "note": "A network whose genesis schedules gasFeeSeparation, at any height, stores fee edits no record profile admits."
+    },
+    {
+      "name": "sign-without-fork-attestation",
+      "operation": "pre-sign-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true
+      },
+      "expected": "fail",
+      "want": {
+        "signPermitted": false,
+        "ok": false,
+        "errorClass": "permanent"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "binding-refusal-is-permanent",
+        "sign-requires-gas-fee-separation-unscheduled"
+      ],
+      "note": "RPC does not report gasFeeSeparation; a binding that attests nothing from genesis cannot sign."
     },
     {
       "name": "sign-without-binding",
@@ -32831,7 +33304,8 @@
           }
         },
         "pinnedNodeConfigured": false,
-        "appliedPaymentAuthorityConfigured": false
+        "appliedPaymentAuthorityConfigured": false,
+        "gasFeeSeparationUnscheduled": false
       },
       "expected": "fail",
       "want": {
@@ -32843,7 +33317,7 @@
       "guards": [
         "binding-refusal-is-permanent"
       ],
-      "note": "With neither configured the refusal is still permanent, never substrate."
+      "note": "With nothing configured the refusal is still permanent, never substrate."
     },
     {
       "name": "sb1-demos-canonical",
@@ -33127,6 +33601,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -33236,6 +33711,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -33346,6 +33822,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -33455,6 +33932,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -33564,6 +34042,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -33850,6 +34329,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -34047,6 +34527,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -34332,6 +34813,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -34617,6 +35099,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -34902,6 +35385,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -34986,7 +35470,7 @@
             "data": {
               "valid": false,
               "reference_block": 41,
-              "message": "[Tx Validation] [BALANCE ERROR] Insufficient balance\n",
+              "message": "[Tx Validation] [BALANCE ERROR] Insufficient balance: need 1500000000 but have 0\n",
               "gas_operation": null,
               "transaction": {
                 "content": {
@@ -35059,7 +35543,7 @@
             },
             "signature": {
               "type": "ed25519",
-              "data": "0x3224f629f2d2fe6583f0f1d3b94bedf96f61fee4bf3fa278ea259112c38415eb34fa0e30531e98b84e9e0fb25ae5b4f6967377e1957808dd3a25b9cec6f3640d"
+              "data": "0x684f4081cd9c87a49ac59bf8a686ad456a28b43a548712fd92631646b365bc2208dffee8ce456dd5c0281173f94aa83cc19c1cca804f959388f7d6d27045e90f"
             },
             "rpc_public_key": {
               "type": "ed25519",
@@ -35076,7 +35560,7 @@
             "data": {
               "valid": false,
               "reference_block": 41,
-              "message": "[Tx Validation] [BALANCE ERROR] Insufficient balance\n",
+              "message": "[Tx Validation] [BALANCE ERROR] Insufficient balance: need 1500000000 but have 0\n",
               "gas_operation": null,
               "transaction": {
                 "content": {
@@ -35149,7 +35633,7 @@
             },
             "signature": {
               "type": "ed25519",
-              "data": "0x3224f629f2d2fe6583f0f1d3b94bedf96f61fee4bf3fa278ea259112c38415eb34fa0e30531e98b84e9e0fb25ae5b4f6967377e1957808dd3a25b9cec6f3640d"
+              "data": "0x684f4081cd9c87a49ac59bf8a686ad456a28b43a548712fd92631646b365bc2208dffee8ce456dd5c0281173f94aa83cc19c1cca804f959388f7d6d27045e90f"
             },
             "rpc_public_key": {
               "type": "ed25519",
@@ -35187,6 +35671,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -35472,6 +35957,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -35758,6 +36244,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -36044,6 +36531,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": false,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -36329,6 +36817,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": false,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -36439,6 +36928,7 @@
         },
         "pinnedNodeConfigured": false,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -36708,6 +37198,1022 @@
       "note": "Without a pinned node no record binds, so nothing is signed or sent."
     },
     {
+      "name": "broadcast-with-gas-fee-separation-scheduled",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": false,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "confirm-returned",
+        "confirmResponse": {
+          "result": 200,
+          "response": {
+            "data": {
+              "valid": true,
+              "reference_block": 41,
+              "message": "[Tx Validation] Transaction signature verified\n",
+              "gas_operation": null,
+              "transaction": {
+                "content": {
+                  "type": "native",
+                  "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "amount": "1500000000",
+                  "data": [
+                    "native",
+                    {
+                      "nativeOperation": "send",
+                      "args": [
+                        "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                        "1500000000"
+                      ]
+                    }
+                  ],
+                  "nonce": 9,
+                  "timestamp": 1791649642726,
+                  "transaction_fee": {
+                    "network_fee": "1000000000",
+                    "rpc_fee": "1000000000",
+                    "additional_fee": "0",
+                    "rpc_address": null
+                  },
+                  "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "gcr_edits": [
+                    {
+                      "type": "balance",
+                      "operation": "remove",
+                      "isRollback": false,
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "txhash": "",
+                      "amount": "1500000000"
+                    },
+                    {
+                      "type": "balance",
+                      "operation": "add",
+                      "isRollback": false,
+                      "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                      "txhash": "",
+                      "amount": "1500000000"
+                    },
+                    {
+                      "type": "balance",
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "operation": "remove",
+                      "amount": "1000000000",
+                      "txhash": "",
+                      "isRollback": false
+                    },
+                    {
+                      "type": "nonce",
+                      "operation": "add",
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "amount": 1,
+                      "txhash": "",
+                      "isRollback": false
+                    }
+                  ]
+                },
+                "signature": {
+                  "type": "ed25519",
+                  "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+                },
+                "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "status": "",
+                "blockNumber": null
+              }
+            },
+            "signature": {
+              "type": "ed25519",
+              "data": "0x2b4f2260c6a731973db940854fbce61b04a43ae7ea4e4b6374ec4830b5b815556195a6d2bc07f4fa517bf2cf744a1c35e6aadd256709f88bf009399f6df49e0a"
+            },
+            "rpc_public_key": {
+              "type": "ed25519",
+              "data": "0xc4a4c28a4592d39cdb20f2ead4ed9e5b0b4dcf79bd1bd56a17e5fc8e681aada8"
+            }
+          },
+          "require_reply": false,
+          "extra": null
+        },
+        "request": "broadcast-retained",
+        "validityResponse": {
+          "result": 200,
+          "response": {
+            "data": {
+              "valid": true,
+              "reference_block": 41,
+              "message": "[Tx Validation] Transaction signature verified\n",
+              "gas_operation": null,
+              "transaction": {
+                "content": {
+                  "type": "native",
+                  "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "amount": "1500000000",
+                  "data": [
+                    "native",
+                    {
+                      "nativeOperation": "send",
+                      "args": [
+                        "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                        "1500000000"
+                      ]
+                    }
+                  ],
+                  "nonce": 9,
+                  "timestamp": 1791649642726,
+                  "transaction_fee": {
+                    "network_fee": "1000000000",
+                    "rpc_fee": "1000000000",
+                    "additional_fee": "0",
+                    "rpc_address": null
+                  },
+                  "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "gcr_edits": [
+                    {
+                      "type": "balance",
+                      "operation": "remove",
+                      "isRollback": false,
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "txhash": "",
+                      "amount": "1500000000"
+                    },
+                    {
+                      "type": "balance",
+                      "operation": "add",
+                      "isRollback": false,
+                      "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                      "txhash": "",
+                      "amount": "1500000000"
+                    },
+                    {
+                      "type": "balance",
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "operation": "remove",
+                      "amount": "1000000000",
+                      "txhash": "",
+                      "isRollback": false
+                    },
+                    {
+                      "type": "nonce",
+                      "operation": "add",
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "amount": 1,
+                      "txhash": "",
+                      "isRollback": false
+                    }
+                  ]
+                },
+                "signature": {
+                  "type": "ed25519",
+                  "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+                },
+                "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "status": "",
+                "blockNumber": null
+              }
+            },
+            "signature": {
+              "type": "ed25519",
+              "data": "0x2b4f2260c6a731973db940854fbce61b04a43ae7ea4e4b6374ec4830b5b815556195a6d2bc07f4fa517bf2cf744a1c35e6aadd256709f88bf009399f6df49e0a"
+            },
+            "rpc_public_key": {
+              "type": "ed25519",
+              "data": "0xc4a4c28a4592d39cdb20f2ead4ed9e5b0b4dcf79bd1bd56a17e5fc8e681aada8"
+            }
+          },
+          "require_reply": false,
+          "extra": null
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "broadcast-requires-gas-fee-separation-unscheduled"
+      ],
+      "note": "On a network whose genesis schedules gasFeeSeparation the transfer would execute but never settle."
+    },
+    {
+      "name": "confirm-with-gas-fee-separation-scheduled",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": false,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "never-broadcast",
+        "confirmResponse": null,
+        "request": "confirm-retained",
+        "validityResponse": null
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "broadcast-requires-gas-fee-separation-unscheduled",
+        "retention-before-first-egress"
+      ],
+      "note": "The fork-scope precondition holds at the confirm request too."
+    },
+    {
+      "name": "broadcast-without-fork-attestation",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "confirm-returned",
+        "confirmResponse": {
+          "result": 200,
+          "response": {
+            "data": {
+              "valid": true,
+              "reference_block": 41,
+              "message": "[Tx Validation] Transaction signature verified\n",
+              "gas_operation": null,
+              "transaction": {
+                "content": {
+                  "type": "native",
+                  "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "amount": "1500000000",
+                  "data": [
+                    "native",
+                    {
+                      "nativeOperation": "send",
+                      "args": [
+                        "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                        "1500000000"
+                      ]
+                    }
+                  ],
+                  "nonce": 9,
+                  "timestamp": 1791649642726,
+                  "transaction_fee": {
+                    "network_fee": "1000000000",
+                    "rpc_fee": "1000000000",
+                    "additional_fee": "0",
+                    "rpc_address": null
+                  },
+                  "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "gcr_edits": [
+                    {
+                      "type": "balance",
+                      "operation": "remove",
+                      "isRollback": false,
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "txhash": "",
+                      "amount": "1500000000"
+                    },
+                    {
+                      "type": "balance",
+                      "operation": "add",
+                      "isRollback": false,
+                      "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                      "txhash": "",
+                      "amount": "1500000000"
+                    },
+                    {
+                      "type": "balance",
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "operation": "remove",
+                      "amount": "1000000000",
+                      "txhash": "",
+                      "isRollback": false
+                    },
+                    {
+                      "type": "nonce",
+                      "operation": "add",
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "amount": 1,
+                      "txhash": "",
+                      "isRollback": false
+                    }
+                  ]
+                },
+                "signature": {
+                  "type": "ed25519",
+                  "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+                },
+                "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "status": "",
+                "blockNumber": null
+              }
+            },
+            "signature": {
+              "type": "ed25519",
+              "data": "0x2b4f2260c6a731973db940854fbce61b04a43ae7ea4e4b6374ec4830b5b815556195a6d2bc07f4fa517bf2cf744a1c35e6aadd256709f88bf009399f6df49e0a"
+            },
+            "rpc_public_key": {
+              "type": "ed25519",
+              "data": "0xc4a4c28a4592d39cdb20f2ead4ed9e5b0b4dcf79bd1bd56a17e5fc8e681aada8"
+            }
+          },
+          "require_reply": false,
+          "extra": null
+        },
+        "request": "broadcast-retained",
+        "validityResponse": {
+          "result": 200,
+          "response": {
+            "data": {
+              "valid": true,
+              "reference_block": 41,
+              "message": "[Tx Validation] Transaction signature verified\n",
+              "gas_operation": null,
+              "transaction": {
+                "content": {
+                  "type": "native",
+                  "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "amount": "1500000000",
+                  "data": [
+                    "native",
+                    {
+                      "nativeOperation": "send",
+                      "args": [
+                        "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                        "1500000000"
+                      ]
+                    }
+                  ],
+                  "nonce": 9,
+                  "timestamp": 1791649642726,
+                  "transaction_fee": {
+                    "network_fee": "1000000000",
+                    "rpc_fee": "1000000000",
+                    "additional_fee": "0",
+                    "rpc_address": null
+                  },
+                  "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "gcr_edits": [
+                    {
+                      "type": "balance",
+                      "operation": "remove",
+                      "isRollback": false,
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "txhash": "",
+                      "amount": "1500000000"
+                    },
+                    {
+                      "type": "balance",
+                      "operation": "add",
+                      "isRollback": false,
+                      "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                      "txhash": "",
+                      "amount": "1500000000"
+                    },
+                    {
+                      "type": "balance",
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "operation": "remove",
+                      "amount": "1000000000",
+                      "txhash": "",
+                      "isRollback": false
+                    },
+                    {
+                      "type": "nonce",
+                      "operation": "add",
+                      "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "amount": 1,
+                      "txhash": "",
+                      "isRollback": false
+                    }
+                  ]
+                },
+                "signature": {
+                  "type": "ed25519",
+                  "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+                },
+                "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "status": "",
+                "blockNumber": null
+              }
+            },
+            "signature": {
+              "type": "ed25519",
+              "data": "0x2b4f2260c6a731973db940854fbce61b04a43ae7ea4e4b6374ec4830b5b815556195a6d2bc07f4fa517bf2cf744a1c35e6aadd256709f88bf009399f6df49e0a"
+            },
+            "rpc_public_key": {
+              "type": "ed25519",
+              "data": "0xc4a4c28a4592d39cdb20f2ead4ed9e5b0b4dcf79bd1bd56a17e5fc8e681aada8"
+            }
+          },
+          "require_reply": false,
+          "extra": null
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1",
+      "guards": [
+        "broadcast-requires-gas-fee-separation-unscheduled"
+      ],
+      "note": "A binding that attests no gasFeeSeparation state from genesis sends nothing."
+    },
+    {
+      "name": "confirm-after-interrupted-confirm-refused",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "confirm-sent-interrupted",
+        "confirmResponse": null,
+        "request": "confirm-retained",
+        "validityResponse": null
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-6",
+      "guards": [
+        "confirm-egress-may-broadcast",
+        "no-rebroadcast",
+        "retention-before-first-egress"
+      ],
+      "note": "A confirm that timed out, errored or was cut off by a restart is not sent again."
+    },
+    {
+      "name": "confirm-after-maybe-broadcast-refused",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "maybe-broadcast",
+        "confirmResponse": null,
+        "request": "confirm-retained",
+        "validityResponse": null
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-6",
+      "guards": [
+        "no-rebroadcast",
+        "retention-before-first-egress"
+      ],
+      "note": "Once the transfer may have been broadcast, a second confirm is a second call carrying it."
+    },
+    {
+      "name": "confirm-after-confirm-returned-refused",
+      "operation": "broadcast-gate",
+      "protocolInput": {
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "pinnedNodeConfigured": true,
+        "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
+        "signedTransaction": {
+          "content": {
+            "type": "native",
+            "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "amount": "1500000000",
+            "data": [
+              "native",
+              {
+                "nativeOperation": "send",
+                "args": [
+                  "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "1500000000"
+                ]
+              }
+            ],
+            "nonce": 9,
+            "timestamp": 1791649642726,
+            "transaction_fee": {
+              "network_fee": "1000000000",
+              "rpc_fee": "1000000000",
+              "additional_fee": "0",
+              "rpc_address": null
+            },
+            "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "gcr_edits": [
+              {
+                "type": "balance",
+                "operation": "remove",
+                "isRollback": false,
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "operation": "add",
+                "isRollback": false,
+                "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "txhash": "",
+                "amount": "1500000000"
+              },
+              {
+                "type": "balance",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "operation": "remove",
+                "amount": "1000000000",
+                "txhash": "",
+                "isRollback": false
+              },
+              {
+                "type": "nonce",
+                "operation": "add",
+                "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "amount": 1,
+                "txhash": "",
+                "isRollback": false
+              }
+            ]
+          },
+          "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "signature": {
+            "type": "ed25519",
+            "data": "0x35e0c47d6e3443bffe7bb7be71c32f0650828fae48855aa65a4928a03a171db7fb3482b554f6849d3a9255664298b5b08d0a374b6357b46234d736f461627f0d"
+          }
+        },
+        "retainedTransfer": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+          "nonce": 9,
+          "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000"
+        },
+        "hashRetainedForOtherPhases": [],
+        "retentionDurable": true,
+        "broadcastState": "confirm-returned",
+        "confirmResponse": null,
+        "request": "confirm-retained",
+        "validityResponse": null
+      },
+      "expected": "fail",
+      "want": {
+        "broadcastPermitted": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-6",
+      "guards": [
+        "no-rebroadcast",
+        "retention-before-first-egress"
+      ],
+      "note": "After this submission's confirm returned, only its own broadcast follows, never another confirm."
+    },
+    {
       "name": "broadcast-hash-uppercase",
       "operation": "broadcast-gate",
       "protocolInput": {
@@ -36724,6 +38230,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",
@@ -37009,6 +38516,7 @@
         },
         "pinnedNodeConfigured": true,
         "appliedPaymentAuthorityConfigured": true,
+        "gasFeeSeparationUnscheduled": true,
         "signedTransaction": {
           "content": {
             "type": "native",

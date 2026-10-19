@@ -178,6 +178,30 @@ def served_edits(content: dict[str, Any], tx_hash: str) -> list[dict[str, Any]] 
     return [dict(edit, txhash=tx_hash) for edit in edits]
 
 
+# Fee recipients of a network whose genesis activates `gasFeeSeparation`: the
+# pinned `data/genesis.json` treasury and a zero burn account.
+FEE_BURN_ACCOUNT = "0x" + "0" * 64
+FEE_TREASURY_ACCOUNT = "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23"
+
+
+def fee_separated_edits(content: dict[str, Any], tx_hash: str) -> list[dict[str, Any]]:
+    """The `gcr_edits` a pinned node stores for a native send once
+    `gasFeeSeparation` is active: apply prepends `generateFeeDistributionEdits`
+    (`handleGCR.ts`, `gcr_routines/feeDistribution.ts`) to the four send
+    edits. Network fee split burn/treasury (the percentages are governance
+    values; this split is illustrative), rpc fee folded to the treasury
+    because `rpc_address` is null. The profile excludes such a network."""
+    sender = content["from_ed25519_address"]
+
+    def edit(operation: str, account: str, amount: int) -> dict[str, Any]:
+        return {"type": "balance", "operation": operation, "isRollback": False,
+                "account": account, "amount": amount, "txhash": tx_hash}
+
+    return [edit("remove", sender, 1000000000), edit("add", FEE_BURN_ACCOUNT, 500000000),
+            edit("add", FEE_TREASURY_ACCOUNT, 500000000), edit("remove", sender, 1000000000),
+            edit("add", FEE_TREASURY_ACCOUNT, 1000000000)] + served_edits(content, tx_hash)
+
+
 def record(
     status: str, content: dict[str, Any] | None = None, *, edits: Any = _SERVED, **changes: Any,
 ) -> dict[str, Any]:
@@ -514,8 +538,10 @@ def validity_response(
     data = {
         "valid": valid,
         "reference_block": reference_block,
+        # The node's messages (validateTransaction.ts); the balance figures
+        # are illustrative, and DEM-1 never reads `message`.
         "message": ("[Tx Validation] Transaction signature verified\n" if valid
-                    else "[Tx Validation] [BALANCE ERROR] Insufficient balance\n"),
+                    else f"[Tx Validation] [BALANCE ERROR] Insufficient balance: need {AMOUNT_OS} but have 0\n"),
         "gas_operation": None,
         "transaction": dict(envelope, status="", blockNumber=None),
     }
@@ -547,6 +573,7 @@ def gate(
     request: str = "broadcast-retained",
     pinned_node: bool = True,
     applied_authority: bool = True,
+    fee_separation_unscheduled: Any = True,
     phase_context: dict[str, Any] | None = None,
     confirm_response: Any = _OMIT,
     carried_response: Any = _OMIT,
@@ -564,11 +591,12 @@ def gate(
         carried_response = confirm_response
     return _vector(
         name, "broadcast-gate",
-        {
+        _apply({
             "phase": phase() if phase_context is None else phase_context,
             # The Demos binding's configuration for the phase's network.
             "pinnedNodeConfigured": pinned_node,
             "appliedPaymentAuthorityConfigured": applied_authority,
+            "gasFeeSeparationUnscheduled": fee_separation_unscheduled,
             "signedTransaction": transaction,
             "retainedTransfer": retained() if transfer is None else transfer,
             "hashRetainedForOtherPhases": retained_elsewhere or [],
@@ -577,7 +605,7 @@ def gate(
             "confirmResponse": confirm_response,
             "request": request,
             "validityResponse": carried_response,
-        },
+        }, {}),
         expected, {"broadcastPermitted": expected == "pass"}, rule, guards, note,
     )
 
@@ -590,17 +618,20 @@ def pre_sign(
     *,
     pinned_node: Any = True,
     applied_authority: Any = True,
+    fee_separation_unscheduled: Any = True,
 ) -> dict[str, Any]:
     """DEM-1 before `pay()`/`sign()`: the input holds no signed transaction,
-    and a refusal is the PC-4 result itself."""
+    and a refusal is the PC-4 result itself. `_OMIT` drops a binding member:
+    the binding attests nothing for it."""
     refused = expected != "pass"
     return _vector(
         name, "pre-sign-gate",
-        {
+        _apply({
             "phase": phase(),
             "pinnedNodeConfigured": pinned_node,
             "appliedPaymentAuthorityConfigured": applied_authority,
-        },
+            "gasFeeSeparationUnscheduled": fee_separation_unscheduled,
+        }, {}),
         expected,
         {
             "signPermitted": not refused,
@@ -864,6 +895,14 @@ def build_vectors() -> list[dict[str, Any]]:
             "Edit members in another order serialize differently from the send's edits.",
             read=found(record("confirmed", edits=[dict(reversed(list(served_edits(send_content(), TX_HASH)[0].items())))]
                               + served_edits(send_content(), TX_HASH)[1:])),
+        ),
+        # With `gasFeeSeparation` active the node prepends fee-distribution
+        # edits at apply: such a network is outside the profile, and DEM-1
+        # never signs for it.
+        classify(
+            "confirmed-fee-separated-edits", "indeterminate", "DEM-3/DEM-5", ["confirmed-requires-send-edits"] + unresolved,
+            "A record from a network with gasFeeSeparation active carries fee edits before the send's four: outside the profile.",
+            read=found(record("confirmed", edits=fee_separated_edits(send_content(), TX_HASH))),
         ),
         # A confirmed record that carries its send's four edits, while the
         # authenticated committed state shows no payment: the edits are the
@@ -1307,6 +1346,12 @@ def build_vectors() -> list[dict[str, Any]]:
                               + served_edits(send_content(), TX_HASH)[1:])),
         ),
         admit(
+            "consumer-fee-separated-edits", "indeterminate", "DEM-7",
+            ["confirmed-requires-send-edits", "consumer-requires-confirmed-record"],
+            "A record carrying gasFeeSeparation fee edits before the send's four is outside the profile and not admitted.",
+            read=found(record("confirmed", edits=fee_separated_edits(send_content(), TX_HASH))),
+        ),
+        admit(
             "consumer-four-edits-uncommitted-payment", "fail", "DEM-7/FV-5",
             ["consumer-authenticated-contradiction-fails", "consumer-requires-confirmed-record", "success-requires-applied-transfer"],
             "Authenticated committed balances unchanged by a confirmed send with all four edits refute the payment.",
@@ -1572,7 +1617,7 @@ def build_vectors() -> list[dict[str, Any]]:
     # permanent refusal, and nothing is signed.
     vectors += [
         pre_sign("sign-with-pinned-node-and-applied-payment-authority", "pass", ["sign-allowed-when-configured"],
-                 "A binding that pins nodes and configures applied-payment authority lets the handler sign."),
+                 "A binding that pins nodes, configures applied-payment authority and attests gasFeeSeparation unscheduled lets the handler sign."),
         pre_sign("sign-without-pinned-node", "fail", ["binding-refusal-is-permanent", "sign-requires-pinned-node"],
                  "Without a pinned node no record binds: ok false, permanent, before pay() or sign().",
                  pinned_node=False),
@@ -1580,9 +1625,17 @@ def build_vectors() -> list[dict[str, Any]]:
                  ["binding-refusal-is-permanent", "sign-requires-applied-payment-authority"],
                  "Without applied-payment authority DEM-3 success is unreachable: ok false, permanent, nothing signed.",
                  applied_authority=False),
+        pre_sign("sign-with-gas-fee-separation-scheduled", "fail",
+                 ["binding-refusal-is-permanent", "sign-requires-gas-fee-separation-unscheduled"],
+                 "A network whose genesis schedules gasFeeSeparation, at any height, stores fee edits no record profile admits.",
+                 fee_separation_unscheduled=False),
+        pre_sign("sign-without-fork-attestation", "fail",
+                 ["binding-refusal-is-permanent", "sign-requires-gas-fee-separation-unscheduled"],
+                 "RPC does not report gasFeeSeparation; a binding that attests nothing from genesis cannot sign.",
+                 fee_separation_unscheduled=_OMIT),
         pre_sign("sign-without-binding", "fail", ["binding-refusal-is-permanent"],
-                 "With neither configured the refusal is still permanent, never substrate.",
-                 pinned_node=False, applied_authority=False),
+                 "With nothing configured the refusal is still permanent, never substrate.",
+                 pinned_node=False, applied_authority=False, fee_separation_unscheduled=False),
     ]
 
     ref = {"kind": "demos", "txHash": TX_HASH, "blockNumber": BLOCK}
@@ -1679,6 +1732,30 @@ def build_vectors() -> list[dict[str, Any]]:
         gate("broadcast-without-pinned-node", "fail", "DEM-1", ["broadcast-requires-pinned-node"],
              "Without a pinned node no record binds, so nothing is signed or sent.",
              pinned_node=False),
+        gate("broadcast-with-gas-fee-separation-scheduled", "fail", "DEM-1",
+             ["broadcast-requires-gas-fee-separation-unscheduled"],
+             "On a network whose genesis schedules gasFeeSeparation the transfer would execute but never settle.",
+             fee_separation_unscheduled=False),
+        gate("confirm-with-gas-fee-separation-scheduled", "fail", "DEM-1",
+             ["broadcast-requires-gas-fee-separation-unscheduled", "retention-before-first-egress"],
+             "The fork-scope precondition holds at the confirm request too.",
+             fee_separation_unscheduled=False, request="confirm-retained"),
+        gate("broadcast-without-fork-attestation", "fail", "DEM-1",
+             ["broadcast-requires-gas-fee-separation-unscheduled"],
+             "A binding that attests no gasFeeSeparation state from genesis sends nothing.",
+             fee_separation_unscheduled=_OMIT),
+        # DEM-6: a confirm is a call too; once the signed bytes may have left
+        # the handler it is never repeated, whatever the last call returned.
+        gate("confirm-after-interrupted-confirm-refused", "fail", "DEM-6",
+             ["confirm-egress-may-broadcast", "no-rebroadcast", "retention-before-first-egress"],
+             "A confirm that timed out, errored or was cut off by a restart is not sent again.",
+             broadcast_state="confirm-sent-interrupted", request="confirm-retained"),
+        gate("confirm-after-maybe-broadcast-refused", "fail", "DEM-6", ["no-rebroadcast", "retention-before-first-egress"],
+             "Once the transfer may have been broadcast, a second confirm is a second call carrying it.",
+             broadcast_state="maybe-broadcast", request="confirm-retained"),
+        gate("confirm-after-confirm-returned-refused", "fail", "DEM-6", ["no-rebroadcast", "retention-before-first-egress"],
+             "After this submission's confirm returned, only its own broadcast follows, never another confirm.",
+             broadcast_state="confirm-returned", request="confirm-retained"),
         gate("broadcast-hash-uppercase", "fail", "DEM-1", ["signed-hash-form"],
              "The node compares the derived hash exactly, so an upper-case hash is refused even when signed as spelled.",
              signed_transaction=dict(signed(), hash=TX_HASH.upper(),
@@ -1776,6 +1853,7 @@ def document() -> dict[str, Any]:
             "validityResponse": "what the demosdk broadcast(validationData) call carries, or null for a confirm request; the pinned node executes its response.data.transaction, so it must be exactly confirmResponse, with result 200, valid true and an embedded transaction whose content, hash and signature serialize as signedTransaction",
             "pinnedNodeConfigured": "the Demos binding pins nodes under the native-send record profile for the phase's network; anything but true is refused",
             "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",
+            "gasFeeSeparationUnscheduled": "the Demos binding attests, from that network's sealed genesis, that the gasFeeSeparation fork is unscheduled (activationHeight null); RPC does not report it, and with it active the node stores fee edits before the send's four, so anything but true (a scheduled height, an attestation the binding does not hold) is refused",
             "proofAuthentication": "how the DEM-4 proof's failed record was obtained: fv5-bft-final (FV-5-authenticated at its bft-final inclusion) or rpc-read; anything else is not authenticated",
             "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) for every otherwise admitted pay-dem record; derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error",
             "guards": "checks whose removal makes this vector fail",

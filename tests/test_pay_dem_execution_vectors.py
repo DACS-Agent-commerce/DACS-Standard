@@ -40,12 +40,14 @@ GUARDS = frozenset({
     "sign-allowed-when-configured",
     "sign-requires-pinned-node",
     "sign-requires-applied-payment-authority",
+    "sign-requires-gas-fee-separation-unscheduled",
     "binding-refusal-is-permanent",
     "first-broadcast-allowed",
     "retention-before-first-egress",
     "egress-only-confirm-then-broadcast",
     "broadcast-requires-pinned-node",
     "broadcast-requires-applied-payment-authority",
+    "broadcast-requires-gas-fee-separation-unscheduled",
     "broadcast-requires-durable-retention",
     "broadcast-requires-complete-retention",
     "retention-bound-to-phase",
@@ -670,12 +672,14 @@ def complete_transfer(transfer) -> bool:
 
 
 def pre_sign_gate(protocol_input: dict, off) -> tuple[str, dict]:
-    """DEM-1 before signing: a Demos binding without pinned nodes or an
-    applied-payment authority cannot reach DEM-3 success, so the handler
-    returns ok false, errorClass permanent, and signs nothing."""
+    """DEM-1 before signing: a Demos binding without pinned nodes, an
+    applied-payment authority or a genesis attestation that `gasFeeSeparation`
+    is unscheduled cannot reach DEM-3 success, so the handler returns ok
+    false, errorClass permanent, and signs nothing."""
     for guard, configured in (
         ("sign-requires-pinned-node", "pinnedNodeConfigured"),
         ("sign-requires-applied-payment-authority", "appliedPaymentAuthorityConfigured"),
+        ("sign-requires-gas-fee-separation-unscheduled", "gasFeeSeparationUnscheduled"),
     ):
         if protocol_input.get(configured) is not True and guard not in off:
             # The wrong implementation reports the refusal as a retryable substrate fault.
@@ -736,6 +740,7 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
     for guard, configured in (
         ("broadcast-requires-pinned-node", "pinnedNodeConfigured"),
         ("broadcast-requires-applied-payment-authority", "appliedPaymentAuthorityConfigured"),
+        ("broadcast-requires-gas-fee-separation-unscheduled", "gasFeeSeparationUnscheduled"),
     ):
         if protocol_input.get(configured) is not True and guard not in off:
             return refused
@@ -1394,11 +1399,39 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         reordered["protocolInput"]["validityResponse"] = dict(reversed(list(own.items())))
         self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(reordered))
 
+    def test_fee_separated_network_is_outside_the_profile(self):
+        # With gasFeeSeparation active the pinned node stores fee edits before
+        # the send's four, so DEM-3 never passes: DEM-1 refuses to sign there,
+        # and such a record stays indeterminate on both read paths even though
+        # the authority reports the payment applied and its last four edits
+        # are the send's.
+        demos = DEMOS.read_text(encoding="utf-8")
+        self.assertIn("the `gasFeeSeparation` fork is unscheduled: the network's sealed genesis sets "
+                      "`forks.gasFeeSeparation.activationHeight` to `null`", demos)
+        self.assertIn("MUST therefore attest, for each network, from that network's sealed genesis, "
+                      "that `gasFeeSeparation` is unscheduled", demos)
+        self.assertIn("A record whose edits carry fee-distribution edits is outside this profile", demos)
+        served = generator.served_edits(generator.send_content(), generator.TX_HASH)
+        for name in ("confirmed-fee-separated-edits", "consumer-fee-separated-edits"):
+            with self.subTest(name=name):
+                vector = self.cases[name]
+                read = vector["protocolInput"]["recordRead"]
+                edits = read["record"]["content"]["gcr_edits"]
+                self.assertGreater(len(edits), 4)
+                self.assertEqual(served, edits[-4:])
+                self.assertEqual(generator.committed_change(generator.APPLIED),
+                                 (read["appliedTransfer"]["payerDebitOs"], read["appliedTransfer"]["payeeCreditOs"]))
+                self.assertEqual("indeterminate", evaluate(vector)[0])
+                # A verifier that accepts any edit list ending in the send's
+                # four would count this payment.
+                self.assertEqual("pass", evaluate(vector, {"confirmed-requires-send-edits"})[0])
+
     def test_no_debit_without_pinned_node_and_applied_payment_authority(self):
         # DEM-3 success needs both, so DEM-1 refuses to sign or send without them.
         spec = SPEC.read_text(encoding="utf-8")
         self.assertIn("The handler MUST NOT sign or broadcast a transfer unless its Demos binding configures", spec)
-        self.assertIn("Demos binding without pinned nodes or an applied-payment authority → `permanent`", spec)
+        self.assertIn("Demos binding without pinned nodes, an applied-payment authority or a genesis attestation that "
+                      "`gasFeeSeparation` is unscheduled → `permanent`", spec)
         # Balance is permanent only before the first egress; a confirm refusal
         # after it leaves the signed bytes at a node, so it is DEM-5 substrate.
         self.assertIn("payer DEM balance insufficient before the first egress (no `confirm` or broadcast has carried "
@@ -1408,14 +1441,29 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertNotIn("payer DEM balance insufficient before broadcast", spec)
         self.assertIn("| `pay-dem` | Not reference-backed", spec)
         self.assertIn("so DEM-1 refuses to sign or send a transfer under it", DEMOS.read_text(encoding="utf-8"))
+        fee_scope = "broadcast-requires-gas-fee-separation-unscheduled"
         for name, guard in (("broadcast-without-applied-payment-authority", "broadcast-requires-applied-payment-authority"),
                             ("confirm-without-applied-payment-authority", "broadcast-requires-applied-payment-authority"),
-                            ("broadcast-without-pinned-node", "broadcast-requires-pinned-node")):
+                            ("broadcast-without-pinned-node", "broadcast-requires-pinned-node"),
+                            ("broadcast-with-gas-fee-separation-scheduled", fee_scope),
+                            ("confirm-with-gas-fee-separation-scheduled", fee_scope),
+                            ("broadcast-without-fork-attestation", fee_scope)):
             with self.subTest(name=name):
                 self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(self.cases[name]))
                 self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(self.cases[name], {guard}))
+        # Each refused fork-scope vector differs from its passing control in
+        # that binding member alone.
+        for name, control in (("broadcast-with-gas-fee-separation-scheduled", "first-broadcast-after-durable-retention"),
+                              ("confirm-with-gas-fee-separation-scheduled", "confirm-after-durable-retention"),
+                              ("broadcast-without-fork-attestation", "first-broadcast-after-durable-retention")):
+            with self.subTest(control=control, name=name):
+                refused = dict(self.cases[name]["protocolInput"])
+                passing = dict(self.cases[control]["protocolInput"])
+                refused.pop("gasFeeSeparationUnscheduled", None)
+                self.assertIs(True, passing.pop("gasFeeSeparationUnscheduled"))
+                self.assertEqual(passing, refused)
         # Missing or non-boolean configuration fails closed.
-        for member in ("pinnedNodeConfigured", "appliedPaymentAuthorityConfigured"):
+        for member in ("pinnedNodeConfigured", "appliedPaymentAuthorityConfigured", "gasFeeSeparationUnscheduled"):
             for value in (None, "true", 1):
                 with self.subTest(member=member, value=value):
                     case = json.loads(json.dumps(self.cases["first-broadcast-after-durable-retention"]))
@@ -1429,17 +1477,21 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 with self.subTest(name=vector["name"]):
                     self.assertIs(True, vector["protocolInput"]["pinnedNodeConfigured"])
                     self.assertIs(True, vector["protocolInput"]["appliedPaymentAuthorityConfigured"])
+                    self.assertIs(True, vector["protocolInput"]["gasFeeSeparationUnscheduled"])
         # Before pay()/sign(): the refusal is the PC-4 result ok false,
         # errorClass permanent, and there is no signed transaction to send.
         self.assertIn('the handler MUST return `ok: false` with `errorClass: "permanent"` before it signs', spec)
         refused = {"ok": False, "errorClass": "permanent", "signPermitted": False}
         presign = {name: vector for name, vector in self.cases.items() if vector["operation"] == "pre-sign-gate"}
         self.assertEqual({"sign-with-pinned-node-and-applied-payment-authority", "sign-without-pinned-node",
-                          "sign-without-applied-payment-authority", "sign-without-binding"}, set(presign))
+                          "sign-without-applied-payment-authority", "sign-with-gas-fee-separation-scheduled",
+                          "sign-without-fork-attestation", "sign-without-binding"}, set(presign))
+        binding = {"phase", "pinnedNodeConfigured", "appliedPaymentAuthorityConfigured", "gasFeeSeparationUnscheduled"}
         for name, vector in presign.items():
             with self.subTest(name=name):
-                self.assertEqual({"phase", "pinnedNodeConfigured", "appliedPaymentAuthorityConfigured"},
-                                 set(vector["protocolInput"]))
+                # Only the binding that attests nothing about the fork omits it.
+                self.assertEqual(binding - ({"gasFeeSeparationUnscheduled"} if name == "sign-without-fork-attestation"
+                                            else set()), set(vector["protocolInput"]))
                 if vector["expected"] == "pass":
                     self.assertEqual(("pass", {"signPermitted": True, "ok": None, "errorClass": None}), evaluate(vector))
                     continue
@@ -1449,10 +1501,12 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 self.assertEqual(("fail", dict(refused, errorClass="substrate")),
                                  evaluate(vector, {"binding-refusal-is-permanent"}))
         for name, guard in (("sign-without-pinned-node", "sign-requires-pinned-node"),
-                            ("sign-without-applied-payment-authority", "sign-requires-applied-payment-authority")):
+                            ("sign-without-applied-payment-authority", "sign-requires-applied-payment-authority"),
+                            ("sign-with-gas-fee-separation-scheduled", "sign-requires-gas-fee-separation-unscheduled"),
+                            ("sign-without-fork-attestation", "sign-requires-gas-fee-separation-unscheduled")):
             with self.subTest(name=name):
                 self.assertTrue(evaluate(self.cases[name], {guard})[1]["signPermitted"])
-        for member in ("pinnedNodeConfigured", "appliedPaymentAuthorityConfigured"):
+        for member in ("pinnedNodeConfigured", "appliedPaymentAuthorityConfigured", "gasFeeSeparationUnscheduled"):
             for value in (None, "true", 1, False):
                 with self.subTest(presign=member, value=value):
                     case = json.loads(json.dumps(presign["sign-with-pinned-node-and-applied-payment-authority"]))
@@ -1723,6 +1777,21 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                         ("never-broadcast", "confirm-retained"),
                         ("confirm-returned", "broadcast-retained"),
                     })
+        # DEM-6 "never repeat a call": a confirm after the first egress is
+        # refused in every later state, each by its own corpus vector.
+        repeated = {
+            (vector["protocolInput"]["broadcastState"], vector["name"])
+            for vector in self.data["vectors"]
+            if vector["operation"] == "broadcast-gate" and vector["protocolInput"]["request"] == "confirm-retained"
+            and vector["protocolInput"]["broadcastState"] != "never-broadcast"
+        }
+        self.assertEqual({("confirm-sent-interrupted", "confirm-after-interrupted-confirm-refused"),
+                          ("maybe-broadcast", "confirm-after-maybe-broadcast-refused"),
+                          ("confirm-returned", "confirm-after-confirm-returned-refused")}, repeated)
+        for _, name in repeated:
+            with self.subTest(repeat=name):
+                self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(self.cases[name]))
+                self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(self.cases[name], {"no-rebroadcast"}))
 
     def test_proven_failure_is_durable_and_omits_settlement_finality(self):
         for vector in self.data["vectors"]:

@@ -96,9 +96,11 @@ GUARDS = frozenset({
     # DEM-4
     "failure-is-permanent",
     "failure-requires-binding",
+    "failure-requires-authentication",
     "failure-proof-retained",
     "resume-reuses-failure-proof",
     "resume-validates-failure-proof",
+    "resume-requires-authenticated-proof",
     "apr-evidence-requires-authenticated-failure",
     "apr-evidence-from-authenticated-failure",
     # DEM-5
@@ -106,6 +108,7 @@ GUARDS = frozenset({
     # DEM-6
     "no-rebroadcast",
     "no-replacement",
+    "restart-is-maybe-broadcast",
     "confirm-egress-may-broadcast",
     "submission-completes-own-confirm",
     "broadcast-carries-own-validity-response",
@@ -168,6 +171,7 @@ HANDLER_WANT = {
 }
 
 SAFE_MAX = 2**53 - 1
+_ABSENT = object()
 HASH = re.compile(r"[0-9a-f]{64}")
 ADDRESS = re.compile(r"(?:0x)?([0-9a-f]{64})")
 DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)")
@@ -612,7 +616,12 @@ def classify(protocol_input: dict, off) -> tuple[str, dict]:
     if (is_bound and is_confirmed(status, off) and applied(read, projection, protocol_input, off) == "pass"
             and sends_payment(record, off) and "success-branch" not in off):
         return handler_result("pass", protocol_input, off)
-    if status == "failed" and (is_bound or "failure-requires-binding" in off):
+    # DEM-4: only a bound failed record authenticated under FV-5 at its
+    # bft-final inclusion is terminal. A plain RPC read of one is DEM-5: a
+    # stale or dishonest pinned node can serve failed for an executed transfer.
+    if status == "failed" and (is_bound or "failure-requires-binding" in off) and (
+        read.get("authenticated") is True or "failure-requires-authentication" in off
+    ):
         if "failure-is-permanent" not in off:
             return handler_result("fail", protocol_input, off)
     return handler_result("indeterminate", protocol_input, off)
@@ -629,11 +638,20 @@ def valid_failure_proof(proof, transfer, off) -> bool:
     )
 
 
+def authenticated_proof(proof) -> bool:
+    """The proof's failed record was authenticated under FV-5 at its
+    bft-final inclusion; any other label, or none, is a plain read."""
+    return isinstance(proof, dict) and proof.get("authentication") == "fv5-bft-final"
+
+
 def resume(protocol_input: dict, off) -> tuple[str, dict]:
     proof = protocol_input["retainedFailureProof"]
     if proof is not None and "resume-reuses-failure-proof" not in off:
-        if "resume-validates-failure-proof" in off or valid_failure_proof(
-            proof, protocol_input["retainedTransfer"], off
+        if "resume-validates-failure-proof" in off or (
+            valid_failure_proof(proof, protocol_input["retainedTransfer"], off)
+            # A plain-read proof (an earlier draft's DEM-4) is never reused:
+            # the resume re-reads the retained hash instead.
+            and (authenticated_proof(proof) or "resume-requires-authenticated-proof" in off)
         ):
             return handler_result("fail", protocol_input, off)
     return classify(protocol_input, off)
@@ -644,9 +662,10 @@ def apr_evidence(protocol_input: dict, off) -> tuple[str, dict]:
     reconciliation evidence: only a bound failed record authenticated under
     FV-5 at its `bft-final` inclusion qualifies, never a plain RPC read."""
     refused = ("indeterminate", {"reconciliationEvidence": False})
-    if not valid_failure_proof(protocol_input["retainedFailureProof"], protocol_input["retainedTransfer"], off):
+    proof = protocol_input["retainedFailureProof"]
+    if not valid_failure_proof(proof, protocol_input["retainedTransfer"], off):
         return refused
-    authenticated = protocol_input["proofAuthentication"] == "fv5-bft-final"
+    authenticated = authenticated_proof(proof)
     if authenticated or "apr-evidence-requires-authenticated-failure" in off:
         if "apr-evidence-from-authenticated-failure" not in off:
             return "pass", {"reconciliationEvidence": True}
@@ -711,6 +730,10 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
     if not complete_transfer(transfer) and "broadcast-requires-complete-retention" not in off:
         return "error", {"broadcastPermitted": False}
     state = protocol_input["broadcastState"]
+    if protocol_input.get("restartedSinceRetention") is not False and "restart-is-maybe-broadcast" not in off:
+        # DEM-6: a transfer retained before a (re)start may have left in a
+        # call the crash kept from being journaled, whatever state was recorded.
+        state = "maybe-broadcast"
     if state == "confirm-sent-interrupted" and "confirm-egress-may-broadcast" in off:
         # The wrong implementation counts only a recorded broadcast.
         state = "never-broadcast"
@@ -1041,7 +1064,13 @@ class PayDemExecutionVectorTests(unittest.TestCase):
 
     def test_live_node2_records_classify_by_their_recorded_status(self):
         self.assertEqual("indeterminate", evaluate(self.cases["node2-confirmed-record"])[0])
-        self.assertEqual("fail", evaluate(self.cases["node2-included-failed-record"])[0])
+        # The live failed record read by plain RPC is unresolved; the same
+        # record authenticated under FV-5 is the DEM-4 terminal failure.
+        self.assertEqual("indeterminate", evaluate(self.cases["node2-included-failed-record"])[0])
+        self.assertNotIn("authenticated", self.cases["node2-included-failed-record"]["protocolInput"]["recordRead"])
+        self.assertEqual("fail", evaluate(self.cases["node2-failed-record-authenticated"])[0])
+        self.assertEqual(self.cases["node2-included-failed-record"]["protocolInput"]["recordRead"]["record"],
+                         self.cases["node2-failed-record-authenticated"]["protocolInput"]["recordRead"]["record"])
         self.assertEqual("included", self.cases["node2-included-failed-record"]["protocolInput"]["statusIndex"])
         # The same live records, retained in raw wire types instead of the
         # profile projection, would never bind.
@@ -1620,20 +1649,24 @@ class PayDemExecutionVectorTests(unittest.TestCase):
 
     def test_plain_rpc_failure_proof_is_not_apr_reconciliation_evidence(self):
         spec = SPEC.read_text(encoding="utf-8")
-        self.assertIn("The proof is the payer handler's terminal classification only.", spec)
-        self.assertIn("a plain-read proof authorizes no replacement through a later job", spec)
+        self.assertIn("which the disposition's verifier checks itself, so a proof built on a plain read "
+                      "authorizes no replacement through a later job", spec)
         self.assertIn("The handler's inclusion observation MAY be a plain read from a pinned node", spec)
         plain = self.cases["apr-evidence-plain-rpc-failure-proof"]
         self.assertEqual(("indeterminate", {"reconciliationEvidence": False}), evaluate(plain))
         self.assertEqual(("pass", {"reconciliationEvidence": True}),
                          evaluate(self.cases["apr-evidence-authenticated-failure-proof"]))
         # Missing or other authentication labels, and a corrupt authenticated proof, are not evidence.
-        for change in ({"proofAuthentication": None}, {"proofAuthentication": "FV5-BFT-FINAL"},
-                       {"proofAuthentication": "bft-final"}):
+        self.assertEqual("rpc-read", plain["protocolInput"]["retainedFailureProof"]["authentication"])
+        for change in ({"authentication": None}, {"authentication": "FV5-BFT-FINAL"},
+                       {"authentication": "bft-final"}):
             with self.subTest(change=change):
-                case = json.loads(json.dumps(plain))
-                case["protocolInput"].update(change)
+                case = json.loads(json.dumps(self.cases["apr-evidence-authenticated-failure-proof"]))
+                case["protocolInput"]["retainedFailureProof"].update(change)
                 self.assertEqual("indeterminate", evaluate(case)[0])
+        unlabelled = json.loads(json.dumps(self.cases["apr-evidence-authenticated-failure-proof"]))
+        del unlabelled["protocolInput"]["retainedFailureProof"]["authentication"]
+        self.assertEqual("indeterminate", evaluate(unlabelled)[0])
         corrupt = json.loads(json.dumps(self.cases["apr-evidence-authenticated-failure-proof"]))
         corrupt["protocolInput"]["retainedFailureProof"]["record"]["content"]["nonce"] = str(generator.NONCE + 1)
         self.assertEqual("indeterminate", evaluate(corrupt)[0])
@@ -1780,6 +1813,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     # validity response, so it is never the first egress.
                     state = vector["protocolInput"]["broadcastState"]
                     request = vector["protocolInput"]["request"]
+                    self.assertIs(False, vector["protocolInput"]["restartedSinceRetention"])
                     self.assertIn((state, request), {
                         ("never-broadcast", "confirm-retained"),
                         ("confirm-returned", "broadcast-retained"),
@@ -1810,6 +1844,84 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     self.assertEqual("permanent", want["errorClass"])
                     self.assertTrue(want["terminalFailureProofRetained"])
                     self.assertEqual("failure-without-settlement-finality", want["evidence"])
+
+    def test_only_an_fv5_authenticated_failed_record_is_a_terminal_failure(self):
+        """DEM-4 is terminal only for a bound failed record authenticated under
+        FV-5 at its bft-final inclusion. A plain RPC read of one, which the
+        pin does not authenticate, is DEM-5: a stale or dishonest pinned node
+        can serve failed for a transfer whose committed payment applied."""
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("For a bound record whose status is exactly `failed` and that is authenticated under FV-5 "
+                      "at its `bft-final` inclusion, the handler MUST return", spec)
+        self.assertIn("The handler MUST NOT return `errorClass: \"permanent\"` for it; it stays unresolved under DEM-5.", spec)
+        self.assertIn("a bound `failed` record from a plain RPC read.", spec)
+        self.assertIn("- bound `failed` record from a plain RPC read → `substrate`", spec)
+        self.assertIn("An FV `fail` result alone does not show both", spec)
+        terminal = 0
+        for vector in self.data["vectors"]:
+            if vector["operation"] not in {"classify-execution", "resume-phase"} or vector["expected"] != "fail":
+                continue
+            with self.subTest(name=vector["name"]):
+                value = vector["protocolInput"]
+                proof = value.get("retainedFailureProof")
+                if proof is not None:
+                    self.assertEqual("fv5-bft-final", proof["authentication"])
+                    plain = json.loads(json.dumps(vector))
+                    plain["protocolInput"]["retainedFailureProof"]["authentication"] = "rpc-read"
+                else:
+                    self.assertIs(True, value["recordRead"]["authenticated"])
+                    plain = json.loads(json.dumps(vector))
+                    del plain["protocolInput"]["recordRead"]["authenticated"]
+                # The same observation as a plain read never ends the phase.
+                expected, want = evaluate(plain)
+                self.assertEqual("indeterminate", expected)
+                self.assertEqual("substrate", want["errorClass"])
+                self.assertFalse(want["terminalFailureProofRetained"])
+                terminal += 1
+        self.assertGreaterEqual(terminal, 3)
+        # The forged failure: the record says failed while the authenticated
+        # committed balances show the phase payment applied.
+        forged = self.cases["failed-plain-read-over-applied-payment"]
+        read = forged["protocolInput"]["recordRead"]
+        self.assertEqual("failed", read["record"]["status"])
+        self.assertEqual((generator.AMOUNT_OS, generator.AMOUNT_OS), committed_change(read["appliedTransfer"]))
+        self.assertEqual("indeterminate", evaluate(forged)[0])
+        self.assertEqual("fail", evaluate(forged, {"failure-requires-authentication"})[0])
+        # After that plain-read failure, a later re-read of the retained hash
+        # finds the executed transfer: success, never a reused failure proof.
+        later = self.cases["resume-plain-read-failure-then-authenticated-confirmed"]
+        self.assertEqual("rpc-read", later["protocolInput"]["retainedFailureProof"]["authentication"])
+        self.assertEqual("pass", evaluate(later)[0])
+        self.assertEqual("fail", evaluate(later, {"resume-requires-authenticated-proof"})[0])
+        self.assertEqual("indeterminate", evaluate(self.cases["resume-plain-read-failure-proof-not-reused"])[0])
+
+    def test_restart_makes_a_retained_transfer_maybe_broadcast(self):
+        """DEM-6: a crash can fall between a call that carried the signed
+        bytes and its journal entry, so after a (re)start a retained transfer
+        is maybe-broadcast whatever state the handler recorded."""
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("a transfer the handler finds retained when it starts or restarts MUST be treated as "
+                      "possibly broadcast, whatever progress its journal records.", spec)
+        for name in ("confirm-after-restart-refused", "replacement-after-restart-refused",
+                     "broadcast-after-restart-from-confirm-returned-refused", "broadcast-gate-restart-unstated"):
+            with self.subTest(name=name):
+                self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(self.cases[name]))
+                self.assertEqual(("pass", {"broadcastPermitted": True}),
+                                 evaluate(self.cases[name], {"restart-is-maybe-broadcast"}))
+        permitted = [vector for vector in self.data["vectors"]
+                     if vector["operation"] == "broadcast-gate" and vector["expected"] == "pass"]
+        self.assertTrue(permitted)
+        for vector in permitted:
+            # The same permitted egress after a restart, or with the restart
+            # left unstated or misspelled, is refused (fail closed).
+            for restarted in (True, None, "false", 0, _ABSENT):
+                with self.subTest(name=vector["name"], restarted=restarted):
+                    case = json.loads(json.dumps(vector))
+                    if restarted is _ABSENT:
+                        del case["protocolInput"]["restartedSinceRetention"]
+                    else:
+                        case["protocolInput"]["restartedSinceRetention"] = restarted
+                    self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(case))
 
     def test_every_authority_is_the_change_of_its_committed_balances(self):
         """Every passing record carries the four edits of its send, and every
@@ -1914,7 +2026,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         checked = 0
         for name, expected in (
             ("included-failed", "fail"),
-            ("node2-included-failed-record", "fail"),
+            ("included-failed-plain-read", "indeterminate"),
+            ("node2-included-failed-record", "indeterminate"),
+            ("node2-failed-record-authenticated", "fail"),
             ("consumer-failed-fails", "fail"),
             ("consumer-failed-unauthenticated", "indeterminate"),
         ):

@@ -390,9 +390,14 @@ def classify(
     )
 
 
-def failure_proof(content: dict[str, Any] | None = None, **record_changes: Any) -> dict[str, Any]:
+def failure_proof(
+    content: dict[str, Any] | None = None, *, authentication: str = "fv5-bft-final", **record_changes: Any,
+) -> dict[str, Any]:
+    """A retained DEM-4 proof: the bound failed record, how it was
+    authenticated, its classification and inclusion block."""
     return {
         "classification": "permanent",
+        "authentication": authentication,
         "inclusionBlock": BLOCK,
         "record": record(record_changes.pop("status", "failed"), content, **record_changes),
     }
@@ -571,6 +576,7 @@ def gate(
     durable: bool = True,
     broadcast_state: str | None = None,
     request: str = "broadcast-retained",
+    restarted: Any = False,
     pinned_node: bool = True,
     applied_authority: bool = True,
     fee_separation_unscheduled: Any = True,
@@ -602,6 +608,7 @@ def gate(
             "hashRetainedForOtherPhases": retained_elsewhere or [],
             "retentionDurable": durable,
             "broadcastState": broadcast_state,
+            "restartedSinceRetention": restarted,
             "confirmResponse": confirm_response,
             "request": request,
             "validityResponse": carried_response,
@@ -803,13 +810,31 @@ def build_vectors() -> list[dict[str, Any]]:
         ),
         classify(
             "included-failed", "fail", "DEM-4/DEM-6", ["failure-is-permanent", "failure-proof-retained", "no-replacement", "success-requires-record"],
-            "Included is not executed: a bound failed record is a durable permanent failure with no replacement.",
+            "Included is not executed: a bound failed record authenticated under FV-5 at its bft-final inclusion is a durable permanent failure with no replacement.",
+            read=found(record("failed"), authenticated=True, state=ROLLED_BACK),
+        ),
+        # DEM-4 needs that authentication: the pin does not authenticate a
+        # plain RPC read, and a stale or dishonest node can serve failed for a
+        # transfer that executed, so a plain-read failure is only unresolved.
+        classify(
+            "included-failed-plain-read", "indeterminate", "DEM-4/DEM-5", ["failure-requires-authentication"] + unresolved,
+            "A bound failed record from a plain RPC read is unresolved: substrate, re-read, never a terminal failure.",
             read=found(record("failed"), state=ROLLED_BACK),
         ),
         classify(
-            "node2-included-failed-record", "fail", "DEM-2/DEM-4", ["failure-is-permanent", "failure-proof-retained", "no-replacement", "success-requires-record"],
-            "A live node2 transfer whose status index said included while its record failed (TX_NONCE_INVALID_LOW).",
+            "failed-plain-read-over-applied-payment", "indeterminate", "DEM-4/DEM-5", ["failure-requires-authentication"] + unresolved,
+            "A pinned node serves failed for a transfer whose committed payment applied: a plain read never ends the phase.",
+            read=found(record("failed")),
+        ),
+        classify(
+            "node2-included-failed-record", "indeterminate", "DEM-2/DEM-4/DEM-5", ["failure-requires-authentication"] + unresolved,
+            "A live node2 transfer whose status index said included while its record failed (TX_NONCE_INVALID_LOW), read by plain RPC: unresolved.",
             read=found(copy.deepcopy(NODE2_FAILED), state=ROLLED_BACK), transfer=live_failed, inclusion=live_failed_block,
+        ),
+        classify(
+            "node2-failed-record-authenticated", "fail", "DEM-2/DEM-4", ["failure-is-permanent", "failure-proof-retained", "no-replacement", "success-requires-record"],
+            "The same live failed record, authenticated under FV-5 at its bft-final inclusion, is the DEM-4 terminal failure.",
+            read=found(copy.deepcopy(NODE2_FAILED), authenticated=True, state=ROLLED_BACK), transfer=live_failed, inclusion=live_failed_block,
         ),
         classify(
             "included-pending", "indeterminate", "DEM-5", unresolved,
@@ -854,7 +879,7 @@ def build_vectors() -> list[dict[str, Any]]:
         classify(
             "failed-unpinned-node", "indeterminate", unbound, ["failure-requires-binding", "node-build-attested"] + unresolved,
             "A failed record from an unpinned node proves nothing about execution either.",
-            read=found(record("failed"), node=SELF_REPORTED_BUILD, state=ROLLED_BACK),
+            read=found(record("failed"), node=SELF_REPORTED_BUILD, authenticated=True, state=ROLLED_BACK),
         ),
         classify(
             "confirmed-old-build-node", "indeterminate", unbound, ["node-build-commit"] + unresolved,
@@ -1028,42 +1053,42 @@ def build_vectors() -> list[dict[str, Any]]:
         classify(
             "failed-wrong-nonce", "indeterminate", unbound, ["bind-nonce", "failure-requires-binding"] + unresolved,
             "A failed record with another nonce does not prove this transfer failed.",
-            read=found(record("failed", send_content(nonce=str(NONCE + 1))), state=ROLLED_BACK),
+            read=found(record("failed", send_content(nonce=str(NONCE + 1))), authenticated=True, state=ROLLED_BACK),
         ),
         classify(
             "failed-missing-nonce", "indeterminate", unbound, ["decode-nonce"] + unresolved,
             "A failed record missing its nonce does not decode, so it proves nothing.",
-            read=found(record("failed", send_content(nonce=_OMIT)), state=ROLLED_BACK),
+            read=found(record("failed", send_content(nonce=_OMIT)), authenticated=True, state=ROLLED_BACK),
         ),
         classify(
             "failed-wrong-block", "indeterminate", unbound, ["bind-block", "failure-requires-binding"] + unresolved,
             "A failed record in another block conflicts with the inclusion observation.",
-            read=found(record("failed", blockNumber=BLOCK + 1), state=ROLLED_BACK),
+            read=found(record("failed", blockNumber=BLOCK + 1), authenticated=True, state=ROLLED_BACK),
         ),
         classify(
             "failed-wrong-amount", "indeterminate", unbound, ["bind-amount", "failure-requires-binding"] + unresolved,
             "A failed record for another amount does not prove this transfer failed.",
-            read=found(record("failed", send_content(amount_os=OTHER_AMOUNT_OS)), state=ROLLED_BACK),
+            read=found(record("failed", send_content(amount_os=OTHER_AMOUNT_OS)), authenticated=True, state=ROLLED_BACK),
         ),
         classify(
             "failed-wrong-hash", "indeterminate", unbound, ["bind-hash", "failure-requires-binding"] + unresolved,
             "A failed record for another hash does not prove this transfer failed.",
-            read=found(record("failed", hash=OTHER_TX_HASH), state=ROLLED_BACK),
+            read=found(record("failed", hash=OTHER_TX_HASH), authenticated=True, state=ROLLED_BACK),
         ),
         classify(
             "failed-wrong-sender", "indeterminate", unbound, ["bind-sender", "failure-requires-binding"] + unresolved,
             "A failed record from another sender does not prove this transfer failed.",
-            read=found(record("failed", send_content(sender=OTHER_KEY)), state=ROLLED_BACK),
+            read=found(record("failed", send_content(sender=OTHER_KEY)), authenticated=True, state=ROLLED_BACK),
         ),
         classify(
             "failed-wrong-recipient", "indeterminate", unbound, ["bind-recipient", "failure-requires-binding"] + unresolved,
             "A failed record to another recipient does not prove this transfer failed.",
-            read=found(record("failed", send_content(recipient=OTHER_KEY)), state=ROLLED_BACK),
+            read=found(record("failed", send_content(recipient=OTHER_KEY)), authenticated=True, state=ROLLED_BACK),
         ),
         classify(
             "failed-without-inclusion-observation", "indeterminate", unbound, ["bind-block", "bind-requires-inclusion", "failure-requires-binding"],
             "A failed record without an inclusion observation is not a bound failure.",
-            read=found(record("failed"), state=ROLLED_BACK), status_index="unknown", inclusion=None,
+            read=found(record("failed"), authenticated=True, state=ROLLED_BACK), status_index="unknown", inclusion=None,
         ),
         classify(
             "transfer-unknown-not-rebroadcast", "indeterminate", "DEM-6", ["no-rebroadcast"],
@@ -1095,6 +1120,18 @@ def build_vectors() -> list[dict[str, Any]]:
             "resume-corrupted-failure-proof-status", "indeterminate", "DEM-4/DEM-6", ["no-rebroadcast", "resume-validates-failure-proof"] + unresolved,
             "A retained proof whose record is not failed is not a failure proof.",
             proof=failure_proof(status="pending"), read=NOT_FOUND,
+        ),
+        resume(
+            "resume-plain-read-failure-proof-not-reused", "indeterminate", "DEM-4/DEM-6",
+            ["no-rebroadcast", "resume-requires-authenticated-proof", "resume-validates-failure-proof"] + unresolved,
+            "A retained proof built on a plain RPC read (an earlier draft's DEM-4) is not reused; the resume re-reads.",
+            proof=failure_proof(authentication="rpc-read"), read=NOT_FOUND,
+        ),
+        resume(
+            "resume-plain-read-failure-then-authenticated-confirmed", "pass", "DEM-3/DEM-4/DEM-6",
+            ["resume-requires-authenticated-proof", "resume-validates-failure-proof", "success-authorizes-no-delivery", "success-branch"],
+            "After a plain-read failed record, the re-read finds the bound confirmed record with its applied payment: success, never a terminal failure.",
+            proof=failure_proof(authentication="rpc-read"), read=found(record("confirmed")),
         ),
         resume(
             "resume-without-proof-not-found", "indeterminate", "DEM-6", ["no-rebroadcast"],
@@ -1779,6 +1816,25 @@ def build_vectors() -> list[dict[str, Any]]:
         gate("confirm-after-confirm-returned-refused", "fail", "DEM-6", ["no-rebroadcast", "retention-before-first-egress"],
              "After this submission's confirm returned, only its own broadcast follows, never another confirm.",
              broadcast_state="confirm-returned", request="confirm-retained"),
+        # DEM-6 after a restart: a crash can fall between a call carrying the
+        # signed bytes and the journal entry that records it, so a transfer
+        # retained before the (re)start is maybe-broadcast whatever was recorded.
+        gate("confirm-after-restart-refused", "fail", "DEM-6",
+             ["no-rebroadcast", "restart-is-maybe-broadcast", "retention-before-first-egress"],
+             "A retained transfer still recorded as never-broadcast after a restart may have reached a node: no confirm.",
+             broadcast_state="never-broadcast", request="confirm-retained", restarted=True),
+        gate("replacement-after-restart-refused", "fail", "DEM-6",
+             ["no-replacement", "restart-is-maybe-broadcast"],
+             "After a restart the handler never sends a replacement for a retained transfer recorded as never-broadcast.",
+             broadcast_state="never-broadcast", request="broadcast-replacement", restarted=True),
+        gate("broadcast-after-restart-from-confirm-returned-refused", "fail", "DEM-6",
+             ["no-rebroadcast", "restart-is-maybe-broadcast"],
+             "A restart interrupts the submission: the confirm that returned before it is never completed by a broadcast.",
+             broadcast_state="confirm-returned", request="broadcast-retained", restarted=True),
+        gate("broadcast-gate-restart-unstated", "fail", "DEM-6",
+             ["no-rebroadcast", "restart-is-maybe-broadcast", "retention-before-first-egress"],
+             "A gate input that does not state false for the restart is a restart: fail closed.",
+             broadcast_state="never-broadcast", request="confirm-retained", restarted=None),
         gate("broadcast-hash-uppercase", "fail", "DEM-1", ["signed-hash-form"],
              "The node compares the derived hash exactly, so an upper-case hash is refused even when signed as spelled.",
              signed_transaction=dict(signed(), hash=TX_HASH.upper(),
@@ -1809,18 +1865,19 @@ def build_vectors() -> list[dict[str, Any]]:
               phase_context=phase(amount={"amount": OVERSIZED_OS, "currency": "DEM"}, amountOs=OVERSIZED_OS + "000000000")),
     ]
     # A DEM-4 proof is APR closed-cannot-settle evidence only when FV-5
-    # authenticates the failed record at its bft-final inclusion.
+    # authenticates the failed record at its bft-final inclusion; the APR
+    # check verifies that itself rather than trusting the handler.
     for name, expected, authentication, guards, note in (
         ("apr-evidence-plain-rpc-failure-proof", "indeterminate", "rpc-read",
          ["apr-evidence-requires-authenticated-failure"],
-         "The pin does not authenticate an RPC read, so the handler's terminal proof authorizes no replacement job."),
+         "The pin does not authenticate an RPC read, so a proof built on one authorizes no replacement job."),
         ("apr-evidence-authenticated-failure-proof", "pass", "fv5-bft-final",
          ["apr-evidence-from-authenticated-failure"],
          "The same failed record authenticated under FV-5 at its bft-final inclusion is reconciliation evidence."),
     ):
         vectors.append(_vector(
             name, "apr-reconciliation-evidence",
-            {"retainedTransfer": retained(), "retainedFailureProof": failure_proof(), "proofAuthentication": authentication},
+            {"retainedTransfer": retained(), "retainedFailureProof": failure_proof(authentication=authentication)},
             expected, {"reconciliationEvidence": expected == "pass"}, "DEM-4", guards, note,
         ))
     for vector in vectors:
@@ -1852,8 +1909,13 @@ def document() -> dict[str, Any]:
             "Inclusion does not prove execution. Only a getTxByHash record from a "
             "pinned node that decodes under the native-send record profile and binds "
             "the retained hash, nonce, block, sender, recipient and OS amount with "
-            "status confirmed and independent applied-payment authority succeeds; a bound failed record is a permanent failure; "
-            "anything else is a substrate result without a second broadcast."
+            "status confirmed and independent applied-payment authority succeeds; a bound failed record authenticated under FV-5 "
+            "at its bft-final inclusion is a permanent failure, and a plain RPC read of one is unresolved; "
+            "anything else is a substrate result without a second broadcast. "
+            "appliedTransferAuthenticated, recordRead.authenticated, nodeBuild.source, "
+            "retainedFailureProof.authentication and otherGates are abstract inputs that state an "
+            "authentication result: this corpus pins the decisions over them, not the authentication "
+            "itself, which the settlement-finality corpus exercises with result signatures."
         ),
         "demosProfile": {
             "profile": "DEMOS-MAPPING §A.2 native-send record profile",
@@ -1878,7 +1940,9 @@ def document() -> dict[str, Any]:
             "pinnedNodeConfigured": "the Demos binding pins nodes under the native-send record profile for the phase's network; anything but true is refused",
             "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",
             "gasFeeSeparationUnscheduled": "the Demos binding attests, from that network's sealed genesis, that the gasFeeSeparation fork is unscheduled (activationHeight null); RPC does not report it, and with it active the node stores fee edits before the send's four, so anything but true (a scheduled height, an attestation the binding does not hold) is refused",
-            "proofAuthentication": "how the DEM-4 proof's failed record was obtained: fv5-bft-final (FV-5-authenticated at its bft-final inclusion) or rpc-read; anything else is not authenticated",
+            "authenticated": "recordRead member: true when the record is authenticated under FV-5 at its bft-final inclusion; absent or false for a plain RPC read, which the node pin does not authenticate. A handler's DEM-4 failure and a consumer's DEM-7 failed refutation need true",
+            "retainedFailureProof": "the DEM-4 proof the handler retained: classification, authentication (fv5-bft-final when FV-5 authenticated the failed record at its bft-final inclusion, rpc-read for a plain read; anything else is not authenticated), inclusionBlock and the record. A resume reuses only an authenticated proof that still binds, and APR accepts only such a proof",
+            "restartedSinceRetention": "false only when the handler has run without a restart since it retained the transfer; after a (re)start a retained transfer is maybe-broadcast whatever broadcastState was recorded, and anything but false is a restart",
             "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) of pay-dem records the consumer admitted earlier. For admit-for-delivery they are the payee's own admissions, which its delivery check presents with the evidence: derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error. For resolve-settlement-group they lie outside the presented records, and settlement accounting and the DACS-5 derivation never add them",
             "guards": "checks whose removal makes this vector fail",
         },

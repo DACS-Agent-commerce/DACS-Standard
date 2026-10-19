@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 241 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 250 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -1247,15 +1247,15 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-241 candidate vectors pin native-DEM settlement on execution, not inclusion.
+250 candidate vectors pin native-DEM settlement on execution, not inclusion.
 The node's status index may label a transaction `included` while its
 transaction record is `failed`, so the index is never decisive. Records use
 the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
 and are compared through the DEMOS-MAPPING §A.2 native-send record profile:
 a string or integer nonce, a numeric (up to 2^53 − 1) or string OS amount, and
 `0x`-prefixed or bare party keys and `send` recipient arguments project to the
-same values; a prefixed argument's credit edit carries a single `0x`. Two
-`node2-*` vectors copy read-only node2 records, one `confirmed` and one `failed` with status index
+same values; a prefixed argument's credit edit carries a single `0x`. Three
+`node2-*` vectors and `consumer-node2-confirmed-refused` copy two read-only node2 records, one `confirmed` and one `failed` with status index
 `included`. `demosProfile` names the pinned node source commit, the build
 attestation that pins it, and the SDK package; the live records are
 observations, not that pin. Each read carries `nodeBuild`, the build
@@ -1271,7 +1271,13 @@ decodes and whose projected hash, nonce, sender, recipient and OS amount
 equal the retained signed transfer, whose block equals the inclusion
 observation, whose status is exactly `confirmed`, and whose committed payment debit and payee credit have independently authenticated state-transition authority. That authority must name the phase's pinned `network` (`networkId`, `genesisHash`) and the inclusion observation's `blockId`; one from another network, genesis or block ID at the same height, or one with no observed block ID to compare, is `indeterminate`. The live confirmed RPC sample remains indeterminate without that authority. The record must also carry the four edits of its send: the pinned node applies a send whose edits are missing or empty as a successful no-op, so `confirmed-no-op-*` cases stay `indeterminate` whether the authority shows the unchanged committed balances or reports a payment. Carrying the four edits is not payment either: `confirmed-four-edits-uncommitted-payment` stays `indeterminate` when the committed balances did not move. A record bound the same
 way with status `failed` is a durable `permanent` failure without
-`settlementFinality`. Missing, unavailable, pending, aliased, case-variant,
+`settlementFinality` only when it is authenticated under FV-5 at its
+`bft-final` inclusion (`recordRead.authenticated`). A plain RPC read of it is
+`indeterminate`, even over committed balances that show the payment applied
+(`failed-plain-read-over-applied-payment`, guard
+`failure-requires-authentication`): a stale or dishonest pinned node can
+serve `failed` for a transfer that executed. The unbound `failed-*` cases are
+authenticated, so only the binding refuses them. Missing, unavailable, pending, aliased, case-variant,
 mismatched, undecodable (missing, boolean, fractional or leading-zero
 numbers, a `0x` hash, upper-case keys, a non-native `content.type`, an inconsistent `send` payload) and
 unpinned-node records are `ok: false` with `errorClass: "substrate"`. They keep
@@ -1280,11 +1286,14 @@ the ST-7 pause expires. No handler result, including success, authorizes
 delivery or settlement accounting; only `admit-for-delivery` does.
 
 `resume-phase` cases reuse a valid retained failure proof without a node
-read, refuse to reuse one corrupted in its nonce, recipient, block or status,
-and recover a confirmed transfer by re-reading the retained hash.
+read, refuse to reuse one corrupted in its nonce, recipient, block or status
+or whose `authentication` is not `fv5-bft-final` (a plain-read proof, guard
+`resume-requires-authenticated-proof`), and recover a confirmed transfer by
+re-reading the retained hash, including after a plain-read failure.
 `apr-reconciliation-evidence` cases accept a DEM-4 proof as APR
-`closed-cannot-settle` evidence only when FV-5 authenticates its failed record
-at the `bft-final` inclusion; a plain RPC read is `indeterminate`.
+`closed-cannot-settle` evidence only when its `authentication` says FV-5
+authenticated its failed record at the `bft-final` inclusion; a plain RPC
+read is `indeterminate`.
 `pre-sign-gate` cases check DEM-1 before demosdk `pay()`/`sign()`: their
 input holds no signed transaction, and a binding without pinned nodes, an
 applied-payment authority or `gasFeeSeparationUnscheduled` (its attestation,
@@ -1306,7 +1315,11 @@ a binding that configures pinned nodes and an applied-payment authority and
 attests `gasFeeSeparation` unscheduled. After
 a `confirm`, they allow only the broadcast that completes the same
 uninterrupted submission, never a second `confirm`; after an interrupted
-`confirm`, they refuse a resend of either call and a replacement. A `confirm` request carries `signedTransaction`; a demosdk
+`confirm`, they refuse a resend of either call and a replacement. After a
+restart (`restartedSinceRetention` anything but `false`) a retained transfer is
+maybe-broadcast whatever `broadcastState` was recorded, so a `confirm`, the
+broadcast completing a `confirm` that returned before the restart, and a
+replacement are each refused (guard `restart-is-maybe-broadcast`). A `confirm` request carries `signedTransaction`; a demosdk
 `broadcast` carries `validityResponse`, the `RPCResponseWithValidityData` whose
 embedded transaction the pinned node executes. A broadcast passes only when
 that payload is exactly `confirmResponse`, the response this submission's

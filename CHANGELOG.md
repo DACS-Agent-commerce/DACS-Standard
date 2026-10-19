@@ -30,7 +30,7 @@ The format used per release:
   vectors in both corpora cover each spelling the §A.2 profile projects alike:
   a `0x`-prefixed or bare `send` recipient argument (whose credit edit names it
   with a single `0x`), bare or prefixed party keys, a string or integer nonce,
-  and a string or number amount up to 2^53 − 1. The corpora contain 241 pay-dem
+  and a string or number amount up to 2^53 − 1. The corpora contain 250 pay-dem
   and 194 settlement-finality cases.
 - The DEMOS-MAPPING §A.2 profile covers only a network whose sealed genesis
   leaves the `gasFeeSeparation` fork unscheduled (`activationHeight: null`).
@@ -114,11 +114,31 @@ The format used per release:
   first egress. A `confirm` that refuses the transfer after it has carried
   the signed bytes is DEM-5 `substrate`: the node holds the bytes, so the
   handler keeps the hash and only re-reads.
-- A DEM-4 failure proof built on plain RPC reads is the payer's terminal
-  classification only. It is APR `closed-cannot-settle` reconciliation
-  evidence only when FV-5 authenticates the failed record at its `bft-final`
-  inclusion. DEM-2 says that the handler's inclusion observation may be a
-  plain pinned-node read, which the pin does not authenticate.
+- DEM-4 ends a phase `permanent` only for a bound `failed` record
+  authenticated under FV-5 at its `bft-final` inclusion: the FV `bft-final`
+  verification of the inclusion together with FV-5's authenticated execution
+  result, not an FV `fail` result alone. A plain RPC read of a `failed`
+  record, which the node pin does not authenticate, is DEM-5 `substrate`: a
+  stale or dishonest pinned node could otherwise end a phase whose transfer
+  executed. The retained proof records its authentication, a resume reuses
+  only an authenticated proof that still binds, and the same authenticated
+  proof is the APR `closed-cannot-settle` reconciliation evidence. New
+  `included-failed-plain-read`, `failed-plain-read-over-applied-payment`,
+  `resume-plain-read-failure-*` and `node2-failed-record-authenticated`
+  vectors pin this. The live node2 `failed` record read by plain RPC is now
+  `indeterminate`, and the unbound `failed-*` vectors are authenticated so
+  that only the binding refuses them.
+- DEM-6 treats a transfer that the handler finds retained when it starts or
+  restarts as possibly broadcast, whatever progress its journal records,
+  because a crash can fall between a call carrying the signed bytes and its
+  journal entry. After a restart there is no `confirm`, no broadcast
+  completing an earlier `confirm` and no replacement. `broadcast-gate` inputs
+  carry `restartedSinceRetention`; anything but `false` counts as a restart.
+- Migration: a handler that retained a DEM-4 proof from a plain RPC read
+  re-reads the retained hash instead of reusing it. A runner of the earlier
+  241-case corpus reads the proof's `authentication` member, which replaces
+  the `apr-reconciliation-evidence` input `proofAuthentication`. It also
+  passes `restartedSinceRetention` to its `broadcast-gate` check.
 - The handler's DEM-3 applied-payment authority, like the consumer's, must
   name the phase's pinned network (`networkId`, `genesisHash`) and the
   inclusion observation's block ID. The pay-dem fixtures carry both, and new
@@ -1238,7 +1258,9 @@ The format used per release:
   `ok: true` only for a record bound to those values and the inclusion block
   whose status is exactly `confirmed` (DEM-2, DEM-3); that success alone
   authorizes no delivery or settlement accounting. A bound `failed` record
-  is a durable `permanent` failure without `settlementFinality` (DEM-4).
+  authenticated under FV-5 at its `bft-final` inclusion is a durable
+  `permanent` failure without `settlementFinality` (DEM-4); a plain RPC read
+  of one is unresolved.
   Missing, unavailable, pending, aliased or unbound records are `ok: false`
   with `errorClass: "substrate"`, keep the retained hash, and authorize no
   delivery or settlement accounting. If the ST-7 pause expires, the session
@@ -1266,7 +1288,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 241-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 250-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope

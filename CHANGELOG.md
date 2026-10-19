@@ -1248,6 +1248,53 @@ The format used per release:
   current address, perform a current lookup, create a current signature, or
   authorize an effect.
 
+### Changed — general normative changes in candidate DACS-4 v0.8 (every profile)
+
+These are general normative changes: they bind every pay-* handler and
+amendment consumer.
+
+- **Payment input** (DACS-4 §9.5.1 PC-1) — every pay-* handler MUST reject a
+  `PaymentPhaseInput` that lacks `sessionContext` or another required member,
+  or carries one of the wrong type, including the `AgreementArtifact` and
+  `RailDefinition` discriminators and members, the nested party, `PriceTerm`
+  and `SessionContext` shapes. Other unknown members, top-level or nested, stay
+  open under CORE SIG-5. A PC-1 rejection is permanent (`ok: false`,
+  `errorClass: "permanent"`) and precedes any rail call.
+  The checks include complete AssetSpec and NetworkSpec arms, governance
+  optionals, DeliverableRef, PaymentRailRef, payout binding entries, bare
+  lowercase identity-bound party hashes, and each agreement kind's forbidden
+  members under DACS-3 §8.5. The agreement must carry `terms.rail` (DACS-3
+  §8.5.2 rule 3), the rail's `railId` must be 1–64 printable ASCII characters
+  (0x21–0x7E, case-sensitive, as §9.4.1 now states), and each present
+  optional member of either artifact must have its declared type, including the
+  `consumerFinalityProfile` union. The informational `priceAnchor` and
+  disclosure-only `feeSchedule` do not gate settlement (DACS-3 §8.5.2, FS-3).
+  These are declared-type checks: a profile's further value domains (an exact
+  HTTPS `statusEndpointOrigin`, duplicate-free `authorityRefs` and
+  `captureStatuses`, the quorum ratio) stay with FV-1, which makes a malformed
+  profile `error`.
+- **Amendment target** (DACS-4 §9.7.1 AMEND-1) — an amendment consumer MUST
+  resolve `amendsEvidenceRef` and recompute its content hash before reading any
+  target member. The target may now be `SettlementEvidence`,
+  `LegacyTransitionSettlementEvidence` or `FinalityBoundSettlementEvidence`,
+  selected by exactly one discriminator and verified under that arm's
+  signature domain; `DeliveryEvidence` is not a target. The signer MUST be the
+  session's phase orchestrator, the target MUST be a complete record of its
+  arm, and the amendment address's `{evidenceHash}` segment MUST equal the
+  target's content hash. An unavailable, unanchored or unfinalized target, or
+  resolved bytes that differ from an authentic anchor, leaves the amendment
+  `indeterminate`, as does an anchor receipt whose proof does not bind its own
+  fields. Only an authentic anchor that binds another content hash is a
+  violation. The three DACS-4 v0.x target arms use closed shapes and reject
+  unknown members.
+- **Reference and fixtures** — the non-normative
+  `scripts/settlement_contract_reference.py` and the deterministic
+  `conformance/fixtures/settlement/payment-input-amendment-v0.1.json` (PC-1
+  inputs and AMEND-1 targets) pin these rules; CONFORMANCE-PLAN maps each MUST
+  to its cases. The
+  golden `settlement-evidence-payment-success.json` payment input is
+  illustrative, not a PC-1 handler input.
+
 ### Fixed — DACS-1 / DACS-4 rail availability
 
 - **Production rail selection and authoritative hints** (DACS-1 §6.3.4

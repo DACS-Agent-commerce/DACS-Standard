@@ -162,7 +162,7 @@ A versioned, anchored set of payment rails. Each rail entry describes one settle
 ```
 type RailDefinition = {
   railVersion: number                  // positive JSON safe integer
-  railId: string                       // canonical id; lowercase ASCII; max 64 chars
+  railId: string                       // canonical id; 1-64 printable ASCII chars (0x21-0x7E, no whitespace); case-sensitive
   railType: "evm-erc20" | "solana-spl" | "cross-chain-htlc" | "cross-chain-liquidity-tank" | "ap2" | "x402" | "demos-native"
   asset: AssetSpec                     // what is being transferred
   network: NetworkSpec                 // where it lives
@@ -444,7 +444,27 @@ The closed v0.x set at this revision. Each is a PhaseType from chapter 6’s clo
 
 Every pay-* phase handler MUST:
 
-**(PC-1)** accept a PaymentPhaseInput conforming to the shape below.
+**(PC-1)** accept a `PaymentPhaseInput` (or `IdentityBoundPaymentPhaseInput`
+where §9.5.1 requires it) conforming to the shape below. A handler MUST reject
+an input that lacks `sessionContext` or another required member, or carries one
+that is not of its declared type, including the `AgreementArtifact` (exactly
+one supported discriminator, its required members, and the `terms.rail` that
+DACS-3 §8.5.2 rule 3 requires of a pay-* pipeline), the `RailDefinition`
+(§9.4.1 required members, closed enumerations and a `railId` of 1–64 printable
+ASCII characters, 0x21–0x7E, compared case-sensitively), the nested payer and
+payee objects, the `PriceTerm`, and the `SessionContext`. A present optional
+member of the `AgreementArtifact` or `RailDefinition`, including
+`consumerFinalityProfile`, is also checked against its declared type, except
+the informational `terms.priceAnchor` and disclosure-only `terms.feeSchedule`,
+on which no consumer gates settlement (DACS-3 §8.5.2, FS-3). These are
+declared-type checks. A profile's further value domains, such as the exact
+HTTPS `statusEndpointOrigin`, duplicate-free `authorityRefs` and
+`captureStatuses`, and the quorum ratio, stay with FV-1, which classifies a
+malformed profile as `error` before any finality-bound claim. Other unknown
+members, top-level or nested, remain subject to CORE SIG-5. The serialized
+`SessionContext` omits the runtime `signer`. No handler may add, drop or rename
+a member to make an input fit its shape. A PC-1 rejection is `rejected` before
+any rail call and maps to `ok: false` with `errorClass: "permanent"`.
 
 **(PC-2)** produce the applicable settlement-evidence record anchored via SR-2 at `dacs4:payment:{jobId}:{railId}:{phaseIndex}[:resolved]` (or substrate equivalent). Segment rules:
 
@@ -2340,7 +2360,7 @@ Refunds are not a separate phase type in v0.1. A refund is modelled as a Settlem
 type SettlementAmendment = {
   amendmentVersion: "1"
   jobId: string
-  amendsEvidenceRef: AttestationRef    // points to the SettlementEvidence being amended
+  amendsEvidenceRef: AttestationRef    // points to the payment evidence record being amended (any AMEND-1 arm)
   amendmentType: "refund" | "partial-refund" | "correction"
   refundAmount?: PriceTerm
   refundTxRefs?: ChainTxRef[]
@@ -2356,7 +2376,41 @@ SettlementAmendment is anchored via SR-2 at dacs4:amendment:{jobId}:{evidenceHas
 
 > **Note (non-normative).** Without these constraints a refund could anchor against a non-existent or failure-outcome record, or over-refund, feeding DACS-5 reputation records it cannot trust.
 
-- (AMEND-1) `amendsEvidenceRef` MUST resolve to an anchored SettlementEvidence whose `jobId` equals the amendment’s `jobId`.
+- (AMEND-1) An amendment consumer MUST resolve `amendsEvidenceRef` to its
+  anchored artifact and recompute the AttestationRef content hash before reading
+  any target member. It MUST select the target arm from exactly one recognized
+  evidence discriminator: `evidenceVersion` selects `SettlementEvidence` under
+  `dacs-evidence:v1:`, `legacyTransitionEvidenceVersion` selects
+  `LegacyTransitionSettlementEvidence` under
+  `dacs-legacy-transition-evidence:v1:`, and `finalityBoundEvidenceVersion`
+  selects `FinalityBoundSettlementEvidence` under
+  `dacs-finality-bound-evidence:v1:`. `deliveryEvidenceVersion` is not an
+  amendment target. The target signature MUST verify under that arm's domain,
+  and its signer MUST be the authenticated phase orchestrator of the target's
+  session; another party's valid signature is not authority. The target MUST
+  be a complete record of its arm, including the members its `outcome` makes
+  required, as DACS-5 SEB-3 consumes the same record. Each of these DACS-4 v0.x
+  arms uses its closed shape. Each of the following violates AMEND-1 and is
+  handled under AMEND-4: no recognized discriminator or more than one, an
+  unsupported version, a signature valid only under another domain, a signer
+  other than that orchestrator, a missing required member or mistyped arm
+  member, an unknown member in a closed arm, a `jobId` other than the
+  amendment's, a non-pay-* `phase`, an authentic anchor at the reference's
+  locator that binds a different content hash, or an amendment address whose
+  `{jobId}` or `{evidenceHash}` segment differs from the amendment's job and
+  the target's content hash. The PC-2 payment address is single-write, so an
+  authentic anchor binding another hash shows that the reference names other
+  content; it is not a discarded candidate. For every arm the `{evidenceHash}`
+  address segment is that signature-omitting content hash. A target that is
+  unavailable, unanchored or not yet finalized, an AnchorReceipt whose proof
+  does not authenticate the receipt's own fields (CORE SR2-4; SR2-12 discards
+  such a candidate), or resolved bytes that differ from an authentic finalized
+  anchor binding the reference's own hash, leaves the amendment
+  `indeterminate`: it is neither included as a valid unwind nor recorded as a
+  violation until the target resolves. AMEND-1 identifies the target only; a
+  transition or finality-bound target's §9.7 reservation authority or
+  FV-1..FV-10 result remains a §9.10 settlement-evidence consumer obligation,
+  and an amendment of a target that does not pass it is not a valid unwind.
 - (AMEND-2) a `refund` or `partial-refund` MUST reference an evidence record whose `outcome == "success"`. A settlement-atomicity failure (no funds moved) is unwound on the rail’s refund path (e.g. the HTLC timelock-refund per §9.5.4), NEVER via a refund amendment. A `correction` MUST NOT carry `refundAmount`.
 - (AMEND-3) the sum of `refundAmount` across all amendments referencing a single evidence record MUST NOT exceed that record’s `paymentAmount`, compared currency-matched per the PriceTerm. v0.1 REQUIRES refunds in the settled currency. A `refundAmount.currency` differing from the amended evidence's `paymentAmount.currency` makes the AMEND-3 bound non-evaluable and MUST be flagged per AMEND-4; cross-currency refunds are out of scope for v0.1 — a roadmap candidate.
 - (AMEND-4) bundle assembly MUST reject — or, where a complete audit trail is preferred, flag — any amendment violating AMEND-1..AMEND-3 rather than silently including it. A flagged amendment MUST NOT be treated as a valid unwind by DACS-5 reputation derivation.

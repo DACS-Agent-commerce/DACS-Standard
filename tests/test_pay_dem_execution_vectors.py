@@ -43,6 +43,7 @@ GUARDS = frozenset({
     "binding-refusal-is-permanent",
     "first-broadcast-allowed",
     "retention-before-first-egress",
+    "egress-only-confirm-then-broadcast",
     "broadcast-requires-pinned-node",
     "broadcast-requires-applied-payment-authority",
     "broadcast-requires-durable-retention",
@@ -63,7 +64,9 @@ GUARDS = frozenset({
     "signed-nonce-integer",
     "no-cross-phase-reuse",
     # DEM-2 and the DEMOS-MAPPING §A.2 native-send record profile
-    "node-profile-pinned",
+    "node-build-attested",
+    "node-build-commit",
+    "node-build-clean-tree",
     "decode-hash",
     "decode-block",
     "decode-nonce",
@@ -84,6 +87,7 @@ GUARDS = frozenset({
     "success-requires-record",
     "success-requires-exact-confirmed",
     "success-requires-applied-transfer",
+    "confirmed-requires-send-edits",
     "applied-transfer-binds-network",
     "applied-transfer-binds-block-id",
     # DEM-4
@@ -106,7 +110,11 @@ GUARDS = frozenset({
     # DEM-7
     "consumer-admits-confirmed",
     "consumer-requires-confirmed-record",
-    "consumer-binding",
+    "consumer-binds-hash",
+    "consumer-binds-block",
+    "consumer-binds-payer",
+    "consumer-binds-payee",
+    "consumer-binds-amount",
     "consumer-failed-refutes",
     "consumer-failed-requires-authentication",
     "consumer-authenticated-contradiction-fails",
@@ -168,7 +176,14 @@ APPLIED_TRANSFER = frozenset({
     "payerDebitOs", "payeeCreditOs",
 })
 NETWORK = frozenset({"networkId", "genesisHash"})
-REQUESTS = frozenset({"confirm-retained", "broadcast-retained", "broadcast-replacement"})
+# DEMOS-MAPPING §A.2 node pin, written out here rather than taken from the
+# generator: the binding's own attestation of the exact commit, clean tree.
+PINNED_BUILD = {
+    "source": "binding-attestation",
+    "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+    "tree": "clean",
+}
+REQUESTS =frozenset({"confirm-retained", "broadcast-retained", "broadcast-replacement"})
 FEE_AMOUNTS = ("network_fee", "rpc_fee", "additional_fee")
 # The pinned node's RPC ingress rebuilds the fee object in this order before
 # it re-derives the hash (src/forks/serializerGate.ts).
@@ -208,6 +223,36 @@ def edits_match(content, off=frozenset()) -> bool:
         return stringify([{**edit, "txhash": ""} for edit in edits]) == stringify(expected)
     except (ValueError, TypeError, UnicodeError):
         return False
+
+
+GAS_EDIT_MEMBERS = ["type", "account", "operation", "amount", "txhash", "isRollback"]
+
+
+def replayed(record) -> tuple[str, str]:
+    """This test's own replay of the pinned apply (handleGCR at 61b8e75) of a
+    record's transaction: the payer's debit and payee's credit from its
+    balance edits, the 1 DEM gas edit (SDK member order) excluded. A failed
+    apply restores state; a missing or empty edit list changes nothing."""
+    content = record["content"]
+
+    def key(value):
+        return value.removeprefix("0x").lower() if isinstance(value, str) else None
+
+    def total(amounts):
+        return "0" if not amounts else amounts[0] if len(amounts) == 1 else str(sum(map(int, amounts)))
+
+    edits = content.get("gcr_edits") if record.get("status") != "failed" else None
+    debits, credits = [], []
+    for edit in edits if isinstance(edits, list) else []:
+        if not (isinstance(edit, dict) and edit.get("type") == "balance"):
+            continue
+        if list(edit) == GAS_EDIT_MEMBERS and edit.get("operation") == "remove" and edit.get("amount") == GAS_OS:
+            continue
+        if edit.get("operation") == "remove" and key(edit.get("account")) == key(content.get("from")):
+            debits.append(edit["amount"])
+        elif edit.get("operation") == "add" and key(edit.get("account")) == key(content.get("to")):
+            credits.append(edit["amount"])
+    return total(debits), total(credits)
 
 
 def _safe_integer(value) -> bool:
@@ -447,7 +492,28 @@ def bound(projection, transfer, inclusion, off) -> bool:
 
 
 def pinned(read, off) -> bool:
-    return read.get("nodeProfile") == "pinned" or "node-profile-pinned" in off
+    """DEMOS-MAPPING §A.2 node pin: the binding configuration's own build
+    attestation names exactly the profile commit, built from an unmodified
+    tree. A self-report, another commit or a dirty tree is not the pin."""
+    build = read.get("nodeBuild")
+    if not (isinstance(build, dict) and set(build) == set(PINNED_BUILD)):
+        return False
+    return all(
+        build[member] == PINNED_BUILD[member] or guard in off
+        for guard, member in (
+            ("node-build-attested", "source"),
+            ("node-build-commit", "commit"),
+            ("node-build-clean-tree", "tree"),
+        )
+    )
+
+
+def sends_payment(record, off) -> bool:
+    """A confirmed record can show payment only when its transaction carries
+    the four edits of its send (each `txhash` blanked): the pinned node
+    applies a missing or empty edit list as a successful no-op. Necessary,
+    never sufficient: the applied-payment authority still decides."""
+    return "confirmed-requires-send-edits" in off or edits_match(record["content"], off)
 
 
 def is_confirmed(status, off) -> bool:
@@ -539,7 +605,7 @@ def classify(protocol_input: dict, off) -> tuple[str, dict]:
         off,
     )
     if (is_bound and is_confirmed(status, off) and applied(read, projection, protocol_input, off) == "pass"
-            and "success-branch" not in off):
+            and sends_payment(record, off) and "success-branch" not in off):
         return handler_result("pass", protocol_input, off)
     if status == "failed" and (is_bound or "failure-requires-binding" in off):
         if "failure-is-permanent" not in off:
@@ -624,7 +690,11 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
     refused = ("fail", {"broadcastPermitted": False})
     request = protocol_input["request"]
     if request not in REQUESTS:
-        return refused
+        if "egress-only-confirm-then-broadcast" not in off:
+            return refused
+        # The wrong implementation sends the signed bytes by another route
+        # (an SR-3 proxy, a direct wallet submission) after the confirm checks.
+        request = "confirm-retained"
     if request == "confirm-retained" and "retention-before-first-egress" in off:
         # The wrong implementation checks DEM-1 only at `broadcast` and sends
         # the signed bytes to `confirmTx` unchecked.
@@ -730,14 +800,17 @@ def dem7(protocol_input: dict, off) -> str:
         "recipient": phase["payeeAddress"],
         "amountOs": _canonical(phase["amountOs"]),
     }
-    is_bound = "consumer-binding" in off or all(
-        projection[field] == value for field, value in expected_values.items()
+    is_bound = all(
+        projection[field] == value or f"consumer-binds-{guard}" in off
+        for (field, value), guard in zip(expected_values.items(), ("hash", "block", "payer", "payee", "amount"))
     )
     status = projection["status"]
     if is_bound and is_confirmed(status, off):
         decision = applied(read, projection, protocol_input, off)
         if decision != "pass":
             return "indeterminate" if "consumer-authenticated-contradiction-fails" in off else decision
+        if not sends_payment(record, off):
+            return "indeterminate"
         return "indeterminate" if "consumer-admits-confirmed" in off else "pass"
     if is_bound and status == "failed" and (
         read.get("authenticated") is True or "consumer-failed-requires-authentication" in off
@@ -1248,14 +1321,14 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         for member in ("content", "hash", "signature"):
             self.assertEqual(value["signedTransaction"][member], data["transaction"][member])
         self.assertEqual(response, value["confirmResponse"])
-        # Every broadcast carries a validity response; a confirm carries the
-        # signed transaction and no response.
+        # Every broadcast carries a validity response; a confirm, and any
+        # other route that carries the signed transaction, carries no response.
         for vector in self.data["vectors"]:
             if vector["operation"] != "broadcast-gate":
                 continue
             with self.subTest(payload=vector["name"]):
                 inputs = vector["protocolInput"]
-                if inputs["request"] == "confirm-retained":
+                if not inputs["request"].startswith("broadcast-"):
                     self.assertEqual((None, None), (inputs["confirmResponse"], inputs["validityResponse"]))
                 elif vector["name"] != "broadcast-validity-response-missing":
                     self.assertIsInstance(inputs["validityResponse"], dict)
@@ -1651,6 +1724,111 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     self.assertTrue(want["terminalFailureProofRetained"])
                     self.assertEqual("failure-without-settlement-finality", want["evidence"])
 
+    def test_passing_records_are_applied_sends_with_replayed_authority(self):
+        """Every passing record carries the four edits of its send, and every
+        fixture authority not deliberately varied equals this test's own
+        replay of the pinned apply, never the record's claimed amount."""
+        varied = re.compile(r"applied-transfer|copied-authority")
+        checked = 0
+        for vector in self.data["vectors"]:
+            read = vector["protocolInput"].get("recordRead")
+            if not (isinstance(read, dict) and isinstance(read.get("record"), dict)):
+                continue
+            record = read["record"]
+            with self.subTest(name=vector["name"]):
+                if vector["expected"] == "pass":
+                    self.assertTrue(edits_match(record["content"]))
+                    self.assertIn("appliedTransfer", read)
+                if "appliedTransfer" in read and not varied.search(vector["name"]):
+                    proof = read["appliedTransfer"]
+                    self.assertEqual(replayed(record), (proof["payerDebitOs"], proof["payeeCreditOs"]))
+                    checked += 1
+        self.assertGreater(checked, 80)
+
+    def test_confirmed_no_op_never_establishes_payment(self):
+        """The pinned node applies a send without edits as a successful no-op:
+        neither its replayed zero transition nor an authority that copies the
+        claimed amount onto it reaches success, on the handler or consumer path."""
+        for name, expected in (
+            ("confirmed-no-op-apply", "indeterminate"),
+            ("confirmed-no-op-empty-edits", "indeterminate"),
+            ("confirmed-no-op-copied-authority", "indeterminate"),
+            ("consumer-confirmed-no-op-apply", "fail"),
+            ("consumer-confirmed-no-op-copied-authority", "indeterminate"),
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(expected, self.cases[name]["expected"])
+                self.assertEqual(expected, evaluate(self.cases[name])[0])
+        self.assertEqual(("0", "0"), (
+            self.cases["confirmed-no-op-apply"]["protocolInput"]["recordRead"]["appliedTransfer"]["payerDebitOs"],
+            self.cases["confirmed-no-op-apply"]["protocolInput"]["recordRead"]["appliedTransfer"]["payeeCreditOs"],
+        ))
+        # A receipt producer that keeps every passing record's authority but
+        # strips, empties or reshapes its edits never passes.
+        for vector in self.data["vectors"]:
+            if vector["expected"] != "pass" or "recordRead" not in vector["protocolInput"]:
+                continue
+            for label, edits in (("missing", None), ("empty", []), ("object", {}), ("payment-only", "first-two")):
+                with self.subTest(name=vector["name"], edits=label):
+                    mutated = json.loads(json.dumps(vector))
+                    content = mutated["protocolInput"]["recordRead"]["record"]["content"]
+                    if edits is None:
+                        del content["gcr_edits"]
+                    elif edits == "first-two":
+                        content["gcr_edits"] = content["gcr_edits"][:2]
+                    else:
+                        content["gcr_edits"] = edits
+                    self.assertNotEqual("pass", evaluate(mutated)[0])
+
+    def test_node_pin_is_the_binding_attested_exact_clean_build(self):
+        demos = DEMOS.read_text(encoding="utf-8")
+        self.assertTrue(DEMOS_RECORD_PROFILE.endswith("@" + PINNED_BUILD["commit"]))
+        self.assertEqual(PINNED_BUILD, self.data["demosProfile"]["nodeBuild"])
+        self.assertIn("the binding configuration's own build attestation for each node", demos)
+        self.assertIn("an attested build of another commit, and a build from a modified tree are each not that pin", demos)
+        builds = {
+            "self-reported": dict(PINNED_BUILD, source="self-reported"),
+            "testnet-commit": dict(PINNED_BUILD, commit="ac8f45f02fc9c25082ce9b83595c2e3916b49c5a"),
+            "short-commit": dict(PINNED_BUILD, commit=PINNED_BUILD["commit"][:7]),
+            "dirty-tree": dict(PINNED_BUILD, tree="dirty"),
+            "extra-member": dict(PINNED_BUILD, dirty=False),
+            "label-only": "pinned",
+            "missing": None,
+        }
+        for name in ("included-confirmed", "consumer-confirmed-gate-passes", "delivery-after-all-gates"):
+            control = self.cases[name]
+            self.assertEqual("pass", evaluate(control)[0])
+            for label, build in builds.items():
+                with self.subTest(name=name, build=label):
+                    mutated = json.loads(json.dumps(control))
+                    read = mutated["protocolInput"]["recordRead"]
+                    if build is None:
+                        del read["nodeBuild"]
+                        read["nodeProfile"] = "pinned"
+                    else:
+                        read["nodeBuild"] = build
+                    self.assertNotEqual("pass", evaluate(mutated)[0])
+        # Each member of the pin has its own refusing vector on both paths.
+        for guard in ("node-build-attested", "node-build-commit", "node-build-clean-tree"):
+            operations = {v["operation"] for v in self.data["vectors"] if guard in v["guards"]}
+            self.assertLessEqual({"classify-execution", "admit-evidence"}, operations, guard)
+
+    def test_only_confirm_then_broadcast_carries_the_signed_transaction(self):
+        spec = SPEC.read_text(encoding="utf-8")
+        section = spec[spec.index("#### 9.5.9 pay-dem"):spec.index("**Finality.**", spec.index("#### 9.5.9 pay-dem"))]
+        self.assertNotIn("via SR-3 proxy attestation", section)
+        self.assertIn("`pay-dem` has no SR-3 proxy submission", section)
+        self.assertIn("These two calls are the profile's only submission route", section)
+        control = self.cases["confirm-after-durable-retention"]
+        self.assertEqual("pass", evaluate(control)[0])
+        for request in ("sr3-proxy-submission", "wallet-direct-submission"):
+            with self.subTest(request=request):
+                vector = self.cases[request + "-refused"]
+                self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(vector))
+                self.assertEqual(["egress-only-confirm-then-broadcast"], vector["guards"])
+                # The route alone differs from a permitted confirm request.
+                self.assertEqual(dict(control["protocolInput"], request=request), vector["protocolInput"])
+
     def test_spec_mapping_and_workflow_make_the_rules_load_bearing(self):
         spec = SPEC.read_text(encoding="utf-8")
         demos = DEMOS.read_text(encoding="utf-8")
@@ -1670,7 +1848,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("*Signed transaction.*", demos)
         self.assertIn("SHA-256 of the UTF-8 `JSON.stringify(content)`", demos)
         self.assertIn("`nonceEnforcement` fork", demos)
-        self.assertIn("`signatureDomain` fork", demos)
+        self.assertIn("`signatureDomain` preimage", demos)
         self.assertIn("requires a revision of this profile", demos)
         self.assertIn("DEM-2 and DEM-3", demos)
         self.assertIn("61b8e75aa8db5e408c49e1c3a89db4d673f45578", demos)

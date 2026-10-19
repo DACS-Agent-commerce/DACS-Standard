@@ -343,21 +343,21 @@ class FixtureFactory:
         }
         self.sign_chain_authority(observation)
         if record is not None:
-            amount = record["content"]["amount"]
-            amount_os = amount if isinstance(amount, str) else str(int(amount))
+            debit, credit = self.replayed_transfer(record)
             observation["executionResult"] = {
                 "kind": "fixture-independent-results-v1",
                 "networkId": profile["networkId"], "genesisHash": profile["genesisHash"],
                 "blockId": inclusion_id, "transactionRef": copy.deepcopy(reference),
                 "record": copy.deepcopy(record),
-                # Synthetic, independently observed committed state transition;
-                # production authorities must verify it, never infer it from status.
+                # Synthetic, independently observed committed state transition:
+                # the debit and credit come from the replay of the apply, never
+                # from the record's amount or status.
                 "appliedTransfer": {
                     "txHash": record["hash"], "blockNumber": record["blockNumber"],
                     "sender": record["content"]["from"].removeprefix("0x").lower(),
                     "recipient": record["content"]["to"].removeprefix("0x").lower(),
-                    "payerDebitOs": amount_os,
-                    "payeeCreditOs": amount_os,
+                    "payerDebitOs": debit,
+                    "payeeCreditOs": credit,
                 },
             }
             self.sign_execution_result(observation)
@@ -424,9 +424,59 @@ class FixtureFactory:
     def demos_key(self, role: str) -> str:
         return self.keys[role].public_key().public_bytes_raw().hex()
 
+    @staticmethod
+    def demos_send_edits(content: dict, tx_hash: str) -> list | None:
+        """The four `gcr_edits` the pinned node stores with a native send
+        (debit, credit, 1 DEM gas, nonce), each `txhash` set to the hash; None
+        when the send arguments cannot generate them."""
+        data, sender = content.get("data"), content.get("from_ed25519_address")
+        if not (isinstance(data, list) and len(data) == 2 and isinstance(data[1], dict)
+                and isinstance(data[1].get("args"), list) and len(data[1]["args"]) == 2
+                and isinstance(data[1]["args"][0], str) and isinstance(sender, str)):
+            return None
+        to, amount = data[1]["args"]
+        to = to if to.startswith("0x") else "0x" + to
+        return [
+            {"type": "balance", "operation": "remove", "isRollback": False, "account": sender, "txhash": tx_hash, "amount": amount},
+            {"type": "balance", "operation": "add", "isRollback": False, "account": to, "txhash": tx_hash, "amount": amount},
+            {"type": "balance", "account": sender, "operation": "remove", "amount": "1000000000", "txhash": tx_hash, "isRollback": False},
+            {"type": "nonce", "operation": "add", "account": sender, "amount": 1, "txhash": tx_hash, "isRollback": False},
+        ]
+
+    @staticmethod
+    def replayed_transfer(record: dict) -> tuple[str, str]:
+        """Synthetic, independent replay of the pinned node's apply
+        (`handleGCR` at 61b8e75): the payer's debit and payee's credit, fees
+        excluded, from the balance change the transaction's edits commit. A
+        failed apply restores state and a missing or empty edit list is a
+        successful no-op; nothing is copied from the record's `amount`."""
+        content = record["content"]
+
+        def key(value):
+            return value.removeprefix("0x").lower() if isinstance(value, str) else None
+
+        edits = content.get("gcr_edits") if record.get("status") != "failed" else None
+        debits, credits = [], []
+        for edit in edits if isinstance(edits, list) else []:
+            if not (isinstance(edit, dict) and edit.get("type") == "balance"):
+                continue
+            if dict(edit, txhash="") == {"type": "balance", "account": edit.get("account"), "operation": "remove",
+                                         "amount": "1000000000", "txhash": "", "isRollback": False}:
+                continue  # the 1 DEM gas edit is a fee, not payment
+            if edit.get("operation") == "remove" and key(edit.get("account")) == key(content.get("from")):
+                debits.append(edit.get("amount"))
+            elif edit.get("operation") == "add" and key(edit.get("account")) == key(content.get("to")):
+                credits.append(edit.get("amount"))
+
+        def total(amounts):
+            return "0" if not amounts else amounts[0] if len(amounts) == 1 else str(sum(int(a) for a in amounts))
+        return total(debits), total(credits)
+
     def demos_send_record(self, reference: dict, *, status: str = "confirmed", **content_changes) -> dict:
         """A `getTxByHash` native-send record in the node's wire form
-        (DEMOS-MAPPING §A.2) for 5 DEM from the buyer to the seller."""
+        (DEMOS-MAPPING §A.2) for 5 DEM from the buyer to the seller, with the
+        stored timestamp, fees and the send's four edits. `gcr_edits=None`
+        drops the edits, which the pinned node applies as a no-op."""
         payee = self.demos_key("seller")
         content = {
             "type": "native",
@@ -435,9 +485,13 @@ class FixtureFactory:
             "to": "0x" + payee,
             "amount": 5_000_000_000,
             "nonce": "7",
+            "timestamp": "1791649642726",
+            "transaction_fee": {"network_fee": 1000000000, "rpc_fee": 1000000000, "additional_fee": 0, "rpc_address": None},
             "data": ["native", {"nativeOperation": "send", "args": [payee, "5000000000"]}],
         }
         content.update(content_changes)
+        if "gcr_edits" not in content_changes:
+            content["gcr_edits"] = self.demos_send_edits(content, reference["txHash"])
         return {
             "hash": reference["txHash"],
             "blockNumber": reference["blockNumber"],
@@ -1565,7 +1619,7 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         ("numeric-debit", {"payerDebitOs": 5000000000}, "indeterminate"),
         ("noncanonical-credit", {"payeeCreditOs": "05000000000"}, "indeterminate"),
     ):
-        value = demos_record(gcr_edits=[])
+        value = demos_record()
         observation = value["context"]["observation"]
         proof = observation["executionResult"]
         if replacement is None:
@@ -1576,7 +1630,25 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         vectors.append(case("fv-bft-final-applied-transfer-" + suffix, expected,
                             "an authenticated applied transfer that does not decode proves nothing"
                             if suffix in {"extra-member", "numeric-debit", "noncanonical-credit"} else
-                            "confirmed and empty edits cannot substitute for an authenticated applied debit and payee credit", value))
+                            "confirmed and the send's edits cannot substitute for an authenticated applied debit and payee credit", value))
+
+    # A confirmed send whose transaction carries no edits is a successful
+    # no-op at the pinned node: its replayed transition is zero, and an
+    # authority that copies the claimed amount onto it is not believed.
+    for name, edits in (("missing-edits", None), ("empty-edits", [])):
+        vectors.append(case("fv-bft-final-confirmed-no-op-" + name, "fail",
+                            "the authenticated replay of an edit-less confirmed send shows no debit or credit",
+                            demos_record(gcr_edits=edits)))
+    copied = demos_record(gcr_edits=None)
+    copied["context"]["observation"]["executionResult"]["appliedTransfer"].update(
+        payerDebitOs="5000000000", payeeCreditOs="5000000000")
+    factory.sign_execution_result(copied["context"]["observation"])
+    vectors.append(case("fv-bft-final-confirmed-no-op-copied-authority", "indeterminate",
+                        "an authority that reports payment for a confirmed send without its edits establishes nothing",
+                        copied))
+    vectors.append(case("fv-block-depth-execution-result-not-native-send", "error",
+                        "only a Demos native send carries an execution result; on another chain model the member is malformed",
+                        changed("block-depth", lambda v: v["context"]["observation"].__setitem__("executionResult", {}))))
 
     # Raw body binding: each contradiction is inside a freshly authenticated block.
     class BodyVariant(FixtureFactory):
@@ -1627,7 +1699,7 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
                         demos_record(amount=oversized, data=send(payee_key, oversized))))
     vectors.append(case("fv-bft-final-record-oversized-send-argument", "indeterminate", "an oversized send argument differs from content.amount, so the record does not decode",
                         demos_record(data=send(payee_key, oversized))))
-    oversized_debit = demos_record(gcr_edits=[])
+    oversized_debit = demos_record()
     oversized_debit["context"]["observation"]["executionResult"]["appliedTransfer"]["payerDebitOs"] = oversized
     factory.sign_execution_result(oversized_debit["context"]["observation"])
     vectors.append(case("fv-bft-final-applied-transfer-oversized-debit", "fail", "an authenticated oversized applied debit contradicts the phase amount",

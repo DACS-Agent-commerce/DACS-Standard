@@ -975,6 +975,30 @@ def _demos_native_send(record: Any) -> dict | None:
     }
 
 
+def _demos_send_edits_match(content: dict) -> bool:
+    """DEMOS-MAPPING §A.2: a `confirmed` record shows payment only when its
+    `gcr_edits`, each `txhash` blanked, are the four edits of its send in
+    member order. The pinned node applies a missing or empty list as a
+    successful no-op. Necessary, never sufficient."""
+    edits, data, sender = content.get("gcr_edits"), content.get("data"), content.get("from_ed25519_address")
+    if not (isinstance(edits, list) and len(edits) == 4 and all(isinstance(edit, dict) for edit in edits)
+            and isinstance(data, list) and len(data) == 2 and isinstance(data[1], dict)
+            and isinstance(data[1].get("args"), list) and len(data[1]["args"]) == 2
+            and isinstance(data[1]["args"][0], str) and isinstance(sender, str)):
+        return False
+    to, amount = data[1]["args"]
+    to = to if to.startswith("0x") else "0x" + to
+    expected = [
+        [("type", "balance"), ("operation", "remove"), ("isRollback", False), ("account", sender), ("txhash", ""), ("amount", amount)],
+        [("type", "balance"), ("operation", "add"), ("isRollback", False), ("account", to), ("txhash", ""), ("amount", amount)],
+        [("type", "balance"), ("account", sender), ("operation", "remove"), ("amount", "1000000000"), ("txhash", ""), ("isRollback", False)],
+        [("type", "nonce"), ("operation", "add"), ("account", sender), ("amount", 1), ("txhash", ""), ("isRollback", False)],
+    ]
+    actual = [[(k, "" if k == "txhash" else v) for k, v in edit.items()] for edit in edits]
+    # bool is an int in Python: compare types too, so `1` is not `True`.
+    return [[(k, type(v), v) for k, v in edit] for edit in actual] == [[(k, type(v), v) for k, v in edit] for edit in expected]
+
+
 def _party_demos_key(trusted: dict, claim: Any) -> str | None:
     """The fixture party's Demos key: its pinned Ed25519 party key (the pay-dem
     payee is intrinsically the primary claim's address, §9.5.1 Tier 1)."""
@@ -1072,6 +1096,8 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
             or applied_transfer["payerDebitOs"] != amount_os
             or applied_transfer["payeeCreditOs"] != amount_os):
         return "fail", "authenticated Demos applied transfer contradicts the native send (DEM-7)"
+    if not _demos_send_edits_match(record["content"]):
+        return "indeterminate", "confirmed Demos record lacks its send's edits, a no-op apply (DEM-7)"
     return "pass", "authenticated Demos record binds a confirmed native send"
 
 
@@ -1091,7 +1117,10 @@ def _verify_chain_observation(
         "selectedEventProof", "inclusionBlock", "authenticatedHead", "ancestryProof",
         "authorityEvidence",
     }
-    optional = {"finalityCertificate", "executionResult"}
+    # Only a Demos native send carries an execution result; on any other
+    # chain model the member is malformed, as before FV-5 existed.
+    native_send = native_send and isinstance(reference, dict) and reference.get("kind") == "demos"
+    optional = {"finalityCertificate"} | ({"executionResult"} if native_send else set())
     if not _exact_object(observation, required, optional):
         return _result("error", "malformed AuthenticatedChainObservation"), None
     if not _chain_profile_shape(profile):
@@ -1114,8 +1143,7 @@ def _verify_chain_observation(
     if transaction_decision != "pass":
         return _result(transaction_decision, transaction_reason), None
     # Inclusion commits to transaction identity, not the post-execution RPC record.
-    native_send = native_send and reference.get("kind") == "demos"
-    outcome = "txHash" if native_send else "status"
+    outcome ="txHash" if native_send else "status"
     if not _exact_object(transaction, {"networkId", "genesisHash", "transactionRef", "eventsRoot", outcome}):
         return _result("error", "malformed raw transaction body"), None
     if (

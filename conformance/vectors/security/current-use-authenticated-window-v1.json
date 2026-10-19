@@ -4,7 +4,7 @@
   "status": "candidate-unallocated-stage-minor",
   "fixturePolicy": "Synthetic signed native outcome observations are fixture-only; no production Demos outcome event, proof codec, or completeness oracle is claimed.",
   "count": 15,
-  "hash": "f486da4eda2bf58b010d94de18a07bda129ac3205a5cb0c38d5987b523028952",
+  "hash": "2c1c76f844448818c2a0abc984cf46cba47506cbb4dfd17dfbbc4c4a02a553ac",
   "vectors": [
     {
       "name": "combined-block-depth",
@@ -3212,6 +3212,13 @@
                             "to": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
                             "amount": 5000000000,
                             "nonce": "7",
+                            "timestamp": "1791649642726",
+                            "transaction_fee": {
+                              "network_fee": 1000000000,
+                              "rpc_fee": 1000000000,
+                              "additional_fee": 0,
+                              "rpc_address": null
+                            },
                             "data": [
                               "native",
                               {
@@ -3220,6 +3227,40 @@
                                   "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
                                   "5000000000"
                                 ]
+                              }
+                            ],
+                            "gcr_edits": [
+                              {
+                                "type": "balance",
+                                "operation": "remove",
+                                "isRollback": false,
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "amount": "5000000000"
+                              },
+                              {
+                                "type": "balance",
+                                "operation": "add",
+                                "isRollback": false,
+                                "account": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "amount": "5000000000"
+                              },
+                              {
+                                "type": "balance",
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "operation": "remove",
+                                "amount": "1000000000",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "isRollback": false
+                              },
+                              {
+                                "type": "nonce",
+                                "operation": "add",
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "amount": 1,
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "isRollback": false
                               }
                             ]
                           }
@@ -3236,12 +3277,12 @@
                           {
                             "authorityRef": "execution-a",
                             "algorithm": "ed25519",
-                            "value": "9X3UBvV_YxM-Ae6NT77tK8sCrVLWTCk3VOdfetE4ZwZf211Nb1UGQ07orNRC3ENkHHwrDD_LcR8x-tx7sjjzDA"
+                            "value": "6KecYbZ0CcEK7Vh_1D9YOLffPSOTs2KaVHmr4RReIY8nrmSFYnzgmXi3G_yhCyUPRTa1OHZW5nRvWDZYV0hGBQ"
                           },
                           {
                             "authorityRef": "execution-b",
                             "algorithm": "ed25519",
-                            "value": "k_VYJ0oI3pvFEV6YV02r5Gdy40pVGgr9wCfNJBBHKppc274NJCEzzBBA6cCMt-3TicMPkoGbN8ks_QYDvReYBg"
+                            "value": "OrP78y9ddzULlaQpv-r4RYbQdpFLKiJbVHNWWSTclK7rFrFwR1lEz61ql2GamYXBSzKCjCFQlde5QJlmdW7bDw"
                           }
                         ]
                       },
@@ -15798,6 +15839,13 @@
                             "to": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
                             "amount": 5000000000,
                             "nonce": "7",
+                            "timestamp": "1791649642726",
+                            "transaction_fee": {
+                              "network_fee": 1000000000,
+                              "rpc_fee": 1000000000,
+                              "additional_fee": 0,
+                              "rpc_address": null
+                            },
                             "data": [
                               "native",
                               {
@@ -15806,6 +15854,40 @@
                                   "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
                                   "5000000000"
                                 ]
+                              }
+                            ],
+                            "gcr_edits": [
+                              {
+                                "type": "balance",
+                                "operation": "remove",
+                                "isRollback": false,
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "amount": "5000000000"
+                              },
+                              {
+                                "type": "balance",
+                                "operation": "add",
+                                "isRollback": false,
+                                "account": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "amount": "5000000000"
+                              },
+                              {
+                                "type": "balance",
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "operation": "remove",
+                                "amount": "1000000000",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "isRollback": false
+                              },
+                              {
+                                "type": "nonce",
+                                "operation": "add",
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "amount": 1,
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "isRollback": false
                               }
                             ]
                           }
@@ -15822,12 +15904,12 @@
                           {
                             "authorityRef": "execution-a",
                             "algorithm": "ed25519",
-                            "value": "9X3UBvV_YxM-Ae6NT77tK8sCrVLWTCk3VOdfetE4ZwZf211Nb1UGQ07orNRC3ENkHHwrDD_LcR8x-tx7sjjzDA"
+                            "value": "6KecYbZ0CcEK7Vh_1D9YOLffPSOTs2KaVHmr4RReIY8nrmSFYnzgmXi3G_yhCyUPRTa1OHZW5nRvWDZYV0hGBQ"
                           },
                           {
                             "authorityRef": "execution-b",
                             "algorithm": "ed25519",
-                            "value": "k_VYJ0oI3pvFEV6YV02r5Gdy40pVGgr9wCfNJBBHKppc274NJCEzzBBA6cCMt-3TicMPkoGbN8ks_QYDvReYBg"
+                            "value": "OrP78y9ddzULlaQpv-r4RYbQdpFLKiJbVHNWWSTclK7rFrFwR1lEz61ql2GamYXBSzKCjCFQlde5QJlmdW7bDw"
                           }
                         ]
                       },
@@ -23402,6 +23484,13 @@
                             "to": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
                             "amount": 5000000000,
                             "nonce": "7",
+                            "timestamp": "1791649642726",
+                            "transaction_fee": {
+                              "network_fee": 1000000000,
+                              "rpc_fee": 1000000000,
+                              "additional_fee": 0,
+                              "rpc_address": null
+                            },
                             "data": [
                               "native",
                               {
@@ -23410,6 +23499,40 @@
                                   "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
                                   "5000000000"
                                 ]
+                              }
+                            ],
+                            "gcr_edits": [
+                              {
+                                "type": "balance",
+                                "operation": "remove",
+                                "isRollback": false,
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "amount": "5000000000"
+                              },
+                              {
+                                "type": "balance",
+                                "operation": "add",
+                                "isRollback": false,
+                                "account": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "amount": "5000000000"
+                              },
+                              {
+                                "type": "balance",
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "operation": "remove",
+                                "amount": "1000000000",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "isRollback": false
+                              },
+                              {
+                                "type": "nonce",
+                                "operation": "add",
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "amount": 1,
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "isRollback": false
                               }
                             ]
                           }
@@ -23426,12 +23549,12 @@
                           {
                             "authorityRef": "execution-a",
                             "algorithm": "ed25519",
-                            "value": "9X3UBvV_YxM-Ae6NT77tK8sCrVLWTCk3VOdfetE4ZwZf211Nb1UGQ07orNRC3ENkHHwrDD_LcR8x-tx7sjjzDA"
+                            "value": "6KecYbZ0CcEK7Vh_1D9YOLffPSOTs2KaVHmr4RReIY8nrmSFYnzgmXi3G_yhCyUPRTa1OHZW5nRvWDZYV0hGBQ"
                           },
                           {
                             "authorityRef": "execution-b",
                             "algorithm": "ed25519",
-                            "value": "k_VYJ0oI3pvFEV6YV02r5Gdy40pVGgr9wCfNJBBHKppc274NJCEzzBBA6cCMt-3TicMPkoGbN8ks_QYDvReYBg"
+                            "value": "OrP78y9ddzULlaQpv-r4RYbQdpFLKiJbVHNWWSTclK7rFrFwR1lEz61ql2GamYXBSzKCjCFQlde5QJlmdW7bDw"
                           }
                         ]
                       },

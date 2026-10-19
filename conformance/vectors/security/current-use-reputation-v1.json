@@ -5,7 +5,7 @@
   "fixturePolicy": "Synthetic signed native proofs for offline conformance only; no production Demos native cryptographic codec is claimed. Trust roots are verifier configuration.",
   "replayPolicy": "Every vector embeds the complete executable replay input: the exact request, its full authenticated dependency closure, the verifier configuration with public keys, the trusted query context, and the expected outcome. The set hash is computed over these complete replay inputs; mutating any authority, receipt, finality, or historical-evidence member of the bound payload yields a non-pass.",
   "count": 13,
-  "hash": "8f031716f97586849ce91114d6ffc77460d064e6e4e6fc300ce430a68a58bfda",
+  "hash": "85a908afc1bbe62b48ed2310ecf9770fa31450260b95bea2757c7ea3c871295b",
   "vectors": [
     {
       "name": "current-use-block-depth",
@@ -3039,6 +3039,13 @@
                             "to": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
                             "amount": 5000000000,
                             "nonce": "7",
+                            "timestamp": "1791649642726",
+                            "transaction_fee": {
+                              "network_fee": 1000000000,
+                              "rpc_fee": 1000000000,
+                              "additional_fee": 0,
+                              "rpc_address": null
+                            },
                             "data": [
                               "native",
                               {
@@ -3047,6 +3054,40 @@
                                   "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
                                   "5000000000"
                                 ]
+                              }
+                            ],
+                            "gcr_edits": [
+                              {
+                                "type": "balance",
+                                "operation": "remove",
+                                "isRollback": false,
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "amount": "5000000000"
+                              },
+                              {
+                                "type": "balance",
+                                "operation": "add",
+                                "isRollback": false,
+                                "account": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "amount": "5000000000"
+                              },
+                              {
+                                "type": "balance",
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "operation": "remove",
+                                "amount": "1000000000",
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "isRollback": false
+                              },
+                              {
+                                "type": "nonce",
+                                "operation": "add",
+                                "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                                "amount": 1,
+                                "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                                "isRollback": false
                               }
                             ]
                           }
@@ -3063,12 +3104,12 @@
                           {
                             "authorityRef": "execution-a",
                             "algorithm": "ed25519",
-                            "value": "9X3UBvV_YxM-Ae6NT77tK8sCrVLWTCk3VOdfetE4ZwZf211Nb1UGQ07orNRC3ENkHHwrDD_LcR8x-tx7sjjzDA"
+                            "value": "6KecYbZ0CcEK7Vh_1D9YOLffPSOTs2KaVHmr4RReIY8nrmSFYnzgmXi3G_yhCyUPRTa1OHZW5nRvWDZYV0hGBQ"
                           },
                           {
                             "authorityRef": "execution-b",
                             "algorithm": "ed25519",
-                            "value": "k_VYJ0oI3pvFEV6YV02r5Gdy40pVGgr9wCfNJBBHKppc274NJCEzzBBA6cCMt-3TicMPkoGbN8ks_QYDvReYBg"
+                            "value": "OrP78y9ddzULlaQpv-r4RYbQdpFLKiJbVHNWWSTclK7rFrFwR1lEz61ql2GamYXBSzKCjCFQlde5QJlmdW7bDw"
                           }
                         ]
                       },

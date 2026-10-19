@@ -33,7 +33,7 @@ from frozen_dacs5_v05_reader import (  # noqa: E402
 )
 from scripts.jcs import canonicalize  # noqa: E402
 from scripts.settlement_finality_reference import (  # noqa: E402
-    DEM_AMOUNT_RE, verify_finality, _demos_native_send, _demos_os_spelling,
+    DEM_AMOUNT_RE, verify_finality, _demos_native_send, _demos_os_spelling, _demos_send_edits_match,
 )
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 import dacs5_reference as D5  # noqa: E402
@@ -169,7 +169,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(176, self.data["count"])
+        self.assertEqual(180, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -350,7 +350,8 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 case = self.cases["fv-bft-final-applied-transfer-" + suffix]
                 record = case["input"]["context"]["observation"]["executionResult"]["record"]
                 self.assertEqual("confirmed", record["status"])
-                self.assertEqual([], record["content"]["gcr_edits"])
+                # The send's own edits are present: only the authority varies.
+                self.assertTrue(_demos_send_edits_match(record["content"]))
                 self.assertEqual(expected, self.evaluate_case(case)["decision"])
         # An authenticated applied transfer that does not decode is indeterminate, not a contradiction.
         for suffix in ("extra-member", "numeric-debit", "noncanonical-credit"):
@@ -363,6 +364,49 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         result = self.evaluate_case(control)
         self.assertEqual("fail", result["decision"])
         self.assertIn("signature does not verify", result["reason"])
+
+    def test_confirmed_no_op_send_never_settles(self):
+        """The pinned node applies an edit-less send as a successful no-op. The
+        passing record carries its send's four edits and an authority equal to
+        the replayed transition; the no-op's replayed zero transition is `fail`
+        and an authority copying the claimed amount onto it is `indeterminate`."""
+        control = self.cases["fv-bft-final-canonical-success"]
+        result = control["input"]["context"]["observation"]["executionResult"]
+        self.assertTrue(_demos_send_edits_match(result["record"]["content"]))
+        self.assertEqual(finality_fixtures.FixtureFactory.replayed_transfer(result["record"]),
+                         (result["appliedTransfer"]["payerDebitOs"], result["appliedTransfer"]["payeeCreditOs"]))
+        for suffix, expected, reason in (
+            ("missing-edits", "fail", "applied transfer contradicts the native send"),
+            ("empty-edits", "fail", "applied transfer contradicts the native send"),
+            ("copied-authority", "indeterminate", "lacks its send's edits"),
+        ):
+            with self.subTest(suffix=suffix):
+                case = self.cases["fv-bft-final-confirmed-no-op-" + suffix]
+                record = case["input"]["context"]["observation"]["executionResult"]["record"]
+                self.assertEqual("confirmed", record["status"])
+                self.assertFalse(_demos_send_edits_match(record["content"]))
+                outcome = self.evaluate_case(case)
+                self.assertEqual(expected, outcome["decision"])
+                self.assertIn(reason, outcome["reason"])
+        # Each edit member, its order and its JSON type are compared.
+        content = result["record"]["content"]
+        for label, mutate in (
+            ("payment-only", lambda c: c.__setitem__("gcr_edits", c["gcr_edits"][:2])),
+            ("credit-elsewhere", lambda c: c["gcr_edits"][1].__setitem__("account", c["from"])),
+            ("boolean-nonce", lambda c: c["gcr_edits"][3].__setitem__("amount", True)),
+            ("reordered", lambda c: c["gcr_edits"].__setitem__(0, dict(reversed(list(c["gcr_edits"][0].items()))))),
+            ("rollback", lambda c: c["gcr_edits"][0].__setitem__("isRollback", True)),
+        ):
+            with self.subTest(edits=label):
+                changed = copy.deepcopy(content)
+                mutate(changed)
+                self.assertFalse(_demos_send_edits_match(changed))
+
+    def test_execution_result_only_on_a_demos_native_send(self):
+        case = self.cases["fv-block-depth-execution-result-not-native-send"]
+        result = self.evaluate_case(case)
+        self.assertEqual("error", result["decision"])
+        self.assertIn("malformed AuthenticatedChainObservation", result["reason"])
 
     def test_native_record_json_numbers_are_compared_by_integral_value(self):
         record = copy.deepcopy(self.cases["fv-bft-final-canonical-success"]["input"]["context"]["observation"]["executionResult"]["record"])

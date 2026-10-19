@@ -2298,6 +2298,75 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
             with self._without("verify_settlement", reason, operand=0):
                 self.assertEqual(self._evaluate(name), self.PASS)
 
+    # DACS-5 ST-11 / AWB-10 audit closure and DACS-3 AWP-17/AWP-18 remedies:
+    # (function, raised reason, ((vector, exact result without the guard), ...))
+    CLOSURE_GUARDS = (
+        ("evaluate_audit", "audit-pending cannot transition before the ST-11 publication closure is complete", (
+            ("awb-audit-finalised-without-st11-closure", ("indeterminate", "ST-11 publication closure unavailable")),
+            ("awb-audit-bundle-missing", ("indeterminate", "completed bundle unavailable")),
+            ("awb-audit-evidence-publication-missing", ("indeterminate", "Atomic evidence publication is not finalized")),
+        )),
+        ("_verify_st11_closure", "ST-11 publication closure unavailable", (
+            ("awb-audit-finalised-without-st11-closure", ("error", "AttributeError: 'NoneType' object has no attribute 'get'")),
+            ("awb-audit-st11-closure-pending", ("error", "AttributeError: 'NoneType' object has no attribute 'get'")),
+        )),
+        ("_verify_published_evidence", "Atomic evidence publication is not finalized", (
+            ("awb-audit-evidence-publication-unfinalized-pending", ("fail", "Atomic publication AnchorReceipt binding mismatch")),
+            ("awp-refund-amendment-original-unpublished", ("indeterminate", "finalized Atomic evidence publication unavailable")),
+        )),
+        ("_verify_published_evidence", "f'settlement evidence {field} does not match the verified Work'", (
+            ("awb-audit-evidence-not-this-work", ("fail", "settlement evidence names another Work operation")),
+        )),
+        ("_verify_st11_closure", "completed bundle unavailable", (
+            ("awb-audit-bundle-missing", ("error", "AttributeError: 'NoneType' object has no attribute 'get'")),
+        )),
+        ("_verify_st11_closure", "bundle settlementEvidence differs from the published Atomic evidence", (
+            ("awb-audit-bundle-evidence-ref-mismatch", PASS),
+        )),
+        ("_verify_role_bundle_publication", "role-specific bundle anchor is not established", (
+            ("awb-audit-bundle-anchor-unfinalized", PASS),
+            ("awp-post-purchase-failure-record-anchor-missing", ("error", "TypeError: 'NoneType' object is not subscriptable")),
+        )),
+        ("_verify_role_bundle_publication", "BundleBinding does not bind the anchored bundle copy", (
+            ("awb-audit-bundle-binding-mismatch", PASS),
+        )),
+        ("_verify_failure_record", "role-specific failure bundle unavailable", (
+            ("awp-post-purchase-failure-record-missing", ("error", "AttributeError: 'NoneType' object has no attribute 'get'")),
+        )),
+        ("_verify_failure_record", "failure record is not this job's failed EvidenceBoundFaultAttestationBundle", (
+            ("awp-post-purchase-failure-record-wrong-job", PASS),
+        )),
+        ("_verify_failure_record", "faultedParty is outside the permissible set for this outcome and role", (
+            ("awp-post-purchase-failure-record-attribution-invalid", PASS),
+        )),
+        ("_verify_failure_record", "failure bundle is not signed by its anchoring role holder", (
+            ("awp-post-purchase-failure-record-unsigned", PASS),
+        )),
+        ("_verify_failure_record", "failure record omits or reverses the final Purchase payment", (
+            ("awp-post-purchase-failure-record-omits-payment", PASS),
+        )),
+        ("_verify_refund_amendment", "a versioned SettlementAmendment is unavailable", (
+            ("awp-refund-amendment-missing", ("error", "AttributeError: 'NoneType' object has no attribute 'get'")),
+        )),
+        ("_verify_refund_amendment", "SettlementAmendment is not linked to the original evidence", (
+            ("awp-unlinked-refund", PASS),
+        )),
+        ("_verify_refund_amendment", "refund is not bounded by the original successful payment", (
+            ("awp-refund-amendment-exceeds-payment", PASS),
+        )),
+        ("_verify_refund_amendment", "amendment address does not bind the original evidence hash", (
+            ("awp-refund-amendment-address-mismatch", PASS),
+        )),
+        ("_verify_refund_amendment", "SettlementAmendment publication is not finalized", (
+            ("awp-refund-amendment-receipt-missing", ("error", "AttributeError: 'NoneType' object has no attribute 'get'")),
+        )),
+    )
+
+    def test_each_st11_closure_and_post_purchase_guard_is_load_bearing(self):
+        for function_name, reason, caught_by in self.CLOSURE_GUARDS:
+            with self.subTest(function=function_name, reason=reason):
+                self._assert_moves(caught_by, function_name, reason)
+
     def test_each_unsupported_version_comparison_is_load_bearing(self):
         # Version members compared inside a compound guard: removing only the
         # version operand admits the vector.

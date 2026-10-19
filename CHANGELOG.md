@@ -30,8 +30,24 @@ The format used per release:
   vectors in both corpora cover each spelling the §A.2 profile projects alike:
   a `0x`-prefixed or bare `send` recipient argument (whose credit edit names it
   with a single `0x`), bare or prefixed party keys, a string or integer nonce,
-  and a string or number amount up to 2^53 − 1. The corpora contain 228 pay-dem
-  and 192 settlement-finality cases.
+  and a string or number amount up to 2^53 − 1. The corpora contain 238 pay-dem
+  and 193 settlement-finality cases.
+- The DEMOS-MAPPING §A.2 profile covers only a network whose sealed genesis
+  leaves the `gasFeeSeparation` fork unscheduled (`activationHeight: null`).
+  With that fork active the pinned node stores fee-distribution edits before
+  the send's four, so the record could never settle while the payer was
+  debited. A clean build of the pinned commit does not rule this out (its
+  default and its devnet genesis activate the fork, and RPC does not report
+  it). DEM-1 therefore also requires the Demos binding to attest the fork
+  unscheduled for the phase's network, from that network's genesis, before
+  signing (`permanent` otherwise) and at every egress. New vectors refuse a
+  binding that attests the fork scheduled or attests nothing, and keep a
+  fee-separated `confirmed` record `indeterminate` on the handler, consumer
+  and FV-5 paths. DEM-6's "never repeat a call" now has corpus vectors for a
+  second `confirm` after an interrupted `confirm`, after a possible broadcast
+  and after this submission's `confirm` returned.
+  Migration: a runner of the earlier corpus passes `gasFeeSeparationUnscheduled`
+  to its `pre-sign-gate` and `broadcast-gate` checks.
 - The DEM-1 signed transaction must be the complete demosdk 4.0.16 native-send
   envelope that the pinned node admits. It carries a positive integer
   `timestamp`, `from_ed25519_address`, a fee object with exactly `network_fee`,

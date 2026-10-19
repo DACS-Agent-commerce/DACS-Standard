@@ -180,6 +180,36 @@ FAILURE_MODE_ERROR_CLASSES = {
 # XN-8/XN-9/XN-11: the results of the ledger predicates a verifier and a retry
 # re-establish (XN-5 terms, finality, SB-3), as an execute handler does.
 LEDGER_PREDICATE_REASONS = frozenset({"ledger-event", "settlement-not-final", "sb3"})
+# XN-8: the results of the other XN-5 predicates a verifier re-establishes (the
+# payer derived from the pinned buyer bundle, the payee, asset, currency and
+# amount) and of PB-1/PB-2 over the pinned payee bundle.
+VERIFIER_PREDICATE_REASONS = frozenset({
+    "party-cardinality", "payer-party", "payer-control", "payee-party", "payout-binding-coverage",
+    "payout-binding", "payee-destination", "payee-linkage-unresolved", "payee-linkage-error",
+    "payee-bundle", "payee-bundle-shape", "currency", "asset-metadata", "asset-currency",
+    "exact-amount", "address-form",
+})
+# Every other reason an execute rejection carries, so a new gate is classified
+# for the verifier role before it ships. These are the handler's own request,
+# challenge, member and payload gates (XN-1..XN-4, XN-6, §9.5.7.1), whose
+# verifier cases are written out where XN-8 applies them, and the XN-11
+# reconciliation dispositions, which judge a session, not a success record.
+HANDLER_GATE_REASONS = frozenset({
+    "signature", "definition", "rail-version", "rail-ref-shape", "listing-membership",
+    "duplicate-listing-ref", "runtime-selection", "operator-config-source",
+    "x402-capability-unsupported", "non-public-request-target", "ambient-credential",
+    "request-headers", "request-body", "request-body-hash", "unsigned-request-body",
+    "effective-request", "effective-request-method", "effective-request-body",
+    "unpaid-request-transient", "not-payment-required", "payment-required-header",
+    "payment-required-json", "payment-required-version", "payment-required-shape", "accepts-shape",
+    "extension-presence", "extensions", "challenge-match", "unclassified-extra-member",
+    "unclassified-extension", "unsupported-transfer-method", "unsupported-payment-flow",
+    "unsupported-action-extension", "extra-member-value", "extension-value",
+    "authorization-valid-before", "paid-request-payload", "paid-request-headers",
+    "authorization-identity-mismatch", "authorization-identity-unavailable",
+    "authorization-unsettled", "terminal-non-settlement", "independent-settlement-unavailable",
+    "ledger-coordinate-missing", "ledger-event-key", "ledger-transaction-form",
+})
 # X402-3: the registered v1 legacy-network mapping, the supported-network table
 # of the pinned v1 specification (x402-foundation/x402@22a7677f,
 # specs/x402-specification-v1.md §11.1, the x402-receipt-hash corpus's pin).
@@ -1295,8 +1325,10 @@ def challenge_member_defect(network, extra, extensions):
             return "fail", "extra-member-value"
         if "memo" in extra:
             memo = extra["memo"]
+            # §9.5.7.1: a present memo is non-empty. Upstream signs a random
+            # nonce for an empty one, so no message carries empty Memo data.
             try:
-                if not isinstance(memo, str) or len(memo.encode("utf-8")) > SOLANA_MEMO_MAX_BYTES:
+                if not isinstance(memo, str) or not memo or len(memo.encode("utf-8")) > SOLANA_MEMO_MAX_BYTES:
                     return "fail", "extra-member-value"
             except UnicodeEncodeError:
                 return "fail", "extra-member-value"
@@ -2594,6 +2626,63 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             with self.subTest(solana_success=name):
                 self.assertEqual(self.by_name[f"verify-evidence-{name}"]["expected"], "pass")
 
+    def test_payer_payee_asset_and_pb2_predicates_have_verifier_twins(self):
+        """XN-8: each execute rejection on a payer, payee, asset, currency, amount or PB-1/PB-2 predicate is pinned for a verifier.
+
+        A verifier re-derives the payer from the pinned buyer bundle and
+        applies PB-2 over the payee bundle the signed `bundleHash` pins. So a
+        verifier that compares the ledger with a supplied payer address, or
+        reads the presented payee bundle, fails a twin with the execute case's
+        inputs and verdict.
+        """
+        ignored = {"name", "operation", "note", "expectedErrorClass"}
+        cases = [v for v in self.vectors if v["operation"] == "execute" and v["expected"] != "pass"
+                 and v.get("expectedReason") in VERIFIER_PREDICATE_REASONS]
+        for case in cases:
+            with self.subTest(vector=case["name"]):
+                twin = self.by_name[f"verify-evidence-{case['name']}"]
+                self.assertEqual(twin["operation"], "verify-evidence")
+                self.assertEqual((twin["expected"], twin["expectedReason"]),
+                                 (case["expected"], case["expectedReason"]))
+                self.assertNotIn("expectedErrorClass", twin)
+                same = {key: item for key, item in case.items() if key not in ignored}
+                same["runtime"] = {**same["runtime"], "authorizationSubmitted": True}
+                self.assertEqual({key: item for key, item in twin.items() if key not in ignored}, same)
+                self.assertEqual(evaluate(copy.deepcopy(twin)), (case["expected"], case["expectedReason"]))
+                self.assertNotIn(f"retry-{case['name']}", self.by_name)
+        # Each reason is reached by a twin, so dropping its execute cases drops a pin visibly.
+        self.assertEqual({case["expectedReason"] for case in cases}, set(VERIFIER_PREDICATE_REASONS))
+        self.assertLessEqual({
+            "runtime-and-ledger-payer-agree-unproven", "runtime-payer-address-not-derived-from-paying-key",
+            "pb2-runtime-pin-matches-unsigned-bundle", "pb2-payee-bundle-not-pinned",
+            "pb2-payee-claim-not-object", "pb2-payee-linkage-not-object",
+            "price-currency-not-selection-currency", "currency-relabelled-over-same-asset",
+        }, {case["name"] for case in cases})
+        # The unproven payer that the ledger echoes is refused at payer control,
+        # not at a ledger comparison a supplied address would satisfy.
+        self.assertEqual(evaluate(copy.deepcopy(self.by_name["verify-evidence-runtime-and-ledger-payer-agree-unproven"])),
+                         ("fail", "payer-control"))
+
+    def test_every_execute_rejection_reason_is_classified_for_the_verifier(self):
+        """XN-8: a new execute gate is either twinned for the verifier or named as the handler's own.
+
+        Without this, a verifier predicate added to the evaluator ships with
+        only its execute case, as the payer and PB-2 predicates once did.
+        """
+        reasons = {v.get("expectedReason") for v in self.vectors
+                   if v["operation"] == "execute" and v["expected"] != "pass"}
+        self.assertEqual(reasons, LEDGER_PREDICATE_REASONS | VERIFIER_PREDICATE_REASONS | HANDLER_GATE_REASONS)
+        self.assertFalse(LEDGER_PREDICATE_REASONS & VERIFIER_PREDICATE_REASONS)
+        self.assertFalse((LEDGER_PREDICATE_REASONS | VERIFIER_PREDICATE_REASONS) & HANDLER_GATE_REASONS)
+        # The generator twins exactly the reasons this test pins.
+        sys.path.insert(0, str(ROOT / "scripts"))
+        try:
+            import generate_x402_negotiated_protocol_vectors as generator
+        finally:
+            sys.path.remove(str(ROOT / "scripts"))
+        self.assertEqual(generator.LEDGER_PREDICATE_REASONS, LEDGER_PREDICATE_REASONS)
+        self.assertEqual(generator.VERIFIER_PREDICATE_REASONS, VERIFIER_PREDICATE_REASONS)
+
     def test_header_names_are_ascii_tokens(self):
         """XN-2/XN-6: a header name is an ASCII token; no Unicode case mapping makes one."""
         self.assertEqual(request_headers({"Accept": "a", "x-trace": "b"}), {"accept": "a", "x-trace": "b"})
@@ -2860,7 +2949,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # PB-1: an incomplete binding list against a runtime payee off it.
         self.assertEqual(by_reason["payout-binding-coverage"], {"permanent"})
         self.assertEqual(by_reason["payout-binding"], {"counterparty"})
-        self.assertEqual(pinned, 184)
+        self.assertEqual(pinned, 187)
 
     def test_resolution_inputs_are_inside_real_agreement_signatures(self):
         original = self.by_name["protocol-v2-exact-success"]
@@ -3401,7 +3490,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # Every stored-record verdict a verifier gives leaves the payment to the
         # ledger, after the wallet call and on retry alike.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
-        self.assertEqual(len(records), 101)
+        self.assertEqual(len(records), 163)
         for vector in records:
             for operation in ("execute", "retry"):
                 with self.subTest(record=vector["name"], operation=operation):
@@ -3891,8 +3980,9 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                              "extra-close-account", "extra-system-transfer", "extra-unknown-program"),
                             "instruction"),
             "second-transfer": "transfer-count",
-            **dict.fromkeys(("memo-missing", "memo-second", "memo-not-nonce", "memo-with-signer",
-                             "extra-memo-other", "extra-memo-missing"), "memo"),
+            **dict.fromkeys(("memo-missing", "memo-second", "memo-not-nonce", "memo-nonce-odd-digits",
+                             "memo-nonce-255-digits", "memo-with-signer", "extra-memo-other",
+                             "extra-memo-missing"), "memo"),
             **dict.fromkeys(("compute-heap-frame", "compute-limit-above-bound", "compute-price-above-bound"),
                             "compute-budget"),
             "lookup-table": "lookup-table",
@@ -4329,7 +4419,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
 
         Most classified members are rejected only by this gate. A malformed
         Solana sponsor also fails the independent transaction-identity gate,
-        and a memo that is not a string the independent instruction gate.
+        and a memo that is not a non-empty string of at most 256 UTF-8 bytes
+        the independent instruction gate.
         """
         global challenge_member_defect
         reasons = {
@@ -4339,7 +4430,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         }
         names = [name for name, vector in self.by_name.items()
                  if vector.get("expectedReason") in reasons]
-        self.assertEqual(len(names), 40)
+        self.assertEqual(len(names), 42)
         check = challenge_member_defect
         challenge_member_defect = lambda *_args: None  # noqa: E731
         try:
@@ -4352,7 +4443,8 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                     redundant = name in {
                         "solana-extra-fee-payer-absent", "solana-extra-fee-payer-object",
                         "solana-extra-fee-payer-not-base58", "solana-extra-fee-payer-short",
-                        "solana-extra-memo-object",
+                        "solana-extra-memo-object", "solana-extra-memo-empty",
+                        "solana-extra-memo-257-bytes",
                     }
                     want = ("fail", "paid-request-payload") if redundant else ("pass", None)
                     self.assertEqual(evaluate(copy.deepcopy(self.by_name[name])), want)
@@ -4735,12 +4827,15 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         self.assertEqual([claim["ref"] for claim in stripped["payeeBundle"]["claims"]],
                          [stripped["runtime"]["payee"]["primaryClaim"]])
         # Every other vector's bundle is complete and pinned by all three, with
-        # its presentation outside the hash (DACS-1 §6.3.2).
+        # its presentation outside the hash (DACS-1 §6.3.2). A verifier twin
+        # carries its execute case's bundle.
+        defective = set(alone.values()) | {
+            "pb2-payee-bundle-not-pinned", "pb2-payee-bundle-hash-over-presentation",
+            "pb2-payee-bundle-presenter-ambiguous",
+        }
         for vector in self.vectors:
-            if vector["name"] in set(alone.values()) or vector["name"] in {
-                "pb2-payee-bundle-not-pinned", "pb2-payee-bundle-hash-over-presentation",
-                "pb2-payee-bundle-presenter-ambiguous",
-            } or vector.get("expectedReason") == "payee-bundle-shape":
+            if vector["name"].removeprefix("verify-evidence-") in defective or (
+                    vector.get("expectedReason") == "payee-bundle-shape"):
                 continue
             with self.subTest(vector=vector["name"]):
                 self.assertTrue(all(pins(vector).values()))

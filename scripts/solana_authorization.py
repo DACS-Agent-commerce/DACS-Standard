@@ -26,7 +26,9 @@ MEMO_PROGRAM = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 # The pinned scheme's reference sponsor bounds (scheme_exact_svm.md §2.2.1, §3.1).
 MAX_COMPUTE_UNITS = 400_000
 MAX_COMPUTE_UNIT_PRICE = 5_000_000  # micro-lamports: 5 lamports per compute unit
-MEMO_NONCE = re.compile(r"[0-9a-f]{32,256}")
+# Upstream's nonce is whole bytes, two lower-case hex digits each: 16 to 128 bytes.
+MEMO_NONCE = re.compile(r"(?:[0-9a-f]{2}){16,128}")
+MEMO_MAX_BYTES = 256
 TRANSFER_CHECKED = 12
 # ed25519 over GF(2^255 - 19), for the off-curve test of a program address.
 FIELD = 2**255 - 19
@@ -220,15 +222,20 @@ def payment_instruction_defect(encoded, *, payer, fee_payer, pay_to, mint, amoun
     no less) and `decimals` from the payer's associated token account for
     `mint` to that of `pay_to`, under `token_program`, with the payer as
     authority; exactly one Memo instruction carrying `memo` (or, without one,
-    upstream's hex nonce of at least 16 bytes); at most one SetComputeUnitLimit
+    upstream's hex nonce of 16 to 128 bytes); at most one SetComputeUnitLimit
     and one SetComputeUnitPrice within the pinned bounds; no other
     instruction; no lookup table; and no signer but the sponsor and the payer.
-    Malformed framing raises ValueError.
+    Malformed framing raises ValueError, and so does a `memo` that is not a
+    non-empty string of at most 256 UTF-8 bytes: upstream signs a nonce for an
+    empty one, so no message is exactly a payment with empty Memo data.
     """
     if token_program not in TOKEN_PROGRAMS:
         return "token-program"
     if type(amount) is not int or not 0 <= amount < 2**64 or type(decimals) is not int or not 0 <= decimals < 256:
         raise ValueError("transfer terms")
+    if memo is not None and not (
+            isinstance(memo, str) and memo and len(memo.encode("utf-8")) <= MEMO_MAX_BYTES):
+        raise ValueError("memo terms")
     parsed = parse_transaction(encoded)
     keys = [base58(key) for key in parsed["keys"]]
     if parsed["lookups"]:

@@ -1748,6 +1748,16 @@ def build_vectors() -> list[dict]:
              "an attacker address cannot replace the address independently derived from the signed bundle payment key",
              lambda v: v["runtime"]["payer"].update({"paymentAddress": "0x" + "99" * 20}),
              reason="payer-control")
+
+    # XN-5/XN-8: the payer is the address derived from the buyer bundle's
+    # proven paying key. A supplied payer that the ledger echoes is still not
+    # one, so comparing the ledger with the runtime address cannot pass.
+    def unproven_payer_echoed_by_ledger(v):
+        v["runtime"]["payer"]["paymentAddress"] = "0x" + "99" * 20
+        v["ledger"]["payer"] = "0x" + "99" * 20
+    add_case(vectors, "runtime-and-ledger-payer-agree-unproven", "fail", "XN-5/XN-8",
+             "the runtime and ledger payer agree on an address the buyer bundle does not prove",
+             unproven_payer_echoed_by_ledger, reason="payer-control")
     add_case(vectors, "runtime-payee-not-signed-destination", "fail", "XN-5",
              "an unsigned runtime payee cannot replace the payout binding",
              lambda v: v["runtime"]["payee"].update({"payeeAddress": "0x" + "99" * 20}),
@@ -3538,6 +3548,15 @@ def build_vectors() -> list[dict]:
              "the memo is a UTF-8 string",
              extra_is({"feePayer": SOLANA_FEE_PAYER, "memo": {}}, solana=True), refresh=True,
              reason="extra-member-value")
+    # §9.5.7.1: the pinned upstream client and facilitator treat an empty memo
+    # as absent and sign a random nonce, so no interoperable message carries
+    # empty Memo data: the profile refuses one, for a handler and a verifier.
+    for operation in ("execute", "verify-evidence"):
+        prefix = "verify-evidence-" if operation == "verify-evidence" else ""
+        add_case(vectors, f"{prefix}solana-extra-memo-empty", "fail", "XN-6/XN-8/§9.5.7.1",
+                 "an empty memo is refused: upstream signs a random nonce for it, not empty Memo data",
+                 extra_is({"feePayer": SOLANA_FEE_PAYER, "memo": ""}, solana=True), refresh=True,
+                 operation=operation, reason="extra-member-value")
     add_case(vectors, "solana-extra-carries-mint", "fail", "XN-6",
              "the mint is the asset: the pinned Solana exact definition has no extra.mint, so a "
              "signed and received one is unclassified",
@@ -3950,6 +3969,18 @@ def build_vectors() -> list[dict]:
 # every execute case rejected on one of them has a verify-evidence and a retry
 # twin with the same inputs, and a verifier judges the Solana success cases.
 LEDGER_PREDICATE_REASONS = frozenset({"ledger-event", "settlement-not-final", "sb3"})
+# XN-8: a verifier also re-establishes the XN-5 payer (derived from the pinned
+# buyer bundle, never a supplied address), payee, asset, currency and amount
+# predicates, and applies PB-1 and PB-2 over the payee bundle the signed
+# `bundleHash` pins. So every execute case rejected on one of them has a
+# verify-evidence twin with the same inputs. A retry continues a session that
+# already passed them, so it has none.
+VERIFIER_PREDICATE_REASONS = frozenset({
+    "party-cardinality", "payer-party", "payer-control", "payee-party", "payout-binding-coverage",
+    "payout-binding", "payee-destination", "payee-linkage-unresolved", "payee-linkage-error",
+    "payee-bundle", "payee-bundle-shape", "currency", "asset-metadata", "asset-currency",
+    "exact-amount", "address-form",
+})
 VERIFIER_SUCCESS_TWINS = (
     "protocol-v2-solana-exact-success",
     "protocol-v2-solana-mainnet-exact-success",
@@ -3959,16 +3990,23 @@ VERIFIER_SUCCESS_TWINS = (
 
 
 def add_role_twins(vectors: list) -> None:
+    names = {case["name"] for case in vectors}
     for case in list(vectors):
         if case["operation"] != "execute":
             continue
         if case["expected"] != "pass" and case.get("expectedReason") in LEDGER_PREDICATE_REASONS:
             operations = ("verify-evidence", "retry")
+        elif case["expected"] != "pass" and case.get("expectedReason") in VERIFIER_PREDICATE_REASONS:
+            operations = ("verify-evidence",)
         elif case["name"] in VERIFIER_SUCCESS_TWINS:
             operations = ("verify-evidence",)
         else:
             continue
         for operation in operations:
+            # A twin written out beside its execute case (PB-1's payout
+            # bindings) already carries the same inputs.
+            if f"{operation}-{case['name']}" in names:
+                continue
             twin = copy.deepcopy(case)
             twin.pop("expectedErrorClass", None)
             twin.update({
@@ -4099,6 +4137,10 @@ def add_solana_instruction_cases(vectors, solana_exact):
          {"edit": lambda instructions: instructions + instructions[3:]}),
         ("memo-not-nonce", "without extra.memo the Memo carries upstream's hex nonce of at least "
          "16 bytes", None, {"memo": "not a hex nonce"}),
+        ("memo-nonce-odd-digits", "a hex nonce encodes whole bytes, two digits each, so 33 digits are "
+         "not one", None, {"memo": "a" * 33}),
+        ("memo-nonce-255-digits", "a hex nonce encodes whole bytes, two digits each, so 255 digits are "
+         "not one", None, {"memo": "a" * 255}),
         ("memo-with-signer", "a Memo instruction that also names a signer account", None,
          {"edit": replaced(3, (MEMO_PROGRAM, [(SOLANA_BUYER, False)], SOLANA_MEMO_NONCE.encode()))}),
         ("extra-memo-other", "a Memo instruction whose data is not the signed extra.memo", memo_extra,

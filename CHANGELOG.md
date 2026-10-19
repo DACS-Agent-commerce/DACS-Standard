@@ -73,6 +73,11 @@ The format used per release:
   are pinned on every ledger, finality and SB-3 predicate the handler applies,
   and PB-1 coverage (missing, duplicate, wrong-rail and extra bindings) against
   the signed pipeline's pay tuples is pinned for the handler and the verifier.
+  A verifier is also pinned on the payer derived from the buyer bundle (a
+  runtime and ledger payer agreeing on an unproven address is `fail`), the
+  payee, currency, asset-metadata and amount checks, and every PB-2 branch over
+  the pinned payee bundle; the unit suite requires each execute rejection
+  reason to be either twinned for the verifier or named as a handler-only gate.
   A new session applies the definition at the revision the agreement pins, and
   a definition's §9.4.1 `governance` is checked for its required members and
   their types. XN-2 restates the CAIP-2 grammar it applies, and XN-5 names the
@@ -110,7 +115,8 @@ The format used per release:
   before signing, because upstream's Permit2 witness cannot carry the SB-3 job
   binding. The new §9.5.7.1 `dacs-x402-exact:v1` profile pins the upstream
   sources and states the member value rules. It covers the EIP-3009 domain,
-  `paymentFlow`, the Solana `feePayer` and `memo`, Solana construction hints
+  `paymentFlow`, the Solana `feePayer` and `memo` (an empty memo refused,
+  since upstream signs a nonce for it; the nonce whole bytes), Solana construction hints
   that XN-4 does not compare, and the upstream `payment-identifier`
   advertisement, of which only the optional form is supported. It also closes
   the Solana CAIP-2 cluster table. XN-5 binds the selection currency to the

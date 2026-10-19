@@ -217,9 +217,16 @@ class SolanaAuthorizationTests(unittest.TestCase):
         self.assertIsNone(defect(memo="dacs-274", signed_memo="dacs-274"))
         self.assertIsNone(defect(memo="é" * 128, signed_memo="é" * 128))
         self.assertIsNone(defect(signed_memo="0f" * 16))
-        for memo in ("0f" * 15 + "0", "0F" * 16, "dacs-274"):
+        self.assertIsNone(defect(signed_memo="0f" * 128))
+        # Upstream's nonce is whole bytes, two digits each: an odd count is not one.
+        for memo in ("0f" * 15 + "0", "0F" * 16, "dacs-274", "a" * 33, "a" * 255, "0f" * 128 + "0f"):
             with self.subTest(nonce=memo):
                 self.assertEqual(defect(signed_memo=memo), "memo")
+        # A signed memo that is empty, too long or not a string has no exact
+        # message: upstream signs a nonce for an empty one.
+        for memo in ("", "é" * 128 + "a", {}, "\ud800"):
+            with self.subTest(memo=memo), self.assertRaises(ValueError):
+                defect(memo=memo, signed_memo="dacs-274")
         self.assertEqual(defect(memo="dacs-274"), "memo")
         self.assertEqual(defect(edit=lambda ins: ins[:3] + [
             (generator.MEMO_PROGRAM, [], b"\xff" * 16)]), "memo")

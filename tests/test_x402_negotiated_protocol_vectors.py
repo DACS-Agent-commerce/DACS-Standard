@@ -34,6 +34,7 @@ GENERATOR = ROOT / "scripts/generate_x402_negotiated_protocol_vectors.py"
 SAFE_INT = 2**53 - 1
 HEX_32 = re.compile(r"^[0-9a-f]{64}$")
 HTTP_TOKEN = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Z-]+$")
+# XN-2: the CAIP-2 grammar it restates (ChainAgnostic/CAIPs@f46c0fe0, caip-2.md).
 CAIP2 = re.compile(r"^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$")
 CD1 = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$")
 # SB-1: `chainId` > 0 and `logIndex` are also safe integers (checked after the
@@ -166,13 +167,19 @@ FAILURE_MODE_ERROR_CLASSES = {
     # §9.5.1 PB failure modes, with the static PB corpus's classes: a tier-2
     # claim binding another address is `counterparty`, an unresolvable one
     # `substrate` (the ST-7 pause), and a resolver error or a malformed or
-    # unpinned payee bundle `permanent`.
+    # unpinned payee bundle `permanent`. PB-1: an incomplete binding list is
+    # `permanent` and a runtime payee off the binding `counterparty`.
+    "payout-binding-coverage": "permanent",
+    "payout-binding": "counterparty",
     "payee-destination": "counterparty",
     "payee-linkage-unresolved": "substrate",
     "payee-linkage-error": "permanent",
     "payee-bundle": "permanent",
     "payee-bundle-shape": "permanent",
 }
+# XN-8/XN-9/XN-11: the results of the ledger predicates a verifier and a retry
+# re-establish (XN-5 terms, finality, SB-3), as an execute handler does.
+LEDGER_PREDICATE_REASONS = frozenset({"ledger-event", "settlement-not-final", "sb3"})
 # X402-3: the registered v1 legacy-network mapping, the supported-network table
 # of the pinned v1 specification (x402-foundation/x402@22a7677f,
 # specs/x402-specification-v1.md §11.1, the x402-receipt-hash corpus's pin).
@@ -181,6 +188,29 @@ X402_V1_NETWORK_CHAIN_IDS = {
     "base": 8453,
     "avalanche-fuji": 43113,
     "avalanche": 43114,
+}
+# X402-1/XN-7: each version's SettlementResponse members, each with its JSON
+# type and whether it is required, from the pinned upstream tables: v1 at
+# x402-foundation/x402@22a7677f (specs/x402-specification-v1.md §5.3.2), v2
+# at @230e6a9a (specs/x402-specification-v2.md §5.3.2). A member the table
+# does not name is kept unread (X402-1).
+SETTLEMENT_RESPONSE_MEMBERS = {
+    1: {
+        "success": (bool, True),
+        "errorReason": (str, False),
+        "transaction": (str, True),
+        "network": (str, True),
+        "payer": (str, True),
+    },
+    2: {
+        "success": (bool, True),
+        "errorReason": (str, False),
+        "payer": (str, False),
+        "transaction": (str, True),
+        "network": (str, True),
+        "amount": (str, False),
+        "extensions": (dict, False),
+    },
 }
 # XN-6: the one header the paid request adds, and the ambient credentials
 # neither request carries (XN-2). Header names compare case-insensitively.
@@ -484,6 +514,33 @@ def is_safe_nonnegative(value):
     return type(value) is int and 0 <= value <= SAFE_INT
 
 
+GOVERNANCE_ANCHORING = frozenset({"in-code", "single-signer", "multisig"})
+
+
+def governance_shape_ok(governance):
+    """§9.4.1 RailDefinitionBase.governance: its required members and each named member's type.
+
+    `proposedBy` is a claim reference, `acceptedAt` a number, `anchoring` one
+    of the three phases; `supersedes` names an earlier railVersion, an
+    `emergency` revision records its failure observation, and a deprecated
+    definition carries its `deprecationReason`.
+    """
+    if not isinstance(governance, dict):
+        return False
+    emergency = governance.get("emergency", {"isEmergency": True, "failureObservation": ""})
+    return (
+        isinstance(governance.get("proposedBy"), str) and governance["proposedBy"] != ""
+        and is_safe_nonnegative(governance.get("acceptedAt"))
+        and governance.get("anchoring") in GOVERNANCE_ANCHORING
+        and ("supersedes" not in governance or is_safe_positive(governance["supersedes"]))
+        and isinstance(emergency, dict) and set(emergency) == {"isEmergency", "failureObservation"}
+        and emergency["isEmergency"] is True and isinstance(emergency["failureObservation"], str)
+        and type(governance.get("deprecated", False)) is bool
+        and ("deprecationReason" not in governance or isinstance(governance["deprecationReason"], str))
+        and (governance.get("deprecated") is not True or "deprecationReason" in governance)
+    )
+
+
 def validate_protocol_definition(rail):
     if not isinstance(rail, dict):
         return "error"
@@ -498,6 +555,7 @@ def validate_protocol_definition(rail):
         or rail.get("resolution") != {"kind": "x402-payment-required"}
         or not is_safe_positive(rail.get("railVersion"))
         or not (isinstance(rail.get("availability"), str) and rail["availability"] in RAIL_AVAILABILITY)
+        or not governance_shape_ok(rail.get("governance"))
     ):
         return "error"
     return "pass"
@@ -971,7 +1029,8 @@ def request_headers(headers):
         return None
     folded = {}
     for name, value in headers.items():
-        if not HTTP_TOKEN.fullmatch(name.upper()) or not isinstance(value, str):
+        # ASCII first: Unicode case mapping turns `ß` into the token `SS`.
+        if not (name.isascii() and HTTP_TOKEN.fullmatch(name.upper())) or not isinstance(value, str):
             return None
         if name.lower() in folded:
             return None
@@ -1114,6 +1173,15 @@ def decode_response_header(header, version):
     return response
 
 
+def settlement_response_schema_ok(response, version):
+    """X402-1/XN-7: every required member is present, and every member the version's table names has its type."""
+    members = SETTLEMENT_RESPONSE_MEMBERS[version]
+    return isinstance(response, dict) and all(
+        type(response[name]) is kind if name in response else not required
+        for name, (kind, required) in members.items()
+    )
+
+
 def read_settlement_response(header, version, network, payer):
     """XN-7/XN-11: the received settlement response and its first defect, if any.
 
@@ -1121,11 +1189,13 @@ def read_settlement_response(header, version, network, payer):
     the seller's protocol fault and never the outcome. Returns the complete
     decoded object (None when no version-selected object decodes) and None or
     the defect: `response-json` (refused by CORE CF-5), `response-header`,
-    `response-not-success`, `response-network` or `response-payer`. Its
-    transaction is compared later, with the one the reconciliation establishes
-    (`response-transaction`). Upstream's `payer` is optional, so an absent one
-    is sound. Upstream's non-terminal `settlement_pending` names the broadcast
-    transaction; it is sound too, and the ledger decides as always.
+    `response-not-success`, `response-network`, `response-payer` or
+    `response-schema` (a member of the version's SettlementResponse table
+    missing or of another type). Its transaction is compared later, with the
+    one the reconciliation establishes (`response-transaction`). Upstream's
+    `payer` is optional, so an absent one is sound. Upstream's non-terminal
+    `settlement_pending` names the broadcast transaction; it is sound too, and
+    the ledger decides as always.
     """
     try:
         response = decode_response_header(header, version)
@@ -1149,6 +1219,8 @@ def read_settlement_response(header, version, network, payer):
                 return response, "response-payer"
         except ValueError:
             return response, "response-payer"
+    if not settlement_response_schema_ok(response, version):
+        return response, "response-schema"
     return response, None
 
 
@@ -1360,6 +1432,62 @@ def payout_bindings(agreement, phase_index):
     return [item for item in agreement.get("terms", {}).get("payoutBindings", []) if (
         item.get("railId") == "x402:protocol" and item.get("phaseIndex") == phase_index
     )]
+
+
+def pay_phase_tuples(listing, agreement):
+    """PB-1: the (railId, phaseIndex) of each pay phase in the signed Listing pipeline, or None.
+
+    A concrete pay step names its rail; a `pay-alternative` slot pays on the
+    agreement's selected rail when the slot offers it, and otherwise has no
+    applicable tuple (None).
+    """
+    pipeline = listing.get("pipeline") if isinstance(listing, dict) else None
+    if not isinstance(pipeline, list) or not all(isinstance(step, dict) for step in pipeline):
+        return None
+    selected = agreement.get("terms", {}).get("rail", {}).get("railId")
+    tuples = set()
+    for index, step in enumerate(pipeline):
+        kind = step.get("kind")
+        if not isinstance(kind, str) or not kind.startswith("pay-"):
+            continue
+        parameters = step.get("parameters")
+        if not isinstance(parameters, dict):
+            return None
+        if kind == "pay-alternative":
+            offered = parameters.get("alternatives")
+            if not isinstance(offered, list) or not any(
+                    isinstance(item, dict) and item.get("railId") == selected for item in offered):
+                return None
+            tuples.add((selected, index))
+        elif isinstance(parameters.get("rail"), str):
+            tuples.add((parameters["rail"], index))
+        else:
+            return None
+    return tuples
+
+
+def payout_coverage_ok(listing, agreement, phase_index):
+    """PB-1: the payout bindings name exactly the pay phases' tuples, once each.
+
+    A missing entry, a duplicate key, a wrong railId or an extra entry makes
+    the payout-bearing artifact invalid, and this phase is an x402:protocol
+    pay phase. Each entry is an object whose phaseIndex is an integer (JSON
+    `true` is not 1), so a malformed list is no coverage.
+    """
+    bindings = agreement.get("terms", {}).get("payoutBindings")
+    if not isinstance(bindings, list) or not all(
+            isinstance(item, dict) and is_safe_nonnegative(item.get("phaseIndex")) for item in bindings):
+        return False
+    if not is_safe_nonnegative(phase_index):
+        return False
+    expected = pay_phase_tuples(listing, agreement)
+    keys = [(item.get("railId"), item.get("phaseIndex")) for item in bindings]
+    return (
+        expected is not None
+        and len(keys) == len(set(keys))
+        and set(keys) == expected
+        and ("x402:protocol", phase_index) in expected
+    )
 
 
 def selection_eip155_chain(network):
@@ -1693,9 +1821,9 @@ def reconciliation_terms(v):
         raise ValueError("selected ref is malformed")
     selection = ref["parameters"]["selection"]
     network = selection["network"]
+    if not payout_coverage_ok(v.get("listing"), agreement, runtime.get("phaseIndex")):
+        raise ValueError("payout bindings do not cover the pay phases exactly")
     binding = payout_bindings(agreement, runtime.get("phaseIndex"))
-    if len(binding) != 1:
-        raise ValueError("no single payout binding")
     return (
         selection,
         selection_amount(agreement["terms"].get("price", {}), selection),
@@ -1898,9 +2026,9 @@ def materialize_vector(data, vector):
 def protocol_preflight(v):
     """XN-1/XN-2: the definition and reference gates every protocol operation runs.
 
-    Execute, retry and verify-evidence all apply them, so a retry cannot
-    reconcile under a malformed or other-revision definition, a legacy arm, or
-    a malformed reference.
+    Execute, retry, verify-evidence and new-session all apply them, so a retry
+    cannot reconcile, and a new session cannot start, under a malformed or
+    other-revision definition, a legacy arm, or a malformed reference.
     """
     rail = v.get("railDefinition")
     if validate_protocol_definition(rail) != "pass":
@@ -1942,10 +2070,12 @@ def evaluate(v, effects=None):
             return "fail", "signature"
         if rail.get("railId") == "x402:default":
             return "fail", "legacy-default-new-session"
-        # XN-1: the protocol definition is well formed, its availability one
-        # of the union's values, before that value is read.
-        if validate_protocol_definition(rail) != "pass":
-            return "error", "definition"
+        # XN-1/RAV-R5: the protocol definition is well formed, its
+        # availability one of the union's values, and it is the revision the
+        # agreement's signed reference pins, before that value is read.
+        defect = protocol_preflight(v)
+        if defect is not None:
+            return defect
         # RAV-R2: no new session on a disabled or failed rail. The production
         # `mocked` arm needs the operator's mode, which this corpus does not model.
         if rail["availability"] in {"disabled", "failed"}:
@@ -2129,9 +2259,11 @@ def evaluate(v, effects=None):
         return "fail", "payer-control"
     if runtime.get("payee", {}).get("primaryClaim") != seller[0].get("primaryClaim"):
         return "fail", "payee-party"
+    # PB-1: a missing, duplicate, wrong-rail or extra binding is an incomplete
+    # artifact (`permanent`); the destination mismatch below is `counterparty`.
+    if not payout_coverage_ok(v.get("listing"), agreement, runtime.get("phaseIndex")):
+        return "fail", "payout-binding-coverage"
     binding = payout_bindings(agreement, runtime.get("phaseIndex"))
-    if len(binding) != 1:
-        return "fail", "payout-binding"
     # XN-5/PB-1: the signed binding and the runtime payee compare in the adapter
     # form; a malformed form on either side is `error`, not a mismatch.
     network = ref["parameters"]["selection"]["network"]
@@ -2362,7 +2494,8 @@ def legacy_receipt_defect(header, ref):
     """X402-1..X402-4: the reason a legacy response does not verify against its record, if any.
 
     X402-1: the version-selected header decodes to that version's successful
-    SettlementResponse, which names its `transaction` and `network`
+    SettlementResponse: every member its table requires is present, and every
+    member it names has its type, such as v1's required `payer`
     (`legacy-response`). X402-2/X402-4: the stored `paymentReceiptHash` is
     canonical and equals the recomputed NFC/JCS hash (`legacy-receipt-hash`).
     X402-3: the `transaction` equals a recorded `settlementTxHash`
@@ -2379,12 +2512,7 @@ def legacy_receipt_defect(header, ref):
         response = admit_raw_json(base64.b64decode(header.get("value"), validate=True))
     except (TypeError, ValueError):
         return "legacy-response"
-    if not (
-        isinstance(response, dict)
-        and response.get("success") is True
-        and isinstance(response.get("transaction"), str)
-        and isinstance(response.get("network"), str)
-    ):
+    if not (settlement_response_schema_ok(response, int(version)) and response["success"] is True):
         return "legacy-response"
     stored = ref.get("paymentReceiptHash")
     if not (isinstance(stored, str) and HEX_32.fullmatch(stored)) or digest(response) != stored:
@@ -2421,6 +2549,186 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             capture_output=True, text=True,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_ledger_predicates_have_verifier_and_retry_twins(self):
+        """XN-8/XN-9/XN-11: each execute rejection on a ledger predicate is pinned for every role.
+
+        A verifier re-establishes the XN-5 payer, payee, asset, amount,
+        finality and SB-3 predicates, and a retry reconciles under them. So a
+        verifier or retry that checks only the record's transaction and event
+        key fails a twin with the execute case's inputs and verdict.
+        """
+        ignored = {"name", "operation", "note", "expectedErrorClass"}
+        cases = [v for v in self.vectors if v["operation"] == "execute" and v["expected"] != "pass"
+                 and v.get("expectedReason") in LEDGER_PREDICATE_REASONS]
+        for case in cases:
+            for operation in ("verify-evidence", "retry"):
+                with self.subTest(vector=case["name"], operation=operation):
+                    twin = self.by_name[f"{operation}-{case['name']}"]
+                    self.assertEqual(twin["operation"], operation)
+                    self.assertEqual((twin["expected"], twin["expectedReason"]),
+                                     (case["expected"], case["expectedReason"]))
+                    self.assertNotIn("expectedErrorClass", twin)
+                    same = {key: item for key, item in case.items() if key not in ignored}
+                    same["runtime"] = {**same["runtime"], "authorizationSubmitted": True}
+                    self.assertEqual({key: item for key, item in twin.items() if key not in ignored}, same)
+                    self.assertEqual(evaluate(copy.deepcopy(twin)), (case["expected"], case["expectedReason"]))
+        names = {case["name"] for case in cases}
+        # The review's named predicates, so dropping an execute case drops a pin visibly.
+        self.assertLessEqual({
+            "ledger-payer-substitution", "ledger-payee-substitution", "ledger-event-amount-mismatch",
+            "ledger-asset-substitution", "ledger-network-substitution", "ledger-scheme-substitution",
+            "ledger-asset-decimals-substitution", "ledger-not-final", "solana-ledger-payto-case-changed",
+            "sb3-binding-mismatch", "sb3-binding-absent", "sb3-binding-unverifiable",
+            "sb3-binding-unavailable-pruned-history", "sb3-binding-unavailable-signature-authority",
+            "sb3-binding-unavailable-reorged", "sb3-binding-evidence-missing", "sb3-binding-evidence-null",
+            "sb3-binding-unknown-state", "sb3-binding-bare-unavailable-state",
+            "sb3-binding-malformed-state", "sb3-binding-extra-member",
+            "sb3-earlier-plain-transfer-cannot-replace-binding",
+        }, names)
+        self.assertEqual({case["expectedReason"] for case in cases}, set(LEDGER_PREDICATE_REASONS))
+        # The ledger-not-final twin reaches finality: its record key is canonical.
+        self.assertEqual(evaluate(copy.deepcopy(self.by_name["verify-evidence-ledger-not-final"])),
+                         ("indeterminate", "settlement-not-final"))
+        for name in ("protocol-v2-solana-exact-success", "solana-lettered-seller-exact-success"):
+            with self.subTest(solana_success=name):
+                self.assertEqual(self.by_name[f"verify-evidence-{name}"]["expected"], "pass")
+
+    def test_header_names_are_ascii_tokens(self):
+        """XN-2/XN-6: a header name is an ASCII token; no Unicode case mapping makes one."""
+        self.assertEqual(request_headers({"Accept": "a", "x-trace": "b"}), {"accept": "a", "x-trace": "b"})
+        for name in ("ß", "Straße", "ıd", "KK"):
+            with self.subTest(name=name):
+                self.assertIsNone(request_headers({name: "x"}))
+
+    def test_new_session_applies_the_pinned_revision_and_governance(self):
+        """XN-1/RAV-R5/§9.4.1: a new session reads the pinned, well-formed revision only."""
+        for name, want in (
+            ("new-session-on-protocol-rail", ("pass", None)),
+            ("new-session-definition-railversion-2-ref-pins-1", ("fail", "rail-version")),
+            ("new-session-agreement-pins-disabled-revision", ("fail", "rail-version")),
+            ("new-session-pinned-disabled-revision", ("fail", "rail-availability")),
+            ("new-session-agreement-selects-legacy-default", ("error", "rail-ref-shape")),
+            ("new-session-definition-governance-null", ("error", "definition")),
+        ):
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate(copy.deepcopy(self.by_name[name])), want)
+        # The superseding disabled legacy revision's governance is well formed.
+        legacy = self.by_name["legacy-default-new-session-disabled"]["railDefinition"]["governance"]
+        self.assertTrue(governance_shape_ok(legacy))
+        sound = self.by_name["protocol-v2-exact-success"]["railDefinition"]["governance"]
+        self.assertTrue(governance_shape_ok(sound))
+        for label, change in (
+                ("supersedes zero", {"supersedes": 0}), ("deprecated string", {"deprecated": "yes"}),
+                ("reason not string", {"deprecationReason": 7}),
+                ("emergency false", {"emergency": {"isEmergency": False, "failureObservation": "x"}}),
+                ("accepted-at negative", {"acceptedAt": -1}), ("proposed-by empty", {"proposedBy": ""})):
+            with self.subTest(governance=label):
+                self.assertFalse(governance_shape_ok({**sound, **change}))
+        self.assertTrue(governance_shape_ok(
+            {**sound, "emergency": {"isEmergency": True, "failureObservation": "rpc outage"}}))
+
+    def test_payout_bindings_cover_exactly_the_pay_phases(self):
+        """PB-1: a missing, duplicate, wrong-rail or extra entry fails before payment, in every role.
+
+        The binding list must equal the signed pipeline's pay tuples, so a
+        handler that filters to this phase's key and counts one passes none of
+        the extra-entry, unbound-second-phase or malformed-list cases.
+        """
+        for name in ("duplicated", "absent", "other-phase-only", "wrong-rail", "extra-entry",
+                     "list-absent", "entry-not-an-object"):
+            for prefix in ("", "verify-evidence-"):
+                with self.subTest(case=name, prefix=prefix):
+                    vector = self.by_name[f"{prefix}payout-binding-{name}"]
+                    self.assertEqual((vector["expected"], vector["expectedReason"]),
+                                     ("fail", "payout-binding-coverage"))
+                    self.assertEqual(vector.get("expectedErrorClass"), "permanent" if not prefix else None)
+                    effects = {}
+                    self.assertEqual(evaluate(copy.deepcopy(vector), effects),
+                                     ("fail", "payout-binding-coverage"))
+                    self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
+        self.assertEqual(self.by_name["payout-binding-second-pay-phase-bound"]["expected"], "pass")
+        self.assertEqual(self.by_name["runtime-payee-not-signed-destination"]["expectedErrorClass"],
+                         "counterparty")
+        # A retry reconciles only under a complete binding list, so the same
+        # artifact never yields reconciliation terms (signatures mocked).
+        base = self.by_name["retry-indeterminate-remains-pending"]
+        binding = base["agreement"]["terms"]["payoutBindings"][0]
+        for label, bindings in (("absent", []), ("extra", [binding, {**binding, "phaseIndex": 4}]),
+                                ("wrong rail", [{**binding, "railId": "x402:default"}]),
+                                ("not an object", [binding, 7])):
+            with self.subTest(retry=label):
+                changed = copy.deepcopy(base)
+                changed["agreement"]["terms"]["payoutBindings"] = bindings
+                with mock.patch(f"{__name__}.verify_artifact_signatures", return_value=True):
+                    self.assertEqual(evaluate(changed), ("error", "reconciliation-terms"))
+        # The pay tuple comes from the signed pipeline, not the runtime phase.
+        listing = copy.deepcopy(self.by_name["protocol-v2-exact-success"]["listing"])
+        agreement = self.by_name["protocol-v2-exact-success"]["agreement"]
+        self.assertTrue(payout_coverage_ok(listing, agreement, 3))
+        self.assertFalse(payout_coverage_ok(listing, agreement, 4))
+        listing["pipeline"][3], listing["pipeline"][4] = listing["pipeline"][4], listing["pipeline"][3]
+        self.assertFalse(payout_coverage_ok(listing, agreement, 3))
+        for broken in (None, {}, {"pipeline": None}, {"pipeline": ["pay-x402"]},
+                       {"pipeline": [{"kind": "pay-x402"}]}):
+            with self.subTest(listing=broken):
+                self.assertFalse(payout_coverage_ok(broken, agreement, 3))
+        # A phase index is an integer: JSON true never stands for phase 1.
+        pay_at_one = {"pipeline": [{"kind": "vet-credentials"},
+                                   {"kind": "pay-x402", "parameters": {"rail": "x402:protocol"}}]}
+        at_one = copy.deepcopy(agreement)
+        at_one["terms"]["payoutBindings"] = [{**agreement["terms"]["payoutBindings"][0], "phaseIndex": 1}]
+        self.assertTrue(payout_coverage_ok(pay_at_one, at_one, 1))
+        self.assertFalse(payout_coverage_ok(pay_at_one, at_one, True))
+        at_one["terms"]["payoutBindings"][0]["phaseIndex"] = True
+        self.assertFalse(payout_coverage_ok(pay_at_one, at_one, 1))
+
+    def test_settlement_response_tables_are_the_pinned_upstream_tables(self):
+        """X402-1/XN-7: each member of the pinned v1 and v2 tables is required or typed as upstream says.
+
+        v1 (@22a7677f §5.3.2) requires `payer`; v2 (@230e6a9a §5.3.2) makes it
+        optional and adds the optional `amount` and `extensions`. A response
+        missing a required member, or with a named member of another type, is
+        not that version's SettlementResponse: legacy continuation and replay
+        reject it after a rehash, and a negotiated response is a defect.
+        """
+        self.assertEqual(SETTLEMENT_RESPONSE_MEMBERS, {
+            1: {"success": (bool, True), "errorReason": (str, False), "transaction": (str, True),
+                "network": (str, True), "payer": (str, True)},
+            2: {"success": (bool, True), "errorReason": (str, False), "payer": (str, False),
+                "transaction": (str, True), "network": (str, True), "amount": (str, False),
+                "extensions": (dict, False)},
+        })
+        wrong = {bool: "true", str: 7, dict: []}
+        legacy = {1: self.by_name["legacy-v1-continuation-registered-network"],
+                  2: self.by_name["legacy-default-pinned-in-flight-continuation"]}
+        for version, members in SETTLEMENT_RESPONSE_MEMBERS.items():
+            header_name = {1: "X-PAYMENT-RESPONSE", 2: "PAYMENT-RESPONSE"}[version]
+            ref = legacy[version]["evidence"]["paymentTxRefs"][0]
+            sound = json.loads(base64.b64decode(legacy[version]["http"]["responseHeader"]["value"]))
+            for name, (kind, required) in members.items():
+                for label, change in (("absent", lambda r, n=name: r.pop(n, None)),
+                                      ("wrong type", lambda r, n=name, k=kind: r.update({n: wrong[k]}))):
+                    response = copy.deepcopy(sound)
+                    # An optional member the sound receipt omits is added
+                    # first, so its wrong type is the only change.
+                    response.setdefault(name, {bool: True, str: "x", dict: {}}[kind])
+                    change(response)
+                    bad = label == "wrong type" or required
+                    raw = json.dumps(response).encode()
+                    header = {"name": header_name, "value": base64.b64encode(raw).decode()}
+                    rehashed = {**ref, "paymentReceiptHash": digest(response)}
+                    with self.subTest(version=version, member=name, change=label):
+                        self.assertEqual(settlement_response_schema_ok(response, version), not bad)
+                        self.assertEqual(legacy_receipt_defect(header, rehashed),
+                                         "legacy-response" if bad else None)
+                        # A negotiated response: `success` and `network` have
+                        # their own earlier defects, and a payer in another
+                        # form is the XN-11 `response-payer` defect.
+                        if version == 2 and name not in {"success", "network"}:
+                            payer = adapter_address("eip155:8453", sound["payer"])
+                            want = None if not bad else "response-payer" if name == "payer" else "response-schema"
+                            self.assertEqual(read_settlement_response(header, 2, "eip155:8453", payer)[1], want)
 
     def test_hash_count_and_names_are_exact(self):
         vectors = self.raw_vectors
@@ -2549,7 +2857,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         self.assertEqual(by_reason["payee-linkage-error"], {"permanent"})
         self.assertEqual(by_reason["payee-bundle"], {"permanent"})
         self.assertEqual(by_reason["payee-bundle-shape"], {"permanent"})
-        self.assertEqual(pinned, 174)
+        # PB-1: an incomplete binding list against a runtime payee off it.
+        self.assertEqual(by_reason["payout-binding-coverage"], {"permanent"})
+        self.assertEqual(by_reason["payout-binding"], {"counterparty"})
+        self.assertEqual(pinned, 184)
 
     def test_resolution_inputs_are_inside_real_agreement_signatures(self):
         original = self.by_name["protocol-v2-exact-success"]
@@ -2875,6 +3186,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         names += tuple(f"retry-record-{defect}-rebuilt" for defect in (
             "payment-amount-extra-member", "finality-scheme-other", "finality-binding-profile-absent",
             "finality-binding-profile-not-string", "finality-profile-absent"))
+        # The retry twins of the execute ledger, finality and SB-3 rejections.
+        names += tuple(f"retry-{v['name']}" for v in self.vectors if (
+            v["operation"] == "execute" and v["expected"] != "pass"
+            and v.get("expectedReason") in LEDGER_PREDICATE_REASONS))
         self.assertEqual(set(names),{v["name"] for v in self.vectors if v["operation"] == "retry"})
         for name in names:
             with self.subTest(vector=name):
@@ -3086,7 +3401,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         # Every stored-record verdict a verifier gives leaves the payment to the
         # ledger, after the wallet call and on retry alike.
         records = [v for v in self.vectors if v["operation"] == "verify-evidence"]
-        self.assertEqual(len(records), 62)
+        self.assertEqual(len(records), 101)
         for vector in records:
             for operation in ("execute", "retry"):
                 with self.subTest(record=vector["name"], operation=operation):
@@ -3336,14 +3651,23 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
                 effects = {}
                 verdict, _ = evaluate(copy.deepcopy(vector), effects)
                 # Every record case is a rejection except the JSON-null
-                # preimage, the two sound-shape successes, the record
-                # judged apart from the paid request and the tier-2 payout.
+                # preimage, the sound-shape successes, the records over a
+                # response defect, the record judged apart from the paid
+                # request, the tier-2 payout and the Solana success twins.
                 self.assertEqual(verdict == "pass", vector["name"] in {
                     "record-over-unreceived-response-verifies",
                     "verify-evidence-response-without-payer",
                     "verify-evidence-without-extensions",
                     "verify-evidence-ignores-paid-request-payload",
                     "pb2-verify-evidence-controlled-claim-binds-payout",
+                    "verify-evidence-response-amount-string",
+                    "verify-evidence-response-amount-not-string",
+                    "verify-evidence-response-error-reason-not-string",
+                    "verify-evidence-response-extensions-not-object",
+                    "verify-evidence-protocol-v2-solana-exact-success",
+                    "verify-evidence-protocol-v2-solana-mainnet-exact-success",
+                    "verify-evidence-solana-lettered-seller-exact-success",
+                    "verify-evidence-solana-token-2022-exact-success",
                 })
                 self.assertEqual(effects.get("walletAuthorizationCalls", 0), 0)
         for name, want in (("protocol-v2-exact-success", ("pass", None)),

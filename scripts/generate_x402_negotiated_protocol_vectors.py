@@ -97,6 +97,8 @@ FAILURE_MODE_ERROR_CLASSES = {
         "terminal-non-settlement", "ledger-event", "currency", "asset-currency", "paid-request-payload",
     )},
     # §9.5.1 PB failure modes, with the static PB corpus's classes.
+    "payout-binding-coverage": "permanent",
+    "payout-binding": "counterparty",
     "payee-destination": "counterparty",
     "payee-linkage-unresolved": "substrate",
     "payee-linkage-error": "permanent",
@@ -575,6 +577,18 @@ def legacy_live_rail() -> dict:
     }
 
 
+def base_pipeline(pay: dict, negotiate: dict | None = None,
+                  commit: str = "commit-payee-bound-agreement") -> list[dict]:
+    """A Listing pipeline whose pay step is phase 3, the runtime phaseIndex."""
+    return [
+        {"kind": "vet-credentials"},
+        copy.deepcopy(negotiate or {"kind": "negotiate-fixed-price"}),
+        {"kind": commit},
+        copy.deepcopy(pay),
+        {"kind": "deliver-storage-program"},
+    ]
+
+
 def make_base(version: int = 2) -> dict:
     ref = payment_ref(version)
     response = settlement_response(version)
@@ -600,6 +614,9 @@ def make_base(version: int = 2) -> dict:
             "listingVersion": 1,
             "listingId": "x402-274",
             "acceptedRails": [copy.deepcopy(ref)],
+            # PB-1: the signed pipeline fixes the pay phases, so the agreement's
+            # payout bindings name exactly (x402:protocol, 3).
+            "pipeline": base_pipeline({"kind": "pay-x402", "parameters": {"rail": "x402:protocol"}}),
         },
         "agreement": {
             "payeeBoundAgreementVersion": "1",
@@ -1205,10 +1222,7 @@ def build_vectors() -> list[dict]:
                 }}
             else:
                 pay = {"kind": "pay-x402", "parameters": {"rail": "x402:protocol"}}
-            listing["pipeline"] = [
-                copy.deepcopy(negotiate), {"kind": commit}, pay,
-                {"kind": "deliver-storage-program"},
-            ]
+            listing["pipeline"] = base_pipeline(pay, negotiate, commit)
         return mutate
     fixed_price = {"kind": "negotiate-fixed-price"}
     add_case(vectors, "listing-protocol-with-payee-bound-commit-admitted", "pass", "XN-2",
@@ -1241,6 +1255,16 @@ def build_vectors() -> list[dict]:
              listing_pipeline(sealed_complete_negotiation, "commit-selection-bound-agreement",
                               alternative=True),
              operation="admit-listing", reason="x402-protocol-agreement-type")
+    # The two remaining commitment phases, each beside a pay-x402 step and a
+    # pay-alternative slot, so every other phase has a witness.
+    for commit, label in (("commit-agreement", "legacy"),
+                          ("commit-identity-bound-agreement", "identity-bound")):
+        for alternative, slot in ((False, ""), (True, "alternative-")):
+            add_case(vectors, f"listing-protocol-{slot}with-{label}-commit-rejected", "fail",
+                     "XN-2/APR-1" if alternative else "XN-2",
+                     f"an x402:protocol offer cannot be paired with {commit}",
+                     listing_pipeline(fixed_price, commit, alternative=alternative),
+                     operation="admit-listing", reason="x402-protocol-agreement-type")
 
     # A signed pay-alternative slot whose parameters or alternatives are absent,
     # have the wrong JSON type, or offer fewer than two objects is a malformed
@@ -2277,6 +2301,51 @@ def build_vectors() -> list[dict]:
                  legacy_v1(network, chain_id), operation="legacy-continuation",
                  authorization_submitted=True, reason="legacy-receipt-network")
 
+    # X402-1/X402-4: the response is that version's SettlementResponse (the
+    # pinned v1 and v2 tables, §5.3.2). Each case re-commits the record to the
+    # changed response, so only the schema can reject it: v1 requires `payer`,
+    # each member a table names has its type, and an unnamed member is kept.
+    def legacy_schema(version, change):
+        def mutate(v):
+            if version == 1:
+                legacy_v1()(v)
+                response, name = copy.deepcopy(V1_RECEIPT), "X-PAYMENT-RESPONSE"
+            else:
+                legacy_continuation(v)
+                response, name = copy.deepcopy(legacy_response), "PAYMENT-RESPONSE"
+            change(response)
+            raw = json.dumps(response, separators=(",", ":")).encode("utf-8")
+            v["http"]["responseHeader"] = {"name": name, "value": base64.b64encode(raw).decode("ascii")}
+            v["evidence"]["paymentTxRefs"][0]["paymentReceiptHash"] = digest(response)
+        return mutate
+    for version, name, change, verdict, note in (
+        (1, "without-payer", lambda r: r.pop("payer"), "fail",
+         "the v1 SettlementResponse requires payer"),
+        (1, "payer-not-string", lambda r: r.update({"payer": 7}), "fail",
+         "the v1 payer is a string"),
+        (1, "error-reason-not-string", lambda r: r.update({"errorReason": 7}), "fail",
+         "a present v1 errorReason is a string"),
+        (1, "success-string", lambda r: r.update({"success": "true"}), "fail",
+         "the v1 success member is the boolean true"),
+        (1, "unrecognised-member-kept", lambda r: r.update({"amount": []}), "pass",
+         "v1 names no amount member, so an unrecognised one is kept unread"),
+        (2, "without-payer", lambda r: r.pop("payer"), "pass",
+         "the v2 payer is optional"),
+        (2, "payer-not-string", lambda r: r.update({"payer": 7}), "fail",
+         "a present v2 payer is a string"),
+        (2, "error-reason-not-string", lambda r: r.update({"errorReason": 7}), "fail",
+         "a present v2 errorReason is a string"),
+        (2, "amount-not-string", lambda r: r.update({"amount": []}), "fail",
+         "a present v2 amount is a string"),
+        (2, "extensions-not-object", lambda r: r.update({"extensions": []}), "fail",
+         "a present v2 extensions member is an object"),
+    ):
+        for operation in ("legacy-continuation", "legacy-replay"):
+            add_case(vectors, f"legacy-v{version}-{operation.split('-')[1]}-response-{name}",
+                     verdict, "X402-1/X402-4", note, legacy_schema(version, change),
+                     operation=operation, authorization_submitted=True,
+                     reason="legacy-response" if verdict == "fail" else None)
+
     # XN-11 retry: the retained identity must be this session's, and then the
     # payment disposition is the ledger reconciliation's, as after the execute
     # path's wallet call. Unavailable ledger data keeps the session pending.
@@ -2543,11 +2612,50 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "request-body-hash-upper-case", "error", "XN-2",
              "a signed bodyHash is exactly 64 lower-case hexadecimal digits",
              body_hash_upper_case, reason="rail-ref-shape")
-    add_case(vectors, "payout-binding-duplicated", "fail", "XN-5/PB-1",
-             "exactly one payout binding may name (x402:protocol, phaseIndex)",
-             lambda v: v["agreement"]["terms"]["payoutBindings"].append(
-                 copy.deepcopy(v["agreement"]["terms"]["payoutBindings"][0])),
-             reason="payout-binding")
+    # PB-1: the payout bindings name exactly the signed pipeline's pay tuples,
+    # once each. A missing, duplicate, wrong-rail or extra entry makes the
+    # artifact invalid before payment (`permanent`), for the handler and for
+    # a verifier of its record alike.
+    def bindings_are(change):
+        def mutate(v):
+            bindings = v["agreement"]["terms"]["payoutBindings"]
+            v["agreement"]["terms"]["payoutBindings"] = change(copy.deepcopy(bindings[0]), bindings)
+        return mutate
+    for name, mutate, note in (
+        ("duplicated", bindings_are(lambda one, all_: [*all_, one]),
+         "exactly one payout binding may name (x402:protocol, phaseIndex)"),
+        ("absent", bindings_are(lambda one, all_: []),
+         "no binding for the pay phase is an incomplete artifact, never a fallback to the "
+         "unsigned runtime payee or the challenge payTo"),
+        ("other-phase-only", bindings_are(lambda one, all_: [{**one, "phaseIndex": 4}]),
+         "a binding only for another phase does not bind this pay phase"),
+        ("wrong-rail", bindings_are(lambda one, all_: [{**one, "railId": "x402:default"}]),
+         "a binding for another railId does not cover the x402:protocol pay phase"),
+        ("extra-entry", bindings_are(lambda one, all_: [*all_, {**one, "phaseIndex": 4}]),
+         "a binding for the delivery phase, which is no pay tuple, makes the artifact invalid"),
+        ("list-absent", lambda v: v["agreement"]["terms"].pop("payoutBindings"),
+         "a payee-bound agreement without payoutBindings is an incomplete artifact"),
+        ("entry-not-an-object", bindings_are(lambda one, all_: [*all_, "x402:protocol"]),
+         "each payout binding is an object, so a bare string makes the list malformed"),
+    ):
+        for operation in ("execute", "verify-evidence"):
+            prefix = "verify-evidence-" if operation == "verify-evidence" else ""
+            add_case(vectors, f"{prefix}payout-binding-{name}", "fail", "XN-2/XN-5/PB-1", note,
+                     mutate, operation=operation, reason="payout-binding-coverage")
+
+    def second_pay_phase(v):
+        v["listing"]["pipeline"].insert(4, {"kind": "pay-dem", "parameters": {"rail": "demos-native:DEM"}})
+        v["agreement"]["terms"]["payoutBindings"].append(
+            {"railId": "demos-native:DEM", "phaseIndex": 4, "payeeAddress": "demos:" + "22" * 32})
+    add_case(vectors, "payout-binding-second-pay-phase-bound", "pass", "PB-1",
+             "a second pay phase carries its own binding beside this phase's, so both tuples "
+             "are covered once each", second_pay_phase)
+    add_case(vectors, "payout-binding-second-pay-phase-unbound", "fail", "PB-1",
+             "a second pay phase without its binding leaves the artifact incomplete, even "
+             "though this phase's binding is sound",
+             lambda v: v["listing"]["pipeline"].insert(
+                 4, {"kind": "pay-dem", "parameters": {"rail": "demos-native:DEM"}}),
+             reason="payout-binding-coverage")
     add_case(vectors, "challenge-scheme-substitution", "fail", "XN-4",
              "scheme substitution rejects before authorization",
              lambda v: v["http"]["paymentRequired"]["accepts"][0].update({"scheme": "upto"}),
@@ -2895,6 +3003,14 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "challenge-raw-json-admitted", "pass", "XN-4/XN-7/CF-5",
              "a challenge received as raw bytes is admitted under CF-5 and hashed as decoded",
              raw_challenge(challenge_text), refresh=True)
+
+    def raw_challenge_not_base64(v):
+        v["http"].pop("paymentRequired")
+        v["http"]["paymentRequiredRaw"] = "not base64!"
+    add_case(vectors, "challenge-raw-invalid-base64", "error", "XN-4",
+             "a PAYMENT-REQUIRED value that is not base64 decodes to no challenge, so it is "
+             "malformed before authorization", raw_challenge_not_base64,
+             reason="payment-required-json")
     for suffix, why, member in refused:
         add_case(vectors, f"challenge-raw-json-{suffix}", "error", "XN-4/XN-7/CF-5",
                  f"a challenge whose bytes CF-5 refuses ({why}) is malformed before authorization",
@@ -3518,6 +3634,32 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "verify-evidence-definition-railversion-2-ref-pins-1", "fail", "XN-1/XN-8",
              "a verifier judges a record only against the revision the reference pins",
              definition_version(2), operation="verify-evidence", reason="rail-version")
+    # XN-1/RAV-R5: a new session reads availability from the revision the
+    # agreement's signed reference pins, so a live revision cannot stand in
+    # for a pinned disabled one, and that reference selects x402:protocol.
+    def new_session(change):
+        def mutate(v):
+            change(v)
+            v["runtime"]["sessionState"] = "new"
+        return mutate
+    add_case(vectors, "new-session-definition-railversion-2-ref-pins-1", "fail", "XN-1/RAV-R5",
+             "a live revision 2 definition is not the revision 1 the agreement pins",
+             new_session(definition_version(2)), operation="new-session", reason="rail-version")
+    add_case(vectors, "new-session-agreement-pins-disabled-revision", "fail", "XN-1/RAV-R5",
+             "the agreement pins revision 2, so the live revision 1 cannot admit the session "
+             "whatever revision 2's availability is", new_session(reference_pins(2)),
+             operation="new-session", reason="rail-version")
+    add_case(vectors, "new-session-pinned-disabled-revision", "fail", "RAV-R2/RAV-R5",
+             "the pinned revision 2 is the one consulted, and it is disabled",
+             new_session(lambda v: (definition_version(2)(v), reference_pins(2)(v),
+                                    v["railDefinition"].update({"availability": "disabled"}))),
+             operation="new-session", reason="rail-availability")
+    add_case(vectors, "new-session-agreement-selects-legacy-default", "error", "XN-2/XN-10",
+             "shown the protocol definition, an agreement whose negotiated-shape reference "
+             "selects x402:default is malformed, so no session starts",
+             new_session(lambda v: [ref.update({"railId": "x402:default"})
+                                    for ref in signed_selection_refs(v)]),
+             operation="new-session", reason="rail-ref-shape")
 
     # Every MUST-backed check has a vector that reaches it alone, on each
     # operation that applies it.
@@ -3799,7 +3941,43 @@ def build_vectors() -> list[dict]:
     ):
         add_case(vectors, f"fee-rate-{name}", verdict, "FR-2/XN-1/XN-5", note, mutate,
                  operation="fee-rate-amount", reason=reason, tamper=tamper)
+    add_role_twins(vectors)
     return vectors
+
+
+# XN-8/XN-9/XN-11: a verifier re-establishes the XN-5 ledger terms, finality
+# and the SB-3 binding, and a retry reconciles under the same predicates. So
+# every execute case rejected on one of them has a verify-evidence and a retry
+# twin with the same inputs, and a verifier judges the Solana success cases.
+LEDGER_PREDICATE_REASONS = frozenset({"ledger-event", "settlement-not-final", "sb3"})
+VERIFIER_SUCCESS_TWINS = (
+    "protocol-v2-solana-exact-success",
+    "protocol-v2-solana-mainnet-exact-success",
+    "solana-lettered-seller-exact-success",
+    "solana-token-2022-exact-success",
+)
+
+
+def add_role_twins(vectors: list) -> None:
+    for case in list(vectors):
+        if case["operation"] != "execute":
+            continue
+        if case["expected"] != "pass" and case.get("expectedReason") in LEDGER_PREDICATE_REASONS:
+            operations = ("verify-evidence", "retry")
+        elif case["name"] in VERIFIER_SUCCESS_TWINS:
+            operations = ("verify-evidence",)
+        else:
+            continue
+        for operation in operations:
+            twin = copy.deepcopy(case)
+            twin.pop("expectedErrorClass", None)
+            twin.update({
+                "name": f"{operation}-{case['name']}",
+                "operation": operation,
+                "note": f"{operation} twin of {case['name']}: {case['note']}",
+            })
+            twin["runtime"]["authorizationSubmitted"] = True
+            vectors.append(twin)
 
 
 def add_solana_identity_cases(vectors, solana_exact):
@@ -4337,6 +4515,30 @@ def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, respons
              "the protocol arm must match its discriminated values exactly",
              lambda v: v["railDefinition"].update({"railType": "evm-erc20"}),
              operation="validate-definition")
+    # §9.4.1: the steward-signed governance has its required members and types.
+    def governance_is(change):
+        def mutate(v):
+            v["railDefinition"]["governance"] = change(v["railDefinition"]["governance"])
+        return mutate
+    for name, change, note in (
+        ("null", lambda g: None, "a governance member that is not an object is malformed"),
+        ("proposed-by-absent", lambda g: {k: x for k, x in g.items() if k != "proposedBy"},
+         "governance names who proposed the revision"),
+        ("accepted-at-string", lambda g: {**g, "acceptedAt": str(g["acceptedAt"])},
+         "acceptedAt is a number"),
+        ("anchoring-unknown", lambda g: {**g, "anchoring": "notarised"},
+         "anchoring is in-code, single-signer or multisig"),
+        ("deprecated-without-reason", lambda g: {**g, "deprecated": True},
+         "a deprecated definition carries its deprecationReason"),
+        ("emergency-without-observation", lambda g: {**g, "emergency": {"isEmergency": True}},
+         "an emergency revision records its failureObservation"),
+    ):
+        add_case(vectors, f"definition-governance-{name}", "error", "XN-1", note,
+                 governance_is(change), operation="validate-definition")
+    add_case(vectors, "new-session-definition-governance-null", "error", "XN-1",
+             "no session starts on a definition whose governance is not an object",
+             lambda v: (governance_is(lambda g: None)(v), v["runtime"].update({"sessionState": "new"})),
+             operation="new-session", reason="definition")
 
     # XN-4: the v2 challenge is the PAYMENT-REQUIRED header; the body is never read.
     def body(raw):
@@ -4383,6 +4585,23 @@ def add_round_twelve_cases(vectors, signed_selection_refs, solana_exact, respons
     add_case(vectors, "verify-evidence-response-without-payer", "pass", "XN-7/XN-8",
              "a verifier also reads an absent payer as sound",
              response_is(lambda r: r.pop("payer")), refresh=True, operation="verify-evidence")
+    # XN-7: a present optional member of the pinned v2 SettleResponse table has
+    # its type; another type is a response defect, and the ledger decides.
+    for name, change, reason, note in (
+        ("amount-string", lambda r: r.update({"amount": "1250000"}), None,
+         "a string amount is the table's type, so the response is sound"),
+        ("amount-not-string", lambda r: r.update({"amount": []}), "response-schema",
+         "a present amount is a string"),
+        ("error-reason-not-string", lambda r: r.update({"errorReason": 7}), "response-schema",
+         "a present errorReason is a string"),
+        ("extensions-not-object", lambda r: r.update({"extensions": []}), "response-schema",
+         "a present extensions member is an object"),
+    ):
+        for operation in ("execute", "verify-evidence"):
+            prefix = "verify-evidence-" if operation == "verify-evidence" else ""
+            add_case(vectors, f"{prefix}response-{name}", "pass", "XN-7/XN-11", note,
+                     response_is(change), refresh=True, authorization_submitted=True,
+                     operation=operation, reason=reason)
 
     # SB-1: event-key integers are safe and a Solana signature is 64 bytes.
     unsafe = str(2**53 + 1)

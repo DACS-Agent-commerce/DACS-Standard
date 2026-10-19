@@ -99,7 +99,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1, PB-2 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2 | 739 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.8.json`](x402-negotiated-protocol-v0.8.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-1, PB-2 / §9.5.7 XN-2..XN-11, X402-1..X402-4, §9.5.7.1 / §9.5.8 SB-1 / §9.7.2 FR-2 | 850 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -1247,6 +1247,16 @@ does removing the record, the retained response or the retained transaction
 from any `retry` case. Each `verify-evidence` record run as `execute` or as
 `retry` gets the same verdict with and without it.
 
+A verifier re-establishes the XN-5 ledger terms, finality and the SB-3 binding
+(XN-8/XN-9), and a retry reconciles under the same predicates (XN-11). So every
+`execute` rejection with reason `ledger-event`, `settlement-not-final` or `sb3`
+has a `verify-evidence-` and a `retry-` twin with the same inputs and verdict:
+for example `verify-evidence-ledger-payee-substitution` (`fail`),
+`verify-evidence-ledger-not-final` (`indeterminate`, with a canonical record
+key), and `verify-evidence-sb3-binding-absent` (`indeterminate`). The Solana
+success cases have `verify-evidence-` twins that `pass`. The unit suite checks
+the twins for the whole reason class, not a list of names.
+
 Received x402 objects pass CORE CF-5 raw JSON admission over their exact bytes.
 A settlement response with `NaN`, `1e400`, a lone surrogate, or a repeated
 `success` member does not decode: it is the response defect `response-json`,
@@ -1290,6 +1300,17 @@ retry (`reconciliation-binding`), and a recorded `response-payer` defect in the
 response `payer`. The all-digit Solana seller has no
 letter to change, so the `payTo` cases use a letter-bearing seller whose
 unchanged spelling passes.
+
+PB-1 cases follow the static PB corpus. The base Listing carries a signed
+pipeline whose `pay-x402` step is phase 3, and the agreement's
+`payoutBindings` must name exactly that pipeline's pay tuples, once each. A
+missing list or entry, a duplicate, a binding only for another phase or another
+`railId`, an extra entry for a non-pay tuple, or an entry that is not an object
+is `fail` with reason `payout-binding-coverage` (errorClass `permanent`), in
+`execute` and in `verify-evidence` (`payout-binding-extra-entry`,
+`verify-evidence-payout-binding-absent`). A second pay phase with its own
+binding passes, and one without it fails. A runtime payee off the binding stays
+`payout-binding` (errorClass `counterparty`).
 
 PB-2 cases follow step 1(b): the fixture carries the seller's `payeeBundle`, a
 complete DACS-1 `IdentityBundle` with a per-claim presentation the seller's key
@@ -1418,11 +1439,19 @@ Every `pass` case pins `expectedReason`. A runner treats a present `null` as
 "no recorded defect", so booking a sound response as the seller's fault fails
 `response-without-payer`, `response-settlement-pending` and
 `verify-evidence-response-without-payer`. A `pass` with a recorded defect names
-that defect instead.
+that defect instead. A present optional member of the pinned v2
+`SettleResponse` table (`errorReason`, `amount`, `extensions`) of another type
+is the response defect `response-schema` (`response-amount-not-string`, and its
+`verify-evidence-` twin); a string `amount` is sound.
 
 A legacy continuation, and a legacy replay presented with the response, apply
 X402-1..X402-4. The response is the version's successful `SettlementResponse`
-with `transaction` and `network` (`legacy-response`), its recomputed receipt
+under the pinned upstream table for that version: every required member
+present, v1's `payer` included, and every member the table names of its type,
+while a member it does not name is kept (`legacy-response`;
+`legacy-v1-continuation-response-without-payer`,
+`legacy-v2-replay-response-amount-not-string`,
+`legacy-v1-continuation-response-unrecognised-member-kept`). Its recomputed receipt
 hash equals the stored one (`legacy-receipt-hash`), and it names the recorded
 `settlementTxHash` and `chainId` (`legacy-receipt-transaction`,
 `legacy-receipt-network`). A v2 network maps as `eip155:{chainId}`. A v1
@@ -1431,9 +1460,16 @@ the pinned v1 specification (`x402-foundation/x402@22a7677f`,
 `specs/x402-specification-v1.md` §11.1): `base-sepolia` 84532, `base` 8453,
 `avalanche-fuji` 43113 and `avalanche` 43114. Any other v1 network maps to no
 chain. The `legacy-v1-*` cases carry the `x402-receipt-hash` corpus's v1
-`pass` receipt. `new-session` refuses a `disabled` or `failed` definition
-under RAV-R2 (`rail-availability`), and one whose `availability` is not a
-`RailAvailability` value is `error` (`definition`). The production-only
+`pass` receipt. `new-session` applies the same definition and reference gates
+as `execute`: the definition is the revision the agreement's signed reference
+pins (`new-session-definition-railversion-2-ref-pins-1`,
+`new-session-agreement-pins-disabled-revision`: `fail`, `rail-version`), and a
+reference selecting `x402:default` is malformed (`error`, `rail-ref-shape`).
+It then refuses a `disabled` or `failed` pinned definition under RAV-R2
+(`rail-availability`), and one whose `availability` is not a
+`RailAvailability` value, or whose `governance` lacks a §9.4.1 required
+member or has one of another type (`definition-governance-*`), is `error`
+(`definition`). The production-only
 `mocked` arm needs the operator's mode, which the corpus does not model.
 
 The `fee-rate-amount` operation pins DACS-4 FR-2 for `x402:protocol`. Its
@@ -1510,7 +1546,8 @@ replay or an already-pinned continuation; negotiated evidence carries numeric
 `admit-listing` cases add a signed pipeline to the Listing and apply XN-2's
 listing-time agreement-type rule: an `x402:protocol` offer, either for a
 concrete `pay-x402` phase or as a `pay-alternative` member, is admitted with
-`commit-payee-bound-agreement` and rejected with
+`commit-payee-bound-agreement` and rejected with each other commitment phase:
+`commit-agreement`, `commit-identity-bound-agreement`,
 `commit-identity-bound-payee-agreement` or `commit-selection-bound-agreement`.
 APR-1 states the rule for an alternative slot and DACS-1 LRR-4 points to it;
 the rejection needs no registry, so it precedes registry-dependent checks.

@@ -67,8 +67,17 @@ The format used per release:
   `payment-identifier` advertisement is descriptive and carries one of the two
   pinned schemas: the `payment_identifier.md` example, or the one upstream's
   reference SDKs emit with the `id` pattern. Legacy continuation applies the
-  full X402-1..X402-4 receipt checks, with v1 networks mapped through the
-  pinned v1 supported-network table, and x402 FR-2 cases pin half-up rounding
+  full X402-1..X402-4 receipt checks against the pinned v1 or v2
+  `SettlementResponse` table (v1's required `payer` included), with v1 networks
+  mapped through the pinned v1 supported-network table. A verifier and a retry
+  are pinned on every ledger, finality and SB-3 predicate the handler applies,
+  and PB-1 coverage (missing, duplicate, wrong-rail and extra bindings) against
+  the signed pipeline's pay tuples is pinned for the handler and the verifier.
+  A new session applies the definition at the revision the agreement pins, and
+  a definition's §9.4.1 `governance` is checked for its required members and
+  their types. XN-2 restates the CAIP-2 grammar it applies, and XN-5 names the
+  Solana response `payer` as the token payer, as the pinned reference
+  facilitator returns it. The x402 FR-2 cases pin half-up rounding
   at `selection.assetDecimals` under the same signature, definition and asset
   metadata gates as execute. Every clean `pass` vector pins
   `expectedReason: null`.

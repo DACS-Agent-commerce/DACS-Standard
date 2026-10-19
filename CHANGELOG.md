@@ -1522,6 +1522,15 @@ The format used per release:
   (`indeterminate`); finalising without it is rejected. Adds 12 Atomic vectors
   (525 → 537). The six earlier audit-surface vectors now carry the closure;
   their verdicts do not change.
+- **Post-Purchase remedies decide** (DACS-3 §8.6.1 AWP-17/AWP-18) — AWP-17
+  now passes an authenticated role-specific fault copy with a permissible
+  `faultedParty` that keeps the published final payment evidence, and AWP-18
+  passes a seller-authorized `SettlementAmendment` linked to that evidence's
+  address and `atomic_evidence_hash`, bounded by its payment and finalized at
+  its own address. A missing record, amendment or receipt is `indeterminate`.
+  Both acceptance cells, previously marked not applicable, now have fixtures.
+  Adds 15 Atomic vectors (537 → 552); `awp-unlinked-refund` keeps its name and
+  verdict on a real, signed amendment.
 
 ### Changed — general normative changes in candidate DACS-4 v0.8 (every profile)
 

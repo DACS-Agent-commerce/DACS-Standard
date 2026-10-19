@@ -21,6 +21,7 @@ import json
 import re
 import sys
 import unicodedata
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -101,6 +102,12 @@ _COMMITMENT_DOMAIN = b"dacs-finality-commitment:v1:"
 _COMPOSITE_DOMAIN = b"dacs-composite:v1:"
 _AMENDMENT_DOMAIN = b"dacs-amendment:v1:"
 _EVIDENCE_BOUND_BUNDLE_DOMAIN = b"dacs-evidence-bound-fault-bundle:v1:"
+# DACS-5 §10.4.1 bundle outcomes of a failed or aborted terminal.
+_FAILURE_OUTCOMES = frozenset({
+    "failed-perm", "failed-counterparty", "failed-substrate",
+    "aborted-by-self", "aborted-by-other",
+})
+_CANONICAL_DECIMAL = re.compile(r"(0|[1-9][0-9]*)(\.[0-9]*[1-9])?\Z")
 
 
 class Invalid(ValueError):
@@ -3160,28 +3167,38 @@ def evaluate_profile(data: dict[str, Any], *, committed_at: int | None = None) -
 
 def evaluate_post_purchase(data: dict[str, Any]) -> None:
     remedy = data.get("remedy")
-    if remedy == "ordinary-failure-record":
-        raise Unknown(
-            "a Boolean roleSpecificBundle claim is not verified role-specific evidence"
-        )
-    elif remedy == "settlement-amendment":
-        amendment = data.get("amendment")
-        if (
-            isinstance(amendment, dict)
-            and isinstance(amendment.get("body"), dict)
-            and amendment["body"].get("originalEvidenceId")
-            not in {None, data.get("originalEvidenceId")}
-        ):
-            raise Invalid("refund/correction is not linked to original evidence")
-        raise Unknown(
-            "a versioned SettlementAmendment with verified original publication is unavailable"
-        )
-    elif remedy == "guaranteed-delivery":
+    if remedy == "guaranteed-delivery":
         if data.get("profile") == "dacs-completion-v1":
             raise Invalid("guarantee lacks separately standardized profile")
         raise Unknown("no escrow or delivery-gated Atomic Work profile is standardized")
-    else:
+    if remedy not in {"ordinary-failure-record", "settlement-amendment"}:
         raise Invalid("post-Purchase failure cannot undo original payment")
+    purchase_intent = data.get("purchaseIntent")
+    purchase_receipt = data.get("purchaseReceipt")
+    if not isinstance(purchase_intent, dict) or not isinstance(purchase_receipt, dict):
+        raise Unknown("authenticated final Purchase unavailable")
+    verify_receipt(
+        purchase_receipt, purchase_intent, data["publicKeys"],
+        capability=data.get("capability"),
+        expected_network_authority=data.get("expectedNetworkAuthority"),
+        expected_proof_profile=data.get("expectedProofProfile"),
+    )
+    if (
+        purchase_intent.get("profile") != "dacs-purchase-v1"
+        or purchase_receipt.get("outcome") != "committed"
+    ):
+        raise Invalid("post-Purchase remedies follow a committed Purchase")
+    roster = _role_claims(purchase_intent)
+    payment = data.get("paymentEvidence")
+    # The final payment stands: both remedies start from its published evidence.
+    _verify_published_evidence(
+        payment, purchase_intent, purchase_receipt, "native-dem-transfer",
+        roster["orchestrator"], data,
+    )
+    if remedy == "ordinary-failure-record":
+        _verify_failure_record(data.get("failureRecord"), purchase_intent, payment, roster, data)
+    else:
+        _verify_refund_amendment(data, purchase_intent, payment, roster)
 
 
 def _verify_slot_proof(
@@ -4130,6 +4147,101 @@ def _verify_st11_closure(
         raise Unknown("required completed-bundle signature unavailable: " + ", ".join(missing))
     _verify_role_bundle_publication(
         bundle_entry, bundle, roster, data, purchase_intent["networkId"], ("finalized",)
+    )
+
+
+def _verify_failure_record(
+    record: Any, intent: dict[str, Any], payment: dict[str, Any],
+    roster: dict[str, str], data: dict[str, Any],
+) -> None:
+    """AWP-17: the ordinary role-specific fault bundle and its attribution."""
+    bundle = record.get("bundle") if isinstance(record, dict) else None
+    if not isinstance(bundle, dict):
+        raise Unknown("role-specific failure bundle unavailable")
+    outcome = bundle.get("outcome")
+    role = bundle.get("anchoredByRole")
+    if (
+        bundle.get("evidenceBoundFaultBundleVersion") != "1"
+        or bundle.get("jobId") != intent["jobId"]
+        or outcome not in _FAILURE_OUTCOMES
+    ):
+        raise Invalid("failure record is not this job's failed EvidenceBoundFaultAttestationBundle")
+    roles = _bundle_roles(bundle, roster)
+    if role not in roles:
+        raise Invalid("failure bundle is anchored by a role outside its parties")
+    faulted = bundle.get("faultedParty")
+    permitted = (
+        {"none"} if outcome == "failed-substrate"
+        else {role} if outcome in {"failed-perm", "aborted-by-self"}
+        else roles - {role}
+    )
+    if faulted not in permitted:
+        raise Invalid("faultedParty is outside the permissible set for this outcome and role")
+    if _bundle_signature_missing(bundle, role, roster, data["publicKeys"]):
+        raise Invalid("failure bundle is not signed by its anchoring role holder")
+    if _published_ref(payment) not in set(_evidence_refs(bundle)):
+        raise Invalid("failure record omits or reverses the final Purchase payment")
+    _verify_role_bundle_publication(
+        record, bundle, roster, data, intent["networkId"], ("included", "finalized")
+    )
+
+
+def _verify_refund_amendment(
+    data: dict[str, Any], intent: dict[str, Any], payment: dict[str, Any],
+    roster: dict[str, str],
+) -> None:
+    """AWP-18: a separately authorized §9.7.1 SettlementAmendment linked to
+    the original evidence, with its own finalized publication."""
+    amendment = data.get("amendment")
+    if not isinstance(amendment, dict) or amendment.get("amendmentVersion") != "1":
+        raise Unknown("a versioned SettlementAmendment is unavailable")
+    verify_embedded(amendment, data["publicKeys"], _AMENDMENT_DOMAIN)
+    # The refunding party (the seller who was paid) authorizes the amendment.
+    require_signer(amendment, roster["seller"])
+    evidence = payment["evidence"]
+    evidence_hash = atomic_evidence_hash(evidence)
+    target = amendment.get("amendsEvidenceRef")
+    if (
+        amendment.get("jobId") != intent["jobId"]
+        or not _valid_attestation_ref(target)
+        or target["contentHash"] != evidence_hash
+        or target["anchor"]["locator"] != payment["evidenceAddress"]
+    ):
+        raise Invalid("SettlementAmendment is not linked to the original evidence")
+    kind = amendment.get("amendmentType")
+    if kind == "correction":
+        if "refundAmount" in amendment:
+            raise Invalid("a correction carries no refundAmount")
+    elif kind in {"refund", "partial-refund"}:
+        refund, paid = amendment.get("refundAmount"), evidence.get("paymentAmount")
+        if (
+            evidence.get("outcome") != "success"
+            or not isinstance(refund, dict) or not isinstance(paid, dict)
+            or refund.get("currency") != paid.get("currency")
+            or not isinstance(refund.get("amount"), str)
+            or not _CANONICAL_DECIMAL.fullmatch(refund["amount"])
+            or not 0 < Decimal(refund["amount"]) <= Decimal(paid["amount"])
+        ):
+            raise Invalid("refund is not bounded by the original successful payment")
+    else:
+        raise Invalid("unsupported SettlementAmendment type")
+    address = data.get("amendmentAddress")
+    parts = address.split(":") if isinstance(address, str) else []
+    if (
+        len(parts) != 5 or parts[:2] != ["dacs4", "amendment"]
+        or parts[2] != intent["jobId"] or parts[3] != evidence_hash
+        or not re.fullmatch(r"0|[1-9][0-9]*", parts[4])
+    ):
+        raise Invalid("amendment address does not bind the original evidence hash")
+    receipt = data.get("amendmentReceipt")
+    if not isinstance(receipt, dict) or receipt.get("state") != "finalized":
+        raise Unknown("SettlementAmendment publication is not finalized")
+    network_authority = _network_authority(data)
+    _verify_anchor_receipt(
+        receipt, logical=address, content_hash=sha256_hex(jcs_bytes(amendment)),
+        public_keys=data["publicKeys"], network_authority=network_authority,
+        network_id=intent["networkId"], proof_profile=data.get("expectedProofProfile"),
+        validator_set_id=data["capability"]["validatorSetId"],
     )
 
 

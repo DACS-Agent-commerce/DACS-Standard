@@ -56,8 +56,6 @@ POLARITY_NOT_APPLICABLE = {
             f"AWB-{index}": "Atomic v1 admits no Work-carried bundle-anchor operation; the conditional later-profile path cannot have an acceptance fixture yet."
             for index in range(3, 8)
         },
-        "AWP-17": "A positive ordinary failure record requires the existing production DACS failure/bundle verifier, not a synthetic Atomic fixture.",
-        "AWP-18": "A positive refund requires a separately published and verified SettlementAmendment fixture outside this Atomic corpus.",
         "AWP-19": "No escrow or delivery-gated Atomic profile is standardized, so a positive guarantee would invent a new profile.",
         "AWS-13": "The required result for an indeterminate attempt observation is to hold the slot and remain indeterminate.",
     },
@@ -2807,6 +2805,82 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     composed_final_proof_over_reservation = add_composed_limit_evidence(
         copy.deepcopy(composed_purchase), reservation_bytes=1
     )
+    # AWP-17/AWP-18: after the Purchase commits, a failure or refund goes
+    # through ordinary, separately authenticated DACS artifacts.
+    remedy_purchase = purchase_intent()
+    remedy_receipt = final_receipt(remedy_purchase)
+    remedy_evidence = settlement_evidence(remedy_purchase, remedy_receipt, "payment")
+    remedy_payment = published_evidence(remedy_evidence, ref.atomic_evidence_address(
+        remedy_evidence, remedy_receipt["paymentSlot"]["after"]["generation"]))
+    remedy_base = {
+        "purchaseIntent": remedy_purchase, "purchaseReceipt": remedy_receipt,
+        "paymentEvidence": remedy_payment, "capability": capability(),
+        "expectedNetworkAuthority": CLAIMS["network"],
+        "expectedProofProfile": "demos-bft-proof/test-1", "publicKeys": PUBLIC_KEYS,
+    }
+
+    def failure_record(**bundle_options: Any) -> dict[str, Any]:
+        """The buyer's fault copy after the seller fails to deliver."""
+        options = {"role": "buyer", "outcome": "failed-counterparty",
+                   "faulted": "seller", "signers": ("buyer",), **bundle_options}
+        return role_bundle(remedy_purchase, [remedy_payment], **options)
+
+    def failure_input(bundle: dict[str, Any] | None, *, job: str | None = None,
+                      **publish: Any) -> dict[str, Any]:
+        value = {**copy.deepcopy(remedy_base), "remedy": "ordinary-failure-record"}
+        if bundle is not None:
+            # The copy is anchored and bound at its own job's role address.
+            value["failureRecord"] = published_bundle(
+                {"jobId": job or remedy_purchase["jobId"]}, bundle,
+                **{"state": "included", **publish})
+        return value
+
+    other_failure = failure_record(outcome="aborted-by-other")
+    wrong_job_failure = sign_bundle(
+        {**failure_record(), "jobId": "01K1DPA0000000000000000001"}, ("buyer",))
+    failure_anchor_missing = failure_input(failure_record())
+    del failure_anchor_missing["failureRecord"]["anchorReceipt"]
+    remedy_hash = ref.atomic_evidence_hash(remedy_evidence)
+    remedy_job = remedy_purchase["jobId"]
+    amendment_address = f"dacs4:amendment:{remedy_job}:{remedy_hash}:0"
+
+    def refund_amendment(signer: str = "seller", **change: Any) -> dict[str, Any]:
+        value = {
+            "amendmentVersion": "1", "jobId": remedy_job,
+            "amendsEvidenceRef": {
+                "anchor": {"kind": "storage-program", "locator": remedy_payment["evidenceAddress"]},
+                "contentHash": remedy_hash,
+            },
+            "amendmentType": "partial-refund",
+            "refundAmount": {"amount": "4", "currency": remedy_evidence["paymentAmount"]["currency"]},
+            "reason": "partial delivery", "observedAt": 1_800_000_050_000, **change,
+        }
+        return ref.sign_embedded(value, CLAIMS[signer], SEEDS[signer], ref._AMENDMENT_DOMAIN)
+
+    def amendment_input(amendment: dict[str, Any], address: str = amendment_address,
+                        **receipt_options: Any) -> dict[str, Any]:
+        return {
+            **copy.deepcopy(remedy_base), "remedy": "settlement-amendment", "amendment": amendment,
+            "amendmentAddress": address,
+            "amendmentReceipt": registry_anchor_receipt(
+                address, amendment, label="refund-amendment", nonce="970",
+                block_timestamp=1_800_000_051_000, **receipt_options),
+        }
+
+    unlinked_correction = refund_amendment(
+        amendmentType="correction", reason="correction",
+        amendsEvidenceRef={"anchor": {"kind": "storage-program", "locator": remedy_payment["evidenceAddress"]},
+                           "contentHash": "00" * 32})
+    unlinked_correction.pop("refundAmount")
+    unlinked_correction = ref.sign_embedded(
+        {k: v for k, v in unlinked_correction.items() if k != "signature"},
+        CLAIMS["seller"], SEEDS["seller"], ref._AMENDMENT_DOMAIN)
+    unpublished_original = amendment_input(refund_amendment())
+    del unpublished_original["paymentEvidence"]["publication"]
+    amendment_missing = amendment_input(refund_amendment())
+    del amendment_missing["amendment"]
+    amendment_receipt_missing = amendment_input(refund_amendment())
+    del amendment_receipt_missing["amendmentReceipt"]
     return [
         vector("awp-purchase-composed-admission", ["AWP-3", "AWP-5", "AWP-6", "AWP-7", "AWP-10", "AWP-11", "AWP-12"], "purchase-admission", composed_purchase, "pass", "One fail-closed verifier consumes exact shape, authenticated authority, authorization, slot, winner, receipt, and settlement; co-final admission does not require a standalone commitment receipt.", boundary_rules=["AWP-12"]),
         vector("awp-purchase-current-profile-admission-missing", ["AWP-4", "AWP-7"], "purchase-admission", missing_current_profile_admission, "indeterminate", "Current Atomic execution remains unavailable when verifier-owned RSC, IBH, Vet, LAA, and current-profile admission authority is absent."),
@@ -2894,8 +2968,23 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         vector("awp-completion-does-not-finalize-bundle", ["AWP-16"], "profile", {**completion_base, "claimsBundleFinalized": True}, "fail", "Completion inclusion alone is not a DACS-5 finalization proof."),
         vector("awp-post-purchase-failure-placeholder", ["AWP-17"], "post-purchase", {"remedy": "ordinary-failure-record", "roleSpecificBundle": True}, "indeterminate", "A Boolean cannot establish a verified role-specific DACS failure record.", boundary_rules=["AWP-17"]),
         vector("awp-post-purchase-failure-cannot-undo-payment", ["AWP-17"], "post-purchase", {"remedy": "undo-original-payment"}, "fail", "An ordinary post-Purchase failure cannot reverse the original committed payment; it requires a new compensating artifact.", boundary_rules=["AWP-17"]),
+        vector("awp-post-purchase-failure-record-authenticated", ["AWP-17"], "post-purchase", failure_input(failure_record()), "pass", "The buyer's included, bound fault copy names the seller, keeps the final payment evidence, and leaves the committed Purchase in place."),
+        vector("awp-post-purchase-failure-record-missing", ["AWP-17"], "post-purchase", failure_input(None), "indeterminate", "Without the role-specific failure bundle no ordinary failure record is established.", boundary_rules=["AWP-17"]),
+        vector("awp-post-purchase-failure-record-unsigned", ["AWP-17"], "post-purchase", failure_input(failure_record(signers=("seller",))), "fail", "A fault copy anchored by the buyer must carry the buyer's signature; the counterparty's signature is not that authority."),
+        vector("awp-post-purchase-failure-record-attribution-invalid", ["AWP-17"], "post-purchase", failure_input(failure_record(faulted="buyer")), "fail", "failed-counterparty anchored by the buyer cannot name the buyer as faulted party (DACS-5 §10.4.1)."),
+        vector("awp-post-purchase-failure-record-omits-payment", ["AWP-17"], "post-purchase", failure_input(role_bundle(remedy_purchase, [], role="buyer", outcome="failed-counterparty", faulted="seller", signers=("buyer",))), "fail", "A post-Purchase failure record cannot drop or reverse the final Purchase payment evidence."),
+        vector("awp-post-purchase-failure-record-wrong-job", ["AWP-17"], "post-purchase", failure_input(wrong_job_failure, job="01K1DPA0000000000000000001"), "fail", "A re-signed fault copy for another job, anchored and bound at that job's address, is not this Purchase's failure record."),
+        vector("awp-post-purchase-failure-record-anchor-missing", ["AWP-17"], "post-purchase", failure_anchor_missing, "indeterminate", "A fault copy without its anchor receipt is not yet an established failure record.", boundary_rules=["AWP-17"]),
+        vector("awp-post-purchase-failure-record-anchor-other-content", ["AWP-17"], "post-purchase", failure_input(failure_record(), anchored=other_failure), "fail", "An authentic anchor binding another fault copy contradicts the presented record."),
         vector("awp-refund-amendment-placeholder", ["AWP-18"], "post-purchase", {"remedy": "settlement-amendment", "originalEvidenceId": "settlement-original-1", "amendment": artifact("settlement-amendment", "payer", {"originalEvidenceId": "settlement-original-1", "reason": "refund"}), "publicKeys": PUBLIC_KEYS}, "indeterminate", "A generic artifact is not a versioned SettlementAmendment and does not prove the original evidence publication.", boundary_rules=["AWP-18"]),
-        vector("awp-unlinked-refund", ["AWP-18"], "post-purchase", {"remedy": "settlement-amendment", "originalEvidenceId": "settlement-original-1", "amendment": artifact("settlement-amendment", "payer", {"originalEvidenceId": "other", "reason": "refund"}), "publicKeys": PUBLIC_KEYS}, "fail", "An unlinked correction cannot mutate original settlement history.", boundary_rules=["AWP-18"]),
+        vector("awp-unlinked-refund", ["AWP-18"], "post-purchase", amendment_input(unlinked_correction), "fail", "An unlinked correction cannot mutate original settlement history.", boundary_rules=["AWP-18"]),
+        vector("awp-refund-amendment-authorized", ["AWP-18"], "post-purchase", amendment_input(refund_amendment()), "pass", "A seller-signed partial refund linked to the original published evidence, bounded by its payment and finalized at its own address, is the separately authorized remedy."),
+        vector("awp-refund-amendment-signer-unauthorized", ["AWP-18"], "post-purchase", amendment_input(refund_amendment(signer="buyer")), "fail", "A refund amendment signed by the paying side is not authorized by the refunding party."),
+        vector("awp-refund-amendment-exceeds-payment", ["AWP-18"], "post-purchase", amendment_input(refund_amendment(refundAmount={"amount": "11", "currency": remedy_evidence["paymentAmount"]["currency"]})), "fail", "A refund larger than the original successful payment violates the amendment bound."),
+        vector("awp-refund-amendment-address-mismatch", ["AWP-18"], "post-purchase", amendment_input(refund_amendment(), address=f"dacs4:amendment:{remedy_job}:{'00' * 32}:0"), "fail", "The amendment address must bind the original evidence's atomic_evidence_hash."),
+        vector("awp-refund-amendment-missing", ["AWP-18"], "post-purchase", amendment_missing, "indeterminate", "Without a versioned SettlementAmendment no refund or correction is established.", boundary_rules=["AWP-18"]),
+        vector("awp-refund-amendment-original-unpublished", ["AWP-18"], "post-purchase", unpublished_original, "indeterminate", "Without the original evidence's finalized publication the amendment cannot yet be linked to published history.", boundary_rules=["AWP-18"]),
+        vector("awp-refund-amendment-receipt-missing", ["AWP-18"], "post-purchase", amendment_receipt_missing, "indeterminate", "An amendment without its own finalized publication is not yet a valid unwind.", boundary_rules=["AWP-18"]),
         vector("awp-fair-exchange-profile-placeholder", ["AWP-19"], "post-purchase", {"remedy": "guaranteed-delivery", "profile": "escrow-v1"}, "indeterminate", "The amendment does not fabricate an escrow profile that has not been standardized.", boundary_rules=["AWP-19"]),
         vector("awp-fair-exchange-claim-without-profile", ["AWP-19"], "post-purchase", {"remedy": "guaranteed-delivery", "profile": "dacs-completion-v1"}, "fail", "Atomic Work alone does not provide fair exchange between Purchase and Completion.", boundary_rules=["AWP-19"]),
     ]

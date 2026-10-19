@@ -1,8 +1,9 @@
-"""Non-normative PC-1 input gate and AMEND-1 target consumer.
+"""Non-normative PC-1 input gate, AMEND-1 target consumer and RTB-1 rail check.
 
-Bindings, the session orchestrator, the amendment's anchored address and the
-resolver/network pins are verifier-owned arguments, never selected from phase
-input, target members or receipts. Finality uses a synthetic test proof
+Bindings, the session orchestrator, the session's `startedAt` and pinned
+rail-registry version, the amendment's anchored address, the rail steward and
+the resolver/network pins are verifier-owned arguments, never selected from
+phase input, target members or receipts. Finality uses a synthetic test proof
 profile (`settlement-vector-anchor-finality:`), not a production Demos proof.
 This module makes no live rail calls and implements no refund ledger. A
 `valid` result admits the target under AMEND-1 only. AMEND-2/3, amendment
@@ -31,6 +32,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
+from dacs_reference import cf4_encode  # noqa: E402
 from jcs import canonicalize  # noqa: E402
 
 
@@ -91,6 +93,7 @@ _TARGET_ARMS = {
 }
 AMENDMENT_DOMAIN = b"dacs-amendment:v1:"
 RAIL_DOMAIN = b"dacs-rail:v1:"
+REGISTRY_INDEX_ADDRESS = "dacs4:registry:v0.1"
 # Test-only domain and evidence kind of the synthetic finality proof that
 # authenticates an AnchorReceipt's own fields. Not a DACS wire domain.
 ANCHOR_TEST_DOMAIN = b"settlement-vector-anchor-finality:"
@@ -683,3 +686,87 @@ def consume_amendment_target(
     except (Invalid, ValueError, TypeError, KeyError) as exc:
         return "violation", str(exc)
 
+
+# ---- RTB-1 --------------------------------------------------------------------
+
+def rail_address(rail: dict) -> str:
+    return f"dacs4:rail:{cf4_encode(rail['railId'])}:{rail['railVersion']}"
+
+
+def resolve_session_rail(
+    session: dict, rail_ref: dict, rail: dict, authority: dict, *,
+    public_keys: dict, steward: str, network_authority: str, network_id: str,
+    proof_profile: str, validator_set_id: str,
+) -> tuple[str, str]:
+    """Resolve an existing session's PA-2/PA-3 rail under DACS-4 §9.4.3 RTB-1.
+
+    `session` carries the authenticated `startedAt` and pinned
+    `railRegistryVersion`; `authority` carries the registry index snapshot and
+    the finalized index and definition AnchorReceipts. A missing index,
+    receipt or finalized binding does not resolve the rail (`indeterminate`);
+    an authenticated contradiction, including authority later than the
+    session start, is `rejected`.
+    """
+    try:
+        started_at = session["startedAt"]
+        registry_version = session["railRegistryVersion"]
+        if type(started_at) is not int or type(registry_version) is not int:
+            raise TypeError("session pins are not integers")
+        index = authority.get("railRegistryIndex") if isinstance(authority, dict) else None
+        index_receipt = authority.get("railRegistryIndexReceipt") if isinstance(authority, dict) else None
+        rail_receipt = authority.get("railDefinitionReceipt") if isinstance(authority, dict) else None
+        if not all(isinstance(value, dict) for value in (index, index_receipt, rail_receipt)):
+            raise Unknown("pinned registry index or a finalized anchor binding is unavailable")
+        # RD-1: the definition is the steward's, under the rail domain.
+        verify_embedded(rail, public_keys, RAIL_DOMAIN)
+        require_signer(rail, steward)
+        # The index must be the session's own pinned snapshot: a later index
+        # can inform a new session but not rewrite this one's rail authority.
+        if (set(index) != {"registryVersion", "logicalAddress", "entries"}
+                or index["logicalAddress"] != REGISTRY_INDEX_ADDRESS
+                or not isinstance(index["entries"], list)):
+            raise Invalid("rail-registry index snapshot is malformed")
+        if type(index["registryVersion"]) is not int or index["registryVersion"] != registry_version:
+            raise Invalid("index is not the session's pinned registry snapshot")
+        entries = [entry for entry in index["entries"]
+                   if isinstance(entry, dict) and entry.get("railId") == rail["railId"]]
+        if len(entries) != 1 or not isinstance(entries[0].get("versions"), list):
+            raise Invalid("pinned index does not list this rail exactly once")
+        entry = entries[0]
+        selected = rail_ref.get("railVersion", entry.get("latestVersion"))
+        if rail_ref.get("railId") != rail["railId"] or type(selected) is not int \
+                or rail["railVersion"] != selected:
+            raise Invalid("definition is not the version the agreement selects")
+        versions = [item for item in entry["versions"]
+                    if isinstance(item, dict) and item.get("railVersion") == selected]
+        if (len(versions) != 1 or versions[0].get("logicalAddress") != rail_address(rail)
+                or versions[0].get("contentHash") != content_hash(rail)):
+            raise Invalid("pinned index does not select this definition")
+        # Both bindings must be finalized and authentic before any field,
+        # including the timestamp, is read from them.
+        for receipt, logical, digest in (
+            (index_receipt, REGISTRY_INDEX_ADDRESS, sha256_hex(jcs_bytes(index))),
+            (rail_receipt, rail_address(rail), content_hash(rail)),
+        ):
+            if not _established_finalized(receipt):
+                raise Unknown(f"{logical} has no finalized anchor binding")
+            try:
+                _verify_finality_proof(
+                    receipt, public_keys=public_keys, network_authority=network_authority,
+                    network_id=network_id, proof_profile=proof_profile,
+                    validator_set_id=validator_set_id,
+                )
+            except (Invalid, ValueError, TypeError, KeyError) as exc:
+                raise Unknown(f"{logical} anchor is not authentic: {exc}") from exc
+            if receipt["logicalAddress"] != logical or receipt["contentHash"] != digest:
+                raise Invalid(f"authentic {logical} anchor binds other content")
+        accepted_at = rail["governance"]["acceptedAt"]
+        if (type(accepted_at) is not int or accepted_at > started_at
+                or index_receipt["blockRef"]["timestamp"] > started_at
+                or rail_receipt["blockRef"]["timestamp"] > started_at):
+            raise Invalid("rail authority postdates the session start")
+        return "verified", "rail authority was pinned and finalized by session start"
+    except Unknown as exc:
+        return "indeterminate", str(exc)
+    except (Invalid, ValueError, TypeError, KeyError) as exc:
+        return "rejected", str(exc)

@@ -378,6 +378,14 @@ A consumer MUST resolve a rail by:
    snapshot pin does not activate CORE descriptor-authenticated historical
    evaluation.
 
+**(RTB-1) Rail-authority time bound.** For PA-2 or PA-3, the registry-index
+receipt's finalized timestamp, the definition receipt's finalized timestamp,
+and the definition's authenticated `governance.acceptedAt` MUST each be no
+later than the authenticated session `startedAt`. A caller-supplied definition and steward signature without
+the pinned index membership and both finalized anchor bindings do not resolve a
+rail. A later index or definition MAY inform a new session but MUST NOT rewrite
+the rail authority of an existing session.
+
 For DACS-1 listing validation, every advertised `PaymentRailRef` is resolved
 before session creation under §6.3.4 LRR-1..LRR-6, including references not
 used by a particular pay phase. That listing-time check uses the same canonical

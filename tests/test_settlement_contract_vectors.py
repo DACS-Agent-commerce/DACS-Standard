@@ -1,4 +1,4 @@
-"""PC-1 and AMEND-1 references with independently finalized target fixtures."""
+"""PC-1, AMEND-1 and RTB-1 references with independently finalized fixtures."""
 from __future__ import annotations
 
 import copy
@@ -80,6 +80,7 @@ class SettlementContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.data = json.loads(generator.OUTPUT.read_text())
+        cls.rails = json.loads(generator.RAIL_OUTPUT.read_text())
 
     def consume(self, vector, resolver=None, *, orchestrator=None):
         return ref.consume_amendment_target(
@@ -88,6 +89,12 @@ class SettlementContractTests(unittest.TestCase):
             orchestrator=orchestrator or self.data["orchestrator"],
             public_keys=self.data["publicKeys"], **TRUST,
         )
+
+    def resolve_rail(self, case, **change):
+        pins = {"public_keys": self.rails["publicKeys"], "steward": self.rails["steward"],
+                **TRUST, **change}
+        return ref.resolve_session_rail(
+            case["session"], case["railRef"], case["rail"], case["authority"], **pins)
 
     def test_payment_arm_vectors_reject_before_handler_and_preserve_input(self):
         for vector in self.data["phaseInputs"]:
@@ -598,8 +605,81 @@ class SettlementContractTests(unittest.TestCase):
                 resolver = mock.Mock(side_effect=exception)
                 self.assertEqual(self.consume(vector, resolver)[0], "indeterminate")
 
+    def test_rail_authority_cases_resolve_as_fixed(self):
+        # RTB-1: every case is decided from verifier-owned session pins and
+        # authenticated, finalized index and definition receipts.
+        self.assertTrue(self.rails["cases"])
+        for case in self.rails["cases"]:
+            with self.subTest(case=case["name"]):
+                self.assertEqual(case["ruleRefs"], ["RTB-1"])
+                result, reason = self.resolve_rail(case)
+                self.assertEqual(result, case["expected"], reason)
+
+    def test_rail_authority_time_bound_is_inclusive(self):
+        # "No later than" the session start: equality verifies; a session that
+        # started one millisecond earlier cannot use the same authority.
+        names = {c["name"]: c for c in self.rails["cases"]}
+        case = names["rail-authority-at-session-start"]
+        started = case["session"]["startedAt"]
+        authority = case["authority"]
+        self.assertEqual((authority["railRegistryIndexReceipt"]["blockRef"]["timestamp"],
+                          authority["railDefinitionReceipt"]["blockRef"]["timestamp"],
+                          case["rail"]["governance"]["acceptedAt"]), (started, started, started))
+        self.assertEqual(self.resolve_rail(case)[0], "verified")
+        earlier = {**case, "session": {**case["session"], "startedAt": started - 1}}
+        self.assertEqual(self.resolve_rail(earlier),
+                         ("rejected", "rail authority postdates the session start"))
+
+    def test_rail_time_is_read_only_from_an_authenticated_receipt(self):
+        # Editing a late receipt's timestamp without a new proof does not make
+        # it timely: the receipt is no longer authentic and is discarded.
+        names = {c["name"]: c for c in self.rails["cases"]}
+        for name, member in (("index-receipt-after-session-start", "railRegistryIndexReceipt"),
+                             ("definition-receipt-after-session-start", "railDefinitionReceipt")):
+            with self.subTest(case=name):
+                case = copy.deepcopy(names[name])
+                case["authority"][member]["blockRef"]["timestamp"] = case["session"]["startedAt"]
+                result, reason = self.resolve_rail(case)
+                self.assertEqual(result, "indeterminate")
+                self.assertIn("not authentic", reason)
+
+    def test_later_index_informs_only_a_new_session(self):
+        names = {c["name"]: c for c in self.rails["cases"]}
+        existing = names["later-index-for-existing-session"]
+        new = names["later-index-for-new-session"]
+        self.assertEqual((existing["rail"], existing["authority"]), (new["rail"], new["authority"]))
+        self.assertLess(existing["session"]["startedAt"], new["session"]["startedAt"])
+        self.assertEqual(self.resolve_rail(existing)[0], "rejected")
+        self.assertEqual(self.resolve_rail(new)[0], "verified")
+        # The existing session's own pinned authority is unchanged.
+        pinned = names["rail-authority-pinned-before-start"]
+        self.assertEqual(pinned["session"], existing["session"])
+        self.assertEqual(self.resolve_rail(pinned)[0], "verified")
+
+    def test_rail_authority_trust_pins_are_verifier_owned(self):
+        names = {c["name"]: c for c in self.rails["cases"]}
+        case = names["rail-authority-pinned-before-start"]
+        self.assertEqual(self.resolve_rail(case)[0], "verified")
+        # Another steward or network authority leaves nothing authenticated.
+        self.assertEqual(self.resolve_rail(case, steward="did:dacs:test:seller")[0], "rejected")
+        self.assertEqual(self.resolve_rail(case, network_authority="did:dacs:test:seller")[0],
+                         "indeterminate")
+
+    def test_rtb1_text_binds_every_rail_consumer(self):
+        spec = " ".join((ROOT / "spec/DACS-4-SETTLE.md").read_text().split())
+        for phrase in ("**(RTB-1) Rail-authority time bound.** For PA-2 or PA-3",
+                       "MUST each be no later than the authenticated session `startedAt`",
+                       "without the pinned index membership and both finalized anchor bindings do not resolve a rail",
+                       "MUST NOT rewrite the rail authority of an existing session"):
+            self.assertIn(phrase, spec)
+        changelog = (ROOT / "CHANGELOG.md").read_text()
+        heading = "### Changed — general normative changes in candidate DACS-4 v0.8 (every profile)"
+        changed = " ".join(changelog.split(heading, 1)[1].split("\n### ", 1)[0].split())
+        self.assertIn("**Rail resolution** (DACS-4 §9.4.3 RTB-1)", changed)
+
     def test_fixture_is_reproducible(self):
         self.assertEqual(self.data, generator.build_fixture())
+        self.assertEqual(self.rails, generator.build_rail_fixture())
 
 
 if __name__ == "__main__":

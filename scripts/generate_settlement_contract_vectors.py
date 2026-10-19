@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic PC-1 and AMEND-1 fixtures with public test keys.
+"""Deterministic PC-1, AMEND-1 and RTB-1 fixtures with public test keys.
 
 Usage:
   python3 scripts/generate_settlement_contract_vectors.py --write
@@ -20,6 +20,7 @@ import settlement_contract_reference as ref
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "conformance/fixtures/settlement/payment-input-amendment-v0.1.json"
+RAIL_OUTPUT = ROOT / "conformance/fixtures/settlement/rail-authority-time-bound-v0.1.json"
 
 # Public, deterministic test seeds; every derived key is published in the
 # fixture. They authorize nothing outside these fixtures.
@@ -591,13 +592,120 @@ def build_fixture():
             "phaseInputs": inputs, "amendmentTargets": targets}
 
 
+def rail_authority(rail: dict, *, registry_version: int = 1, index_time: int = 1_799_999_750_000,
+                   rail_time: int = 1_799_999_740_000, entries: list | None = None) -> dict:
+    """The pinned registry index plus its finalized index and definition receipts."""
+    address = ref.rail_address(rail)
+    index = {
+        "registryVersion": registry_version,
+        "logicalAddress": ref.REGISTRY_INDEX_ADDRESS,
+        "entries": entries if entries is not None else [{
+            "railId": rail["railId"], "latestVersion": rail["railVersion"],
+            "versions": [{"railVersion": rail["railVersion"], "logicalAddress": address,
+                          "contentHash": ref.content_hash(rail)}],
+        }],
+    }
+    return {
+        "railRegistryIndex": index,
+        "railRegistryIndexReceipt": anchor_receipt(
+            ref.REGISTRY_INDEX_ADDRESS, ref.sha256_hex(ref.jcs_bytes(index)),
+            label=f"rail-index-{registry_version}", nonce="200", block_timestamp=index_time),
+        "railDefinitionReceipt": anchor_receipt(
+            address, ref.content_hash(rail),
+            label=f"rail-definition-{rail['railVersion']}", nonce="201", block_timestamp=rail_time),
+    }
+
+
+def build_rail_fixture():
+    """DACS-4 §9.4.3 RTB-1 cases for one existing session's pay-dem rail."""
+    session = {"startedAt": SESSION_STARTED_AT, "railRegistryVersion": 1}
+    rail_ref = {"railId": RAIL_ID}
+    rail = steward_rail()
+    cases = []
+
+    def case(name, expected, *, authority=None, rail_value=None, case_session=None, case_ref=None):
+        value = rail_value or rail
+        cases.append({
+            "name": name, "ruleRefs": ["RTB-1"],
+            "session": case_session or session, "railRef": case_ref or rail_ref,
+            "rail": value, "authority": authority if authority is not None else rail_authority(value),
+            "expected": expected,
+        })
+
+    def without(member):
+        return {k: v for k, v in rail_authority(rail).items() if k != member}
+
+    case("rail-authority-pinned-before-start", "verified")
+    # "No later than": all three authority times equal to the session start.
+    at_start = steward_rail(governance={**rail["governance"], "acceptedAt": SESSION_STARTED_AT})
+    case("rail-authority-at-session-start", "verified", rail_value=at_start,
+         authority=rail_authority(at_start, index_time=SESSION_STARTED_AT, rail_time=SESSION_STARTED_AT))
+    case("index-receipt-after-session-start", "rejected",
+         authority=rail_authority(rail, index_time=SESSION_STARTED_AT + 1))
+    case("definition-receipt-after-session-start", "rejected",
+         authority=rail_authority(rail, rail_time=SESSION_STARTED_AT + 1))
+    late_accepted = steward_rail(governance={**rail["governance"], "acceptedAt": SESSION_STARTED_AT + 1})
+    case("accepted-at-after-session-start", "rejected", rail_value=late_accepted)
+    # A later index (and the later definition it lists) informs a new session
+    # but cannot rewrite the pinned rail authority of an existing one.
+    later = steward_rail(railVersion=2, governance={
+        **rail["governance"], "acceptedAt": SESSION_STARTED_AT + 100, "supersedes": 1})
+    later_authority = rail_authority(later, registry_version=2, index_time=SESSION_STARTED_AT + 200,
+                                     rail_time=SESSION_STARTED_AT + 150)
+    case("later-index-for-existing-session", "rejected", rail_value=later, authority=later_authority)
+    case("later-index-for-new-session", "verified", rail_value=later, authority=later_authority,
+         case_session={"startedAt": SESSION_STARTED_AT + 1_000, "railRegistryVersion": 2})
+    # Even an index finalized before the start is not this session's authority
+    # unless it is the snapshot the session pinned.
+    other_snapshot = steward_rail(railVersion=2, governance={**rail["governance"], "supersedes": 1})
+    case("index-not-session-snapshot", "rejected", rail_value=other_snapshot,
+         authority=rail_authority(other_snapshot, registry_version=2))
+    # A steward-signed definition alone does not resolve a rail.
+    case("definition-without-index-membership", "rejected",
+         authority=rail_authority(rail, entries=[{
+             "railId": "evm-erc20:1:USDC", "latestVersion": 1,
+             "versions": [{"railVersion": 1, "logicalAddress": "dacs4:rail:evm-erc20%3A1%3AUSDC:1",
+                           "contentHash": hashed("rail:evm-erc20:1:USDC")}]}]))
+    case("index-missing", "indeterminate", authority=without("railRegistryIndex"))
+    case("index-receipt-missing", "indeterminate", authority=without("railRegistryIndexReceipt"))
+    case("definition-receipt-missing", "indeterminate", authority=without("railDefinitionReceipt"))
+    # An authentic receipt whose proven state is short of finalized.
+    unfinalized = rail_authority(rail)
+    unfinalized["railDefinitionReceipt"] = anchor_receipt(
+        ref.rail_address(rail), ref.content_hash(rail), label="rail-definition-1", nonce="201",
+        block_timestamp=1_799_999_740_000, state="included")
+    case("definition-receipt-not-finalized", "indeterminate", authority=unfinalized)
+    forged = rail_authority(rail)
+    evidence = forged["railRegistryIndexReceipt"]["evidence"]
+    proof = json.loads(ref.b64u_decode(evidence["value"]))
+    proof["signature"]["value"] = b64u(b"\0" * 64)
+    evidence["value"] = b64u(ref.jcs_bytes(proof))
+    case("index-receipt-proof-invalid", "indeterminate", authority=forged)
+    case("index-pins-other-content", "rejected", authority=rail_authority(rail, entries=[{
+        "railId": RAIL_ID, "latestVersion": 1,
+        "versions": [{"railVersion": 1, "logicalAddress": ref.rail_address(rail),
+                      "contentHash": hashed("other rail definition")}]}]))
+    other_content = rail_authority(rail)
+    other_content["railDefinitionReceipt"] = anchor_receipt(
+        ref.rail_address(rail), hashed("other rail definition"),
+        label="rail-definition-1", nonce="201", block_timestamp=1_799_999_740_000)
+    case("definition-anchor-binds-other-content", "rejected", authority=other_content)
+    bad_signature = copy.deepcopy(rail)
+    bad_signature["signature"]["value"] = b64u(b"\0" * 64)
+    case("steward-signature-invalid", "rejected", rail_value=bad_signature,
+         authority=rail_authority(rail))
+    case("agreement-pins-other-version", "rejected", case_ref={"railId": RAIL_ID, "railVersion": 2})
+    return {"fixtureVersion": "1", "publicKeys": PUBLIC_KEYS, "steward": CLAIMS["steward"],
+            "cases": cases}
+
+
 def main():
     parser = argparse.ArgumentParser()
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    outputs = ((OUTPUT, build_fixture()),)
+    outputs = ((OUTPUT, build_fixture()), (RAIL_OUTPUT, build_rail_fixture()))
     failed = False
     for path, value in outputs:
         data = json.dumps(value, ensure_ascii=False, indent=2) + "\n"

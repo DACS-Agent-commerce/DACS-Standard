@@ -1250,9 +1250,16 @@ The format used per release:
 
 ### Changed — general normative changes in candidate DACS-4 v0.8 (every profile)
 
-These are general normative changes: they bind every pay-* handler and
-amendment consumer.
+These are general normative changes: they bind every rail consumer, pay-*
+handler, and amendment consumer.
 
+- **Rail resolution** (DACS-4 §9.4.3 RTB-1) — for PA-2 or PA-3, the
+  registry-index and definition receipts' finalized timestamps and the
+  definition's authenticated `governance.acceptedAt` MUST each be no later than
+  the authenticated session `startedAt`, and a later
+  index or definition MUST NOT rewrite the rail authority of an existing
+  session. A steward-signed definition without the pinned index membership and
+  both finalized anchor bindings does not resolve a rail.
 - **Payment input** (DACS-4 §9.5.1 PC-1) — every pay-* handler MUST reject a
   `PaymentPhaseInput` that lacks `sessionContext` or another required member,
   or carries one of the wrong type, including the `AgreementArtifact` and
@@ -1290,8 +1297,8 @@ amendment consumer.
 - **Reference and fixtures** — the non-normative
   `scripts/settlement_contract_reference.py` and the deterministic
   `conformance/fixtures/settlement/payment-input-amendment-v0.1.json` (PC-1
-  inputs and AMEND-1 targets) pin these rules; CONFORMANCE-PLAN maps each MUST
-  to its cases. The
+  inputs and AMEND-1 targets) and `rail-authority-time-bound-v0.1.json`
+  (RTB-1) pin these rules; CONFORMANCE-PLAN maps each MUST to its cases. The
   golden `settlement-evidence-payment-success.json` payment input is
   illustrative, not a PC-1 handler input.
 

@@ -1,0 +1,1947 @@
+{
+  "fixtureVersion": "1",
+  "publicKeys": {
+    "did:dacs:test:network": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc",
+    "did:dacs:test:buyer": "oJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA",
+    "did:dacs:test:seller": "F8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4",
+    "did:dacs:test:orchestrator": "11l5O7wTooGagnx2rbb7qKSa7gB_SfLQmS2ZuCWtLEg",
+    "did:dacs:test:payer": "xoImN8fTEOxXYnvgC6JZ0lN0n0qvZERwz_vlOjX3MkI",
+    "did:dacs:test:steward": "yFOtDwzSthmuqSzuxP1Wok1kmdWEznklfkXP2BObYKc"
+  },
+  "steward": "did:dacs:test:steward",
+  "cases": [
+    {
+      "name": "rail-authority-pinned-before-start",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "eefa794d4f8673d095e7e797f7fc3bfc271c9f24697b78aa9622be80bb935cb5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6ImVlZmE3OTRkNGY4NjczZDA5NWU3ZTc5N2Y3ZmMzYmZjMjcxYzlmMjQ2OTdiNzhhYTk2MjJiZTgwYmI5MzVjYjUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJwRHRmc1BKdWE5UTBfSTF4OHVIMERDdG9Vb2ZqRFg2eHJWZjktY3pxUkV6VXhzNENEX181M2VaREdUeDVYSTdiLUZSZmZqUUdoeThLSXMyZmhSWjZEZyJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiZGYwNjlmYWQxMjk0MWU5YTRjZWM2NjI3YzUxYmJiODg1YjIwZDUyOTljNDAzM2FlZDczYjdlZGIyNzkzZjI3MiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Ii1jS0pMbTFDdUkwUGt4WDdWMkxrZXlfMHZUS0dwZV9tTldWb0MxZUVaaW81YWxoajhyalFQX3FiVkhtSXVZcXptRUVlN2RUb2I5enVGSlpUaXJHOUJnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "verified"
+    },
+    {
+      "name": "rail-authority-at-session-start",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999800000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "MmGf0d6z4dBEj-HsbmwVRxjk_fp4mwE2czxSli_TD3FPO8FXOGiNK7Vk0uK1ce0Az40OL15oj4rhHwSo4cZzBA"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "4699eb9597dcf0fce94e1997a99a530384332c5271a1adaafbc4c760d8fbfca5"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "526c0309d65b9374a9aed3423d1467411c21941c0a785c28e50737bff6babf89",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999801000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999800000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk4MDAwMDB9LCJjb250ZW50SGFzaCI6IjUyNmMwMzA5ZDY1YjkzNzRhOWFlZDM0MjNkMTQ2NzQxMWMyMTk0MWMwYTc4NWMyOGU1MDczN2JmZjZiYWJmODkiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJleDRxOGw2elpPOWpXZXhMRHpxWEoxR09NNGFEM3lma0tRaTlyRUdkczBSclNmak83TDFmTU5TeUo5STh1UmFtS24yLWEzeHY4MmRvN3R6WUtIcFVEUSJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "4699eb9597dcf0fce94e1997a99a530384332c5271a1adaafbc4c760d8fbfca5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999801000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999800000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTgwMDAwMH0sImNvbnRlbnRIYXNoIjoiNDY5OWViOTU5N2RjZjBmY2U5NGUxOTk3YTk5YTUzMDM4NDMzMmM1MjcxYTFhZGFhZmJjNGM3NjBkOGZiZmNhNSIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Il9QajZlVnhOMjYzY2xNZzVsVExtWGZ0dGZuTDNtZWFBeGVMRDkzdzJVcW9meWVCOS1wT2hLQTUtLWZfVXJsUGpRTUVIV1NaMlE4WTZLTjVXYjR0c0R3In0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "verified"
+    },
+    {
+      "name": "index-receipt-after-session-start",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "eefa794d4f8673d095e7e797f7fc3bfc271c9f24697b78aa9622be80bb935cb5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999801001,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999800001
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk4MDAwMDF9LCJjb250ZW50SGFzaCI6ImVlZmE3OTRkNGY4NjczZDA5NWU3ZTc5N2Y3ZmMzYmZjMjcxYzlmMjQ2OTdiNzhhYTk2MjJiZTgwYmI5MzVjYjUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJnSnI5Zi00U2lGaHBQeFRMWFVZUDBaVnRBWnUtZmFfVDllSVBwZG9Kb3RpdjJsRVk4Z1N6c0hKSEFTZFYwUndkeHVRZThRMnp4VFV0RjhMN1FDelhBZyJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiZGYwNjlmYWQxMjk0MWU5YTRjZWM2NjI3YzUxYmJiODg1YjIwZDUyOTljNDAzM2FlZDczYjdlZGIyNzkzZjI3MiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Ii1jS0pMbTFDdUkwUGt4WDdWMkxrZXlfMHZUS0dwZV9tTldWb0MxZUVaaW81YWxoajhyalFQX3FiVkhtSXVZcXptRUVlN2RUb2I5enVGSlpUaXJHOUJnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "rejected"
+    },
+    {
+      "name": "definition-receipt-after-session-start",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "eefa794d4f8673d095e7e797f7fc3bfc271c9f24697b78aa9622be80bb935cb5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6ImVlZmE3OTRkNGY4NjczZDA5NWU3ZTc5N2Y3ZmMzYmZjMjcxYzlmMjQ2OTdiNzhhYTk2MjJiZTgwYmI5MzVjYjUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJwRHRmc1BKdWE5UTBfSTF4OHVIMERDdG9Vb2ZqRFg2eHJWZjktY3pxUkV6VXhzNENEX181M2VaREdUeDVYSTdiLUZSZmZqUUdoeThLSXMyZmhSWjZEZyJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999801001,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999800001
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTgwMDAwMX0sImNvbnRlbnRIYXNoIjoiZGYwNjlmYWQxMjk0MWU5YTRjZWM2NjI3YzUxYmJiODg1YjIwZDUyOTljNDAzM2FlZDczYjdlZGIyNzkzZjI3MiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6IjBEVjFONWxTWlU1SEJIc0NpZHdfaHljU3JYalNHY2ozeHNkX3RpdW92QlFON1puRXRPN0VJd3BISHc4ekNqdGRWZEFRWnh2T1lIdFVDYnNjRnVhU0JnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "rejected"
+    },
+    {
+      "name": "accepted-at-after-session-start",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999800001,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "ZAI20p2mN1Q45-gBqvyomR8ZhZIjfOB_FdTo2ZYSU9EnWHw4IdRJ-oh9IaLlOX5h7yy0EkpUnXWqjvT7Oe4CCw"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "77c9a62debe351ef2d374f29e454eb5c1dea1441018c633a0d50c45d081cac3b"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "82798db73d91c4a5870cd16f9633ab44e74d4493e58048c0effd172c9746ac90",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6IjgyNzk4ZGI3M2Q5MWM0YTU4NzBjZDE2Zjk2MzNhYjQ0ZTc0ZDQ0OTNlNTgwNDhjMGVmZmQxNzJjOTc0NmFjOTAiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJWVmpUemF1Vk1jeXVrclQxOEJyUFI1WDA5YWVYZDFnaG5weFU0Z2FMWHlNM3ZueHB2blVhemQ4S2JTSWRjeHhLb2RuWGliMFhtcXFlUExuenRJM1hDZyJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "77c9a62debe351ef2d374f29e454eb5c1dea1441018c633a0d50c45d081cac3b",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiNzdjOWE2MmRlYmUzNTFlZjJkMzc0ZjI5ZTQ1NGViNWMxZGVhMTQ0MTAxOGM2MzNhMGQ1MGM0NWQwODFjYWMzYiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6IlVOby1yMnhUcWlMamRORFpiVlNKbU9sU2ZrUklNSm94R3NlX2tzbGJSbjVucG1tWlp2TzBNd3AzX1JsbWs4RkpSZFp0YkRMZkxsTmlBNmdackljM0N3In0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "rejected"
+    },
+    {
+      "name": "later-index-for-existing-session",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 2,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999800100,
+          "anchoring": "single-signer",
+          "supersedes": 1
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "vgQXdd0OdrTrLfuo1k0oRuDtF9zRSx0Gzv0lo6rqev22ix-kk6dSnspjmOF8_tPEhkbtRh7oy6UxZ3H2WxDrBw"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 2,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 2,
+              "versions": [
+                {
+                  "railVersion": 2,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:2",
+                  "contentHash": "0b6a17b3dfbc9ac3fb4c78670e0fc48920d5ca035845a8fee7582d5f3dd18ce5"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "a1ff37051859592cfc3cea6217cb613d2d95351be7ac7e2e471f325fe1ca563f",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-2"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999801200,
+          "blockRef": {
+            "id": "block-rail-index-2-750",
+            "height": "750",
+            "timestamp": 1799999800200
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMi03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk4MDAyMDB9LCJjb250ZW50SGFzaCI6ImExZmYzNzA1MTg1OTU5MmNmYzNjZWE2MjE3Y2I2MTNkMmQ5NTM1MWJlN2FjN2UyZTQ3MWYzMjVmZTFjYTU2M2YiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJDMmhMNndfTEFEcnR2MGJoWHlCS1o2WjU0V2EtS3RXaC1xQ0JKSGxhYXRLZm1yT3JUYmZyLU1LcFhMSHAwbFB1WmZGRjFMcm9GUGx4NmVRNWl4M3FEUSJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0yIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:2",
+          "nativeAddress": "stor-966d53a0aec10268a4a77a176f3e20f990a3caa7",
+          "contentHash": "0b6a17b3dfbc9ac3fb4c78670e0fc48920d5ca035845a8fee7582d5f3dd18ce5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-2"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999801150,
+          "blockRef": {
+            "id": "block-rail-definition-2-750",
+            "height": "750",
+            "timestamp": 1799999800150
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0yLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTgwMDE1MH0sImNvbnRlbnRIYXNoIjoiMGI2YTE3YjNkZmJjOWFjM2ZiNGM3ODY3MGUwZmM0ODkyMGQ1Y2EwMzU4NDVhOGZlZTc1ODJkNWYzZGQxOGNlNSIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MiIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLTk2NmQ1M2EwYWVjMTAyNjhhNGE3N2ExNzZmM2UyMGY5OTBhM2NhYTciLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Im5oc1E4cHgzYnZxb0tVYUo1MERsUmJrcmxpcFB6S0ZvdVJJYVBSYVQ4OTFKY0dXbmQwUkw1ZkdzcWpPdnFBd0tFYnhCNHRVMlZqX3FLSHNCb25KbkRnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMiJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "rejected"
+    },
+    {
+      "name": "later-index-for-new-session",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999801000,
+        "railRegistryVersion": 2
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 2,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999800100,
+          "anchoring": "single-signer",
+          "supersedes": 1
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "vgQXdd0OdrTrLfuo1k0oRuDtF9zRSx0Gzv0lo6rqev22ix-kk6dSnspjmOF8_tPEhkbtRh7oy6UxZ3H2WxDrBw"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 2,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 2,
+              "versions": [
+                {
+                  "railVersion": 2,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:2",
+                  "contentHash": "0b6a17b3dfbc9ac3fb4c78670e0fc48920d5ca035845a8fee7582d5f3dd18ce5"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "a1ff37051859592cfc3cea6217cb613d2d95351be7ac7e2e471f325fe1ca563f",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-2"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999801200,
+          "blockRef": {
+            "id": "block-rail-index-2-750",
+            "height": "750",
+            "timestamp": 1799999800200
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMi03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk4MDAyMDB9LCJjb250ZW50SGFzaCI6ImExZmYzNzA1MTg1OTU5MmNmYzNjZWE2MjE3Y2I2MTNkMmQ5NTM1MWJlN2FjN2UyZTQ3MWYzMjVmZTFjYTU2M2YiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJDMmhMNndfTEFEcnR2MGJoWHlCS1o2WjU0V2EtS3RXaC1xQ0JKSGxhYXRLZm1yT3JUYmZyLU1LcFhMSHAwbFB1WmZGRjFMcm9GUGx4NmVRNWl4M3FEUSJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0yIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:2",
+          "nativeAddress": "stor-966d53a0aec10268a4a77a176f3e20f990a3caa7",
+          "contentHash": "0b6a17b3dfbc9ac3fb4c78670e0fc48920d5ca035845a8fee7582d5f3dd18ce5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-2"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999801150,
+          "blockRef": {
+            "id": "block-rail-definition-2-750",
+            "height": "750",
+            "timestamp": 1799999800150
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0yLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTgwMDE1MH0sImNvbnRlbnRIYXNoIjoiMGI2YTE3YjNkZmJjOWFjM2ZiNGM3ODY3MGUwZmM0ODkyMGQ1Y2EwMzU4NDVhOGZlZTc1ODJkNWYzZGQxOGNlNSIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MiIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLTk2NmQ1M2EwYWVjMTAyNjhhNGE3N2ExNzZmM2UyMGY5OTBhM2NhYTciLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Im5oc1E4cHgzYnZxb0tVYUo1MERsUmJrcmxpcFB6S0ZvdVJJYVBSYVQ4OTFKY0dXbmQwUkw1ZkdzcWpPdnFBd0tFYnhCNHRVMlZqX3FLSHNCb25KbkRnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMiJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "verified"
+    },
+    {
+      "name": "index-not-session-snapshot",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 2,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer",
+          "supersedes": 1
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "I72ae4fw-Z0VBz1z-V-Fu6zb1NUfXF3Vq1Pu-swGB4JlFHNLgFd4aSx1LnJ7VaNcgLB3tLRoLbyl_vTKThynAw"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 2,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 2,
+              "versions": [
+                {
+                  "railVersion": 2,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:2",
+                  "contentHash": "d7c05d6a566fb1a800ceee1920593bd3e1c5c9f46fe223d6c87aad07d203f24d"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "b487f9f057418278fa1102df5ac1f83e0455a572b9444395950e0851c11b9116",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-2"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-2-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMi03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6ImI0ODdmOWYwNTc0MTgyNzhmYTExMDJkZjVhYzFmODNlMDQ1NWE1NzJiOTQ0NDM5NTk1MGUwODUxYzExYjkxMTYiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJ5NENDbTNaX1FMRlJZbFAyVFF5TTRsaE9OdTY5dUZfWGljMFB3bDJfazZ5YjlBWjR0QVNwZlluTGZlc2hqWDlIamtmZGlMcGNsR0hyT3E1MU55bFBCQSJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0yIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:2",
+          "nativeAddress": "stor-966d53a0aec10268a4a77a176f3e20f990a3caa7",
+          "contentHash": "d7c05d6a566fb1a800ceee1920593bd3e1c5c9f46fe223d6c87aad07d203f24d",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-2"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-2-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0yLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiZDdjMDVkNmE1NjZmYjFhODAwY2VlZTE5MjA1OTNiZDNlMWM1YzlmNDZmZTIyM2Q2Yzg3YWFkMDdkMjAzZjI0ZCIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MiIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLTk2NmQ1M2EwYWVjMTAyNjhhNGE3N2ExNzZmM2UyMGY5OTBhM2NhYTciLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6IjgzTDhtWXpBTTJWV0J4QXl4bmxMVnczQVYyaDcxS1pQLTBEY0ctaS1xZjE1bldVY3VGUnZILURrbXNEY0lRTl9LQUpacFo2SGFUVmhDMjdXdnZjZEN3In0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMiJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "rejected"
+    },
+    {
+      "name": "definition-without-index-membership",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "evm-erc20:1:USDC",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:evm-erc20%3A1%3AUSDC:1",
+                  "contentHash": "b8ee46cd50b19d262d076072bd2a60bc0c9f794d23b379982827b785fbb7301d"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "da0f45729b135c02f780bb417f465b1875f7682ea68527fcc929e396ee788f95",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6ImRhMGY0NTcyOWIxMzVjMDJmNzgwYmI0MTdmNDY1YjE4NzVmNzY4MmVhNjg1MjdmY2M5MjllMzk2ZWU3ODhmOTUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiI0R3RDT1BTNXlLWUlWU0tfUGFDNW9QNGw1dFVyUUQybGRQQ2lSR2RMREtTWWJKSS1Jb0k5cGYtTEo0bGhfeEYwakc1dzFqZXplZDc0dXVDckFvN1hBdyJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiZGYwNjlmYWQxMjk0MWU5YTRjZWM2NjI3YzUxYmJiODg1YjIwZDUyOTljNDAzM2FlZDczYjdlZGIyNzkzZjI3MiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Ii1jS0pMbTFDdUkwUGt4WDdWMkxrZXlfMHZUS0dwZV9tTldWb0MxZUVaaW81YWxoajhyalFQX3FiVkhtSXVZcXptRUVlN2RUb2I5enVGSlpUaXJHOUJnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "rejected"
+    },
+    {
+      "name": "index-missing",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "eefa794d4f8673d095e7e797f7fc3bfc271c9f24697b78aa9622be80bb935cb5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6ImVlZmE3OTRkNGY4NjczZDA5NWU3ZTc5N2Y3ZmMzYmZjMjcxYzlmMjQ2OTdiNzhhYTk2MjJiZTgwYmI5MzVjYjUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJwRHRmc1BKdWE5UTBfSTF4OHVIMERDdG9Vb2ZqRFg2eHJWZjktY3pxUkV6VXhzNENEX181M2VaREdUeDVYSTdiLUZSZmZqUUdoeThLSXMyZmhSWjZEZyJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiZGYwNjlmYWQxMjk0MWU5YTRjZWM2NjI3YzUxYmJiODg1YjIwZDUyOTljNDAzM2FlZDczYjdlZGIyNzkzZjI3MiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Ii1jS0pMbTFDdUkwUGt4WDdWMkxrZXlfMHZUS0dwZV9tTldWb0MxZUVaaW81YWxoajhyalFQX3FiVkhtSXVZcXptRUVlN2RUb2I5enVGSlpUaXJHOUJnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "indeterminate"
+    },
+    {
+      "name": "index-receipt-missing",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272"
+                }
+              ]
+            }
+          ]
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiZGYwNjlmYWQxMjk0MWU5YTRjZWM2NjI3YzUxYmJiODg1YjIwZDUyOTljNDAzM2FlZDczYjdlZGIyNzkzZjI3MiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Ii1jS0pMbTFDdUkwUGt4WDdWMkxrZXlfMHZUS0dwZV9tTldWb0MxZUVaaW81YWxoajhyalFQX3FiVkhtSXVZcXptRUVlN2RUb2I5enVGSlpUaXJHOUJnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "indeterminate"
+    },
+    {
+      "name": "definition-receipt-missing",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "eefa794d4f8673d095e7e797f7fc3bfc271c9f24697b78aa9622be80bb935cb5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6ImVlZmE3OTRkNGY4NjczZDA5NWU3ZTc5N2Y3ZmMzYmZjMjcxYzlmMjQ2OTdiNzhhYTk2MjJiZTgwYmI5MzVjYjUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJwRHRmc1BKdWE5UTBfSTF4OHVIMERDdG9Vb2ZqRFg2eHJWZjktY3pxUkV6VXhzNENEX181M2VaREdUeDVYSTdiLUZSZmZqUUdoeThLSXMyZmhSWjZEZyJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        }
+      },
+      "expected": "indeterminate"
+    },
+    {
+      "name": "definition-receipt-not-finalized",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "eefa794d4f8673d095e7e797f7fc3bfc271c9f24697b78aa9622be80bb935cb5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6ImVlZmE3OTRkNGY4NjczZDA5NWU3ZTc5N2Y3ZmMzYmZjMjcxYzlmMjQ2OTdiNzhhYTk2MjJiZTgwYmI5MzVjYjUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJwRHRmc1BKdWE5UTBfSTF4OHVIMERDdG9Vb2ZqRFg2eHJWZjktY3pxUkV6VXhzNENEX181M2VaREdUeDVYSTdiLUZSZmZqUUdoeThLSXMyZmhSWjZEZyJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "included",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiZGYwNjlmYWQxMjk0MWU5YTRjZWM2NjI3YzUxYmJiODg1YjIwZDUyOTljNDAzM2FlZDczYjdlZGIyNzkzZjI3MiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6ImpRMFUzNmRoa3NrQW15VHlQSXNxTEhoV0RLUVphODhyWTBTTzlhNUNCUEViaTJXQXlRTmlGUVItSS02ZVd5UGR4Ul9mcng4WVVDZ2h1VDRVRWNpbURBIn0sInN0YXRlIjoiaW5jbHVkZWQiLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3MtdHJhbnNhY3Rpb24iLCJ2YWx1ZSI6InR4LXJhaWwtZGVmaW5pdGlvbi0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        }
+      },
+      "expected": "indeterminate"
+    },
+    {
+      "name": "index-receipt-proof-invalid",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "eefa794d4f8673d095e7e797f7fc3bfc271c9f24697b78aa9622be80bb935cb5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6ImVlZmE3OTRkNGY4NjczZDA5NWU3ZTc5N2Y3ZmMzYmZjMjcxYzlmMjQ2OTdiNzhhYTk2MjJiZTgwYmI5MzVjYjUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQSJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiZGYwNjlmYWQxMjk0MWU5YTRjZWM2NjI3YzUxYmJiODg1YjIwZDUyOTljNDAzM2FlZDczYjdlZGIyNzkzZjI3MiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Ii1jS0pMbTFDdUkwUGt4WDdWMkxrZXlfMHZUS0dwZV9tTldWb0MxZUVaaW81YWxoajhyalFQX3FiVkhtSXVZcXptRUVlN2RUb2I5enVGSlpUaXJHOUJnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "indeterminate"
+    },
+    {
+      "name": "index-pins-other-content",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "bae09eeae811b35298c0943e97aae5d6946394ab56421423eee37f5d97bf8c3a"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "10e530b5df48f1430135697020049b4795f88e1d6861f4d1a12b019a0de5c6a5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6IjEwZTUzMGI1ZGY0OGYxNDMwMTM1Njk3MDIwMDQ5YjQ3OTVmODhlMWQ2ODYxZjRkMWExMmIwMTlhMGRlNWM2YTUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJSYWhvQXhaeGpERDViT001Q1RpWVBzRUlscWYwbFkwZWdBMG5oMnNmYkxxRjN4Um5pbjBXWExLd2Z6cU1XeVhJbUlZUk9scFNTZEs4MTFzVmVRVGhCQSJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiZGYwNjlmYWQxMjk0MWU5YTRjZWM2NjI3YzUxYmJiODg1YjIwZDUyOTljNDAzM2FlZDczYjdlZGIyNzkzZjI3MiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Ii1jS0pMbTFDdUkwUGt4WDdWMkxrZXlfMHZUS0dwZV9tTldWb0MxZUVaaW81YWxoajhyalFQX3FiVkhtSXVZcXptRUVlN2RUb2I5enVGSlpUaXJHOUJnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "rejected"
+    },
+    {
+      "name": "definition-anchor-binds-other-content",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "eefa794d4f8673d095e7e797f7fc3bfc271c9f24697b78aa9622be80bb935cb5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6ImVlZmE3OTRkNGY4NjczZDA5NWU3ZTc5N2Y3ZmMzYmZjMjcxYzlmMjQ2OTdiNzhhYTk2MjJiZTgwYmI5MzVjYjUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJwRHRmc1BKdWE5UTBfSTF4OHVIMERDdG9Vb2ZqRFg2eHJWZjktY3pxUkV6VXhzNENEX181M2VaREdUeDVYSTdiLUZSZmZqUUdoeThLSXMyZmhSWjZEZyJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "bae09eeae811b35298c0943e97aae5d6946394ab56421423eee37f5d97bf8c3a",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiYmFlMDllZWFlODExYjM1Mjk4YzA5NDNlOTdhYWU1ZDY5NDYzOTRhYjU2NDIxNDIzZWVlMzdmNWQ5N2JmOGMzYSIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6ImR2NXQzY1doSlE5ajZzNVF5QV9xVDhHalVKcVRMWjZsdnhuZ1BNM2YtcnJCOWI0YjZ4YkVLcUJZNmlCSDdmeE10TlpLRTk2eGNucU1RdXZOdTF1QkJnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "rejected"
+    },
+    {
+      "name": "steward-signature-invalid",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM"
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "eefa794d4f8673d095e7e797f7fc3bfc271c9f24697b78aa9622be80bb935cb5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6ImVlZmE3OTRkNGY4NjczZDA5NWU3ZTc5N2Y3ZmMzYmZjMjcxYzlmMjQ2OTdiNzhhYTk2MjJiZTgwYmI5MzVjYjUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJwRHRmc1BKdWE5UTBfSTF4OHVIMERDdG9Vb2ZqRFg2eHJWZjktY3pxUkV6VXhzNENEX181M2VaREdUeDVYSTdiLUZSZmZqUUdoeThLSXMyZmhSWjZEZyJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiZGYwNjlmYWQxMjk0MWU5YTRjZWM2NjI3YzUxYmJiODg1YjIwZDUyOTljNDAzM2FlZDczYjdlZGIyNzkzZjI3MiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Ii1jS0pMbTFDdUkwUGt4WDdWMkxrZXlfMHZUS0dwZV9tTldWb0MxZUVaaW81YWxoajhyalFQX3FiVkhtSXVZcXptRUVlN2RUb2I5enVGSlpUaXJHOUJnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "rejected"
+    },
+    {
+      "name": "agreement-pins-other-version",
+      "ruleRefs": [
+        "RTB-1"
+      ],
+      "session": {
+        "startedAt": 1799999800000,
+        "railRegistryVersion": 1
+      },
+      "railRef": {
+        "railId": "demos-native:DEM",
+        "railVersion": 2
+      },
+      "rail": {
+        "railVersion": 1,
+        "railId": "demos-native:DEM",
+        "railType": "demos-native",
+        "asset": {
+          "kind": "native-dem",
+          "symbol": "DEM",
+          "decimals": 9
+        },
+        "network": {
+          "kind": "demos"
+        },
+        "phaseHandler": "pay-dem",
+        "parameters": {},
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:dacs:test:steward",
+          "acceptedAt": 1799999700000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:steward",
+          "value": "3_2qGnHoeCT6ZmaDxg8VIfxhWOVzIOdl3JDqY9SzoifhGyPih-BdzZ-lWurn0z8Tm2K9pDiV5Xis5Pr3sRNkDQ"
+        }
+      },
+      "authority": {
+        "railRegistryIndex": {
+          "registryVersion": 1,
+          "logicalAddress": "dacs4:registry:v0.1",
+          "entries": [
+            {
+              "railId": "demos-native:DEM",
+              "latestVersion": 1,
+              "versions": [
+                {
+                  "railVersion": 1,
+                  "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+                  "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272"
+                }
+              ]
+            }
+          ]
+        },
+        "railRegistryIndexReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:registry:v0.1",
+          "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+          "contentHash": "eefa794d4f8673d095e7e797f7fc3bfc271c9f24697b78aa9622be80bb935cb5",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-index-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "200",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999751000,
+          "blockRef": {
+            "id": "block-rail-index-1-750",
+            "height": "750",
+            "timestamp": 1799999750000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtaW5kZXgtMS03NTAiLCJ0aW1lc3RhbXAiOjE3OTk5OTk3NTAwMDB9LCJjb250ZW50SGFzaCI6ImVlZmE3OTRkNGY4NjczZDA5NWU3ZTc5N2Y3ZmMzYmZjMjcxYzlmMjQ2OTdiNzhhYTk2MjJiZTgwYmI5MzVjYjUiLCJsb2dpY2FsQWRkcmVzcyI6ImRhY3M0OnJlZ2lzdHJ5OnYwLjEiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1kZTBkNWYwNzI5NjBiNTlhYTNiOWNhOTM1MDU3YWY5ZGI1NzE4OWM1IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldCIsIm5vbmNlIjoiMjAwIiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJwRHRmc1BKdWE5UTBfSTF4OHVIMERDdG9Vb2ZqRFg2eHJWZjktY3pxUkV6VXhzNENEX181M2VaREdUeDVYSTdiLUZSZmZqUUdoeThLSXMyZmhSWjZEZyJ9LCJzdGF0ZSI6ImZpbmFsaXplZCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEiLCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktcmVsYXktMSJ9"
+          }
+        },
+        "railDefinitionReceipt": {
+          "receiptVersion": "1",
+          "substrate": "demos:testnet",
+          "finalityProfile": "demos-bft-proof/test-1",
+          "logicalAddress": "dacs4:rail:demos-native%3ADEM:1",
+          "nativeAddress": "stor-eb4cbf3d4e11d883c733fb61853ced442536cf41",
+          "contentHash": "df069fad12941e9a4cec6627c51bbb885b20d5299c4033aed73b7edb2793f272",
+          "transactionRef": {
+            "kind": "demos-transaction",
+            "value": "tx-rail-definition-1"
+          },
+          "writer": "native:registry-relay-1",
+          "nonce": "201",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 1799999741000,
+          "blockRef": {
+            "id": "block-rail-definition-1-750",
+            "height": "750",
+            "timestamp": 1799999740000
+          },
+          "evidence": {
+            "kind": "test-anchor-finality",
+            "value": "eyJibG9ja1JlZiI6eyJoZWlnaHQiOiI3NTAiLCJpZCI6ImJsb2NrLXJhaWwtZGVmaW5pdGlvbi0xLTc1MCIsInRpbWVzdGFtcCI6MTc5OTk5OTc0MDAwMH0sImNvbnRlbnRIYXNoIjoiZGYwNjlmYWQxMjk0MWU5YTRjZWM2NjI3YzUxYmJiODg1YjIwZDUyOTljNDAzM2FlZDczYjdlZGIyNzkzZjI3MiIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmFpbDpkZW1vcy1uYXRpdmUlM0FERU06MSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWViNGNiZjNkNGUxMWQ4ODNjNzMzZmI2MTg1M2NlZDQ0MjUzNmNmNDEiLCJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0Iiwibm9uY2UiOiIyMDEiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Ii1jS0pMbTFDdUkwUGt4WDdWMkxrZXlfMHZUS0dwZV9tTldWb0MxZUVaaW81YWxoajhyalFQX3FiVkhtSXVZcXptRUVlN2RUb2I5enVGSlpUaXJHOUJnIn0sInN0YXRlIjoiZmluYWxpemVkIiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yYWlsLWRlZmluaXRpb24tMSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXJlbGF5LTEifQ"
+          }
+        }
+      },
+      "expected": "rejected"
+    }
+  ]
+}

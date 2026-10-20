@@ -13,6 +13,45 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — pay-dem ended phases stay ended; start identity and delivery record are the handler's own
+
+- DEM-4/DEM-6: a phase with a retained failure proof has ended. When the
+  proof no longer verifies, the resume re-reads the retained hash, and that
+  re-read is post-terminal. It returns `permanent` only when it proves the
+  failure again, and otherwise `substrate`. It never returns `ok: true`,
+  whatever the record and its applied-payment authority show. Before this,
+  the oracle fell through to the ordinary classification, so a confirmed
+  re-read reopened an ended phase as paid. DEM-4 now says so, and the new
+  guard `terminal-never-reopens` pins it.
+  - `resume-plain-read-failure-then-authenticated-confirmed` changes from
+    `pass` to `indeterminate`.
+  - New vector `resume-failure-proof-no-longer-verifies-then-confirmed`: a
+    proof whose FV-5 result the payer's policy no longer verifies, followed
+    by a confirmed read.
+  - Sixteen other resume-with-proof vectors drop `success-requires-record`
+    from their guard lists: on those paths the terminal guard now also
+    refuses an inclusion-only success. Their verdicts do not change.
+- DEM-6: the start identifier that decides whether a start has fallen since
+  the retention is made durable by the handler itself, never supplied by its
+  caller. The reference handler mints it from a durable counter in its store.
+  The caller's `--boot` only labels egress, so a restarted process that
+  repeats the value sends nothing.
+- The reference payee's delivery record now reaches stable storage as a
+  `Store` document does: the record is fsynced, and then the directory entry
+  that a first delivery creates is fsynced, before `deliver` returns. The CLI
+  creates its work directory the same way.
+- The crash-restart harness adds:
+  - a restart that reuses the caller's start value at every crash point;
+  - a terminal failure whose proof stops verifying, followed by a confirmed
+    read;
+  - the fsync order of a first delivery;
+  - crash points on both sides of the pre-egress `permanent` refusal write.
+
+  Three new wrong variants (`caller-start-id`, `terminal-reopens`,
+  `no-sink-parent-fsync`) each fail it.
+- The corpus has 362 vectors (36 `pass`, 125 `fail`, 184 `indeterminate`,
+  17 `error`) and 118 guards.
+
 ### Fixed — pay-dem DEM-4 proof needs its bft-final inclusion; FV-5 takes the combined result form
 
 - DEM-4 and APR-6 require FV's `bft-final` verification of the failed

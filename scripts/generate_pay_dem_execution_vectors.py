@@ -61,8 +61,15 @@ PREFIXED_SEND = ["native", {"nativeOperation": "send", "args": ["0x" + PAYEE_KEY
 OVERSIZED_OS = "9" * 4301
 OVERSIZED_PAYER_OS = "1" + "0" * 4320  # a committed balance that can pay it
 CANONICAL = re.compile(r"0|[1-9][0-9]*")
-# The phase's Demos network as its binding pins it (FV `demos:mainnet` naming).
+# The rail's Demos network: the pinned RailDefinition's
+# `consumerFinalityProfile.settlement` network and genesis (FV `demos:mainnet`
+# naming). A Demos NetworkSpec is the bare `{kind: "demos"}`, so this is the
+# rail's only signed network identity; a binding never supplies it.
 NETWORK = {"networkId": "demos:mainnet", "genesisHash": _hex("genesis:demos:mainnet")}
+OTHER_NETWORK = {"networkId": "demos:testnet", "genesisHash": _hex("genesis:demos:testnet")}
+# The same network name over another sealed genesis (a replaced genesis).
+OTHER_GENESIS = {"networkId": NETWORK["networkId"], "genesisHash": _hex("genesis:demos:other")}
+SCHEDULED_HEIGHT = 500000  # a future gasFeeSeparation activation height
 
 
 def block_id(number: int) -> str:
@@ -119,6 +126,42 @@ NODE2_FAILED = json.loads(
 def _apply(base: dict[str, Any], changes: dict[str, Any]) -> dict[str, Any]:
     value = dict(base, **changes)
     return {key: item for key, item in value.items() if item is not _OMIT}
+
+
+def binding_entry(network: dict[str, str] = NETWORK, **members: Any) -> dict[str, Any]:
+    """One network's entry in the payer's Demos binding configuration. Each
+    member names the network and genesis it was configured or attested for:
+    nodes pinned under the native-send record profile, an applied-payment
+    authority, and the sealed genesis's `forks.gasFeeSeparation` activation
+    height. `_OMIT` drops a member: the binding holds none."""
+    return _apply(
+        {
+            **network,
+            "pinnedNodes": dict(network),
+            "appliedPaymentAuthority": dict(network),
+            "gasFeeSeparation": dict(network, activationHeight=None),
+        },
+        members,
+    )
+
+
+def demos_binding(pinned_node: Any = True, applied_authority: Any = True,
+                  fee_separation_unscheduled: Any = True) -> list[dict[str, Any]]:
+    """The payer's binding with one entry, for the rail's network. Each
+    argument is True (the member for that network), False (no pinned node or
+    authority; a scheduled height for the fork), `_OMIT` (no member) or the
+    member itself."""
+    members: dict[str, Any] = {}
+    for member, value in (("pinnedNodes", pinned_node), ("appliedPaymentAuthority", applied_authority)):
+        if value is False or value is _OMIT:
+            members[member] = _OMIT
+        elif value is not True:
+            members[member] = value
+    if fee_separation_unscheduled is False:
+        members["gasFeeSeparation"] = dict(NETWORK, activationHeight=SCHEDULED_HEIGHT)
+    elif fee_separation_unscheduled is not True:
+        members["gasFeeSeparation"] = fee_separation_unscheduled
+    return [binding_entry(**members)]
 
 
 def retained(**changes: Any) -> dict[str, Any]:
@@ -294,6 +337,7 @@ def with_state(read: dict[str, Any], balances: dict[str, str]) -> dict[str, Any]
 def found(
     value: dict[str, Any], *, authenticated: bool | None = None, node: dict[str, str] = PINNED_BUILD,
     applied: bool = True, applied_block_id: str | None = None, state: dict[str, str] = APPLIED,
+    network: dict[str, str] = NETWORK,
 ) -> dict[str, Any]:
     """A found read. Its applied-payment authority reports the committed
     transition `state` that the scenario names (by default the phase's
@@ -309,7 +353,7 @@ def found(
         debit, credit = committed_change(state)
         read["appliedTransferAuthenticated"] = True
         read["appliedTransfer"] = {
-            "networkId": NETWORK["networkId"], "genesisHash": NETWORK["genesisHash"],
+            "networkId": network["networkId"], "genesisHash": network["genesisHash"],
             "blockId": applied_block_id or block_id(int(value["blockNumber"])),
             "txHash": value["hash"].removeprefix("0x").lower(), "blockNumber": int(value["blockNumber"]),
             "sender": content["from"].removeprefix("0x").lower(),
@@ -380,7 +424,7 @@ def classify(
     return _vector(
         name, "classify-execution",
         {
-            "network": NETWORK,
+            "railNetwork": NETWORK,
             "retainedTransfer": retained() if transfer is None else transfer,
             "statusIndex": status_index,
             "inclusionObservation": inclusion,
@@ -418,7 +462,7 @@ def resume(
     return _vector(
         name, "resume-phase",
         {
-            "network": NETWORK,
+            "railNetwork": NETWORK,
             "retainedTransfer": retained(),
             "retainedFailureProof": proof,
             "statusIndex": status_index,
@@ -577,16 +621,18 @@ def gate(
     broadcast_state: str | None = None,
     request: str = "broadcast-retained",
     restarted: Any = False,
-    pinned_node: bool = True,
-    applied_authority: bool = True,
+    pinned_node: Any = True,
+    applied_authority: Any = True,
     fee_separation_unscheduled: Any = True,
+    binding: list[dict[str, Any]] | None = None,
     phase_context: dict[str, Any] | None = None,
     confirm_response: Any = _OMIT,
     carried_response: Any = _OMIT,
 ) -> dict[str, Any]:
     """A `confirm` request carries the signed transaction itself. A demosdk
     `broadcast` carries a validity response: by default the one this
-    submission's `confirm` returned, embedding the signed transaction."""
+    submission's `confirm` returned, embedding the signed transaction.
+    `binding` replaces the payer's whole Demos binding configuration."""
     transaction = signed() if signed_transaction is None else signed_transaction
     broadcasting = request.startswith("broadcast-")
     if broadcast_state is None:
@@ -599,10 +645,9 @@ def gate(
         name, "broadcast-gate",
         _apply({
             "phase": phase() if phase_context is None else phase_context,
-            # The Demos binding's configuration for the phase's network.
-            "pinnedNodeConfigured": pinned_node,
-            "appliedPaymentAuthorityConfigured": applied_authority,
-            "gasFeeSeparationUnscheduled": fee_separation_unscheduled,
+            "railNetwork": NETWORK,
+            "demosBinding": (demos_binding(pinned_node, applied_authority, fee_separation_unscheduled)
+                             if binding is None else binding),
             "signedTransaction": transaction,
             "retainedTransfer": retained() if transfer is None else transfer,
             "hashRetainedForOtherPhases": retained_elsewhere or [],
@@ -626,6 +671,7 @@ def pre_sign(
     pinned_node: Any = True,
     applied_authority: Any = True,
     fee_separation_unscheduled: Any = True,
+    binding: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """DEM-1 before `pay()`/`sign()`: the input holds no signed transaction,
     and a refusal is the PC-4 result itself. `_OMIT` drops a binding member:
@@ -635,9 +681,9 @@ def pre_sign(
         name, "pre-sign-gate",
         _apply({
             "phase": phase(),
-            "pinnedNodeConfigured": pinned_node,
-            "appliedPaymentAuthorityConfigured": applied_authority,
-            "gasFeeSeparationUnscheduled": fee_separation_unscheduled,
+            "railNetwork": NETWORK,
+            "demosBinding": (demos_binding(pinned_node, applied_authority, fee_separation_unscheduled)
+                             if binding is None else binding),
         }, {}),
         expected,
         {
@@ -660,17 +706,17 @@ PARTY_GUARDS = {
 
 def preflight(name: str, expected: str, guards: list[str], note: str, *, availability: str = "live",
               pinned_node: Any = True, applied_authority: Any = True,
-              fee_separation_unscheduled: Any = True) -> dict[str, Any]:
+              fee_separation_unscheduled: Any = True, binding: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """RAV-R3 for a new production session, before the rail is selected:
-    `availability` is the pinned RailDefinition's, and the binding members
-    are the payer's Demos binding for the rail's network."""
+    `availability` and `railNetwork` are the pinned RailDefinition's, and the
+    preflight finds the payer's Demos binding entry for that network."""
     return _vector(
         name, "rail-preflight",
         _apply({
             "availability": availability,
-            "pinnedNodeConfigured": pinned_node,
-            "appliedPaymentAuthorityConfigured": applied_authority,
-            "gasFeeSeparationUnscheduled": fee_separation_unscheduled,
+            "railNetwork": NETWORK,
+            "demosBinding": (demos_binding(pinned_node, applied_authority, fee_separation_unscheduled)
+                             if binding is None else binding),
         }, {}),
         expected, {"railSelectable": expected == "pass"}, "RAV-R3/DEM-1", guards, note,
     )
@@ -700,7 +746,7 @@ def _admit_input(read: dict[str, Any], status_index: str) -> dict[str, Any]:
             "txRef": {"kind": "demos", "txHash": TX_HASH, "blockNumber": BLOCK},
         },
         "phase": phase(),
-        "network": NETWORK,
+        "railNetwork": NETWORK,
         "inclusionObservation": INCLUDED_AT_BLOCK,
         "statusIndex": status_index,
         "recordRead": read,
@@ -1854,7 +1900,7 @@ def build_vectors() -> list[dict[str, Any]]:
         pre_sign("sign-without-binding", "fail", ["binding-refusal-is-rail-unavailable"],
                  "At settle, after the preflight passed, a missing binding is a rail that is not operational: "
                  "substrate (RAV-R4), never permanent, so the payer is not blamed after the payee delivered.",
-                 pinned_node=False, applied_authority=False, fee_separation_unscheduled=False),
+                 binding=[]),
         # RAV-R3 for pay-dem: the binding is checked before the rail is
         # selected, whatever availability the RailDefinition shows.
         preflight("preflight-live-rail-with-binding", "pass", ["preflight-selects-configured-rail"],
@@ -1874,6 +1920,65 @@ def build_vectors() -> list[dict[str, Any]]:
         preflight("preflight-operator-gated-rail-with-binding", "pass", ["preflight-selects-configured-rail"],
                   "An operator_gated pay-dem rail with the binding in place is selectable.",
                   availability="operator_gated"),
+    ]
+    # DEM-1/RAV-R3 "for the phase's network": the rail's network is the pinned
+    # RailDefinition's consumerFinalityProfile.settlement network, never one
+    # the binding supplies. The handler finds its binding entry by that
+    # network, and each member must name it: pinned nodes or an authority for
+    # another network, or a fork attestation from another genesis, let the
+    # transfer execute where the record can never settle or bind.
+    elsewhere = (
+        ("binding-for-another-network", "A binding configured only for another network holds nothing for the rail's; "
+         "a handler that keeps one global binding would sign and debit the payer there.",
+         ["binding-network-is-rail-network"], {"binding": [binding_entry(OTHER_NETWORK)]}),
+        ("binding-for-replaced-genesis", "A binding entry for the rail's network name over another sealed genesis is "
+         "not the rail's network.",
+         ["binding-network-is-rail-network"], {"binding": [binding_entry(OTHER_GENESIS)]}),
+        ("pinned-nodes-for-another-network", "Nodes pinned for another network serve that network's records: the "
+         "transfer would land where DEM-2 can never bind it.",
+         ["pinned-nodes-bind-rail-network"], {"pinned_node": dict(OTHER_NETWORK)}),
+        ("applied-authority-for-another-network", "An applied-payment authority for another network can never "
+         "authenticate a payment on the rail's.",
+         ["applied-authority-binds-rail-network"], {"applied_authority": dict(OTHER_NETWORK)}),
+        ("fork-attestation-of-another-genesis", "An unscheduled gasFeeSeparation attested from another genesis says "
+         "nothing about the rail's; if its genesis schedules the fork the payer is debited and nothing settles.",
+         ["fork-attestation-binds-rail-genesis"], {"fee_separation_unscheduled": dict(OTHER_GENESIS, activationHeight=None)}),
+    )
+    member_guard = {
+        "pinned-nodes-bind-rail-network": ("sign-requires-pinned-node", "broadcast-requires-pinned-node"),
+        "applied-authority-binds-rail-network": ("sign-requires-applied-payment-authority",
+                                                 "broadcast-requires-applied-payment-authority"),
+        "fork-attestation-binds-rail-genesis": ("sign-requires-gas-fee-separation-unscheduled",
+                                                "broadcast-requires-gas-fee-separation-unscheduled"),
+    }
+    for suffix, note, guards, changes in elsewhere:
+        sign_guards = guards + [g for guard in guards for g in member_guard.get(guard, ())[:1]]
+        egress_guards = guards + [g for guard in guards for g in member_guard.get(guard, ())[1:]]
+        vectors += [
+            pre_sign("sign-with-" + suffix, "fail", sign_guards + ["binding-refusal-is-rail-unavailable"], note,
+                     **changes),
+            gate("confirm-with-" + suffix, "fail", "DEM-1", egress_guards + ["retention-before-first-egress"], note,
+                 request="confirm-retained", **changes),
+            gate("broadcast-with-" + suffix, "fail", "DEM-1", egress_guards, note, **changes),
+            preflight("preflight-live-rail-with-" + suffix, "fail",
+                      guards + ["pay-dem-preflight-whatever-availability", "preflight-requires-binding"], note,
+                      **changes),
+        ]
+    # The rail's entry is found by its network, not by position: a payer with
+    # a binding per network signs on the rail's even when another comes first.
+    several = [binding_entry(OTHER_NETWORK, appliedPaymentAuthority=_OMIT), binding_entry()]
+    vectors += [
+        pre_sign("sign-with-rail-network-entry-among-several", "pass",
+                 ["binding-network-is-rail-network", "sign-allowed-when-configured"],
+                 "The handler uses the entry for the rail's network; the first entry, for another network, is not it.",
+                 binding=several),
+        gate("broadcast-with-rail-network-entry-among-several", "pass", "DEM-1",
+             ["binding-network-is-rail-network", "first-broadcast-allowed", "submission-completes-own-confirm"],
+             "The broadcast gate reads the entry for the rail's network, wherever it stands in the binding.",
+             binding=several),
+        preflight("preflight-live-rail-with-rail-network-entry-among-several", "pass",
+                  ["binding-network-is-rail-network", "preflight-selects-configured-rail"],
+                  "The preflight finds the rail's entry by its network.", binding=several),
     ]
     # DEMOS-MAPPING §A.2 pay-dem party address: payee.payeeAddress and the
     # payer.payingKey key are a Demos key (optional 0x) or a DACS-1
@@ -2159,23 +2264,21 @@ def document() -> dict[str, Any]:
         },
         "fixtureVocabulary": {
             "statusIndex": "getTransactionStatus state for the retained hash (included, pending or unknown); never decisive",
-            "network": "the phase's Demos network (networkId, genesisHash) as its binding pins it; applied-payment authority must name the same network, and a missing or malformed one binds nothing",
+            "railNetwork": "the rail's Demos network (networkId, genesisHash): the pinned RailDefinition's consumerFinalityProfile.settlement network, never one a Demos binding supplies (a Demos NetworkSpec is the bare kind demos). Applied-payment authority must name the same network; the pre-sign, broadcast and preflight gates find the payer's binding entry by it; a missing or malformed one binds nothing",
+            "demosBinding": "the payer's Demos binding configuration: one entry per network (networkId, genesisHash) holding pinnedNodes and appliedPaymentAuthority, each naming the network and genesis it was configured for, and gasFeeSeparation, the sealed genesis's forks.gasFeeSeparation attestation (networkId, genesisHash, activationHeight). The gates use the entry whose network is railNetwork, wherever it stands; a member is held only when it names exactly railNetwork, and the attestation only with activationHeight null. A missing entry or member, a member for another network or genesis, a scheduled height and any other form are refused",
             "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity",
             "recordRead": "getTxByHash read: found (record and nodeBuild), not-found or unavailable; appliedTransfer (networkId, genesisHash, blockId, txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs, committedBalances: payerBeforeOs, payerAfterOs, payeeBeforeOs, payeeAfterOs, feeOs) and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived from the record's status, amount or edits; payerDebitOs must be payerBeforeOs - payerAfterOs - feeOs and payeeCreditOs must be payeeAfterOs - payeeBeforeOs, or the authority establishes nothing; the fixtures take the committed balances from the scenario's own pre-state and outcome (applied, rolled-back or no-op)",
             "nodeBuild": "the build attestation the Demos binding configuration holds for the node that served the read (source binding-attestation, commit, tree); only binding-attestation of commit 61b8e75aa8db5e408c49e1c3a89db4d673f45578 with a clean tree is pinned, and a self-reported build, another commit or a dirty tree is not",
             "gcr_edits": "a confirmed record establishes success only when its gcr_edits, each txhash blanked, are the four edits of its send; the pinned node applies a missing or empty list as a successful no-op",
             "otherGates": "verdicts of the FV, SB-1 and PB checks that compose with DEM-7 before delivery",
             "request": "the call about to carry the signed transaction out of the handler: confirm-retained (demosdk confirm/confirmTx, which carries signedTransaction), broadcast-retained or broadcast-replacement (demosdk broadcast, which carries validityResponse); these are the profile's only submission route, and any other value is refused, including sr3-proxy-submission and wallet-direct-submission",
-            "signPermitted": "pre-sign-gate result, DEM-1 before demosdk pay()/sign(): the input holds no signed transaction; false with ok false and errorClass permanent is the handler's PC-4 result, and nothing is signed or sent",
+            "signPermitted": "pre-sign-gate result, DEM-1 before demosdk pay()/sign(): the input holds no signed transaction; false with ok false and errorClass substrate (RAV-R4: the preflight passed, so the rail is not operational for this payer) is the handler's PC-4 result, and nothing is signed or sent",
             "broadcastState": "never-broadcast (nothing has left the handler), confirm-returned (this uninterrupted submission's confirm just returned), confirm-sent-interrupted (a confirm was sent, then a timeout, error or restart) or maybe-broadcast; any other value is refused",
             "confirmResponse": "the demosdk 4.0.16 confirm() result (RPCResponseWithValidityData) that the current submission's confirm returned to the handler, even late, or null; null for a confirm request",
             "validityResponse": "what the demosdk broadcast(validationData) call carries, or null for a confirm request; the pinned node executes its response.data.transaction, so it must be exactly confirmResponse, with result 200, valid true and an embedded transaction whose content, hash and signature serialize as signedTransaction",
             "payeeAddress": "phase member: payee.payeeAddress (and payerPayingKey the key payer.payingKey names), a DEMOS-MAPPING §A.2 pay-dem party address: a Demos key with optional 0x or a did:demos:agent: DID over 64 lower-case hex digits; DEM-1, DEM-7 and FV-5 compare the 64 digits it projects to, and any other value is error",
-            "availability": "rail-preflight: the pinned pay-dem RailDefinition's availability for a new production session; disabled, failed and mocked are not selectable, any other unknown value is error, and every other value still needs the payer binding's three DEM-1 members (RAV-R3, whatever the availability)",
+            "availability": "rail-preflight: the pinned pay-dem RailDefinition's availability for a new production session; disabled, failed and mocked are not selectable, any other unknown value is error, and every other value still needs the payer binding's three DEM-1 members for railNetwork (RAV-R3, whatever the availability)",
             "railSelectable": "rail-preflight want member: whether the orchestrator may select the rail, before Agreement signature and the PIPE-6 commitment",
-            "pinnedNodeConfigured": "the Demos binding pins nodes under the native-send record profile for the phase's network; anything but true is refused",
-            "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",
-            "gasFeeSeparationUnscheduled": "the Demos binding attests, from that network's sealed genesis, that the gasFeeSeparation fork is unscheduled (activationHeight null); RPC does not report it, and with it active the node stores fee edits before the send's four, so anything but true (a scheduled height, an attestation the binding does not hold) is refused",
             "authenticated": "recordRead member: true when the record is authenticated under FV-5 at its bft-final inclusion; absent or false for a plain RPC read, which the node pin does not authenticate. A handler's DEM-4 failure and a consumer's DEM-7 failed refutation need true",
             "retainedFailureProof": "the DEM-4 proof the handler retained: classification, authentication (fv5-bft-final when FV-5 authenticated the failed record at its bft-final inclusion, rpc-read for a plain read; anything else is not authenticated), inclusionBlock and the record. A resume reuses only an authenticated proof that still binds, and APR accepts only such a proof",
             "restartedSinceRetention": "false only when the handler has run without a restart since it retained the transfer; after a (re)start a retained transfer is maybe-broadcast whatever broadcastState was recorded, and anything but false is a restart. The handler derives it, and broadcastState and retentionDurable, from the journal it reads back from stable storage (the boot that wrote the retention against its own), never from process-local state; tests/test_pay_dem_crash_restart.py stops a storage-backed reference handler on both sides of every transition and witnesses that derivation",

@@ -2,11 +2,15 @@
 (DEM-1, DEM-5, DEM-6) and the payee's DEM-7 admission index.
 
 Every decision is the corpus oracle's own (`test_pay_dem_execution_vectors`):
-`broadcast-gate`, `classify-egress-outcome`, `classify-execution` and
-`admit-for-delivery`. Their state inputs (`retentionDurable`,
-`restartedSinceRetention`, `broadcastState`, `signedTransaction`, the
-presented history and `admissionIndex`) are derived from what this module
-reads back from storage, never from process-local state.
+`pre-sign-gate`, `broadcast-gate`, `classify-egress-outcome`,
+`classify-execution`, `resume-phase` and `admit-for-delivery`. Their state
+inputs (`retentionDurable`, `restartedSinceRetention`, `broadcastState`,
+`signedTransaction`, the presented history, `admissionIndex` and a DEM-4
+failure proof) are derived from what this module reads back from storage,
+never from process-local state. The binding inputs are the rail's pinned
+network and the payer's per-network binding configuration, and a re-read's
+FV-5 and applied-payment authentication come from their own authorities,
+never from the node that served the record.
 `test_pay_dem_crash_restart` stops it on both sides of every transition and
 restarts it from storage. Each `--mutant` is a wrong handler or payee that
 the harness must catch.
@@ -18,6 +22,7 @@ witnesses by the order of fsync calls before the first egress.
 
 Run as a script, one process per start:
     pay_dem_reference_handler.py pay --work DIR --boot ID [--job JOB] [--crash POINT] [--mutant M]
+        [--record-status S] [--node-claims-authentication] [--fv5-authenticates] [--rail-network N]
     pay_dem_reference_handler.py provision --work DIR --boot ID
     pay_dem_reference_handler.py deliver --work DIR --boot ID --job JOB [--crash POINT] [--mutant M]
 """
@@ -44,8 +49,13 @@ CRASH_EXIT = 70
 JOURNAL = "pay-dem-journal.json"
 INDEX = "admission-index.json"
 DELIVERIES = "deliveries.jsonl"
+# One lock for every phase's retention, so the create-if-absent and the
+# cross-phase hash check are one step for the whole store.
+RETENTION_LOCK = "retention"
 PAYER_MUTANTS = ("process-local-journal", "journal-after-confirm", "restart-from-progress", "no-fsync",
-                 "no-cross-phase-index", "no-parent-fsync", "blind-first-retention", "progress-after-call")
+                 "no-cross-phase-index", "no-parent-fsync", "blind-first-retention", "progress-after-call",
+                 "network-from-binding", "node-authenticates-read", "failure-not-journaled",
+                 "per-phase-retention-lock")
 PAYEE_MUTANTS = ("process-local-index", "no-conditional-write", "empty-index-when-missing",
                  "deliver-every-check")
 NO_GUARD_REMOVED = frozenset()
@@ -197,16 +207,22 @@ class Node:
     even if the handler stops before it sees the reply; each logged egress
     also records whether the handler's stored journal already held exactly
     those signed bytes. A broadcast executes the embedded transaction; with
-    `relays_confirm`, a node that received the confirm submits it too."""
+    `relays_confirm`, a node that received the confirm submits it too. The
+    executed record's status is `record_status`; a node that
+    `claims_authentication` adds its own FV-5 and applied-payment claims to
+    the plain read, which the handler never takes from it."""
 
     def __init__(self, work: Path, boot: str, *, confirm: str = "valid", broadcast: str = "accepted",
-                 balance: str = "sufficient", relays_confirm: bool = False):
+                 balance: str = "sufficient", relays_confirm: bool = False, record_status: str = "confirmed",
+                 claims_authentication: bool = False):
         self.work = Path(work)
         self.log = self.work / "egress.jsonl"
         self.boot = boot
         self.outcomes = {"confirm": confirm, "broadcast": broadcast}
         self.balance = balance
         self.relays_confirm = relays_confirm
+        self.record_status = record_status
+        self.claims_authentication = claims_authentication
         self.observer: Callable[[str], None] | None = None
 
     def _egress(self, call: str, transaction: dict[str, Any] | None) -> None:
@@ -231,30 +247,93 @@ class Node:
             raise CallFailed(self.outcomes["broadcast"])
 
     def read(self, tx_hash: str) -> dict[str, Any]:
-        """getTxByHash: the executed record once a submission reached the
-        chain. A broadcast that failed in transport may still have arrived;
-        one the node refused did not execute."""
+        """getTxByHash, a plain RPC read: the executed record once a
+        submission reached the chain. A broadcast that failed in transport
+        may still have arrived; one the node refused did not execute."""
         executing = {"broadcast", "confirm"} if self.relays_confirm else {"broadcast"}
         if self.outcomes["broadcast"] in oracle.CALL_REFUSALS:
             executing.discard("broadcast")
         if any(entry["call"] in executing for entry in read_lines(self.log)):
-            return generator.found(generator.record("confirmed"), authenticated=True)
+            if self.claims_authentication:
+                return generator.found(generator.record(self.record_status), authenticated=True)
+            return {"state": "found", "record": generator.record(self.record_status)}
         return dict(generator.NOT_FOUND)
+
+
+class AppliedAuthority:
+    """The applied-payment authority the payer's binding configures for one
+    network (DEMOS-MAPPING §A.2), a source separate from any node: it
+    authenticates the committed balance change of the transaction's apply,
+    which a failed apply rolls back."""
+
+    def __init__(self, network: dict[str, str]):
+        self.network = dict(network)
+
+    def attest(self, record: dict[str, Any]) -> dict[str, Any]:
+        state = generator.APPLIED if record.get("status") == "confirmed" else generator.ROLLED_BACK
+        read = generator.found(record, state=state, network=self.network)
+        return {"appliedTransferAuthenticated": read["appliedTransferAuthenticated"],
+                "appliedTransfer": read["appliedTransfer"]}
+
+
+class Fv5Authority:
+    """FV-5 for the rail's network: whether a record's execution result is
+    authenticated at its `bft-final` inclusion. The reference's is a fixture
+    that authenticates what it is configured to; the settlement-finality
+    corpus exercises the result signatures themselves. It is never the node
+    that served the record."""
+
+    def __init__(self, authenticates: bool = False):
+        self.authenticates = authenticates
+
+    def authenticated(self, record: dict[str, Any]) -> bool:
+        return self.authenticates
+
+
+def binding_network(entry: dict[str, Any]) -> dict[str, str]:
+    return {key: entry[key] for key in ("networkId", "genesisHash")}
 
 
 class PayerHandler:
     """The payer's pay-dem handler for one phase, from signed transfer to its
     PC-4 result. The journal holds the retained transfer, the signed
     transaction itself, the start (`boot`) that wrote it, its progress, the
-    confirm's validity response and any terminal result."""
+    confirm's validity response, any terminal result and, with a DEM-4
+    result, its failure proof.
+
+    `rail_network` is the pinned RailDefinition's
+    `consumerFinalityProfile.settlement` network; `bindings` is the payer's
+    Demos binding configuration, one entry per network. The gates find the
+    entry for the rail's network themselves, and the re-read takes the
+    applied-payment authority that entry configures and the FV-5 result from
+    their own sources, never from the node's reply."""
 
     def __init__(self, store: Store, node: Node, boot: str, *, crash_at: str | None = None,
                  mutant: str | None = None, exit_on_crash: bool = False,
-                 job_id: str = generator.JOB_ID, phase_index: int = generator.PHASE_INDEX):
+                 job_id: str = generator.JOB_ID, phase_index: int = generator.PHASE_INDEX,
+                 rail_network: dict[str, str] = generator.NETWORK,
+                 bindings: list[dict[str, Any]] | None = None, fv5: Fv5Authority | None = None):
         self.store, self.node, self.boot = store, node, boot
         self.crash_at, self.mutant, self.exit_on_crash = crash_at, mutant, exit_on_crash
         self.job_id, self.phase_index = job_id, phase_index
         self.journal = journal_name(job_id, phase_index)
+        self.bindings = [generator.binding_entry()] if bindings is None else bindings
+        self.rail_network = dict(rail_network)
+        if mutant == "network-from-binding" and self.bindings:
+            # The wrong handler keeps one binding and takes the phase's
+            # network from it, whatever network the rail settles on.
+            self.rail_network = binding_network(self.bindings[0])
+        self.fv5 = Fv5Authority() if fv5 is None else fv5
+
+    def _binding_input(self) -> dict[str, Any]:
+        return {"railNetwork": self.rail_network, "demosBinding": self.bindings}
+
+    def _applied_authority(self) -> AppliedAuthority | None:
+        """The authority the binding entry for the rail's network configures."""
+        for entry in self.bindings:
+            if binding_network(entry) == self.rail_network and isinstance(entry.get("appliedPaymentAuthority"), dict):
+                return AppliedAuthority(binding_network(entry["appliedPaymentAuthority"]))
+        return None
 
     def _crash(self, point: str) -> None:
         if point == self.crash_at:
@@ -304,9 +383,7 @@ class PayerHandler:
         confirm_response = entry.get("confirmResponse") if request != "confirm-retained" else None
         protocol_input = {
             "phase": generator.phase(jobId=self.job_id, phaseIndex=self.phase_index),
-            "pinnedNodeConfigured": True,
-            "appliedPaymentAuthorityConfigured": True,
-            "gasFeeSeparationUnscheduled": True,
+            **self._binding_input(),
             "signedTransaction": entry["signedTransaction"],
             "retainedTransfer": entry["retainedTransfer"],
             "hashRetainedForOtherPhases": self._retained_elsewhere(entry["retainedTransfer"]["txHash"]),
@@ -326,33 +403,97 @@ class PayerHandler:
             self._save(self.store.read(self.journal), result=result)
         return result
 
-    def _classify(self, entry: dict[str, Any]) -> dict[str, Any]:
-        """Re-read the retained hash: the only step after a possible egress."""
-        read = self.node.read(entry["retainedTransfer"]["txHash"])
+    def _read(self, tx_hash: str) -> dict[str, Any]:
+        """The re-read as the handler composes it: only the node's plain
+        record and status, the build attestation its binding holds for that
+        node, and the applied-payment authority and FV-5 result from their
+        own sources. Whatever the node says about its own authentication is
+        dropped."""
+        served = self.node.read(tx_hash)
+        if self.mutant == "node-authenticates-read":
+            # The wrong handler trusts the node's word for FV-5 and payment.
+            return served
+        if served.get("state") != "found":
+            return {"state": served.get("state")}
+        record = served.get("record")
+        read = {"state": "found", "nodeBuild": dict(generator.PINNED_BUILD), "record": record}
+        authority = self._applied_authority()
+        if authority is not None and isinstance(record, dict):
+            read.update(authority.attest(record))
+        if self.fv5.authenticated(record):
+            read["authenticated"] = True
+        return read
+
+    def _classify_input(self, entry: dict[str, Any], read: dict[str, Any]) -> dict[str, Any]:
         seen = read["state"] == "found"
-        expected, want = oracle.classify({
-            "network": generator.NETWORK,
+        return {
+            "railNetwork": self.rail_network,
             "retainedTransfer": entry["retainedTransfer"],
             "statusIndex": "included" if seen else "unknown",
             "inclusionObservation": generator.INCLUDED_AT_BLOCK if seen else None,
             "recordRead": read,
-        }, NO_GUARD_REMOVED)
+        }
+
+    def _classify(self, entry: dict[str, Any]) -> dict[str, Any]:
+        """Re-read the retained hash: the only step after a possible egress.
+        A DEM-4 failure is terminal: its record, FV-5 authentication,
+        classification and inclusion block are journaled with the result in
+        one conditional write before `permanent` is returned. Success is
+        never cached: each read re-derives it from the chain and the
+        authority."""
+        read = self._read(entry["retainedTransfer"]["txHash"])
+        protocol_input = self._classify_input(entry, read)
+        expected, want = oracle.classify(protocol_input, NO_GUARD_REMOVED)
+        result = {"expected": expected, **want}
+        if expected == "fail" and self.mutant != "failure-not-journaled":
+            proof = {
+                "classification": "permanent",
+                "authentication": "fv5-bft-final",
+                "inclusionBlock": protocol_input["inclusionObservation"]["blockNumber"],
+                "record": read["record"],
+            }
+            self._crash("before-failure-proof")
+            self._save(entry, result=result, failureProof=proof)
+            self._crash("after-failure-proof")
+        return result
+
+    def _resume(self, entry: dict[str, Any]) -> dict[str, Any]:
+        """DEM-4/DEM-6: a terminal failure is never reopened. Its retained
+        proof is reused only while it is FV-5-authenticated and still binds
+        the retained transfer; otherwise the retained hash is re-read, a
+        post-terminal read that changes no session state."""
+        read = self._read(entry["retainedTransfer"]["txHash"])
+        expected, want = oracle.resume(
+            dict(self._classify_input(entry, read), retainedFailureProof=entry["failureProof"]), NO_GUARD_REMOVED,
+        )
         return {"expected": expected, **want}
 
     def pay(self, transaction: dict[str, Any]) -> dict[str, Any]:
         """Retain `transaction` as the phase's one transfer unless a start
         already retained one. The retention is a create-if-absent under the
-        journal lock: a start that finds a retention continues it and never
-        retains or sends another transfer for the phase (DEM-1)."""
+        store-wide retention lock, which also covers the check that no other
+        phase retains the hash: a start that finds a retention continues it
+        and never retains or sends another transfer for the phase, and two
+        phases never both retain one hash (DEM-1). With nothing retained, the
+        DEM-1 binding check runs first and a refusal sends nothing."""
         if self.mutant == "blind-first-retention":
             # The wrong handler reads "no journal", then writes it unlocked.
             refused = self._retain(transaction) if self.store.read(self.journal) is None else None
         else:
-            with self.store.locked(self.journal):
+            lock = self.journal if self.mutant == "per-phase-retention-lock" else RETENTION_LOCK
+            with self.store.locked(lock):
                 refused = self._retain(transaction) if self.store.read(self.journal) is None else None
         return self.advance() if refused is None else refused
 
     def _retain(self, transaction: dict[str, Any]) -> dict[str, Any] | None:
+        expected, want = oracle.pre_sign_gate(
+            {"phase": generator.phase(jobId=self.job_id, phaseIndex=self.phase_index), **self._binding_input()},
+            NO_GUARD_REMOVED,
+        )
+        if expected != "pass":
+            # DEM-1/RAV-R4: no binding for the rail's network; nothing is
+            # retained or sent, and a later start checks again.
+            return {"expected": expected, **want}
         if self._retained_elsewhere(transaction["hash"]):
             # DEM-1: a hash retained for another phase is never retained
             # or sent for this one; nothing leaves for this phase.
@@ -392,8 +533,9 @@ class PayerHandler:
         if entry is None:
             return {"expected": None, "nothingRetained": True}
         if entry.get("result") is not None:
-            # A terminal session is never reopened.
-            return entry["result"]
+            # A terminal session is never reopened: a refusal before any
+            # egress stands, and a DEM-4 failure stands on its proof.
+            return entry["result"] if entry.get("failureProof") is None else self._resume(entry)
         if entry["progress"] == "never-broadcast":
             if not self._permits("confirm-retained", entry):
                 return self._classify(entry)
@@ -535,13 +677,18 @@ def delivery_key(entry: dict[str, Any]) -> tuple[str, str, int]:
     return (entry.get("txHash"), entry.get("jobId"), entry.get("phaseIndex"))
 
 
+RAIL_NETWORKS = {"mainnet": generator.NETWORK, "testnet": generator.OTHER_NETWORK}
+
+
 def payer(work: Path, boot: str, *, crash_at=None, mutant=None, exit_on_crash=False,
-          job_id: str = generator.JOB_ID, **node) -> PayerHandler:
+          job_id: str = generator.JOB_ID, rail_network: dict[str, str] = generator.NETWORK,
+          bindings: list[dict[str, Any]] | None = None, fv5_authenticates: bool = False, **node) -> PayerHandler:
     store_dir = Path(work) / "store"
     store = (MemoryStore(store_dir) if mutant == "process-local-journal"
              else Store(store_dir, fsync=mutant != "no-fsync", parent_fsync=mutant != "no-parent-fsync"))
     return PayerHandler(store, Node(work, boot, **node), boot, crash_at=crash_at, mutant=mutant,
-                        exit_on_crash=exit_on_crash, job_id=job_id)
+                        exit_on_crash=exit_on_crash, job_id=job_id, rail_network=rail_network,
+                        bindings=bindings, fv5=Fv5Authority(fv5_authenticates))
 
 
 def payee(work: Path, boot: str, *, crash_at=None, mutant=None, exit_on_crash=False) -> Payee:
@@ -567,12 +714,18 @@ def main() -> int:
     parser.add_argument("--broadcast", default="accepted")
     parser.add_argument("--balance", default="sufficient")
     parser.add_argument("--relays-confirm", action="store_true")
+    parser.add_argument("--record-status", choices=("confirmed", "failed"), default="confirmed")
+    parser.add_argument("--node-claims-authentication", action="store_true")
+    parser.add_argument("--fv5-authenticates", action="store_true")
+    parser.add_argument("--rail-network", choices=tuple(RAIL_NETWORKS), default="mainnet")
     args = parser.parse_args()
     args.work.mkdir(parents=True, exist_ok=True)
     if args.command == "pay":
         handler = payer(args.work, args.boot, crash_at=args.crash, mutant=args.mutant, exit_on_crash=True,
                         job_id=args.job or generator.JOB_ID, confirm=args.confirm, broadcast=args.broadcast,
-                        balance=args.balance, relays_confirm=args.relays_confirm)
+                        balance=args.balance, relays_confirm=args.relays_confirm,
+                        record_status=args.record_status, claims_authentication=args.node_claims_authentication,
+                        fv5_authenticates=args.fv5_authenticates, rail_network=RAIL_NETWORKS[args.rail_network])
         result = handler.pay(generator.signed())
     elif args.command == "provision":
         payee(args.work, args.boot).provision()

@@ -9,9 +9,11 @@ invariants are what DEM-1, DEM-6 and DEM-7 promise across a crash, an
 in-process interruption and a concurrent start. Each mutant, a handler or
 payee that keeps its state in process memory, journals late or only after a
 call returns, trusts its saved progress, skips an fsync, retains a phase's
-first transfer without a create-if-absent, writes its index without a
-conditional write, treats a lost index as empty or delivers on every check,
-must break one of them.
+first transfer without a create-if-absent, locks only its own phase while it
+checks the other phases' hashes, takes the network from its binding, trusts
+the node's word that a read is authenticated, returns a DEM-4 failure
+without journaling it, writes its index without a conditional write, treats
+a lost index as empty or delivers on every check, must break one of them.
 """
 
 from __future__ import annotations
@@ -277,6 +279,113 @@ def interrupted_call_violations(root: Path, mutant: str | None = None) -> list[s
     return violations
 
 
+FAILED = ("--record-status", "failed")
+FV5 = ("--fv5-authenticates",)
+
+
+def _journal(work: Path) -> dict:
+    return reference.Store(work / "store").read(JOURNAL) or {}
+
+
+def failure_proof_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """DEM-4 and DEM-6: an FV-5-authenticated failed record is terminal. The
+    result and its proof reach storage in one write before `permanent` is
+    returned, a crash on either side of that write leaves either a re-read
+    or the stored proof, and once it is stored a later read that serves
+    `confirmed` reopens nothing."""
+    violations = []
+    for point in (None, "before-failure-proof", "after-failure-proof"):
+        label = point or "uninterrupted"
+        work = root / label
+        first = run("pay", work, "boot-1", *_options(point, mutant, *FAILED, *FV5))
+        if first.returncode not in (0, reference.CRASH_EXIT):
+            violations.append(f"{label}: first start failed: {first.stderr[-400:]}")
+            continue
+        stored = _journal(work)
+        returned = json.loads(first.stdout) if first.returncode == 0 else {}
+        if returned.get("errorClass") == "permanent" and (stored.get("result") or {}).get("errorClass") != "permanent":
+            violations.append(f"{label}: permanent without its durable failure proof")
+        if (stored.get("result") is None) != (stored.get("failureProof") is None):
+            violations.append(f"{label}: result and failure proof not written together")
+        # A crash before the proof leaves only a re-read; the node still
+        # serves the failed record then. Once the proof is stored, the node
+        # turns to serve confirmed, and the session stays terminal.
+        later = FAILED if point == "before-failure-proof" else ("--record-status", "confirmed")
+        again = run("pay", work, "boot-2", *_options(None, mutant, *later, *FV5))
+        if again.returncode != 0:
+            violations.append(f"{label}: restart failed: {again.stderr[-400:]}")
+            continue
+        result = json.loads(again.stdout)
+        if (result.get("expected"), result.get("errorClass")) != ("fail", "permanent"):
+            violations.append(f"{label}: terminal failure reopened as {result.get('expected')}")
+        if [entry["boot"] for entry in reference.read_lines(work / "egress.jsonl")] != ["boot-1", "boot-1"]:
+            violations.append(f"{label}: egress after the terminal failure")
+    return violations
+
+
+def plain_read_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """DEM-4/DEM-5: a pinned node that serves a bound failed record and
+    calls its own read authenticated proves nothing; without FV-5 the result
+    stays substrate and nothing terminal is stored."""
+    done = run("pay", root, "boot-1", *_options(None, mutant, *FAILED, "--node-claims-authentication"))
+    if done.returncode != 0:
+        return [f"failed: {done.stderr[-400:]}"]
+    result, stored = json.loads(done.stdout), _journal(root)
+    violations = []
+    if result.get("errorClass") != "substrate":
+        violations.append(f"plain read classified {result.get('errorClass')}")
+    if stored.get("result") is not None or stored.get("failureProof") is not None:
+        violations.append("plain read stored a terminal result")
+    return violations
+
+
+def rail_network_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """DEM-1/RAV-R3: the payer's binding is for mainnet only and the rail
+    settles on testnet. Nothing may be retained or sent: a handler that
+    takes the network from its binding would debit the payer on mainnet for
+    a phase whose record can never settle."""
+    done = run("pay", root, "boot-1", *_options(None, mutant, "--rail-network", "testnet"))
+    if done.returncode != 0:
+        return [f"failed: {done.stderr[-400:]}"]
+    violations = []
+    calls = [entry["call"] for entry in reference.read_lines(root / "egress.jsonl")]
+    if calls:
+        violations.append(f"egress on a rail the binding does not cover: {calls}")
+    result = json.loads(done.stdout)
+    if (result.get("ok"), result.get("errorClass"), result.get("signPermitted")) != (False, "substrate", False):
+        violations.append(f"result {result}")
+    if (root / "store" / JOURNAL).exists():
+        violations.append("retained a transfer for a rail the binding does not cover")
+    return violations
+
+
+def simultaneous_cross_phase_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """DEM-1: two phases start at once with one signed transaction, and both
+    look for the hash before either has retained it. At most one phase ever
+    retains it."""
+    first = reference.payer(root, "boot-A", mutant=mutant)
+    second = reference.payer(root, "boot-B", mutant=mutant, job_id=generator.OTHER_JOB_ID)
+    transaction = generator.signed()
+    real_write = first.store.write
+    started = []
+
+    def write_after_other_phase_starts(name, value):
+        # The first phase has found the hash nowhere; the other starts now.
+        if not started:
+            thread = threading.Thread(target=second.pay, args=(transaction,), daemon=True)
+            started.append(thread)
+            thread.start()
+            thread.join(timeout=1.0)
+        return real_write(name, value)
+
+    first.store.write = write_after_other_phase_starts
+    first.pay(transaction)
+    started[0].join(timeout=30)
+    retaining = [journal for journal in reference.stored_journals(root / "store")
+                 if journal["retainedTransfer"]["txHash"] == transaction["hash"]]
+    return [] if len(retaining) <= 1 else [f"{len(retaining)} phases retain one hash"]
+
+
 def concurrent_violations(root: Path, mutant: str | None = None) -> list[str]:
     """Two checks for different jobs read the same index snapshot; the
     second write must not succeed on that stale snapshot."""
@@ -355,6 +464,60 @@ class PayDemCrashRestartTests(unittest.TestCase):
     def test_a_hash_retained_for_one_phase_never_leaves_for_another(self):
         self.assertEqual([], cross_phase_violations(self.root / "reference"))
         self.assertTrue(cross_phase_violations(self.root / "no-cross-phase-index", "no-cross-phase-index"))
+
+    def test_two_phases_starting_at_once_never_both_retain_one_hash(self):
+        self.assertEqual([], simultaneous_cross_phase_violations(self.root / "reference"))
+        self.assertEqual(["2 phases retain one hash"],
+                         simultaneous_cross_phase_violations(self.root / "per-phase", "per-phase-retention-lock"))
+
+    def test_proven_failure_is_journaled_with_its_proof_and_never_reopened(self):
+        self.assertEqual([], failure_proof_violations(self.root / "reference"))
+        work = self.root / "reference" / "uninterrupted"
+        stored = _journal(work)
+        self.assertEqual(("fail", "permanent"), (stored["result"]["expected"], stored["result"]["errorClass"]))
+        self.assertEqual({"classification": "permanent", "authentication": "fv5-bft-final",
+                          "inclusionBlock": generator.BLOCK, "record": generator.record("failed")},
+                         stored["failureProof"])
+        # The handler that returns permanent without journaling it reopens
+        # the session when a later read serves confirmed.
+        self.assertIn("uninterrupted: terminal failure reopened as pass",
+                      failure_proof_violations(self.root / "late", "failure-not-journaled"))
+
+    def test_a_plain_read_of_a_failed_record_is_never_terminal(self):
+        self.assertEqual([], plain_read_violations(self.root / "reference"))
+        self.assertEqual(["plain read classified permanent", "plain read stored a terminal result"],
+                         plain_read_violations(self.root / "trusting", "node-authenticates-read"))
+
+    def test_a_resume_reuses_only_an_authenticated_failure_proof(self):
+        """DEM-4: a stored proof that lost its FV-5 authentication or no
+        longer binds the retained transfer is not reused; the resume re-reads,
+        and without FV-5 that re-read stays substrate."""
+        for name, damage in (("plain-read", {"authentication": "rpc-read"}),
+                             ("other-block", {"inclusionBlock": generator.BLOCK + 1})):
+            with self.subTest(name=name):
+                work = self.root / name
+                self.assertEqual(0, run("pay", work, "boot-1", *FAILED, *FV5).returncode)
+                store = reference.Store(work / "store")
+                entry = store.read(JOURNAL)
+                store.write(JOURNAL, dict(entry, failureProof=dict(entry["failureProof"], **damage)))
+                again = run("pay", work, "boot-2", *FAILED)
+                self.assertEqual(0, again.returncode, again.stderr)
+                self.assertEqual(("indeterminate", "substrate"),
+                                 tuple(json.loads(again.stdout)[k] for k in ("expected", "errorClass")))
+                self.assertEqual(["confirm", "broadcast"],
+                                 [entry["call"] for entry in reference.read_lines(work / "egress.jsonl")])
+
+    def test_binding_is_looked_up_by_the_rail_network(self):
+        self.assertEqual([], rail_network_violations(self.root / "reference"))
+        self.assertTrue(rail_network_violations(self.root / "circular", "network-from-binding"))
+        # The gate input is the rail's network and the stored binding, not a flag.
+        handler = reference.payer(self.root / "inputs", "boot-1", rail_network=generator.OTHER_NETWORK)
+        self.assertEqual({"railNetwork": generator.OTHER_NETWORK, "demosBinding": [generator.binding_entry()]},
+                         handler._binding_input())
+        # With an entry for each network, the rail's is the one used.
+        both = reference.payer(self.root / "both", "boot-1", rail_network=generator.OTHER_NETWORK,
+                               bindings=[generator.binding_entry(), generator.binding_entry(generator.OTHER_NETWORK)])
+        self.assertEqual(generator.OTHER_NETWORK, both._applied_authority().network)
 
     def test_journal_is_on_stable_storage_before_the_first_egress(self):
         self.assertEqual([], fsync_violations(self.root / "reference"))

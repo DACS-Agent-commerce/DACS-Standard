@@ -42,6 +42,11 @@ GUARDS = frozenset({
     "sign-requires-applied-payment-authority",
     "sign-requires-gas-fee-separation-unscheduled",
     "binding-refusal-is-rail-unavailable",
+    # DEM-1/RAV-R3 "for the phase's network": the rail's pinned network
+    "binding-network-is-rail-network",
+    "pinned-nodes-bind-rail-network",
+    "applied-authority-binds-rail-network",
+    "fork-attestation-binds-rail-genesis",
     # RAV-R3 for pay-dem, before rail selection
     "preflight-requires-binding",
     "preflight-selects-configured-rail",
@@ -576,9 +581,8 @@ def applied(read, projection, protocol_input, off) -> str:
         return "indeterminate"
     expected = {k: projection[k] for k in ("txHash", "blockNumber", "sender", "recipient")}
     if "applied-transfer-binds-network" not in off:
-        network = protocol_input.get("network")
-        if not (isinstance(network, dict) and set(network) == NETWORK
-                and all(isinstance(network[k], str) and network[k] for k in NETWORK)):
+        network = _network(protocol_input.get("railNetwork"))
+        if network is None:
             return "indeterminate"
         expected.update(network)
     if "applied-transfer-binds-block-id" not in off:
@@ -726,9 +730,63 @@ def party_address(value, off):
     return match[1] if match else None
 
 
-BINDING = ("pinnedNodeConfigured", "appliedPaymentAuthorityConfigured", "gasFeeSeparationUnscheduled")
+BINDING = ("pinnedNodes", "appliedPaymentAuthority", "gasFeeSeparation")
+# Each binding that is not the rail network's, and the guard that refuses it.
+NETWORK_VARIANTS = {
+    "binding-for-another-network": "binding-network-is-rail-network",
+    "binding-for-replaced-genesis": "binding-network-is-rail-network",
+    "pinned-nodes-for-another-network": "pinned-nodes-bind-rail-network",
+    "applied-authority-for-another-network": "applied-authority-binds-rail-network",
+    "fork-attestation-of-another-genesis": "fork-attestation-binds-rail-genesis",
+}
 UNSELECTABLE = frozenset({"disabled", "failed", "mocked"})
 RAV_R3_GATED = frozenset({"operator_gated", "closed_data", "bilateral"})
+
+
+def _network(value):
+    """A (networkId, genesisHash) pair of non-empty strings, or None."""
+    if (isinstance(value, dict) and set(value) == NETWORK
+            and all(isinstance(value[k], str) and value[k] for k in NETWORK)):
+        return dict(value)
+    return None
+
+
+def binding_members(protocol_input: dict, off) -> dict[str, bool]:
+    """DEM-1/RAV-R3: which of the three members the payer's Demos binding
+    holds for the rail's network. That network is the pinned RailDefinition's
+    `consumerFinalityProfile.settlement` (`railNetwork`), never one the
+    binding supplies; the binding entry is the one for that network, and a
+    member counts only when it names exactly that network and genesis."""
+    held = dict.fromkeys(BINDING, False)
+    entries = protocol_input.get("demosBinding")
+    if not (isinstance(entries, list) and all(isinstance(entry, dict) for entry in entries)):
+        return held
+    if "binding-network-is-rail-network" in off:
+        # The wrong implementation keeps one binding and takes the phase's
+        # network from it, whatever the rail settles on.
+        entry = entries[0] if entries else None
+        network = _network({k: entry.get(k) for k in NETWORK}) if entry is not None else None
+    else:
+        network = _network(protocol_input.get("railNetwork"))
+        entry = next((entry for entry in entries
+                      if network is not None and {k: entry.get(k) for k in NETWORK} == network), None)
+    if entry is None or network is None:
+        return held
+    for member, guard, extra in (
+        ("pinnedNodes", "pinned-nodes-bind-rail-network", set()),
+        ("appliedPaymentAuthority", "applied-authority-binds-rail-network", set()),
+        # The sealed genesis's forks.gasFeeSeparation: only a null height is unscheduled.
+        ("gasFeeSeparation", "fork-attestation-binds-rail-genesis", {"activationHeight"}),
+    ):
+        value = entry.get(member)
+        if not (isinstance(value, dict) and set(value) == NETWORK | extra):
+            continue
+        if guard not in off and {k: value[k] for k in NETWORK} != network:
+            continue
+        if extra and value["activationHeight"] is not None:
+            continue
+        held[member] = True
+    return held
 
 
 def rail_preflight(protocol_input: dict, off) -> tuple[str, dict]:
@@ -742,9 +800,7 @@ def rail_preflight(protocol_input: dict, off) -> tuple[str, dict]:
     if availability in UNSELECTABLE:
         return "fail", {"railSelectable": False}
     gated = availability in RAV_R3_GATED or "pay-dem-preflight-whatever-availability" not in off
-    if gated and "preflight-requires-binding" not in off and any(
-        protocol_input.get(member) is not True for member in BINDING
-    ):
+    if gated and "preflight-requires-binding" not in off and not all(binding_members(protocol_input, off).values()):
         return "fail", {"railSelectable": False}
     if "preflight-selects-configured-rail" in off:
         return "fail", {"railSelectable": False}
@@ -757,12 +813,13 @@ def pre_sign_gate(protocol_input: dict, off) -> tuple[str, dict]:
     is unscheduled cannot reach DEM-3 success. The RAV-R3 preflight checked
     the binding before the rail was selected, so at settle the rail is
     non-operational for this payer: RAV-R4 substrate, and nothing is signed."""
-    for guard, configured in (
-        ("sign-requires-pinned-node", "pinnedNodeConfigured"),
-        ("sign-requires-applied-payment-authority", "appliedPaymentAuthorityConfigured"),
-        ("sign-requires-gas-fee-separation-unscheduled", "gasFeeSeparationUnscheduled"),
+    held = binding_members(protocol_input, off)
+    for guard, member in (
+        ("sign-requires-pinned-node", "pinnedNodes"),
+        ("sign-requires-applied-payment-authority", "appliedPaymentAuthority"),
+        ("sign-requires-gas-fee-separation-unscheduled", "gasFeeSeparation"),
     ):
-        if protocol_input.get(configured) is not True and guard not in off:
+        if not held[member] and guard not in off:
             # The wrong implementation blames the payer for a rail that is not
             # operational (RAV-R4), after the payee may already have delivered.
             error_class = "permanent" if "binding-refusal-is-rail-unavailable" in off else "substrate"
@@ -823,12 +880,13 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
             own, protocol_input["signedTransaction"]
         ):
             return refused
-    for guard, configured in (
-        ("broadcast-requires-pinned-node", "pinnedNodeConfigured"),
-        ("broadcast-requires-applied-payment-authority", "appliedPaymentAuthorityConfigured"),
-        ("broadcast-requires-gas-fee-separation-unscheduled", "gasFeeSeparationUnscheduled"),
+    held = binding_members(protocol_input, off)
+    for guard, member in (
+        ("broadcast-requires-pinned-node", "pinnedNodes"),
+        ("broadcast-requires-applied-payment-authority", "appliedPaymentAuthority"),
+        ("broadcast-requires-gas-fee-separation-unscheduled", "gasFeeSeparation"),
     ):
-        if protocol_input.get(configured) is not True and guard not in off:
+        if not held[member] and guard not in off:
             return refused
     if "retention-bound-to-phase" not in off and (
         transfer.get("jobId"), transfer.get("phaseIndex")
@@ -1344,6 +1402,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 self.assertTrue(edits_match(served))
         permitted = [vector["name"] for vector in self.data["vectors"] if vector["want"].get("broadcastPermitted")]
         self.assertEqual(["first-broadcast-after-durable-retention", "broadcast-prefixed-send-argument",
+                          "broadcast-with-rail-network-entry-among-several",
                           "broadcast-to-0x-payee-address", "broadcast-to-did-payee-address",
                           "broadcast-from-did-paying-key", "confirm-after-durable-retention",
                           "broadcast-completes-own-confirm"], permitted)
@@ -1636,27 +1695,30 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                               ("confirm-with-gas-fee-separation-scheduled", "confirm-after-durable-retention"),
                               ("broadcast-without-fork-attestation", "first-broadcast-after-durable-retention")):
             with self.subTest(control=control, name=name):
-                refused = dict(self.cases[name]["protocolInput"])
-                passing = dict(self.cases[control]["protocolInput"])
-                refused.pop("gasFeeSeparationUnscheduled", None)
-                self.assertIs(True, passing.pop("gasFeeSeparationUnscheduled"))
+                refused = json.loads(json.dumps(self.cases[name]["protocolInput"]))
+                passing = json.loads(json.dumps(self.cases[control]["protocolInput"]))
+                refused["demosBinding"][0].pop("gasFeeSeparation", None)
+                self.assertIsNone(passing["demosBinding"][0].pop("gasFeeSeparation")["activationHeight"])
                 self.assertEqual(passing, refused)
-        # Missing or non-boolean configuration fails closed.
-        for member in ("pinnedNodeConfigured", "appliedPaymentAuthorityConfigured", "gasFeeSeparationUnscheduled"):
-            for value in (None, "true", 1):
+        # A missing, malformed or other-network member fails closed.
+        for member in BINDING:
+            for value in (None, True, "true", 1, {}, dict(generator.NETWORK, extra="x"),
+                          {"networkId": generator.NETWORK["networkId"]}, generator.OTHER_NETWORK):
                 with self.subTest(member=member, value=value):
                     case = json.loads(json.dumps(self.cases["first-broadcast-after-durable-retention"]))
+                    entry = case["protocolInput"]["demosBinding"][0]
                     if value is None:
-                        del case["protocolInput"][member]
+                        del entry[member]
+                    elif isinstance(value, dict) and member == "gasFeeSeparation" and value:
+                        entry[member] = dict(value, activationHeight=None)
                     else:
-                        case["protocolInput"][member] = value
+                        entry[member] = value
                     self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(case))
         for vector in self.data["vectors"]:
             if vector["operation"] == "broadcast-gate" and vector["want"]["broadcastPermitted"]:
                 with self.subTest(name=vector["name"]):
-                    self.assertIs(True, vector["protocolInput"]["pinnedNodeConfigured"])
-                    self.assertIs(True, vector["protocolInput"]["appliedPaymentAuthorityConfigured"])
-                    self.assertIs(True, vector["protocolInput"]["gasFeeSeparationUnscheduled"])
+                    self.assertEqual(generator.NETWORK, vector["protocolInput"]["railNetwork"])
+                    self.assertEqual(dict.fromkeys(BINDING, True), binding_members(vector["protocolInput"], frozenset()))
         # Before pay()/sign(): the RAV-R3 preflight checked the binding before
         # rail selection, so a refusal at settle is the RAV-R4 result ok false,
         # errorClass substrate, and there is no signed transaction to send.
@@ -1665,13 +1727,13 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         presign = {name: vector for name, vector in self.cases.items() if vector["operation"] == "pre-sign-gate"}
         self.assertEqual({"sign-with-pinned-node-and-applied-payment-authority", "sign-without-pinned-node",
                           "sign-without-applied-payment-authority", "sign-with-gas-fee-separation-scheduled",
-                          "sign-without-fork-attestation", "sign-without-binding"}, set(presign))
-        binding = {"phase", "pinnedNodeConfigured", "appliedPaymentAuthorityConfigured", "gasFeeSeparationUnscheduled"}
+                          "sign-without-fork-attestation", "sign-without-binding",
+                          "sign-with-rail-network-entry-among-several"}
+                         | {"sign-with-" + suffix for suffix in NETWORK_VARIANTS}, set(presign))
         for name, vector in presign.items():
             with self.subTest(name=name):
-                # Only the binding that attests nothing about the fork omits it.
-                self.assertEqual(binding - ({"gasFeeSeparationUnscheduled"} if name == "sign-without-fork-attestation"
-                                            else set()), set(vector["protocolInput"]))
+                self.assertEqual({"phase", "railNetwork", "demosBinding"}, set(vector["protocolInput"]))
+                self.assertEqual(generator.NETWORK, vector["protocolInput"]["railNetwork"])
                 if vector["expected"] == "pass":
                     self.assertEqual(("pass", {"signPermitted": True, "ok": None, "errorClass": None}), evaluate(vector))
                     continue
@@ -1686,15 +1748,79 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                             ("sign-without-fork-attestation", "sign-requires-gas-fee-separation-unscheduled")):
             with self.subTest(name=name):
                 self.assertTrue(evaluate(self.cases[name], {guard})[1]["signPermitted"])
-        for member in ("pinnedNodeConfigured", "appliedPaymentAuthorityConfigured", "gasFeeSeparationUnscheduled"):
-            for value in (None, "true", 1, False):
+        for member in BINDING:
+            for value in (None, "true", 1, False, {}):
                 with self.subTest(presign=member, value=value):
                     case = json.loads(json.dumps(presign["sign-with-pinned-node-and-applied-payment-authority"]))
                     if value is None:
-                        del case["protocolInput"][member]
+                        del case["protocolInput"]["demosBinding"][0][member]
                     else:
-                        case["protocolInput"][member] = value
+                        case["protocolInput"]["demosBinding"][0][member] = value
                     self.assertEqual(("fail", refused), evaluate(case))
+        # Without the rail's network, or with a malformed binding, no entry is
+        # the rail's: nothing is signed.
+        for change in ({"railNetwork": None}, {"railNetwork": {"networkId": generator.NETWORK["networkId"]}},
+                       {"railNetwork": dict(generator.NETWORK, extra="x")}, {"demosBinding": None},
+                       {"demosBinding": generator.binding_entry()}, {"demosBinding": ["x"]}):
+            with self.subTest(presign=str(change)[:60]):
+                case = json.loads(json.dumps(presign["sign-with-pinned-node-and-applied-payment-authority"]))
+                for key, value in change.items():
+                    if value is None:
+                        del case["protocolInput"][key]
+                    else:
+                        case["protocolInput"][key] = value
+                self.assertEqual(("fail", refused), evaluate(case))
+
+    def test_binding_is_for_the_rail_network_at_every_gate(self):
+        """DEM-1/RAV-R3 "for the phase's network": the rail's network is the
+        pinned RailDefinition's consumerFinalityProfile.settlement, not the
+        binding's. Each wrong-network binding, member or attestation is
+        refused at sign, confirm, broadcast and preflight, and a gate that
+        takes the network from its one binding signs where the record can
+        never settle."""
+        spec = SPEC.read_text(encoding="utf-8")
+        demos = DEMOS.read_text(encoding="utf-8")
+        self.assertIn("the phase's Demos network is the pinned `RailDefinition`'s "
+                      "`consumerFinalityProfile.settlement` network", spec)
+        self.assertIn("each member names that network and genesis", spec)
+        self.assertIn("names that network's `networkId` and `genesisHash`", demos)
+        operations = (("sign-with-", "pre-sign-gate"), ("confirm-with-", "broadcast-gate"),
+                      ("broadcast-with-", "broadcast-gate"), ("preflight-live-rail-with-", "rail-preflight"))
+        for suffix, guard in NETWORK_VARIANTS.items():
+            for prefix, operation in operations:
+                name = prefix + suffix
+                with self.subTest(name=name):
+                    vector = self.cases[name]
+                    self.assertEqual(operation, vector["operation"])
+                    self.assertEqual("fail", evaluate(vector)[0])
+                    self.assertIn(guard, vector["guards"])
+                    self.assertEqual(generator.NETWORK, vector["protocolInput"]["railNetwork"])
+                    # Each one differs from its passing control only in the binding.
+                    control = self.cases[{"sign-with-": "sign-with-pinned-node-and-applied-payment-authority",
+                                          "confirm-with-": "confirm-after-durable-retention",
+                                          "broadcast-with-": "first-broadcast-after-durable-retention",
+                                          "preflight-live-rail-with-": "preflight-live-rail-with-binding"}[prefix]]
+                    rest = {k: v for k, v in vector["protocolInput"].items() if k != "demosBinding"}
+                    self.assertEqual({k: v for k, v in control["protocolInput"].items() if k != "demosBinding"}, rest)
+                    self.assertEqual("pass", evaluate(control)[0])
+                    self.assertNotEqual(control["protocolInput"]["demosBinding"],
+                                        vector["protocolInput"]["demosBinding"])
+        # A gate that keeps one global binding passes a binding for another
+        # network; the one that looks the rail's entry up refuses it.
+        global_binding = self.cases["sign-with-binding-for-another-network"]
+        self.assertTrue(evaluate(global_binding, {"binding-network-is-rail-network"})[1]["signPermitted"])
+        for name in ("sign-with-rail-network-entry-among-several", "broadcast-with-rail-network-entry-among-several",
+                     "preflight-live-rail-with-rail-network-entry-among-several"):
+            with self.subTest(name=name):
+                entries = self.cases[name]["protocolInput"]["demosBinding"]
+                self.assertNotEqual(generator.NETWORK, {k: entries[0][k] for k in NETWORK})
+                self.assertEqual("pass", evaluate(self.cases[name])[0])
+        # The classify, resume and admit paths bind the same rail network.
+        for vector in self.data["vectors"]:
+            if vector["operation"] in {"classify-execution", "resume-phase", "admit-evidence", "admit-for-delivery"}:
+                with self.subTest(name=vector["name"]):
+                    self.assertEqual(generator.NETWORK, vector["protocolInput"]["railNetwork"])
+                    self.assertNotIn("network", vector["protocolInput"])
 
     def test_applied_payment_authority_binds_every_member_on_both_paths(self):
         # DEMOS-MAPPING §A.2: the authority binds the network, the inclusion
@@ -1716,7 +1842,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             self.assertEqual("pass", evaluate(control)[0])
             proof = control["protocolInput"]["recordRead"]["appliedTransfer"]
             self.assertEqual(APPLIED_TRANSFER, set(proof))
-            self.assertEqual(control["protocolInput"]["network"],
+            self.assertEqual(control["protocolInput"]["railNetwork"],
                              {k: proof[k] for k in ("networkId", "genesisHash")})
             self.assertEqual(control["protocolInput"]["inclusionObservation"]["blockId"], proof["blockId"])
             witnessed = set()
@@ -1739,9 +1865,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             self.assertEqual(APPLIED_TRANSFER, witnessed, prefix)
             # The phase network and the observed block ID are inputs: missing
             # or malformed ones bind nothing, on both paths.
-            for change in ({"network": None}, {"network": {"networkId": proof["networkId"]}},
-                           {"network": dict(control["protocolInput"]["network"], extra="x")},
-                           {"network": {"networkId": "", "genesisHash": proof["genesisHash"]}},
+            for change in ({"railNetwork": None}, {"railNetwork": {"networkId": proof["networkId"]}},
+                           {"railNetwork": dict(control["protocolInput"]["railNetwork"], extra="x")},
+                           {"railNetwork": {"networkId": "", "genesisHash": proof["genesisHash"]}},
                            {"inclusionObservation": {"blockNumber": generator.BLOCK}},
                            {"inclusionObservation": {"blockNumber": generator.BLOCK, "blockId": proof["blockId"].upper()}},
                            {"inclusionObservation": {"blockNumber": generator.BLOCK, "blockId": None}}):
@@ -2636,7 +2762,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertEqual({"preflight-live-rail-with-binding", "preflight-live-rail-without-applied-payment-authority",
                           "preflight-live-rail-without-fork-attestation",
                           "preflight-operator-gated-rail-without-pinned-node",
-                          "preflight-operator-gated-rail-with-binding"}, set(preflights))
+                          "preflight-operator-gated-rail-with-binding",
+                          "preflight-live-rail-with-rail-network-entry-among-several"}
+                         | {"preflight-live-rail-with-" + suffix for suffix in NETWORK_VARIANTS}, set(preflights))
         for availability in ("disabled", "failed", "mocked"):
             with self.subTest(availability=availability):
                 case = json.loads(json.dumps(preflights["preflight-live-rail-with-binding"]))

@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 284 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 307 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -1247,7 +1247,7 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-284 candidate vectors pin native-DEM settlement on execution, not inclusion.
+307 candidate vectors pin native-DEM settlement on execution, not inclusion.
 The node's status index may label a transaction `included` while its
 transaction record is `failed`, so the index is never decisive. Records use
 the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
@@ -1296,10 +1296,10 @@ authenticated its failed record at the `bft-final` inclusion; a plain RPC
 read is `indeterminate`.
 `pre-sign-gate` cases check DEM-1 before demosdk `pay()`/`sign()`: their
 input holds no signed transaction, and a binding without pinned nodes, an
-applied-payment authority or `gasFeeSeparationUnscheduled` (its attestation,
-from the network's sealed genesis, that the `gasFeeSeparation` fork is
-unscheduled) is `signPermitted: false` with `ok: false` and
-`errorClass: "permanent"`, never `substrate`. A binding that attests the fork
+applied-payment authority or a `gasFeeSeparation` attestation (from the rail
+network's sealed genesis, with `activationHeight: null`) for `railNetwork` is
+`signPermitted: false` with `ok: false` and `errorClass: "substrate"`
+(RAV-R4), never `permanent`. A binding that attests the fork
 scheduled and one that attests nothing are each refused: with the fork active
 the pinned node stores fee-distribution edits before the send's four, so
 `confirmed-fee-separated-edits`, `consumer-fee-separated-edits` and FV
@@ -1426,6 +1426,20 @@ and 20-byte addresses are `error` (guard `phase-party-address-projects`).
 availability, before selection and so before Agreement signature; a binding
 found missing at settle is `pre-sign-gate` `substrate` under RAV-R4 (guard
 `binding-refusal-is-rail-unavailable`).
+The three gates read the binding "for the phase's network" from two inputs:
+`railNetwork`, the pinned RailDefinition's `consumerFinalityProfile.settlement`
+network and genesis, and `demosBinding`, the payer's configuration with one
+entry per network whose members each name the network or genesis they were
+configured or attested for. The gate uses the entry for `railNetwork`
+(guard `binding-network-is-rail-network`) and holds a member only when it
+names exactly that network (guards `pinned-nodes-bind-rail-network`,
+`applied-authority-binds-rail-network`, `fork-attestation-binds-rail-genesis`).
+`*-with-binding-for-another-network`, `*-binding-for-replaced-genesis`,
+`*-pinned-nodes-for-another-network`, `*-applied-authority-for-another-network`
+and `*-fork-attestation-of-another-genesis` refuse at sign, `confirm`,
+broadcast and preflight; `*-rail-network-entry-among-several` pass with the
+rail's entry behind another network's. `classify-execution`, `resume-phase`
+and `admit-*` bind the applied-payment authority to the same `railNetwork`.
 
 `project-settlement-id` cases derive `demos:{txHash}` from raw references, reject malformed or noncanonical current hashes, and collapse verified legacy spelling. `resolve-settlement-group` derives both raw IDs before grouping: one hash under two jobs, including a canonical and a verified legacy spelling, leaves both indeterminate, while distinct hashes pass. Admitted references retain their raw transaction references rather than a prefiltered same-hash tuple list. Settlement accounting and the DACS-5 derivation group only the presented `records`: `sb2-demos-unpresented-admission-not-added` passes although the consumer once admitted the same hash for another job outside that set (guard `sb2-presented-set-only`), so a re-run from the presented set reproduces the result.
 

@@ -667,6 +667,8 @@ _VALID_RULE_LOCATIONS = (
     "../rules/select?version=1#rule", "/rules/select", "//rules.example/select",
     "?rule=1", "#rule", "./foo:bar", "mailto:rules@example.test",
     "https://rules.example/rule%20one?x=%2f#part%AA",
+    # Percent escapes in the userinfo and the reg-name.
+    "https://us%20er@rules.example/rule", "https://r%C3%A9gles.example/rule",
     "https://user:password@rules.example:443/rule",
     "https://[2001:db8::1]:443/rule", "https://[::ffff:192.0.2.1]/rule",
     "https://[v1.a:b]/rule", "https://[VF.x]/rule",
@@ -681,11 +683,15 @@ _INVALID_RULE_LOCATIONS = (
     "1bad:rule", "https://rules.example/rule[1]", "https://rules.example/?x=[1]",
     "https://rules.example/#part[1]", "https://rules.example/#part#two",
     "https://rules.example:port/rule", "https://a@b@rules.example/rule",
+    "https://us%zz@rules.example/rule", "https://us%2@rules.example/rule",
+    "https://r%C3%Agles.example/rule", "https://rules%.example/rule",
     "https://[bad]/rule", "https://[2001:db8::1/rule", "https://[192.0.2.1]/rule",
     "https://[1:2:3]/rule", "https://[vG.x]/rule", "https://[v1.]/rule",
     # RFC 6874 zone IDs are not RFC 3986 IP literals.
     "https://[fe80::1%25eth0]/rule",
 )
+# Nine characters that are not the case-sensitive "rule-ref:" discriminator.
+_WRONG_RULE_REF_PREFIXES = ("Rule-Ref:", "RULE-REF:", "rule-ref;", "xxxxxxxxx")
 
 
 class ListingShapeWrongTypeTests(unittest.TestCase):
@@ -862,6 +868,14 @@ class ListingShapeBoundsTests(unittest.TestCase):
                 listing = _legacy_listing()
                 listing["terms"]["conflictOfLawsRule"] = "rule-ref:" + location
                 self.assert_shape_failure(listing, "invalid terms")
+        # Only the nine-character discriminator differs from a valid reference.
+        for prefix in _WRONG_RULE_REF_PREFIXES:
+            with self.subTest(prefix=prefix):
+                listing = _legacy_listing()
+                listing["terms"]["conflictOfLawsRule"] = "rule-ref:https://example.test/law"
+                self.assert_publishable(listing)
+                listing["terms"]["conflictOfLawsRule"] = prefix + "https://example.test/law"
+                self.assert_shape_failure(listing, "invalid terms")
 
     def test_terms_is_a_required_object(self):
         listing = _legacy_listing()
@@ -980,6 +994,12 @@ class ListingShapeBoundsTests(unittest.TestCase):
         for rule in invalid:
             with self.subTest(rule=rule):
                 self.assert_shape_failure(auction(rule), "invalid pricing")
+        # Only the nine-character discriminator differs from a valid reference.
+        remainder = "ab" * 32 + ":stor-rule"
+        self.assert_publishable(auction("rule-ref:" + remainder))
+        for prefix in _WRONG_RULE_REF_PREFIXES:
+            with self.subTest(prefix=prefix):
+                self.assert_shape_failure(auction(prefix + remainder), "invalid pricing")
 
     def test_signature_algorithm_is_closed(self):
         for algorithm in ("ed25519", "ecdsa-secp256k1", "sr1-aggregate"):

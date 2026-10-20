@@ -8,14 +8,18 @@ same verdict from every conforming verifier, so the verdict a case expects
 must be one that the value's defect gives for every verifier:
 
 * ``wire``: a SIG-6 (CORE §B.7) wire defect is found by every verifier before
-  any algorithm or key question, so the case must expect a rejection:
-  ``error`` (DACS-3 §8.3.3: malformed encoding is ``error``), ``fail``, or the
-  encoding corpus's ``reject``.
+  any algorithm or key question, so the case must expect a rejection.
 * ``format``: a canonical value whose decoded bytes are not the algorithm's
-  signature format is found only by a verifier that checks that format, which
-  then rejects the signature, so the case must expect ``fail`` or ``reject``.
-  ``error`` or ``indeterminate`` holds only for a verifier that stops at an
-  unimplemented algorithm, and ``pass`` only for one that skips the check.
+  pinned signature format is found only by a verifier that checks that
+  format, which then rejects the signature, so the case must expect ``fail``
+  or ``reject``.  ``error`` or ``indeterminate`` holds only for a verifier
+  that stops at an unimplemented algorithm, and ``pass`` only for one that
+  skips the check.  Which formats a corpus pins is ``pinned_formats``'s
+  answer (``signature_encoding``).
+
+Where a corpus's spec fixes the verdict of each stage, ``VERDICT_CONTRACTS``
+holds exactly that verdict (DACS-3 §8.3.3: malformed encoding is ``error``);
+any other corpus may expect any rejection of the stage (``STAGE_VERDICTS``).
 
 Neither rule can see a well-encoded value whose signer claim names another
 algorithm's key, so every case where a ``key:`` (Ed25519) claim signs under a
@@ -24,11 +28,12 @@ reason, in ``KEY_CLAIM_RELABELS``.
 
 The rules read verdicts, never case wording.  A case is the outermost object
 carrying a verdict member (``expected`` or ``verdict``) wherever it sits, so a
-corpus may keep its cases under any member name or map; content outside every
-case declares no verdict and admits no defect.  A corpus whose spec maps every
-signature failure to one verdict declares it in ``SIGNATURE_FAILURE_VERDICTS``;
-anything else that is kept on purpose is in ``ALLOWED_OFFENDERS``.  Run as a
-script with JSON paths to check scratch files.
+corpus may keep its cases under any member name or map.  An entry of a
+top-level map that cases reference by name (``SHARED_REFERENCES``) is judged
+under the verdict of every case referencing it; other content outside every
+case declares no verdict and admits no defect.  Anything kept on purpose is
+in ``ALLOWED_OFFENDERS``.  Run as a script with JSON paths to check scratch
+files.
 """
 from __future__ import annotations
 
@@ -49,6 +54,7 @@ from signature_encoding import (  # noqa: E402
     FORMAT,
     WIRE,
     algorithm_unions,
+    pinned_formats,
     registered_signature_algorithms,
     signature_value_defect,
 )
@@ -60,21 +66,36 @@ CASE_ID_MEMBERS = ("name", "id", "caseId")
 REJECTIONS = frozenset({"fail", "reject", "rejected"})
 STAGE_VERDICTS = {WIRE: REJECTIONS | {"error"}, FORMAT: REJECTIONS}
 
-# Corpora whose spec maps every signature failure in them to one verdict.
-SIGNATURE_FAILURE_VERDICTS = {
+# Corpora whose spec fixes the verdict a signature defect of each stage
+# gives: only that verdict is accepted there.
+VERDICT_CONTRACTS = {
+    "conformance/vectors/security/canonical-channel-message-v0.6.json": (
+        {WIRE: frozenset({"error"}), FORMAT: frozenset({"fail"})},
+        "DACS-3 §8.3.3: malformed structure or encoding is error; a "
+        "well-encoded signature that does not verify fails",
+    ),
     "conformance/vectors/security/revocation-state-completeness-v0.8.json": (
-        "indeterminate",
+        {WIRE: frozenset({"indeterminate"}), FORMAT: frozenset({"indeterminate"})},
         "DACS-1 RSC-7: any RSC failure returns indeterminate, so a listing, "
         "head or marker signature that any verifier rejects or cannot check "
         "gives indeterminate",
     ),
+    "conformance/vectors/security/signature-value-encoding-v0.1.json": (
+        {WIRE: frozenset({"reject"}), FORMAT: frozenset({"reject"})},
+        "a binary accept/reject corpus for SIG-6 and the Ed25519 length",
+    ),
 }
+
+# Top-level maps whose entries cases name instead of embedding: the member a
+# case holds the entry's key in -> the map.
+SHARED_REFERENCES = {"executionAuthorityRef": "executionAuthorities"}
 
 
 @dataclass(frozen=True)
 class AllowedOffender:
     file: str
     cases: frozenset
+    paths: frozenset
     rules: frozenset
     algorithms: frozenset
     values: frozenset
@@ -83,15 +104,20 @@ class AllowedOffender:
 
 
 # Offenders kept on purpose. Each entry names the file, the cases ("*" for
-# every case in the file), the rules and algorithms it covers and the exact
-# offending values; any other offender still fails, and an entry with a case
-# or value that matches nothing fails as stale, so fixing a vector forces its
-# entry out. An entry with a follow-up is debt; one without is a value that
-# does not decide its case's verdict.
+# every case in the file), the JSON paths ("*" matches one path step), the
+# rules and algorithms it covers and the exact offending values; any other
+# offender still fails, and an entry with a case, path or value that matches
+# nothing fails as stale, so fixing a vector forces its entry out. An entry
+# with a follow-up is debt; one without is a value that does not decide its
+# case's verdict.
 ALLOWED_OFFENDERS = (
     AllowedOffender(
         file="conformance/vectors/security/legacy-agreement-admission-v0.8.json",
         cases=frozenset({"*"}),
+        paths=frozenset({
+            "/vectors/*/input/reservation/signatures/*",
+            "/vectors/*/input/transitionEvidence/signature",
+        }),
         rules=frozenset({WIRE, FORMAT}),
         algorithms=frozenset({"ed25519"}),
         values=frozenset({
@@ -113,6 +139,7 @@ ALLOWED_OFFENDERS = (
     AllowedOffender(
         file="conformance/fixtures/settlement-evidence-payment-success.json",
         cases=frozenset({"<file>"}),
+        paths=frozenset({"/paymentInput/rail/signature"}),
         rules=frozenset({WIRE}),
         algorithms=frozenset({"ed25519"}),
         values=frozenset({"fixture-rail-signature"}),
@@ -122,6 +149,7 @@ ALLOWED_OFFENDERS = (
     AllowedOffender(
         file="conformance/vectors/examples/rating-record.json",
         cases=frozenset({"<file>"}),
+        paths=frozenset({"/artifact/signature"}),
         rules=frozenset({WIRE}),
         algorithms=frozenset({"ed25519"}),
         values=frozenset({"sig:example-rating-signature"}),
@@ -140,6 +168,7 @@ ALLOWED_OFFENDERS = (
             "invalid-successor-is-discarded",
             "invalid-same-key-root-cannot-suppress-valid-root",
         }),
+        paths=frozenset({"/vectors/*/input/descriptors/*/authorizationSignature"}),
         rules=frozenset({FORMAT}),
         algorithms=frozenset({"ed25519"}),
         values=frozenset({"AA"}),
@@ -195,6 +224,7 @@ class Case:
     verdict: object
     node: object
     path: str
+    formats: frozenset
 
 
 @dataclass(frozen=True)
@@ -249,9 +279,24 @@ def _without_cases(node):
     return node
 
 
+def _references(node, member):
+    """Yield every string held by ``member`` anywhere in ``node``."""
+    if isinstance(node, dict):
+        for key, child in node.items():
+            if key == member and isinstance(child, str):
+                yield child
+            else:
+                yield from _references(child, member)
+    elif isinstance(node, list):
+        for child in node:
+            yield from _references(child, member)
+
+
 def cases_of(path, document):
-    """Yield every outermost verdict-bearing object, then the file remainder."""
+    """Yield every outermost verdict-bearing object, each referenced shared
+    entry once per case referencing it, then the file remainder."""
     file = _relative(path)
+    formats = pinned_formats(document)
     found = []
 
     def visit(node, where):
@@ -260,7 +305,7 @@ def cases_of(path, document):
                 (node[f] for f in CASE_ID_MEMBERS if isinstance(node.get(f), str)),
                 where or "/",
             )
-            found.append(Case(file, case_id, _verdict(node), node, where))
+            found.append(Case(file, case_id, _verdict(node), node, where, formats))
         elif isinstance(node, dict):
             for key, child in node.items():
                 visit(child, "%s/%s" % (where, key))
@@ -271,8 +316,23 @@ def cases_of(path, document):
     visit(document, "")
     yield from found
     remainder = _without_cases(document)
-    if remainder is not None:
-        yield Case(file, "<file>", None, remainder, "")
+    if remainder is None:
+        return
+    for member, shared in SHARED_REFERENCES.items():
+        entries = remainder.get(shared) if isinstance(remainder, dict) else None
+        if not isinstance(entries, dict):
+            continue
+        referenced = set()
+        for case in found:
+            for name in sorted(set(_references(case.node, member))):
+                if name in entries:
+                    referenced.add(name)
+                    yield Case(file, case.case_id, case.verdict, entries[name],
+                               "/%s/%s" % (shared, name), formats)
+        # An entry no case references stays in the remainder, which declares
+        # no verdict.
+        remainder[shared] = {k: v for k, v in entries.items() if k not in referenced}
+    yield Case(file, "<file>", None, remainder, "", formats)
 
 
 def signature_objects(node, path=""):
@@ -289,11 +349,8 @@ def signature_objects(node, path=""):
 
 
 def accepted_verdicts(file, stage):
-    accepted = set(STAGE_VERDICTS[stage])
-    declared = SIGNATURE_FAILURE_VERDICTS.get(file)
-    if declared is not None:
-        accepted.add(declared[0])
-    return accepted
+    contract = VERDICT_CONTRACTS.get(file)
+    return contract[0][stage] if contract is not None else STAGE_VERDICTS[stage]
 
 
 def case_offenders(case, registered):
@@ -301,14 +358,21 @@ def case_offenders(case, registered):
     for path, algorithm, value in signature_objects(case.node, case.path):
         if algorithm not in registered:
             continue
-        defect = signature_value_defect(algorithm, value)
+        defect = signature_value_defect(algorithm, value, case.formats)
         if defect is None:
             continue
         stage, why = defect
-        if verdict in accepted_verdicts(case.file, stage):
+        accepted = accepted_verdicts(case.file, stage)
+        if verdict in accepted:
             continue
         expects = "declares no verdict" if verdict is None else "expects %r" % case.verdict
-        if stage == WIRE:
+        if case.file in VERDICT_CONTRACTS:
+            reason = (
+                "%s value has a %s defect (%s); its corpus's spec makes that %s, "
+                "but the case %s"
+                % (algorithm, stage, why, " or ".join(map(repr, sorted(accepted))), expects)
+            )
+        elif stage == WIRE:
             reason = (
                 "%s value has a wire defect (%s), which every verifier rejects "
                 "before any algorithm or key check, but the case %s"
@@ -326,11 +390,11 @@ def case_offenders(case, registered):
 def key_claim_relabels(case, registered):
     """Yield paths where a ``key:`` claim signs under a non-Ed25519 algorithm.
 
-    Only cases that expect neither a rejection nor their corpus's declared
+    Only cases that expect neither a rejection nor their corpus's contracted
     signature-failure verdict are yielded.
     """
     verdict = case.verdict.lower() if isinstance(case.verdict, str) else None
-    if verdict in accepted_verdicts(case.file, FORMAT):
+    if verdict in REJECTIONS | accepted_verdicts(case.file, FORMAT):
         return
 
     def visit(node, where):
@@ -362,11 +426,20 @@ def find_offenders(paths, registered=None):
     return offenders
 
 
+def path_matches(pattern, path):
+    """Match a JSON path against a pattern whose ``*`` is one path step."""
+    steps, wanted = path.split("/"), pattern.split("/")
+    return len(steps) == len(wanted) and all(
+        w == "*" or w == s for w, s in zip(wanted, steps)
+    )
+
+
 def allowed_by(offender):
     return [
         entry for entry in ALLOWED_OFFENDERS
         if entry.file == offender.file
         and ("*" in entry.cases or offender.case_id in entry.cases)
+        and any(path_matches(p, offender.path) for p in entry.paths)
         and offender.rule in entry.rules
         and offender.algorithm in entry.algorithms
         and isinstance(offender.value, str)
@@ -390,8 +463,16 @@ ED25519_64 = _b64url(bytes(range(64)))
 NONMINIMAL_ED25519 = ED25519_64[:-1] + "x"
 
 
-def _document(*vectors):
-    return {"set": "constructed", "vectors": list(vectors)}
+# The channel corpus's key-fixture pin of the ECDSA format.
+ECDSA_PIN = {"algorithm": "ecdsa-secp256k1", "signatureEncoding": "canonical-DER-low-S"}
+CHANNEL_CORPUS = "conformance/vectors/security/canonical-channel-message-v0.6.json"
+
+
+def _document(*vectors, pin=True):
+    document = {"set": "constructed", "vectors": list(vectors)}
+    if pin:
+        document["authenticatedKeyFixtures"] = [dict(ECDSA_PIN)]
+    return document
 
 
 def _vector(name, expected, note, signature, **extra):
@@ -453,6 +534,35 @@ class SignatureEncodingHelperTests(unittest.TestCase):
         self.assertIsNone(signature_value_defect("sr1-aggregate", _b64url(bytes(96))))
         self.assertEqual(WIRE, signature_value_defect("sr1-aggregate", "AA==")[0])
 
+    def test_ecdsa_format_is_checked_only_where_pinned(self):
+        # No spec text picks one ECDSA format for every envelope, so a
+        # fixed-width r||s value is a format defect only under a corpus pin;
+        # the wire stage is checked everywhere.
+        unpinned = pinned_formats({"vectors": [_ecdsa(FIXED_WIDTH_64)]})
+        self.assertEqual(frozenset({"ed25519"}), unpinned)
+        self.assertIsNone(signature_value_defect("ecdsa-secp256k1", FIXED_WIDTH_64, unpinned))
+        self.assertEqual(
+            WIRE, signature_value_defect("ecdsa-secp256k1", FIXED_WIDTH_64 + "=", unpinned)[0]
+        )
+        self.assertEqual(
+            FORMAT, signature_value_defect("ed25519", _b64url(bytes(63)), unpinned)[0]
+        )
+        pinned = pinned_formats({"keys": [dict(ECDSA_PIN)]})
+        self.assertEqual(frozenset({"ed25519", "ecdsa-secp256k1"}), pinned)
+        self.assertEqual(
+            FORMAT, signature_value_defect("ecdsa-secp256k1", FIXED_WIDTH_64, pinned)[0]
+        )
+        # The channel corpus is the committed corpus that pins it.
+        channel = json.loads((ROOT / CHANNEL_CORPUS).read_text(encoding="utf-8"))
+        self.assertIn("ecdsa-secp256k1", pinned_formats(channel))
+        # A pin this checker does not know fails instead of checking nothing.
+        for unknown in (
+            {"algorithm": "ecdsa-secp256k1", "signatureEncoding": "p1363-fixed-width"},
+            {"algorithm": "sr1-aggregate", "signatureEncoding": "canonical-DER-low-S"},
+        ):
+            with self.subTest(pin=unknown), self.assertRaises(ValueError):
+                pinned_formats({"keys": [unknown]})
+
     def test_unknown_algorithm_has_no_checker(self):
         with self.assertRaises(ValueError):
             signature_value_defect("rsa-pss", _b64url(bytes(64)))
@@ -504,25 +614,31 @@ class SignatureVectorConsistencyTests(unittest.TestCase):
             r'"algorithm"\s*:\s*"(%s)"' % "|".join(map(re.escape, sorted(self.registered)))
         )
 
-        def labelled(node):
+        def labelled(node, where=""):
+            # Paths of every object labelled with a registered algorithm.
             if isinstance(node, dict):
                 algorithm = node.get("algorithm")
-                count = int(isinstance(algorithm, str) and algorithm in self.registered)
-                return count + sum(labelled(child) for child in node.values())
+                own = [where] if isinstance(algorithm, str) and algorithm in self.registered else []
+                return own + [p for key, child in node.items()
+                              for p in labelled(child, "%s/%s" % (where, key))]
             if isinstance(node, list):
-                return sum(labelled(child) for child in node)
-            return 0
+                return [p for index, child in enumerate(node)
+                        for p in labelled(child, "%s/%d" % (where, index))]
+            return []
 
         checked = 0
         for path in self.files:
             text = path.read_text(encoding="utf-8")
             document = json.loads(text)
-            in_cases = sum(
-                labelled(case.node) for case in cases_of(path, document)
-            )
+            # A shared entry is judged once per referencing case, so compare
+            # the set of paths reached, not a count.
+            in_cases = {
+                p for case in cases_of(path, document)
+                for p in labelled(case.node, case.path)
+            }
             with self.subTest(file=_relative(path)):
-                self.assertEqual(len(pattern.findall(text)), labelled(document))
-                self.assertEqual(labelled(document), in_cases)
+                self.assertEqual(len(pattern.findall(text)), len(labelled(document)))
+                self.assertEqual(set(labelled(document)), in_cases)
             checked += sum(
                 1 for case in cases_of(path, document)
                 for _, algorithm, _ in signature_objects(case.node, case.path)
@@ -549,6 +665,11 @@ class SignatureVectorConsistencyTests(unittest.TestCase):
                 matched = [o for o in self.offenders if entry in allowed_by(o)]
                 self.assertEqual(
                     set(entry.values), {o.value for o in matched}, "stale allow-list values"
+                )
+                self.assertEqual(
+                    set(entry.paths),
+                    {p for p in entry.paths for o in matched if path_matches(p, o.path)},
+                    "stale allow-list paths",
                 )
                 if "*" not in entry.cases:
                     self.assertEqual(
@@ -596,12 +717,78 @@ class SignatureVectorConsistencyTests(unittest.TestCase):
         self.assertEqual({"channel-relabel", "party-relabel"}, found)
         self.assertEqual([], self.offenders_in(document))
 
-    def test_declared_failure_verdicts_name_committed_corpora(self):
-        for file, (verdict, reason) in SIGNATURE_FAILURE_VERDICTS.items():
+    def test_verdict_contracts_name_committed_corpora(self):
+        for file, (stages, reason) in VERDICT_CONTRACTS.items():
             with self.subTest(file=file):
                 self.assertTrue((ROOT / file).is_file())
                 self.assertTrue(reason)
-                self.assertIn(verdict, {"indeterminate", "error", "fail"})
+                self.assertEqual({WIRE, FORMAT}, set(stages))
+                for verdicts in stages.values():
+                    self.assertTrue(verdicts)
+                    self.assertLessEqual(verdicts, STAGE_VERDICTS[WIRE] | {"indeterminate"})
+        # Every committed corpus that holds a DACS-3 §8.3.3 channel-message
+        # signature is under the DACS-3 contract (a version bump renames the
+        # file and must carry the contract along).
+        for path in self.files:
+            document = json.loads(path.read_text(encoding="utf-8"))
+            spec = document.get("spec", "") if isinstance(document, dict) else ""
+            if "DACS-3 §8.3.3" in spec and any(
+                algorithm in self.registered
+                for case in cases_of(path, document)
+                for _, algorithm, _ in signature_objects(case.node, case.path)
+            ):
+                with self.subTest(file=_relative(path)):
+                    self.assertEqual(
+                        {WIRE: {"error"}, FORMAT: {"fail"}},
+                        VERDICT_CONTRACTS[_relative(path)][0],
+                    )
+
+    def test_contracted_corpora_accept_only_their_verdict(self):
+        # DACS-3 §8.3.3 makes malformed encoding `error`: a channel case with
+        # a padded value expecting `fail` (or a binary `reject`) is wrong even
+        # though another corpus could accept it.
+        rows = {
+            "padded-error": ("error", _ed25519(ED25519_64 + "=="), None),
+            "padded-fail": ("fail", _ed25519(ED25519_64 + "=="), WIRE),
+            "padded-reject": ("reject", _ed25519(ED25519_64 + "=="), WIRE),
+            "fixed-width-fail": ("fail", _ecdsa(FIXED_WIDTH_64), None),
+            "fixed-width-error": ("error", _ecdsa(FIXED_WIDTH_64), FORMAT),
+        }
+        document = _document(*(
+            _vector(name, expected, "", signature)
+            for name, (expected, signature, _) in rows.items()
+        ))
+        expected = {name: rule for name, (_, _, rule) in rows.items() if rule}
+        self.assertEqual(
+            expected,
+            {o.case_id: o.rule for o in self.offenders_in(document, CHANNEL_CORPUS)},
+        )
+        # The same cases outside a contracted corpus accept any rejection.
+        self.assertEqual(
+            {"fixed-width-error": FORMAT},
+            {o.case_id: o.rule for o in self.offenders_in(document)},
+        )
+        # RSC-7: only `indeterminate`; the encoding corpus: only `reject`.
+        rsc = "conformance/vectors/security/revocation-state-completeness-v0.8.json"
+        encoding = "conformance/vectors/security/signature-value-encoding-v0.1.json"
+        for path, good, bad in ((rsc, "indeterminate", "fail"), (encoding, "reject", "error")):
+            with self.subTest(file=path):
+                both = _document(_vector("good", good, "", _ed25519("")),
+                                 _vector("bad", bad, "", _ed25519("")))
+                self.assertEqual(["bad"], [o.case_id for o in self.offenders_in(both, path)])
+
+    def test_unpinned_ecdsa_values_are_checked_at_the_wire_stage_only(self):
+        # A Base64URL fixed-width r||s ECDSA value in a corpus that pins no
+        # ECDSA format, expected `pass`: no rule in force makes it a defect.
+        document = _document(
+            _vector("fixed-width-pass", "pass", "", _ecdsa(FIXED_WIDTH_64)),
+            _vector("padded-pass", "pass", "", _ecdsa(CANONICAL_ECDSA + "=")),
+            pin=False,
+        )
+        self.assertEqual(
+            [("padded-pass", WIRE)],
+            [(o.case_id, o.rule) for o in self.offenders_in(document)],
+        )
 
     def test_verdicts_by_defect_stage(self):
         # Each row: expected verdict, signature, offending rule or None.
@@ -673,12 +860,15 @@ class SignatureVectorConsistencyTests(unittest.TestCase):
                     )
 
     def test_cases_are_found_under_any_member_name(self):
-        # PR #434 keeps cases under `phaseInputs` and `amendmentTargets`; PR
-        # #435 reaches a record through a hash-keyed map.  Cases are found by
-        # their verdict member, so a rejected empty value is consistent and a
-        # format defect is reported under its own case, not the file.
+        # PR #434 keeps cases under `phaseInputs` and `amendmentTargets`.
+        # Cases are found by their verdict member wherever they sit, including
+        # a hash-keyed map of cases, so a rejected empty value is consistent
+        # and a format defect is reported under its own case, not the file.
+        # (Shared records that cases name instead of holding are
+        # test_shared_entries_take_the_verdicts_of_the_cases_referencing_them.)
         document = {
             "set": "constructed",
+            "authenticatedKeyFixtures": [dict(ECDSA_PIN)],
             "phaseInputs": [
                 {"name": "ordinary-agreement-signature-value-empty",
                  "expected": "rejected", "signature": _ed25519("")},
@@ -705,18 +895,90 @@ class SignatureVectorConsistencyTests(unittest.TestCase):
             found,
         )
 
+    def test_shared_entries_take_the_verdicts_of_the_cases_referencing_them(self):
+        # The PR #435 shape: an empty-signature record in a shared
+        # `executionAuthorities` map with no verdict of its own, which a
+        # vector expecting `fail` names by `executionAuthorityRef`.
+        def authority(signature):
+            return {"referenceValidationByCanonicalRef": {
+                "ab" * 32: {"record": {"signature": signature}},
+            }}
+
+        def vector(name, expected, ref):
+            return {"name": name, "expected": expected,
+                    "input": {"executionAuthorityRef": ref}}
+
+        document = {
+            "set": "constructed",
+            "executionAuthorities": {
+                "atomic-shape-signature-value": authority(_ed25519("")),
+                "standard-completed": authority(_ed25519(ED25519_64)),
+            },
+            "vectors": [
+                vector("bundle-settlement-bijection-atomic-shape-signature-value",
+                       "fail", "atomic-shape-signature-value"),
+                vector("standard", "pass", "standard-completed"),
+            ],
+        }
+        self.assertEqual([], self.offenders_in(document))
+        record = ("/executionAuthorities/atomic-shape-signature-value/"
+                  "referenceValidationByCanonicalRef/%s/record/signature" % ("ab" * 32))
+        # A `pass` case naming the same record is inconsistent, and is
+        # reported under that case.
+        document["vectors"].append(
+            vector("shares-the-broken-record", "pass", "atomic-shape-signature-value")
+        )
+        self.assertEqual(
+            [("shares-the-broken-record", record, WIRE)],
+            [(o.case_id, o.path, o.rule) for o in self.offenders_in(document)],
+        )
+        # A record no case names declares no verdict, so its defect is the
+        # file's.
+        document["vectors"] = document["vectors"][1:2]
+        self.assertEqual(
+            [("<file>", record, WIRE)],
+            [(o.case_id, o.path, o.rule) for o in self.offenders_in(document)],
+        )
+        # A corpus that is a bare list has no shared maps.
+        self.assertEqual(
+            [("/1", "/1/signature", WIRE)],
+            [(o.case_id, o.path, o.rule) for o in self.offenders_in([
+                {"expected": "fail", "signature": _ed25519("")},
+                {"expected": "pass", "signature": _ed25519("")},
+            ])],
+        )
+        # Every declared map is one a committed corpus references (today the
+        # bijection corpus's), so a stale declaration fails.
+        used = set()
+        for path in self.files:
+            for case in cases_of(path, json.loads(path.read_text(encoding="utf-8"))):
+                if case.case_id != "<file>" and case.path.count("/") == 2:
+                    used.add(case.path.split("/")[1])
+        self.assertLessEqual(set(SHARED_REFERENCES.values()), used)
+
     def test_allow_list_covers_only_its_rules_and_algorithms(self):
         laa = "conformance/vectors/security/legacy-agreement-admission-v0.8.json"
         placeholder = "fixture-signature-buyer"
-        ed25519 = Offender(laa, "laa-new", "/x", "ed25519", placeholder, WIRE, "")
-        relabelled = Offender(laa, "laa-new", "/x", "ecdsa-secp256k1", placeholder, WIRE, "")
+        where = "/vectors/7/input/reservation/signatures/0"
+        ed25519 = Offender(laa, "laa-new", where, "ed25519", placeholder, WIRE, "")
+        relabelled = Offender(laa, "laa-new", where, "ecdsa-secp256k1", placeholder, WIRE, "")
         released = Offender(
-            "conformance/vectors/examples/rating-record.json", "<file>", "/x",
+            "conformance/vectors/examples/rating-record.json", "<file>", "/artifact/signature",
             "ed25519", "sig:example-rating-signature", FORMAT, "",
         )
         self.assertTrue(allowed_by(ed25519))
         self.assertEqual([], allowed_by(relabelled))
         self.assertEqual([], allowed_by(released))
+        # The same case and value at another path is not covered.
+        for elsewhere in ("/completely/unrelated/nested/path",
+                          "/vectors/7/input/reservation/signatures/0/inner",
+                          "/vectors/7/input/agreement/signature"):
+            with self.subTest(path=elsewhere):
+                self.assertEqual([], allowed_by(Offender(
+                    laa, "laa-new", elsewhere, "ed25519", placeholder, WIRE, "",
+                )))
+        self.assertTrue(path_matches("/a/*/b", "/a/12/b"))
+        self.assertFalse(path_matches("/a/*/b", "/a/1/2/b"))
 
     def test_report_names_file_case_and_reason(self):
         document = _document(_vector(

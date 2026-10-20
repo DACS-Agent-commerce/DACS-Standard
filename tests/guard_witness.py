@@ -27,11 +27,15 @@ cases::
     <!-- guard-witness-claim: corpus=<set> cases=<a>,<b> [controls=<c>] -->
 
 Every listed case needs a witness entry, every ``controls`` case must be a
-declared control (so the harness shows the guard removal leaves it unchanged),
-and every backticked case name (or ``*`` glob) in that paragraph must appear
-in ``cases`` or ``controls``.  ``unwitnessed=<d>`` covers a named case in a
-paragraph that makes no such claim; in a claiming paragraph it contradicts the
-claim and is refused, so narrow the claim or add the witness.
+declared control of a guard the listed cases witness (so the harness shows
+that guard's removal leaves it unchanged), and every backticked case name (or
+``*`` glob) in that paragraph must appear in ``cases`` or ``controls``.  A
+claiming paragraph that lists ``controls`` must also call them controls in
+its prose (the word "control" or "controls"), so the claim visibly excludes
+them; the check is lexical and cannot tell what a sentence says about them.
+``unwitnessed=<d>`` covers a named case in a paragraph that makes no such
+claim; in a claiming paragraph it contradicts the claim and is refused, so
+narrow the claim or add the witness.
 """
 from __future__ import annotations
 
@@ -120,6 +124,7 @@ CLAIM_PHRASE = re.compile(
     r"|\bonly\s+when\s+(?:its|their)\s+" + _GUARD + r"\s+(?:is|are)\s+(?:removed|dropped|skipped|disabled)\b",
     re.IGNORECASE,
 )
+CONTROL_WORD = re.compile(r"\bcontrols?\b", re.IGNORECASE)
 MARKER = re.compile(r"<!--\s*guard-witness-claim:(.*?)-->", re.DOTALL)
 LIST_ITEM = re.compile(r"^ {0,3}(?:[-*+]|\d+\.)\s")
 BACKTICKED = re.compile(r"`([^`\s]+)`")
@@ -207,13 +212,25 @@ def claim_problems(documents, registry):
                 if corpus not in names_by_corpus:
                     names_by_corpus[corpus] = set(witnesses.vectors())
                 names = names_by_corpus[corpus]
-                declared_controls = {c for cs in witnesses.controls.values() for c in cs}
+                witnessed = {witnesses.cases[c] for c in cases if c in witnesses.cases}
                 for case in cases:
                     if case not in witnesses.cases:
                         problems.append("%s: %s has no guard witness entry" % (where, case))
                 for case in controls:
-                    if case not in declared_controls:
+                    guards = {g for g, cs in witnesses.controls.items() if case in cs}
+                    if not guards:
                         problems.append("%s: control %s is not a declared control" % (where, case))
+                    elif not guards & witnessed:
+                        problems.append(
+                            "%s: control %s is declared only for %s, not for a guard "
+                            "the listed cases witness" % (where, case, ", ".join(sorted(guards)))
+                        )
+                if claim and controls and not CONTROL_WORD.search(MARKER.sub(" ", block)):
+                    problems.append(
+                        "%s: claims each case catches its rule but lists controls %s "
+                        "without calling them controls; say which cases are controls, "
+                        "not witnesses, or narrow the claim" % (where, ",".join(controls))
+                    )
                 for case in unwitnessed:
                     if case not in names:
                         problems.append("%s: unwitnessed %s is not a %s case" % (where, case, corpus))

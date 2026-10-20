@@ -233,15 +233,34 @@ class GuardWitnessTests(unittest.TestCase):
              for name in binding_only.split(",")],
             guard_witness.claim_problems({"X.md": reviewed}, reg),
         )
-        # Naming them as declared controls is backed: the harness shows the
-        # PDE-2 removal leaves them `fail`.
+        # Renaming the field does not make the claim true: the paragraph
+        # still says each of the seven turns into `pass`, so listing the two
+        # as controls without saying so is refused too.
         controlled = claim + "  <!-- guard-witness-claim: %s cases=%s controls=%s -->" % (
             corpus, coherent, binding_only,
         )
-        self.assertEqual([], guard_witness.claim_problems({"X.md": controlled}, reg))
+        self.assertEqual(
+            ["X.md:1: claims each case catches its rule but lists controls %s without "
+             "calling them controls; say which cases are controls, not witnesses, "
+             "or narrow the claim" % binding_only],
+            guard_witness.claim_problems({"X.md": controlled}, reg),
+        )
+        # The narrowed paragraph that says which cases are controls is backed:
+        # the harness shows the PDE-2 removal leaves them `fail`.
+        narrowed = (
+            "- adds seven `credential-*-signature-mutation` cases. Each is rejected "
+            "by the delivery-signature check. Only the locator, content-hash, "
+            "signer, access-model and cleartext-hash cases witness that check: "
+            "skipping the delivery signature turns them into `pass`. The anchor-kind "
+            "and renewal cases stay `fail` without it; they are controls, not "
+            "delivery-signature witnesses.\n"
+            "  <!-- guard-witness-claim: %s cases=%s controls=%s -->"
+            % (corpus, coherent, binding_only)
+        )
+        self.assertEqual([], guard_witness.claim_problems({"X.md": narrowed}, reg))
         # A control that is not declared as one is refused.
-        undeclared = claim + "  <!-- guard-witness-claim: %s cases=%s controls=%s,%s -->" % (
-            corpus, coherent, binding_only, "delivery-signature-mutation",
+        undeclared = narrowed.replace(
+            binding_only, binding_only + ",delivery-signature-mutation"
         )
         self.assertEqual(
             ["X.md:1: control delivery-signature-mutation is not a declared control"],
@@ -255,6 +274,29 @@ class GuardWitnessTests(unittest.TestCase):
             % (corpus, "credential-ref-signer-signature-mutation")
         )
         self.assertEqual([], guard_witness.claim_problems({"X.md": plain}, reg))
+
+    def test_controls_belong_to_the_witnessed_guard(self):
+        # A control declared only for another guard says nothing about the
+        # guard this marker's cases witness.
+        with tempfile.TemporaryDirectory() as directory:
+            witnesses = self._toy_witnesses(
+                directory, {"rule-violation": "rule", "shape-broken": "shape"},
+                {"rule": lambda: _toy_off("rule"), "shape": lambda: _toy_off("shape")},
+                {"rule": ("control",), "shape": ("rule-violation",)},
+            )
+            reg = {"toy-v1": witnesses}
+            text = ("Each case is rejected only by its guard; `%s` is a control.\n"
+                    "<!-- guard-witness-claim: corpus=toy-v1 cases=%s controls=%s -->")
+            self.assertEqual([], guard_witness.claim_problems(
+                {"X.md": text % ("control", "rule-violation", "control")}, reg
+            ))
+            self.assertEqual(
+                ["X.md:1: control control is declared only for rule, not for a "
+                 "guard the listed cases witness"],
+                guard_witness.claim_problems(
+                    {"X.md": text % ("control", "shape-broken", "control")}, reg
+                ),
+            )
 
     def test_harness_compares_the_declared_set(self):
         with tempfile.TemporaryDirectory() as directory:

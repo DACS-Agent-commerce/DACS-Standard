@@ -11,17 +11,18 @@ stages, which decide the verdicts a case may expect:
 * ``format`` — the decoded bytes are not the algorithm's signature format.
   CORE §B.7 leaves "decoded length and internal signature format"
   algorithm-specific and requires a verifier to validate them; it does not
-  name the formats.  The formats checked here are the ones this repository
-  pins:
+  name the formats.  A format is checked only where it is pinned:
 
   * ``ed25519``: 64 raw bytes (RFC 8032 §5.1.6), as the
-    ``signature-value-encoding-v0.1`` corpus pins;
+    ``signature-value-encoding-v0.1`` corpus pins; checked everywhere;
   * ``ecdsa-secp256k1``: canonical DER ``SEQUENCE {r, s}`` with
-    ``1 <= r < n`` and low-S ``1 <= s <= n/2`` (n from SEC 2 §2.4.1), the
-    profile the channel corpus pins in its authenticated key fixture
-    (``signatureEncoding: canonical-DER-low-S``).  No spec text states it for
-    every envelope yet; open PR #426 proposes that §B.7 text.  A 64-byte
-    fixed-width ``r || s`` value is not DER and is a format defect;
+    ``1 <= r < n`` and low-S ``1 <= s <= n/2`` (n from SEC 2 §2.4.1), checked
+    only in a corpus that pins it on an ``ecdsa-secp256k1`` key fixture
+    (``signatureEncoding: canonical-DER-low-S``, today only the channel
+    corpus).  No spec text states one ECDSA format for every envelope, so
+    elsewhere only the wire stage is checked; a corpus pinning another
+    ``signatureEncoding`` fails until it has a checker.  Under the pin, a
+    64-byte fixed-width ``r || s`` value is not DER and is a format defect;
   * ``sr1-aggregate``: the SR-1 aggregate format is substrate-defined, so only
     the wire stage is checked.  (The channel oracle verifies its own
     ``sr1-aggregate`` fixture as a 64-byte Ed25519 signature; that is the
@@ -41,6 +42,10 @@ BASE64URL = re.compile(r"^[A-Za-z0-9_-]+$")
 SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 ED25519_SIGNATURE_BYTES = 64
 CHECKED_ALGORITHMS = frozenset({"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
+# Formats checked in every corpus, and the ones a corpus opts into by pinning
+# ``signatureEncoding`` on a key fixture of that algorithm.
+UNIVERSAL_FORMATS = frozenset({"ed25519"})
+PINNABLE_FORMATS = {("ecdsa-secp256k1", "canonical-DER-low-S"): "ecdsa-secp256k1"}
 WIRE = "wire"
 FORMAT = "format"
 # Signature-envelope type members such as
@@ -78,18 +83,50 @@ def ecdsa_secp256k1_format_violation(signature):
     return None
 
 
-def signature_value_defect(algorithm, value):
+def pinned_formats(document):
+    """Return the algorithms whose signature format ``document`` checks.
+
+    That is ``UNIVERSAL_FORMATS`` plus every algorithm the document pins with
+    a known ``signatureEncoding``; an unknown pin raises ``ValueError``.
+    """
+    formats = set(UNIVERSAL_FORMATS)
+
+    def visit(node):
+        if isinstance(node, dict):
+            encoding = node.get("signatureEncoding")
+            if encoding is not None:
+                pin = (node.get("algorithm"), encoding)
+                if pin not in PINNABLE_FORMATS:
+                    raise ValueError("no checker for signatureEncoding %r of %r"
+                                     % (encoding, pin[0]))
+                formats.add(PINNABLE_FORMATS[pin])
+            for child in node.values():
+                visit(child)
+        elif isinstance(node, list):
+            for child in node:
+                visit(child)
+
+    visit(document)
+    return frozenset(formats)
+
+
+def signature_value_defect(algorithm, value, formats=None):
     """Return ``(stage, reason)`` for a defective ``value``, else ``None``.
 
     ``stage`` is ``WIRE`` (SIG-6 spelling) or ``FORMAT`` (decoded bytes are
-    not ``algorithm``'s pinned signature format).
+    not ``algorithm``'s pinned signature format).  The format is checked only
+    for algorithms in ``formats`` (default: every format this module knows).
     """
     if algorithm not in CHECKED_ALGORITHMS:
         raise ValueError("no signature value checker for %r" % (algorithm,))
+    if formats is None:
+        formats = UNIVERSAL_FORMATS | frozenset(PINNABLE_FORMATS.values())
     try:
         raw = decode_b64url(value)
     except ValueError as exc:
         return WIRE, "SIG-6: %s" % exc
+    if algorithm not in formats:
+        return None
     if algorithm == "ed25519" and len(raw) != ED25519_SIGNATURE_BYTES:
         return FORMAT, "ed25519 value decodes to %d bytes, not 64" % len(raw)
     if algorithm == "ecdsa-secp256k1":

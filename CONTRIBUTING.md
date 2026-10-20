@@ -114,26 +114,36 @@ python3 -m unittest tests.test_signature_vector_consistency tests.test_guard_wit
 every JSON file under `conformance/` and checks each signature object whose
 `algorithm` is in the spec's registered enum with `tests/signature_encoding.py`,
 which shares its SIG-6 decoder and ECDSA format check with the channel oracle.
-A case is any object carrying `expected` or `verdict`, wherever it sits. The
-check compares each defect with the verdict the case expects and never reads
-case wording:
+A case is any object carrying `expected` or `verdict`, wherever it sits; an
+entry of a top-level map that cases name instead of holding (declared in
+`SHARED_REFERENCES`, e.g. `executionAuthorityRef` → `executionAuthorities`) is
+judged under the verdict of every case naming it. The check compares each
+defect with the verdict the case expects and never reads case wording:
 
 - a SIG-6 wire defect (CORE §B.7) is found by every verifier, so the case must
-  expect `error`, `fail` or `reject`;
-- a format defect (a 64-byte Ed25519 value; for `ecdsa-secp256k1`, the
-  canonical DER low-S profile the channel corpus pins in its key fixture, which
-  CORE §B.7 does not yet name) is found only by a verifier that checks that
-  format and answers `fail`, so the case must expect `fail` or `reject`.
-  `sr1-aggregate` is checked at the wire stage only.
+  expect a rejection (`error`, `fail`, `reject` or `rejected`);
+- a format defect is found only by a verifier that checks that format and
+  answers `fail`, so the case must expect `fail` or `reject`. CORE §B.7 names
+  no format, so one is checked only where it is pinned: a 64-byte Ed25519
+  value everywhere; the canonical DER low-S `ecdsa-secp256k1` profile only in a
+  corpus that pins `signatureEncoding: canonical-DER-low-S` on an
+  `ecdsa-secp256k1` key fixture (an unknown pin fails). `sr1-aggregate`, and
+  `ecdsa-secp256k1` without a pin, are checked at the wire stage only.
 
-A corpus whose spec maps every signature failure to one verdict (DACS-1 RSC-7)
-declares it in `SIGNATURE_FAILURE_VERDICTS`. A case where a `key:` claim signs
-under another registered algorithm without expecting a rejection must be listed,
-with its reason, in `KEY_CLAIM_RELABELS`. Each offender is reported with file,
-case, path and reason. Fix offenders through their generator; only a value that
+A corpus whose spec fixes the verdict of each stage declares exactly that in
+`VERDICT_CONTRACTS`: the DACS-3 §8.3.3 channel corpus (`error` for a wire
+defect, `fail` for a format defect), DACS-1 RSC-7 (`indeterminate`) and the
+binary encoding corpus (`reject`); a corpus whose `spec` cites DACS-3 §8.3.3
+and that holds signature objects must be listed under the DACS-3 contract. A case where a `key:` claim signs under another
+registered algorithm without expecting a rejection must be listed, with its
+reason, in `KEY_CLAIM_RELABELS`. Each offender is reported with file, case,
+path and reason. The rules do not model a verdict decided before the signature
+check (an earlier structural defect, or an algorithm outside the envelope's
+own set); such a case that also carries a defective value needs an allow-list
+entry saying so. Fix offenders through their generator; only a value that
 cannot decide its case, a released file or an agreed follow-up goes in the
-commented `ALLOWED_OFFENDERS` list, scoped to its cases, rules, algorithm and
-values, and a stale entry fails.
+commented `ALLOWED_OFFENDERS` list, scoped to its cases, JSON paths, rules,
+algorithm and values, and a stale entry fails.
 
 **Guard witnesses.** A corpus whose cases are said to catch a rule declares
 `GUARD_WITNESSES` in its test module (case → guard, a context manager that
@@ -144,10 +154,12 @@ corpus README paragraph saying each, every or all of its cases catch their rule
 must carry
 `<!-- guard-witness-claim: corpus=<set> cases=<a>,<b> [controls=<c>] -->`
 inside the paragraph. Every listed case needs a witness entry, every `controls`
-case must be a declared control, and every case the paragraph names must be in
-one of the two. `unwitnessed=<d>` only covers a named case in a paragraph that
-makes no such claim; in a claiming paragraph it is refused, so either add the
-witness or narrow the claim.
+case must be a declared control of a guard the listed cases witness, and every
+case the paragraph names must be in one of the two. A claiming paragraph that
+lists `controls` must call them controls in its prose, so the claim visibly
+excludes them (the check is lexical). `unwitnessed=<d>` only covers a named
+case in a paragraph that makes no such claim; in a claiming paragraph it is
+refused, so either add the witness or narrow the claim.
 
 ```sh
 python3 - <<'PYTEST'

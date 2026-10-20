@@ -23,27 +23,36 @@ The format used per release:
   (`reputation-participation-admission-v0.7`) is now a canonical DER low-S
   value over the same payload, signed with the public channel-corpus secp256k1
   fixture key. Both previously held a relabelled 64-byte Ed25519 value, which
-  is not a DER signature, so a verifier that implements `ecdsa-secp256k1`
-  rejected it on format alone. This removes only the encoding question: the
-  signer is still the buyer's `key:` (Ed25519) claim, so the first case's
-  `indeterminate` still assumes a resolver without `ecdsa-secp256k1`, as its
-  note says, and is not verifier-independent (see the signer-claim inventory
-  below). Only those two values and the set hash change.
+  is not a signature in the canonical DER low-S profile that key fixture pins.
+  This removes only the encoding question: the signer is still the buyer's
+  `key:` (Ed25519) claim, so the first case's `indeterminate` still assumes a
+  resolver without `ecdsa-secp256k1`, as its note says, and is not
+  verifier-independent (see the signer-claim inventory below). Only those two
+  values and the set hash change. The SPA corpus pins no ECDSA format, so the
+  check below holds these values to the wire stage only.
 - **Cross-corpus signature consistency check** — a new test walks every
   committed corpus file and checks each registered-algorithm signature value,
   then compares the defect with the verdict the case expects; it never reads
   case wording. A SIG-6 wire defect (CORE §B.7) is found by every verifier, so
-  its case must expect `error`, `fail` or `reject`. A format defect (decoded
-  bytes that are not the algorithm's signature) is found only by a verifier
-  that checks that format and then answers `fail`, so its case must expect
-  `fail` or `reject`. The formats are a 64-byte Ed25519 value and, for
-  `ecdsa-secp256k1`, the canonical DER low-S profile the channel corpus pins in
-  its key fixture; CORE §B.7 leaves formats algorithm-specific and does not
-  yet name that profile. `sr1-aggregate` is checked at the wire stage only. A
-  case is any object carrying `expected` or `verdict`, whatever list or map
-  holds it. `revocation-state-completeness-v0.8` declares DACS-1 RSC-7 (any RSC
-  failure is `indeterminate`). Kept on purpose, each scoped to its rules,
-  algorithm and values: the placeholder values in the modelled
+  its case must expect a rejection. A format defect (decoded bytes that are not
+  the algorithm's pinned signature format) is found only by a verifier that
+  checks that format and then answers `fail`, so its case must expect `fail`
+  or `reject`. CORE §B.7 leaves formats algorithm-specific and names none, so
+  a format is checked only where it is pinned: a 64-byte Ed25519 value
+  everywhere, and the canonical DER low-S `ecdsa-secp256k1` profile only in a
+  corpus that pins it on a key fixture (today the channel corpus); a corpus
+  pinning an unknown `signatureEncoding` fails. `sr1-aggregate` is checked at
+  the wire stage only. Where the spec fixes the verdict, only that verdict is
+  accepted: in `canonical-channel-message-v0.6` a wire defect is `error`
+  (DACS-3 §8.3.3) and a format defect `fail`; in
+  `revocation-state-completeness-v0.8` both are `indeterminate` (DACS-1 RSC-7);
+  in `signature-value-encoding-v0.1` both are `reject`. Elsewhere a wire defect
+  may expect `error`, `fail`, `reject` or `rejected`. A case is any object
+  carrying `expected` or `verdict`, whatever list or map holds it; an
+  `executionAuthorities` entry that cases name by `executionAuthorityRef` is
+  judged under the verdict of every case naming it. Kept on purpose, each
+  scoped to its cases, JSON paths, rules, algorithm and values: the placeholder
+  values in the modelled
   `legacy-agreement-admission-v0.8` signature objects and the placeholder
   signatures in the released `settlement-evidence-payment-success.json` fixture
   and `rating-record.json` example (each with a follow-up), and the
@@ -58,8 +67,10 @@ The format used per release:
   use it. A witness claim in the CHANGELOG or a corpus README now has to name
   its witnessed cases in a `guard-witness-claim` marker: every listed case
   needs a witness entry, a case the paragraph names but does not witness must
-  be a declared control, and a claiming paragraph cannot leave a case
-  unwitnessed. See CONTRIBUTING "Validation".
+  be a declared control of a guard the listed cases witness, and a claiming
+  paragraph cannot leave a case unwitnessed. A claiming paragraph that lists
+  controls must call them controls in its prose; that check is lexical. See
+  CONTRIBUTING "Validation".
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

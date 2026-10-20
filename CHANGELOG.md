@@ -30,7 +30,7 @@ The format used per release:
   vectors in both corpora cover each spelling the §A.2 profile projects alike:
   a `0x`-prefixed or bare `send` recipient argument (whose credit edit names it
   with a single `0x`), bare or prefixed party keys, a string or integer nonce,
-  and a string or number amount up to 2^53 − 1. The corpora contain 250 pay-dem
+  and a string or number amount up to 2^53 − 1. The corpora contain 267 pay-dem
   and 194 settlement-finality cases.
 - The DEMOS-MAPPING §A.2 profile covers only a network whose sealed genesis
   leaves the `gasFeeSeparation` fork unscheduled (`activationHeight: null`).
@@ -113,7 +113,45 @@ The format used per release:
 - The §9.5.9 insufficient-balance failure mode is `permanent` only before the
   first egress. A `confirm` that refuses the transfer after it has carried
   the signed bytes is DEM-5 `substrate`: the node holds the bytes, so the
-  handler keeps the hash and only re-reads.
+  handler keeps the hash and only re-reads. PC-4 now says so for `pay-dem`:
+  insufficient balance is `permanent` only before the first egress, and an
+  RPC failure is `substrate`, never `transient`. DEM-5 names every outcome of
+  the handler's own check or call once the bytes may have left, and the new
+  `classify-egress-outcome` vectors pin each one: a `confirm` refused for
+  insufficient balance or otherwise, a transport error, a timeout, an
+  unrecognized reply, a broadcast refused by the node or by the handler's
+  DEM-1 check, and an accepted broadcast are `substrate`; only a balance
+  found short before any egress, on a journal that has not restarted, is
+  `permanent`, and the same check after a restart or an interrupted `confirm`
+  is `substrate`. Each result names its `cause`.
+- DEM-1 defines durable retention: the write reaches stable storage (file and
+  directory flushed) before the first egress. DEM-6 reads whether a start has
+  fallen since the retention from the journal, never from process-local
+  state. A storage-backed reference handler and payee
+  (`tests/pay_dem_reference_handler.py`) derive every state input of the
+  corpus decisions from storage, and `tests/test_pay_dem_crash_restart.py`
+  stops them on each side of every transition and restarts them from
+  storage: no signed effect leaves after a restart, the bytes that left were
+  on storage first, a hash retained for one phase never leaves for another,
+  and a process-local journal, a journal written after `confirm`, restart
+  taken from saved progress, a missing fsync, a journal blind to other
+  phases, a process-local admission index and an unconditional index write
+  are each caught. CONFORMANCE-PLAN makes the procedure part of a `pay-dem` handler or
+  payee claim.
+- DEM-7: the payee's admissions are its durable admission index. It adds
+  each admission before delivering against it, with a write conditional on
+  the snapshot's revision, and presents that snapshot to its SB-2 check. A
+  check without a snapshot, or whose presented history omits or adds an
+  admission, is `error`, so a restart with process-local history can no
+  longer deliver a second job against one transfer. `admit-for-delivery`
+  inputs carry `admissionIndex`, and four new vectors pin the omission, the
+  addition, the missing index and a malformed revision. DEM-6 and §A.2 now
+  name where the pinned node deduplicates a retransmitted hash (a
+  non-validator node relays it again; the receiving validators drop it), and
+  §A.2 notes that at the pinned commit the signed bytes name no network.
+  Migration: a runner of the 250-case corpus implements
+  `classify-egress-outcome` and passes `admissionIndex` to
+  `admit-for-delivery`.
 - DEM-4 ends a phase `permanent` only for a bound `failed` record
   authenticated under FV-5 at its `bft-final` inclusion: the FV `bft-final`
   verification of the inclusion together with FV-5's authenticated execution
@@ -1288,7 +1326,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 250-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 267-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope

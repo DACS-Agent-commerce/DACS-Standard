@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 250 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 267 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -1247,7 +1247,7 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-250 candidate vectors pin native-DEM settlement on execution, not inclusion.
+267 candidate vectors pin native-DEM settlement on execution, not inclusion.
 The node's status index may label a transaction `included` while its
 transaction record is `failed`, so the index is never decisive. Records use
 the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
@@ -1362,7 +1362,47 @@ already admitted the same `demos:{txHash}` for another `(jobId, phaseIndex)`
 check presents its own admissions (`consumerAdmissions`) with the evidence,
 and they are projected through SB-1 first: a verified legacy spelling of the
 same hash collides, and an admitted reference that cannot be projected is
-`error`.
+`error`. Those admissions are the snapshot of the payee's durable admission
+index (`admissionIndex`: `revision` and `admissions`), and the presented list
+must equal it as a multiset of exact JCS bytes. A presented history that omits
+an indexed admission (`delivery-history-omits-indexed-admission`, which a
+restart with process-local history would produce), one that adds an
+unindexed admission, a missing index and a malformed revision are each
+`error` and authorize no delivery (guards `delivery-history-is-admission-index`
+and `delivery-requires-admission-index`).
+
+`classify-egress-outcome` cases give the PC-4 class once the handler's own
+step returns: `call` is its `pre-egress-check` (a balance read before any
+`confirm` or broadcast carried the signed bytes), `confirm` or `broadcast`,
+`outcome` what it returned, and `broadcastState` and `restartedSinceRetention`
+what the handler reads back from its journal. Once the bytes may have left,
+every outcome is `substrate` with the retained hash kept and no further call:
+a `confirm` refused for insufficient balance or otherwise not valid, a
+transport error, a timeout, an unrecognized reply, a broadcast refused by the
+node or by the handler's own DEM-1 check after a valid `confirm`, and an
+accepted broadcast whose record is not yet read. Only insufficient balance
+found by a `pre-egress-check` on an un-restarted journal recording
+`never-broadcast` is `permanent`, with `executionState: "not-sent"`; the same
+check after a restart or an interrupted `confirm` is `substrate`, because the
+short balance can be the transfer's own debit. Each result carries `cause`
+(`call:outcome`). Guards `post-egress-refusal-is-unresolved` and
+`call-error-is-unresolved` catch an implementation that follows the bare PC-4
+`permanent` or `transient` rows after the bytes left.
+
+`tests/test_pay_dem_crash_restart.py` runs a storage-backed reference payer
+handler and payee (`tests/pay_dem_reference_handler.py`) that take every state
+input of these decisions from what they read back from storage. It stops
+them, one process per start, on each side of every transition and restarts
+them from storage. Their journal and index writes are conditional on the
+state they were read as. After a restart no signed effect leaves, every egress
+carried the bytes the stored journal already held, the journal file and
+directory were fsynced before the first egress, and one hash is delivered for
+at most one `(jobId, phaseIndex)`, including under two concurrent checks; a
+hash retained for one phase never leaves for another, read from the stored
+journals (`hashRetainedForOtherPhases`). Seven wrong variants (a
+process-local journal, a journal written after `confirm`, restart taken from
+saved progress, no fsync, a journal blind to other phases, a process-local
+admission index, an unconditional index write) each fail it.
 
 `project-settlement-id` cases derive `demos:{txHash}` from raw references, reject malformed or noncanonical current hashes, and collapse verified legacy spelling. `resolve-settlement-group` derives both raw IDs before grouping: one hash under two jobs, including a canonical and a verified legacy spelling, leaves both indeterminate, while distinct hashes pass. Admitted references retain their raw transaction references rather than a prefiltered same-hash tuple list. Settlement accounting and the DACS-5 derivation group only the presented `records`: `sb2-demos-unpresented-admission-not-added` passes although the consumer once admitted the same hash for another job outside that set (guard `sb2-presented-set-only`), so a re-run from the presented set reproduces the result.
 

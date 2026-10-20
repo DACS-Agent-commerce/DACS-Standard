@@ -23,7 +23,10 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import generate_pay_dem_execution_vectors as generator  # noqa: E402
 from jcs import canonicalize  # noqa: E402
 from demos_json import stringify  # noqa: E402
-from settlement_finality_reference import DEMOS_RECORD_PROFILE, _verify_demos_execution  # noqa: E402
+from settlement_finality_reference import (  # noqa: E402
+    DEMOS_RECORD_PROFILE, _demos_committed_change, _demos_native_send, _verify_demos_execution,
+    verify_transaction_inclusion,
+)
 
 
 VECTORS = ROOT / "conformance/vectors/security/pay-dem-execution-v0.1.json"
@@ -120,6 +123,12 @@ GUARDS = frozenset({
     "fv5-result-binds-rail-network",
     "fv5-result-binds-block-id",
     "fv5-result-binds-record",
+    "fv5-result-applied-transfer-binds-record",
+    # DEM-4's other half: FV's bft-final verification of the transaction's
+    # inclusion in the block the signed result names
+    "failure-requires-bft-final-inclusion",
+    "bft-final-inclusion-verified",
+    "bft-final-inclusion-binds-result-block",
     # DEM-5
     "unresolved-authorizes-nothing",
     # DEM-5/DEM-6 once the handler's own check or call returns (PC-4 pay-dem rows)
@@ -655,7 +664,7 @@ def classify(protocol_input: dict, off) -> tuple[str, dict]:
     # bft-final inclusion is terminal. A plain RPC read of one is DEM-5: a
     # stale or dishonest pinned node can serve failed for an executed transfer.
     if status == "failed" and (is_bound or "failure-requires-binding" in off) and (
-        fv5_authenticated(read, protocol_input, off) or "failure-requires-authentication" in off
+        proven_failure(read, protocol_input, off) or "failure-requires-authentication" in off
     ):
         if "failure-is-permanent" not in off:
             return handler_result("fail", protocol_input, off)
@@ -674,9 +683,37 @@ def valid_failure_proof(proof, transfer, off) -> bool:
 
 
 FV5_RESULT = frozenset({"kind", "networkId", "genesisHash", "blockId", "transactionRef", "record", "attestations"})
+# The settlement-finality verifier's optional signed member of that result.
+FV5_APPLIED_TRANSFER = frozenset({
+    "txHash", "blockNumber", "sender", "recipient", "payerDebitOs", "payeeCreditOs", "committedBalances",
+})
 # The proof's own block: a resume or an APR check has no inclusion
 # observation of its own, and the signed result names the block.
 _PROOF_BLOCK = object()
+
+
+def fv5_applied_transfer(applied, record, off) -> bool:
+    """A signed result MAY carry the settlement-finality corpus's
+    `appliedTransfer`. Carried, it is part of what the authorities sign, so it
+    must be the change of the committed balances it names, name the record's
+    own transaction, block and parties, and move the record's OS amount when
+    the record is `confirmed` and nothing when it is `failed`. A result that
+    contradicts its own record authenticates nothing."""
+    if "fv5-result-applied-transfer-binds-record" in off:
+        return True
+    projection = decode(record, off)
+    if not (projection is not None and isinstance(applied, dict) and set(applied) == FV5_APPLIED_TRANSFER
+            and all(isinstance(applied[k], str) and DECIMAL.fullmatch(applied[k])
+                    for k in ("payerDebitOs", "payeeCreditOs"))):
+        return False
+    moved = {"confirmed": projection["amountOs"], "failed": "0"}.get(projection["status"])
+    return (
+        moved is not None
+        and committed_change(applied) == (applied["payerDebitOs"], applied["payeeCreditOs"])
+        and _safe_integer(applied["blockNumber"])
+        and all(applied[k] == projection[k] for k in ("txHash", "blockNumber", "sender", "recipient"))
+        and applied["payerDebitOs"] == moved == applied["payeeCreditOs"]
+    )
 
 
 def fv5_signed(result, policy) -> bool:
@@ -698,9 +735,13 @@ def fv5_result(result, record, protocol_input: dict, block, off) -> bool:
     execution result that the trusted `fv5Policy` signs. It names the rail's
     network and genesis and the observed inclusion block ID, its transaction
     reference is the record's own hash and block, and it carries exactly
-    `record`. A missing policy, a result signed by other keys or by too few,
-    and a result for another network, block or record authenticate nothing."""
-    if not (isinstance(result, dict) and set(result) == FV5_RESULT and isinstance(record, dict)):
+    `record`, with the FV verifier's optional `appliedTransfer`. A missing
+    policy, a result signed by other keys or by too few, and a result for
+    another network, block or record authenticate nothing."""
+    if not (isinstance(result, dict) and FV5_RESULT <= set(result) <= FV5_RESULT | {"appliedTransfer"}
+            and isinstance(record, dict)):
+        return False
+    if "appliedTransfer" in result and not fv5_applied_transfer(result["appliedTransfer"], record, off):
         return False
     if "fv5-result-signed" not in off and not fv5_signed(result, protocol_input.get("fv5Policy")):
         return False
@@ -735,17 +776,63 @@ def fv5_authenticated(read, protocol_input: dict, off) -> bool:
     return fv5_result(read.get("executionResult"), read.get("record"), protocol_input, block, off)
 
 
+def bft_final_inclusion(observation, record, result, protocol_input: dict, off) -> bool:
+    """DEM-4's other half: the FV `bft-final` verification of the record's
+    transaction inclusion (the settlement-finality reference's own
+    `verify_transaction_inclusion`: network, transaction proof, inclusion
+    block, authenticated head and ancestry, BFT certificate) under the
+    rail's signed `bft-final` profile and the verifier's own trust, in the
+    block that the signed execution result names. FV-5's result can verify
+    for a block that is not final; this is what shows that it is."""
+    if "failure-requires-bft-final-inclusion" in off:
+        # The wrong implementation takes the signed result alone as DEM-4.
+        return True
+    if not (isinstance(observation, dict) and isinstance(record, dict) and isinstance(result, dict)):
+        return False
+    if "bft-final-inclusion-verified" not in off:
+        profile, trust = protocol_input.get("finalityProfile"), protocol_input.get("finalityTrust")
+        network = _network(protocol_input.get("railNetwork"))
+        if not (isinstance(profile, dict) and profile.get("kind") == "bft-final" and network is not None
+                and {k: profile.get(k) for k in NETWORK} == network and isinstance(trust, dict)):
+            return False
+        reference = {"kind": "demos", "txHash": record.get("hash"), "blockNumber": record.get("blockNumber")}
+        try:
+            if verify_transaction_inclusion(observation, profile, reference, trust)[0] != "pass":
+                return False
+        except (ValueError, TypeError, UnicodeError):
+            return False
+    if "bft-final-inclusion-binds-result-block" not in off:
+        block = observation.get("inclusionBlock")
+        if not (isinstance(block, dict) and block.get("id") == result.get("blockId")):
+            return False
+    return True
+
+
+def proven_failure(read, protocol_input: dict, off) -> bool:
+    """DEM-4 for a read: FV-5 authenticates its record at the observed
+    inclusion, and FV's bft-final verification shows that inclusion."""
+    if "fv5-authentication-is-a-signed-result" in off and read.get("authenticated") is True:
+        # The wrong implementation takes the earlier draft's flag for both.
+        return True
+    return fv5_authenticated(read, protocol_input, off) and bft_final_inclusion(
+        read.get("inclusionProof"), read.get("record"), read.get("executionResult"), protocol_input, off)
+
+
 def authenticated_proof(proof, protocol_input: dict, off) -> bool:
     """The proof carries FV-5's signed execution result for its own failed
-    record, on the rail's network. A label (`fv5-bft-final`), a plain read
-    (`rpc-read`) or another result is no authentication: the verifier checks
-    the result itself and never trusts the handler that stored it."""
+    record, on the rail's network, and FV's bft-final inclusion of its
+    transaction in the block that result names. A label (`fv5-bft-final`),
+    a plain read (`rpc-read`), another result or a result without its
+    finalized inclusion is no authentication: the verifier checks both
+    itself and never trusts the handler that stored them."""
     if not isinstance(proof, dict):
         return False
     if "fv5-authentication-is-a-signed-result" in off and proof.get("authentication") == "fv5-bft-final":
         # The wrong implementation takes the handler's label for FV-5.
         return True
-    return fv5_result(proof.get("authentication"), proof.get("record"), protocol_input, _PROOF_BLOCK, off)
+    return fv5_result(proof.get("authentication"), proof.get("record"), protocol_input, _PROOF_BLOCK, off) and (
+        bft_final_inclusion(proof.get("inclusionProof"), proof.get("record"), proof.get("authentication"),
+                            protocol_input, off))
 
 
 def resume(protocol_input: dict, off) -> tuple[str, dict]:
@@ -1383,7 +1470,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             if vector["want"].get("deliveryAuthorized") or vector["want"].get("settlementAccounting")
         }
         self.assertEqual({"delivery-after-all-gates", "delivery-same-tuple-readmitted", "delivery-to-0x-payee-address",
-                          "delivery-to-did-payee-address", "delivery-from-0x-paying-key"}, delivered)
+                          "delivery-to-did-payee-address", "delivery-from-0x-paying-key",
+                          "delivery-fv-form-result"}, delivered)
         for name in delivered:
             protocol_input = self.cases[name]["protocolInput"]
             self.assertTrue(fv5_authenticated(protocol_input["recordRead"], protocol_input, frozenset()))
@@ -2107,8 +2195,26 @@ class PayDemExecutionVectorTests(unittest.TestCase):
     def test_the_oracle_verifies_fv5_as_the_settlement_finality_reference_does(self):
         """Every signed result in the corpus decides as the FV reference's own
         `_verify_demos_execution` does for the rail's network, the observed
-        (or, in a proof, its own) block ID and the record's own reference."""
-        checked = 0
+        (or, in a proof, its own) block ID and the record's own reference. A
+        carried `appliedTransfer` must also bind the record as the FV
+        reference projects it: its transaction, block and parties, and the
+        committed change of the record's amount (confirmed) or of nothing
+        (failed)."""
+        def applied_binds(result, record):
+            applied = result.get("appliedTransfer")
+            if applied is None:
+                return True
+            projection = _demos_native_send(record)
+            moved = {"confirmed": (projection or {}).get("amountOs"), "failed": "0"}.get((projection or {}).get("status"))
+            try:
+                change = _demos_committed_change(applied["committedBalances"])
+            except (KeyError, TypeError, ValueError):
+                return False
+            return (projection is not None and moved is not None and change == (moved, moved)
+                    and (applied["payerDebitOs"], applied["payeeCreditOs"]) == change
+                    and all(applied[k] == projection[k] for k in ("txHash", "blockNumber", "sender", "recipient")))
+
+        checked = with_applied = 0
         for vector in self.data["vectors"]:
             value = vector["protocolInput"]
             proof = value.get("retainedFailureProof")
@@ -2128,10 +2234,100 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     reference = {"kind": "demos", "txHash": record.get("hash"), "blockNumber": record.get("blockNumber")}
                     decision, _reason, verified = _verify_demos_execution(
                         observation, reference, {"demosExecutionPolicy": value["fv5Policy"]})
-                    expected = decision == "pass" and _exact_json(verified["record"], record)
+                    expected = (decision == "pass" and _exact_json(verified["record"], record)
+                                and applied_binds(result, record))
                     self.assertEqual(expected, fv5_result(result, record, value, block, frozenset()))
                     checked += 1
+                    with_applied += "appliedTransfer" in result
         self.assertGreater(checked, 40)
+        # The settlement-finality corpus's combined form, both ways.
+        self.assertGreaterEqual(with_applied, 6)
+
+    def test_fv5_accepts_the_settlement_finality_corpus_result_form(self):
+        """FV-5's result in the settlement-finality corpus's combined form,
+        with its signed `appliedTransfer`, authenticates the record the FV
+        reference authenticates: delivery passes and a failed record is the
+        DEM-4 failure and a DEM-7 refutation. The same result without the
+        member decides alike. A result whose own signed `appliedTransfer`
+        contradicts its record authenticates nothing."""
+        for name, expected in (("delivery-fv-form-result", "pass"), ("included-failed-fv-form-result", "fail"),
+                               ("consumer-failed-fv-form-result-fails", "fail")):
+            with self.subTest(name=name):
+                case = self.cases[name]
+                read = case["protocolInput"]["recordRead"]
+                result = read["executionResult"]
+                self.assertIn("appliedTransfer", result)
+                observation = {**case["protocolInput"]["railNetwork"], "executionResult": result,
+                               "inclusionBlock": {"id": case["protocolInput"]["inclusionObservation"]["blockId"]}}
+                reference = {"kind": "demos", "txHash": read["record"]["hash"],
+                             "blockNumber": read["record"]["blockNumber"]}
+                self.assertEqual("pass", _verify_demos_execution(
+                    observation, reference, {"demosExecutionPolicy": case["protocolInput"]["fv5Policy"]})[0])
+                self.assertEqual(expected, evaluate(case)[0])
+                # The member is optional: the bare result decides the same.
+                bare = json.loads(json.dumps(case))
+                bare["protocolInput"]["recordRead"]["executionResult"] = generator.execution_result(read["record"])
+                self.assertEqual(expected, evaluate(bare)[0])
+        for name in ("delivery-fv-form-result-applied-another-amount", "delivery-fv-form-result-applied-not-committed-change",
+                     "delivery-fv-form-result-applied-another-transaction", "included-failed-fv-form-result-shows-payment"):
+            with self.subTest(name=name):
+                case = self.cases[name]
+                self.assertEqual("indeterminate", evaluate(case)[0])
+                self.assertNotEqual("indeterminate", evaluate(case, {"fv5-result-applied-transfer-binds-record"})[0])
+
+    def test_a_proven_failure_needs_its_bft_final_inclusion(self):
+        """DEM-4 and APR-6: a terminal failure, its reuse on resume and APR
+        replacement evidence each need FV's bft-final verification of the
+        transaction's inclusion in the block the verifying signed result
+        names, checked by the settlement-finality reference itself. Without
+        it, unfinalized, under a forged certificate, absent from the block,
+        off the authenticated head or in another block, the phase stays
+        unresolved and no replacement is authorized."""
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("That authentication is the FV `bft-final` verification of the transaction's inclusion "
+                      "together with FV-5's authenticated execution result for the same record.", spec)
+        self.assertNotIn("That authentication is FV-5's signed execution result itself", spec)
+        terminal = {"included-failed": "classify", "node2-failed-record-authenticated": "classify",
+                    "resume-reuses-failure-proof": "resume", "apr-evidence-authenticated-failure-proof": "apr"}
+        for name, kind in terminal.items():
+            with self.subTest(name=name):
+                case = self.cases[name]
+                value = case["protocolInput"]
+                holder = value["retainedFailureProof"] if kind != "classify" else value["recordRead"]
+                inclusion = holder["inclusionProof"]
+                record = holder["record"]
+                reference = {"kind": "demos", "txHash": record["hash"], "blockNumber": record["blockNumber"]}
+                self.assertEqual(("pass", "transaction inclusion and finality verified"), verify_transaction_inclusion(
+                    inclusion, value["finalityProfile"], reference, value["finalityTrust"]))
+                self.assertEqual("bft-final", value["finalityProfile"]["kind"])
+                self.assertIn("finalityCertificate", inclusion)
+                # The same signed result without its inclusion half proves nothing.
+                alone = json.loads(json.dumps(case))
+                held = (alone["protocolInput"]["recordRead"] if kind == "classify"
+                        else alone["protocolInput"]["retainedFailureProof"])
+                del held["inclusionProof"]
+                self.assertEqual(case["expected"], evaluate(case)[0])
+                self.assertEqual("indeterminate", evaluate(alone)[0])
+                self.assertEqual(case["expected"], evaluate(alone, {"failure-requires-bft-final-inclusion"})[0])
+        refused = [vector for vector in self.data["vectors"] if "-bft-final-" in vector["name"]]
+        self.assertEqual({"classify-execution": 7, "resume-phase": 6, "apr-reconciliation-evidence": 6},
+                         {op: sum(v["operation"] == op for v in refused) for op in
+                          ("classify-execution", "resume-phase", "apr-reconciliation-evidence")})
+        for vector in refused:
+            with self.subTest(name=vector["name"]):
+                expected, want = evaluate(vector)
+                self.assertEqual("indeterminate", expected)
+                self.assertFalse(want.get("replacementPermitted", False))
+                self.assertFalse(want.get("reconciliationEvidence", False))
+                self.assertFalse(want.get("terminalFailureProofRetained", False))
+                # The signed result verifies in each: only the inclusion half refuses.
+                value = vector["protocolInput"]
+                holder = value.get("retainedFailureProof") or value["recordRead"]
+                result = holder.get("authentication") or holder.get("executionResult")
+                block = (value.get("inclusionObservation") or {}).get("blockId", _PROOF_BLOCK)
+                self.assertTrue(fv5_result(result, holder["record"], value,
+                                           _PROOF_BLOCK if "retainedFailureProof" in value and value["retainedFailureProof"] else block,
+                                           frozenset()))
 
     def test_only_an_authenticated_failed_record_refutes_evidence(self):
         self.assertEqual("fail", evaluate(self.cases["consumer-failed-fails"])[0])

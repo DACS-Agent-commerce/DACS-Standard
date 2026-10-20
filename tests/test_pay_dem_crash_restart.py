@@ -309,8 +309,9 @@ def failure_proof_violations(root: Path, mutant: str | None = None) -> list[str]
             violations.append(f"{label}: result and failure proof not written together")
         # A crash before the proof leaves only a re-read; the node still
         # serves the failed record then. Once the proof is stored, the node
-        # turns to serve confirmed, and the session stays terminal.
-        later = FAILED if point == "before-failure-proof" else ("--record-status", "confirmed")
+        # turns to serve confirmed for the failed transfer, and the session
+        # stays terminal.
+        later = FAILED if point == "before-failure-proof" else ("--record-status", "confirmed", "--executed", "failed")
         again = run("pay", work, "boot-2", *_options(None, mutant, *later, *FV5))
         if again.returncode != 0:
             violations.append(f"{label}: restart failed: {again.stderr[-400:]}")
@@ -339,24 +340,30 @@ def plain_read_violations(root: Path, mutant: str | None = None) -> list[str]:
     return violations
 
 
-def forged_fv5_violations(root: Path, mutant: str | None = None) -> list[str]:
-    """DEM-4/FV-5: a result source that answers for a bound failed record
-    under the policy's authority names, with signatures no policy key
-    verifies, authenticates nothing. The result stays substrate, nothing
-    terminal is stored, and a restart still sends nothing."""
+def unproven_failure_violations(root: Path, mutant: str | None = None, *options: str,
+                                label: str = "forged FV-5 result") -> list[str]:
+    """DEM-4/FV-5: a bound failed record whose proof falls short stays
+    substrate, nothing terminal is stored, and a restart still sends
+    nothing. By default the result source answers under the policy's
+    authority names with signatures no policy key verifies."""
+    options = options or ("--fv5", "forged")
     violations = []
     for boot in ("boot-1", "boot-2"):
-        done = run("pay", root, boot, *_options(None, mutant, *FAILED, "--fv5", "forged"))
+        done = run("pay", root, boot, *_options(None, mutant, *FAILED, *options))
         if done.returncode != 0:
             return violations + [f"{boot}: failed: {done.stderr[-400:]}"]
         result, stored = json.loads(done.stdout), _journal(root)
         if result.get("errorClass") != "substrate":
-            violations.append(f"{boot}: forged FV-5 result classified {result.get('errorClass')}")
+            violations.append(f"{boot}: {label} classified {result.get('errorClass')}")
         if stored.get("result") is not None or stored.get("failureProof") is not None:
-            violations.append(f"{boot}: forged FV-5 result stored a terminal result")
+            violations.append(f"{boot}: {label} stored a terminal result")
     if [entry["boot"] for entry in reference.read_lines(root / "egress.jsonl")] != ["boot-1", "boot-1"]:
         violations.append("egress after a restart")
     return violations
+
+
+def forged_fv5_violations(root: Path, mutant: str | None = None) -> list[str]:
+    return unproven_failure_violations(root, mutant)
 
 
 def rail_network_violations(root: Path, mutant: str | None = None) -> list[str]:
@@ -495,14 +502,17 @@ class PayDemCrashRestartTests(unittest.TestCase):
         work = self.root / "reference" / "uninterrupted"
         stored = _journal(work)
         self.assertEqual(("fail", "permanent"), (stored["result"]["expected"], stored["result"]["errorClass"]))
-        # The proof keeps FV-5's signed execution result itself, not a label.
+        # The proof keeps both halves as received, not a label: FV-5's
+        # signed execution result and FV's bft-final inclusion of the transfer.
         self.assertEqual({"classification": "permanent",
                           "authentication": generator.execution_result(generator.record("failed")),
+                          "inclusionProof": generator.INCLUSION_PROOF,
                           "inclusionBlock": generator.BLOCK, "record": generator.record("failed")},
                          stored["failureProof"])
         # The handler that returns permanent without journaling it reopens
-        # the session when a later read serves confirmed.
-        self.assertIn("uninterrupted: terminal failure reopened as pass",
+        # the session when a later read serves confirmed (unpaid: the
+        # applied-payment authority observes the rolled-back apply).
+        self.assertIn("uninterrupted: terminal failure reopened as indeterminate",
                       failure_proof_violations(self.root / "late", "failure-not-journaled"))
 
     def test_a_plain_read_of_a_failed_record_is_never_terminal(self):
@@ -520,11 +530,52 @@ class PayDemCrashRestartTests(unittest.TestCase):
                           "boot-2: forged FV-5 result stored a terminal result"],
                          forged_fv5_violations(self.root / "unverified", "unverified-fv5-result"))
 
+    def test_a_signed_failure_without_bft_final_inclusion_is_never_terminal(self):
+        """DEM-4: a policy-signed failed result for a block no BFT
+        certificate finalizes is half a proof. The handler stays substrate
+        and stores nothing terminal, before and after a restart; the handler
+        that takes the signed result alone ends the phase on it."""
+        unfinalized = ("--fv5", "unfinalized")
+        label = "unfinalized FV-5 result"
+        self.assertEqual([], unproven_failure_violations(self.root / "reference", None, *unfinalized, label=label))
+        self.assertEqual([f"{boot}: {label} {what}" for boot in ("boot-1", "boot-2")
+                          for what in ("classified permanent", "stored a terminal result")],
+                         unproven_failure_violations(self.root / "alone", "fv5-result-alone", *unfinalized, label=label))
+        # With its certificate, the same signed failure is terminal for both.
+        self.assertEqual([], failure_proof_violations(self.root / "alone-final", "fv5-result-alone"))
+
+    def test_independent_sources_never_follow_the_node(self):
+        """The FV-5 source and the applied-payment authority answer from the
+        chain state they observe, never from the record a node serves. A
+        node serving failed for an executed transfer gets no signed failure,
+        so nothing terminal is stored; a node serving confirmed for a failed
+        one gets no applied payment, so the phase is never paid."""
+        for name, served, executed in (("failed-served-executed", "failed", "confirmed"),
+                                       ("confirmed-served-failed", "confirmed", "failed")):
+            with self.subTest(name=name):
+                work = self.root / name
+                done = run("pay", work, "boot-1", "--record-status", served, "--executed", executed, *FV5)
+                self.assertEqual(0, done.returncode, done.stderr)
+                result = json.loads(done.stdout)
+                self.assertEqual(("indeterminate", "substrate", False), (result["expected"], result["errorClass"], result["ok"]))
+                stored = _journal(work)
+                self.assertIsNone(stored.get("result"))
+                self.assertIsNone(stored.get("failureProof"))
+        handler = reference.payer(self.root / "sources", "boot-1", fv5="policy", record_status="failed",
+                                  executed="confirmed")
+        self.assertEqual(generator.record("confirmed"),
+                         handler.fv5.result(generator.TX_HASH, generator.NETWORK, generator.block_id(generator.BLOCK))["record"])
+        self.assertEqual(generator.APPLIED["payerAfterOs"],
+                         handler._applied_authority().attest(generator.record("failed"))["appliedTransfer"]
+                         ["committedBalances"]["payerAfterOs"])
+
     def test_a_resume_reuses_only_an_authenticated_failure_proof(self):
-        """DEM-4: a stored proof whose FV-5 result no longer verifies (a
-        label, a forgery, an edited record, another network) or that no
-        longer binds the retained transfer is not reused; the resume
-        re-reads, and without FV-5 that re-read stays substrate."""
+        """DEM-4: a stored proof whose FV-5 result or bft-final inclusion no
+        longer verifies (a label, a forgery, an edited record, a result of
+        another record, another network, no inclusion, an unfinalized or
+        another block) or that no longer binds the retained transfer is not
+        reused; the resume re-reads, and without FV-5 that re-read stays
+        substrate."""
         failed = generator.record("failed")
         for name, damage in (("plain-read", {"authentication": "rpc-read"}),
                              ("label", {"authentication": "fv5-bft-final"}),
@@ -532,8 +583,14 @@ class PayDemCrashRestartTests(unittest.TestCase):
                                  failed, keys=generator.FORGED_FV5_SIGNERS)}),
                              ("edited-result", {"authentication": dict(
                                  generator.execution_result(failed), record=generator.record("pending"))}),
+                             # Policy-signed, so only the record binding refuses it.
+                             ("signed-other-record", {"authentication": generator.execution_result(
+                                 generator.record("failed", generator.send_content(nonce=str(generator.NONCE + 1))))}),
                              ("other-network", {"authentication": generator.execution_result(
                                  failed, network=generator.OTHER_NETWORK)}),
+                             ("no-inclusion", {"inclusionProof": None}),
+                             ("unfinalized-inclusion", {"inclusionProof": generator.inclusion_proof(certified=False)}),
+                             ("inclusion-of-another-block", {"inclusionProof": generator.FORK_INCLUSION_PROOF}),
                              ("other-block", {"inclusionBlock": generator.BLOCK + 1})):
             with self.subTest(name=name):
                 work = self.root / name

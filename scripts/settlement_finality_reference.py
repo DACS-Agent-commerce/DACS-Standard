@@ -1203,6 +1203,17 @@ def _verify_chain_observation(
         if record_decision in {"error", "fail"}:
             return _result(record_decision, record_reason), None
 
+    path_decision, path_reason = _verify_inclusion_path(observation, profile, reference, trusted)
+    if path_decision != "pass":
+        return _result(path_decision, path_reason), None
+    if record_decision != "pass":
+        return _result(record_decision, record_reason), None
+    return _result("pass", "chain observation verified"), event
+
+
+def _verify_inclusion_path(observation: dict, profile: dict, reference: dict, trusted: dict) -> tuple[str, str]:
+    """FV-5 inclusion block, FV-6 authenticated head and ancestry, and FV-7
+    finality of an observation whose transaction inclusion proof verified."""
     inclusion = observation.get("inclusionBlock")
     head = observation.get("authenticatedHead")
     if not (
@@ -1217,15 +1228,15 @@ def _verify_chain_observation(
         and POSITION_RE.fullmatch(head["position"])
         and _finite_time(head.get("observedAt"))
     ):
-        return _result("error", "malformed inclusion block or authenticated head"), None
+        return "error", "malformed inclusion block or authenticated head"
     try:
         _inclusion_raw, inclusion_header = decode_json_bytes(inclusion["header"])
         _head_raw, head_header = decode_json_bytes(head["header"])
     except (ValueError, TypeError, UnicodeError, json.JSONDecodeError, binascii.Error):
-        return _result("error", "malformed raw block header bytes"), None
+        return "error", "malformed raw block header bytes"
     required_header = {"networkId", "genesisHash", "position", "parentId", "transactionsRoot"}
     if not _exact_object(inclusion_header, required_header, {"commitment"}) or not _exact_object(head_header, required_header, {"commitment"}):
-        return _result("error", "malformed fixture block header"), None
+        return "error", "malformed fixture block header"
     if (
         hash_value(inclusion_header) != inclusion["id"]
         or inclusion_header.get("parentId") != inclusion["parentId"]
@@ -1238,39 +1249,39 @@ def _verify_chain_observation(
         or head_header.get("networkId") != profile["networkId"]
         or head_header.get("genesisHash") != profile["genesisHash"]
     ):
-        return _result("fail", "block header identity or transaction root does not verify"), None
+        return "fail", "block header identity or transaction root does not verify"
 
     ancestry = observation.get("ancestryProof")
     if not isinstance(ancestry, list):
-        return _result("error", "ancestryProof is not an array"), None
+        return "error", "ancestryProof is not an array"
     inclusion_position = int(inclusion["position"])
     head_position = int(head["position"])
     if reference.get("kind") == "demos" and reference.get("blockNumber") != inclusion_position:
-        return _result("fail", "Demos blockNumber differs from the authenticated inclusion block (DEM-7)"), None
+        return "fail", "Demos blockNumber differs from the authenticated inclusion block (DEM-7)"
     if head_position < inclusion_position:
-        return _result("fail", "authenticated head precedes inclusion block"), None
+        return "fail", "authenticated head precedes inclusion block"
     if len(ancestry) != head_position - inclusion_position:
-        return _result("fail", "ancestry proof is incomplete or contains an extra link"), None
+        return "fail", "ancestry proof is incomplete or contains an extra link"
     previous_id = inclusion["id"]
     path_ids = [previous_id]
     previous_position = inclusion_position
     for link in ancestry:
         if not _exact_object(link, {"childId", "parentId", "position", "header"}):
-            return _result("error", "malformed ancestry link"), None
+            return "error", "malformed ancestry link"
         if (
             not _sha256(link.get("childId"))
             or not _sha256(link.get("parentId"))
             or not isinstance(link.get("position"), str)
             or POSITION_RE.fullmatch(link["position"]) is None
         ):
-            return _result("error", "malformed ancestry identity or position"), None
+            return "error", "malformed ancestry identity or position"
         try:
             _raw, header = decode_json_bytes(link["header"])
         except (ValueError, TypeError, UnicodeError, json.JSONDecodeError, binascii.Error):
-            return _result("error", "malformed ancestry header bytes"), None
+            return "error", "malformed ancestry header bytes"
         position = int(link["position"])
         if not _exact_object(header, required_header, {"commitment"}):
-            return _result("error", "malformed ancestry header body"), None
+            return "error", "malformed ancestry header body"
         if (
             position != previous_position + 1
             or link["parentId"] != previous_id
@@ -1280,45 +1291,88 @@ def _verify_chain_observation(
             or header.get("networkId") != profile["networkId"]
             or header.get("genesisHash") != profile["genesisHash"]
         ):
-            return _result("fail", "ancestry link does not extend the authenticated path"), None
+            return "fail", "ancestry link does not extend the authenticated path"
         previous_id = link["childId"]
         previous_position = position
         path_ids.append(previous_id)
     if previous_id != head["id"] or canonical_bytes(head_header) != canonical_bytes(
         inclusion_header if not ancestry else header
     ):
-        return _result("fail", "ancestry terminus differs from authenticated head"), None
+        return "fail", "ancestry terminus differs from authenticated head"
 
     authority_decision, authority_reason = _verify_authority(observation, profile, path_ids, trusted)
     if authority_decision != "pass":
-        return _result(authority_decision, authority_reason), None
+        return authority_decision, authority_reason
     verification_time = trusted.get("verificationTimeMs")
     if not _finite_time(verification_time):
-        return _result("error", "trusted verifier-local clock is malformed"), None
+        return "error", "trusted verifier-local clock is malformed"
     if head["observedAt"] > verification_time:
-        return _result("fail", "authenticated head observation is from the future"), None
+        return "fail", "authenticated head observation is from the future"
     age_ms = verification_time - head["observedAt"]
     if age_ms > profile["observation"]["maxHeadAgeSec"] * 1000:
-        return _result("indeterminate", "authenticated head observation is stale"), None
+        return "indeterminate", "authenticated head observation is stale"
 
     kind = profile["kind"]
     if kind == "block-depth":
         depth = head_position - inclusion_position + 1
         if depth < profile["requiredDepth"]:
-            return _result("fail", "authenticated canonical depth is insufficient"), None
+            return "fail", "authenticated canonical depth is insufficient"
     elif kind == "commitment-level":
         observed = head_header.get("commitment")
         if observed not in COMMITMENT_RANK:
-            return _result("error", "authenticated commitment is missing or unknown"), None
+            return "error", "authenticated commitment is missing or unknown"
         if COMMITMENT_RANK[observed] < COMMITMENT_RANK[profile["requiredCommitment"]]:
-            return _result("fail", "authenticated commitment is below the signed requirement"), None
+            return "fail", "authenticated commitment is below the signed requirement"
     else:
         bft_decision, bft_reason = _verify_bft_certificate(observation, profile, trusted)
         if bft_decision != "pass":
-            return _result(bft_decision, bft_reason), None
-    if record_decision != "pass":
-        return _result(record_decision, record_reason), None
-    return _result("pass", "chain observation verified"), event
+            return bft_decision, bft_reason
+    return "pass", "transaction inclusion and finality verified"
+
+
+# The members of an AuthenticatedChainObservation that prove a transaction's
+# inclusion and finality, without a selected event or execution result.
+INCLUSION_OBSERVATION = {
+    "networkId", "genesisHash", "transactionRef", "transactionInclusionProof",
+    "inclusionBlock", "authenticatedHead", "ancestryProof", "authorityEvidence",
+}
+
+
+def verify_transaction_inclusion(observation: Any, profile: Any, reference: dict, trusted: dict) -> tuple[str, str]:
+    """FV-4 network identity, FV-5 transaction inclusion, FV-6 head and
+    ancestry and FV-7 finality of one native transaction, as
+    `_verify_chain_observation` checks them, for a DACS-4 §9.5.9 DEM-4
+    proven failure: the inclusion half that FV-5's execution result does not
+    show. The raw transaction body is the native-send form, whose selected
+    event root is optional because DEM-4 selects no event."""
+    if observation is None:
+        return "indeterminate", "transaction inclusion observation unavailable"
+    if not _exact_object(observation, INCLUSION_OBSERVATION, {"finalityCertificate"}):
+        return "error", "malformed transaction inclusion observation"
+    if not _chain_profile_shape(profile):
+        return "error", "malformed chain finality profile"
+    if observation.get("networkId") != profile.get("networkId") or observation.get("genesisHash") != profile.get("genesisHash"):
+        return "fail", "chain network or genesis differs from signed rail profile"
+    if canonical_bytes(observation.get("transactionRef")) != canonical_bytes(reference):
+        return "fail", "observation transaction reference differs from the transaction"
+    if not _chain_ref_matches_profile(reference, profile):
+        return "fail", "transaction reference is on the wrong profile network"
+    decision, reason, transaction = _verify_merkle_proof(
+        observation.get("transactionInclusionProof"), kind="fixture-transaction-merkle-v1", bytes_field="transactionBytes"
+    )
+    if decision != "pass":
+        return decision, reason
+    if not (_exact_object(transaction, {"networkId", "genesisHash", "transactionRef", "txHash"}, {"eventsRoot"})
+            and ("eventsRoot" not in transaction or _sha256(transaction["eventsRoot"]))):
+        return "error", "malformed raw transaction body"
+    if (
+        transaction.get("networkId") != profile["networkId"]
+        or transaction.get("genesisHash") != profile["genesisHash"]
+        or canonical_bytes(transaction.get("transactionRef")) != canonical_bytes(reference)
+        or transaction.get("txHash") != reference.get("txHash")
+    ):
+        return "fail", "raw transaction does not bind the network or reference"
+    return _verify_inclusion_path(observation, profile, reference, trusted)
 
 
 def _verify_web2_request_event(event: Any, reference: dict, response_hash: str, status_resource: str) -> tuple[str, str]:

@@ -13,6 +13,49 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — pay-dem DEM-4 proof needs its bft-final inclusion; FV-5 takes the combined result form
+
+- DEM-4 and APR-6 require FV's `bft-final` verification of the failed
+  transaction's inclusion together with FV-5's signed execution result. The
+  conformance oracle checked only the signed result, so a policy-signed
+  failure in a block that was not final could end a phase `permanent` and
+  authorize an APR replacement. DEM-4 now names both halves of the retained
+  authentication. The proof keeps FV's inclusion observation of the
+  transaction (transaction proof, inclusion block, authenticated head and
+  ancestry, BFT certificate) next to the result, and the two must name one
+  block. A resume and the APR verifier verify both against the rail's signed
+  `bft-final` profile and their own trust.
+- The settlement-finality reference exposes `verify_transaction_inclusion`:
+  the FV-4 network, FV-5 inclusion, FV-6 head and ancestry and FV-7 finality
+  checks of `_verify_chain_observation`, which now calls the same code. The
+  settlement-finality corpus is unchanged.
+- FV-5's result may carry that corpus's optional signed `appliedTransfer`.
+  Delivery no longer refuses a valid result in that combined form. A carried
+  `appliedTransfer` must be the change of its committed balances and bind the
+  record: its transaction, block and parties, and the OS amount for a
+  `confirmed` record or nothing for a `failed` one.
+- 26 new vectors:
+  - in `classify-execution`, `resume-phase` and
+    `apr-reconciliation-evidence`, a verifying signed failure whose inclusion
+    is missing, unfinalized, under a forged certificate, absent from the
+    block, off the authenticated head, or in another block stays
+    `indeterminate`; so does one under another network's profile;
+  - the combined result form passes delivery and proves DEM-4 and DEM-7
+    failures, and a self-contradicting `appliedTransfer` refuses.
+
+  Four guards pin them. No earlier verdict changes. Three guard lists lose
+  their binding guard, because the inclusion check now also refuses a failed
+  record of another hash or block.
+- The reference handler's FV-5 source and applied-payment authority answer
+  from the chain state they observe (`--executed`), never from the record the
+  node serves. The FV-5 source also supplies the `bft-final` inclusion. The
+  DEM-4 proof stores the inclusion, and a resume verifies it again. The
+  harness catches a handler that takes the signed result alone
+  (`fv5-result-alone`), and checks a node that serves `failed` for an
+  executed transfer, or `confirmed` for a failed one.
+- The corpus has 361 vectors (37 `pass`, 125 `fail`, 182 `indeterminate`,
+  17 `error`) and 117 guards.
+
 ### Fixed — pay-dem party address, rail preflight and reference witness
 
 - DEMOS-MAPPING §A.2 defines the *pay-dem party address*: `payee.payeeAddress`,
@@ -59,8 +102,9 @@ The format used per release:
   record, in `classify-execution`, `admit-evidence`, `admit-for-delivery`,
   `resume-phase` and `apr-reconciliation-evidence`. Five guards pin them. No
   earlier verdict changes. Two tests check that a flag or label never decides,
-  and that the oracle and the settlement-finality verifier agree on every
-  signed result.
+  and that the oracle decides every signed result as the settlement-finality
+  verifier's execution-result check does (with, since the entry above, the
+  binding of a carried `appliedTransfer`).
 - The reference handler's FV-5 source signs results with the policy's keys or
   forges them under the same authority names. A forged result leaves a failed
   record `substrate` with nothing terminal stored, and a resume re-verifies the
@@ -122,7 +166,7 @@ The format used per release:
   vectors in both corpora cover each spelling the §A.2 profile projects alike:
   a `0x`-prefixed or bare `send` recipient argument (whose credit edit names it
   with a single `0x`), bare or prefixed party keys, a string or integer nonce,
-  and a string or number amount up to 2^53 − 1. The corpora contain 335 pay-dem
+  and a string or number amount up to 2^53 − 1. The corpora contain 361 pay-dem
   and 194 settlement-finality cases.
 - The DEMOS-MAPPING §A.2 profile covers only a network whose sealed genesis
   leaves the `gasFeeSeparation` fork unscheduled (`activationHeight: null`).
@@ -1418,7 +1462,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 335-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 361-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope

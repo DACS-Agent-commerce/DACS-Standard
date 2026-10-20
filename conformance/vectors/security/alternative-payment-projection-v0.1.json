@@ -159,6 +159,34 @@
               "parameters": {
                 "transfer": "native"
               },
+              "consumerFinalityProfile": {
+                "finalityProfileVersion": "1",
+                "model": "bft-final",
+                "settlement": {
+                  "kind": "bft-final",
+                  "networkId": "demos:mainnet",
+                  "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                  "observation": {
+                    "method": "rpc-quorum",
+                    "authorityRefs": [
+                      "rpc-a",
+                      "rpc-b",
+                      "rpc-c"
+                    ],
+                    "threshold": 2,
+                    "maxHeadAgeSec": 60
+                  },
+                  "validatorSetRef": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                    },
+                    "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                  },
+                  "quorumNumerator": 2,
+                  "quorumDenominator": 3
+                }
+              },
               "availability": "live",
               "governance": {
                 "proposedBy": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
@@ -168,7 +196,7 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-                "value": "TbaGz5bgH2RTLpgXBkAsTT6Zy_8U-sc6yUXuoW8qS973dRu5-7TmEq7lOXf-JaqWTNdG0xH45ME-8P7ac84IBg"
+                "value": "RHmivKu9fWYWhCWtZiK_P2lDIeoZJlZJD3htFN43tpfKSFH83QnRtYKgwu4AaLHhRN3BT2gmMVtfQvO_kCupDg"
               }
             }
           },
@@ -264,6 +292,25 @@
           "pay-dem",
           "pay-x402",
           "pay-ap2"
+        ],
+        "payDemBinding": [
+          {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "pinnedNodes": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+            },
+            "appliedPaymentAuthority": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+            },
+            "gasFeeSeparation": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "activationHeight": null
+            }
+          }
         ],
         "projectedStep": {
           "kind": "pay-dem",
@@ -496,6 +543,34 @@
               "parameters": {
                 "transfer": "native"
               },
+              "consumerFinalityProfile": {
+                "finalityProfileVersion": "1",
+                "model": "bft-final",
+                "settlement": {
+                  "kind": "bft-final",
+                  "networkId": "demos:mainnet",
+                  "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                  "observation": {
+                    "method": "rpc-quorum",
+                    "authorityRefs": [
+                      "rpc-a",
+                      "rpc-b",
+                      "rpc-c"
+                    ],
+                    "threshold": 2,
+                    "maxHeadAgeSec": 60
+                  },
+                  "validatorSetRef": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                    },
+                    "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                  },
+                  "quorumNumerator": 2,
+                  "quorumDenominator": 3
+                }
+              },
               "availability": "live",
               "governance": {
                 "proposedBy": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
@@ -505,7 +580,7 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-                "value": "TbaGz5bgH2RTLpgXBkAsTT6Zy_8U-sc6yUXuoW8qS973dRu5-7TmEq7lOXf-JaqWTNdG0xH45ME-8P7ac84IBg"
+                "value": "RHmivKu9fWYWhCWtZiK_P2lDIeoZJlZJD3htFN43tpfKSFH83QnRtYKgwu4AaLHhRN3BT2gmMVtfQvO_kCupDg"
               }
             }
           },
@@ -601,6 +676,25 @@
           "pay-dem",
           "pay-x402",
           "pay-ap2"
+        ],
+        "payDemBinding": [
+          {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "pinnedNodes": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+            },
+            "appliedPaymentAuthority": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+            },
+            "gasFeeSeparation": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "activationHeight": null
+            }
+          }
         ],
         "projectedStep": {
           "kind": "pay-x402",
@@ -833,6 +927,34 @@
               "parameters": {
                 "transfer": "native"
               },
+              "consumerFinalityProfile": {
+                "finalityProfileVersion": "1",
+                "model": "bft-final",
+                "settlement": {
+                  "kind": "bft-final",
+                  "networkId": "demos:mainnet",
+                  "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                  "observation": {
+                    "method": "rpc-quorum",
+                    "authorityRefs": [
+                      "rpc-a",
+                      "rpc-b",
+                      "rpc-c"
+                    ],
+                    "threshold": 2,
+                    "maxHeadAgeSec": 60
+                  },
+                  "validatorSetRef": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                    },
+                    "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                  },
+                  "quorumNumerator": 2,
+                  "quorumDenominator": 3
+                }
+              },
               "availability": "live",
               "governance": {
                 "proposedBy": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
@@ -842,7 +964,7 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-                "value": "TbaGz5bgH2RTLpgXBkAsTT6Zy_8U-sc6yUXuoW8qS973dRu5-7TmEq7lOXf-JaqWTNdG0xH45ME-8P7ac84IBg"
+                "value": "RHmivKu9fWYWhCWtZiK_P2lDIeoZJlZJD3htFN43tpfKSFH83QnRtYKgwu4AaLHhRN3BT2gmMVtfQvO_kCupDg"
               }
             }
           },
@@ -938,6 +1060,25 @@
           "pay-dem",
           "pay-x402",
           "pay-ap2"
+        ],
+        "payDemBinding": [
+          {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "pinnedNodes": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+            },
+            "appliedPaymentAuthority": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+            },
+            "gasFeeSeparation": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "activationHeight": null
+            }
+          }
         ],
         "projectedStep": {
           "kind": "pay-ap2",
@@ -1145,6 +1286,34 @@
               "parameters": {
                 "transfer": "native"
               },
+              "consumerFinalityProfile": {
+                "finalityProfileVersion": "1",
+                "model": "bft-final",
+                "settlement": {
+                  "kind": "bft-final",
+                  "networkId": "demos:mainnet",
+                  "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                  "observation": {
+                    "method": "rpc-quorum",
+                    "authorityRefs": [
+                      "rpc-a",
+                      "rpc-b",
+                      "rpc-c"
+                    ],
+                    "threshold": 2,
+                    "maxHeadAgeSec": 60
+                  },
+                  "validatorSetRef": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                    },
+                    "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                  },
+                  "quorumNumerator": 2,
+                  "quorumDenominator": 3
+                }
+              },
               "availability": "live",
               "governance": {
                 "proposedBy": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
@@ -1154,7 +1323,7 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-                "value": "TbaGz5bgH2RTLpgXBkAsTT6Zy_8U-sc6yUXuoW8qS973dRu5-7TmEq7lOXf-JaqWTNdG0xH45ME-8P7ac84IBg"
+                "value": "RHmivKu9fWYWhCWtZiK_P2lDIeoZJlZJD3htFN43tpfKSFH83QnRtYKgwu4AaLHhRN3BT2gmMVtfQvO_kCupDg"
               }
             }
           }
@@ -1167,6 +1336,25 @@
           "pay-dem",
           "pay-x402",
           "pay-ap2"
+        ],
+        "payDemBinding": [
+          {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "pinnedNodes": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+            },
+            "appliedPaymentAuthority": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+            },
+            "gasFeeSeparation": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "activationHeight": null
+            }
+          }
         ],
         "projectedStep": null,
         "agreementSignatureProduced": true,
@@ -1254,8 +1442,8 @@
       }
     }
   },
-  "count": 45,
-  "hash": "561e7e102c1ea40c5d811c25a1c80101b691ba7b24a4f179e6499c7f78013794",
+  "count": 49,
+  "hash": "ba471cc47b719b7e147c781c5b92634932b06c80a2794b3f337412418279916d",
   "vectors": [
     {
       "name": "select-dem-projects-pay-dem",
@@ -2463,6 +2651,34 @@
                 "parameters": {
                   "transfer": "native"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "availability": "live",
                 "governance": {
                   "proposedBy": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
@@ -2472,7 +2688,7 @@
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-                  "value": "TbaGz5bgH2RTLpgXBkAsTT6Zy_8U-sc6yUXuoW8qS973dRu5-7TmEq7lOXf-JaqWTNdG0xH45ME-8P7ac84IBg"
+                  "value": "RHmivKu9fWYWhCWtZiK_P2lDIeoZJlZJD3htFN43tpfKSFH83QnRtYKgwu4AaLHhRN3BT2gmMVtfQvO_kCupDg"
                 }
               }
             },
@@ -2813,7 +3029,176 @@
             "signature",
             "value"
           ],
-          "value": "o5kqA5i8tGq8_VapLEMD-4lAgMCuHujuv27_GIKgenNiOKsT5LInNjQmSGd-U7y39S1hJec5K-0vMYgZVWF7AQ"
+          "value": "ivDhJX9ir-u06_SAzPtiBBkaFaS5xC_4xIwowmBSWCX2XMLVcZ1Am_LCqZyQuNtYXyu61ID7QwPkfqXwjWjWAQ"
+        }
+      ],
+      "expectedReason": "selected-availability"
+    },
+    {
+      "name": "selected-dem-without-finality-profile-rejected",
+      "expected": "fail",
+      "rule": "APR-3/RAV-R3/DEM-1",
+      "operation": "execute",
+      "note": "a live pay-dem definition without a consumerFinalityProfile names no network and is unselectable",
+      "base": "dem",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "registry",
+            "resolutions",
+            0,
+            "definition",
+            "consumerFinalityProfile"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "registry",
+            "resolutions",
+            0,
+            "definition",
+            "signature",
+            "value"
+          ],
+          "value": "TbaGz5bgH2RTLpgXBkAsTT6Zy_8U-sc6yUXuoW8qS973dRu5-7TmEq7lOXf-JaqWTNdG0xH45ME-8P7ac84IBg"
+        }
+      ],
+      "expectedReason": "selected-availability"
+    },
+    {
+      "name": "selected-dem-without-payer-binding-rejected",
+      "expected": "fail",
+      "rule": "APR-3/RAV-R3/DEM-1",
+      "operation": "execute",
+      "note": "a live pay-dem rail is unselectable while the payer has no Demos binding",
+      "base": "dem",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding"
+          ],
+          "value": []
+        }
+      ],
+      "expectedReason": "selected-availability"
+    },
+    {
+      "name": "selected-dem-binding-for-another-network-rejected",
+      "expected": "fail",
+      "rule": "APR-3/RAV-R3/DEM-1",
+      "operation": "execute",
+      "note": "a binding only for another network does not cover the rail's network",
+      "base": "dem",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "appliedPaymentAuthority",
+            "genesisHash"
+          ],
+          "value": "810343e2f007d36ec9d02b488c9571c5adca6fd0af994f5392e34aa9021d0836"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "appliedPaymentAuthority",
+            "networkId"
+          ],
+          "value": "demos:testnet"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "gasFeeSeparation",
+            "genesisHash"
+          ],
+          "value": "810343e2f007d36ec9d02b488c9571c5adca6fd0af994f5392e34aa9021d0836"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "gasFeeSeparation",
+            "networkId"
+          ],
+          "value": "demos:testnet"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "genesisHash"
+          ],
+          "value": "810343e2f007d36ec9d02b488c9571c5adca6fd0af994f5392e34aa9021d0836"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "networkId"
+          ],
+          "value": "demos:testnet"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "pinnedNodes",
+            "genesisHash"
+          ],
+          "value": "810343e2f007d36ec9d02b488c9571c5adca6fd0af994f5392e34aa9021d0836"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "pinnedNodes",
+            "networkId"
+          ],
+          "value": "demos:testnet"
+        }
+      ],
+      "expectedReason": "selected-availability"
+    },
+    {
+      "name": "selected-dem-binding-without-applied-authority-rejected",
+      "expected": "fail",
+      "rule": "APR-3/RAV-R3/DEM-1",
+      "operation": "execute",
+      "note": "a binding for the rail's network without an applied-payment authority fails the preflight",
+      "base": "dem",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "appliedPaymentAuthority"
+          ]
         }
       ],
       "expectedReason": "selected-availability"

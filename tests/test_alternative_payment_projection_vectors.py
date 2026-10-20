@@ -11,6 +11,8 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from scripts.jcs import canonicalize as jcs_canonicalize
 
+import test_pay_dem_execution_vectors as pay_dem
+
 
 ROOT = Path(__file__).resolve().parents[1]
 VECTORS = ROOT / "conformance/vectors/security/alternative-payment-projection-v0.1.json"
@@ -423,6 +425,23 @@ def listing_gate(vector):
     return "pass", None, resolved, alternative_index
 
 
+def pay_dem_preflight(definition, runtime):
+    """DACS-4 RAV-R3 for a `pay-dem` rail, whatever its availability: the
+    rail's network is its signed `consumerFinalityProfile.settlement`
+    (`bft-final`), and the payer's Demos binding for that network must hold
+    DEM-1's three members. The pay-dem corpus's own preflight decides."""
+    profile = definition.get("consumerFinalityProfile")
+    settlement = profile.get("settlement") if isinstance(profile, dict) else None
+    if not (isinstance(settlement, dict) and settlement.get("kind") == "bft-final"):
+        return False
+    verdict, _ = pay_dem.rail_preflight({
+        "availability": definition.get("availability"),
+        "railNetwork": {key: settlement.get(key) for key in ("networkId", "genesisHash")},
+        "demosBinding": runtime.get("payDemBinding"),
+    }, frozenset())
+    return verdict == "pass"
+
+
 def project_and_bind(vector, resolved, alternative_index):
     listing = vector["listing"]
     agreement = vector["agreement"]
@@ -445,6 +464,8 @@ def project_and_bind(vector, resolved, alternative_index):
     if availability == "mocked":
         return "fail", "selected-availability", None
     if availability in {"operator_gated", "closed_data", "bilateral"} and not vector["runtime"].get("operatorPreflightOk"):
+        return "fail", "selected-availability", None
+    if definition.get("phaseHandler") == "pay-dem" and not pay_dem_preflight(definition, vector["runtime"]):
         return "fail", "selected-availability", None
 
     effective = copy.deepcopy(listing["pipeline"])
@@ -597,6 +618,36 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
                 self.assertEqual(verdict, vector["expected"])
                 if "expectedReason" in vector:
                     self.assertEqual(reason, vector["expectedReason"])
+
+    def test_a_pay_dem_selection_is_preflighted_whatever_its_availability(self):
+        """DACS-4 RAV-R3/DEM-1: a `live` pay-dem rail is selected only with a
+        bft-final consumerFinalityProfile and the payer's Demos binding for
+        that network; this corpus and the pay-dem `rail-preflight` give one
+        answer for one input."""
+        refused = {"selected-dem-without-finality-profile-rejected", "selected-dem-without-payer-binding-rejected",
+                   "selected-dem-binding-for-another-network-rejected",
+                   "selected-dem-binding-without-applied-authority-rejected"}
+        for name in refused:
+            with self.subTest(name=name):
+                vector = self.by_name[name]
+                self.assertEqual("live", vector["registry"]["resolutions"][0]["definition"]["availability"])
+                self.assertEqual(("fail", "selected-availability"), evaluate(vector))
+        selecting = [vector for vector in self.vectors if vector["expected"] == "pass" and vector["base"] == "dem"]
+        self.assertTrue(selecting)
+        for vector in selecting:
+            with self.subTest(name=vector["name"]):
+                definition = vector["registry"]["resolutions"][0]["definition"]
+                self.assertEqual("pay-dem", definition["phaseHandler"])
+                self.assertTrue(pay_dem_preflight(definition, vector["runtime"]))
+                # The same selection without the profile or the binding refuses.
+                for strip in ("profile", "binding"):
+                    stripped = copy.deepcopy(vector)
+                    if strip == "profile":
+                        stripped["registry"]["resolutions"][0]["definition"].pop("consumerFinalityProfile")
+                    else:
+                        stripped["runtime"]["payDemBinding"] = []
+                    self.assertFalse(pay_dem_preflight(stripped["registry"]["resolutions"][0]["definition"],
+                                                       stripped["runtime"]), strip)
 
     def test_all_failure_and_indeterminate_paths_are_pre_authorization(self):
         for vector in self.vectors:

@@ -1200,7 +1200,11 @@ def _verify_chain_observation(
         if record_decision == "pass":
             record_decision, record_reason = _verify_demos_record(
                 execution["record"], reference, expected, trusted, execution.get("appliedTransfer"))
-        if record_decision in {"error", "fail"}:
+        # A malformed result is malformed whatever the chain shows. A signed
+        # failure or contradiction refutes the payment only once the canonical
+        # bft-final path of its block verifies: a result about a fork or an
+        # unfinalized block decides nothing (DACS-4 §9.5.9 DEM-7).
+        if record_decision == "error":
             return _result(record_decision, record_reason), None
 
     path_decision, path_reason = _verify_inclusion_path(observation, profile, reference, trusted)

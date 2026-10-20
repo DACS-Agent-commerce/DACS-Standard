@@ -12,6 +12,9 @@ from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from jcs import canonicalize as jcs_canonicalize
+# DACS-4 §9.5.9 DEM-1 / RAV-R3: the DEM rail's signed bft-final profile and the
+# payer's Demos binding entry for its network, as the pay-dem corpus builds them.
+from generate_pay_dem_execution_vectors import FINALITY_PROFILE, OTHER_NETWORK, binding_entry
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -115,7 +118,7 @@ def rail_definition(ref: dict, handler: str) -> dict:
             "providerReceiptAttested": True,
             "idempotencyKeys": True,
         }
-    return {
+    definition = {
         "railVersion": ref["railVersion"],
         "railId": ref["railId"],
         "railType": rail_type,
@@ -123,6 +126,15 @@ def rail_definition(ref: dict, handler: str) -> dict:
         "network": network,
         "phaseHandler": handler,
         "parameters": parameters,
+    }
+    if handler == "pay-dem":
+        # DEM-1 and RAV-R3 take the rail's network from this profile: a
+        # pay-dem definition without one names no network and is unselectable.
+        definition["consumerFinalityProfile"] = {
+            "finalityProfileVersion": "1", "model": "bft-final", "settlement": copy.deepcopy(FINALITY_PROFILE),
+        }
+    return {
+        **definition,
         "availability": "live",
         "governance": {
             "proposedBy": STEWARD,
@@ -250,6 +262,8 @@ def make_base(selected: str = "dem", *, ordinary_repeated: bool = False) -> dict
             "listingPublisherClaim": SELLER,
             "readerSupportsPayAlternative": True,
             "supportedHandlers": ["pay-dem", "pay-x402", "pay-ap2"],
+            # The payer's Demos binding (RAV-R3 for a pay-dem rail).
+            "payDemBinding": [binding_entry()],
             "projectedStep": copy.deepcopy(projected[2]) if not ordinary_repeated else None,
             "agreementSignatureProduced": True,
             "priorPaymentContext": None,
@@ -634,6 +648,23 @@ def build_cases() -> list[dict]:
              lambda v: v["registry"]["resolutions"][0]["definition"].update({
                  "availability": "disabled"
              }), reason="selected-availability")
+    # RAV-R3: a pay-dem rail is preflighted whatever its availability, live
+    # included, against the payer's Demos binding for the rail's network.
+    add_case(cases, "selected-dem-without-finality-profile-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "a live pay-dem definition without a consumerFinalityProfile names no network and is unselectable",
+             lambda v: v["registry"]["resolutions"][0]["definition"].pop("consumerFinalityProfile"),
+             reason="selected-availability")
+    add_case(cases, "selected-dem-without-payer-binding-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "a live pay-dem rail is unselectable while the payer has no Demos binding",
+             lambda v: v["runtime"].update({"payDemBinding": []}), reason="selected-availability")
+    add_case(cases, "selected-dem-binding-for-another-network-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "a binding only for another network does not cover the rail's network",
+             lambda v: v["runtime"].update({"payDemBinding": [binding_entry(OTHER_NETWORK)]}),
+             reason="selected-availability")
+    add_case(cases, "selected-dem-binding-without-applied-authority-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "a binding for the rail's network without an applied-payment authority fails the preflight",
+             lambda v: v["runtime"]["payDemBinding"][0].pop("appliedPaymentAuthority"),
+             reason="selected-availability")
     add_case(cases, "nonselected-disabled-does-not-select-or-fallback", "pass", "APR-2/APR-3",
              "a valid but disabled nonselected definition does not replace DEM",
              lambda v: v["registry"]["resolutions"][1]["definition"].update({

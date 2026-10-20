@@ -1788,7 +1788,9 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         ("record-wrong-hash-certificate-withheld", demos_record(record_changes={"hash": "ee" * 32})),
     ):
         value["context"]["observation"].pop("finalityCertificate")
-        vectors.append(case("fv-bft-final-" + name, "fail", "deterministic result contradiction precedes withheld finality", value))
+        vectors.append(case("fv-bft-final-" + name, "indeterminate",
+                            "a signed failure or contradiction refutes nothing until its block's bft-final path verifies",
+                            value))
     vectors.append(case("fv-bft-final-record-ed25519-address-mismatch", "indeterminate", "the debited key must be the sender",
                         demos_record(from_ed25519_address="0x" + other_key)))
     # Canonical decimals longer than Python's int() digit limit (4300) are

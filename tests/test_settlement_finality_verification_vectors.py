@@ -308,13 +308,23 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 if expected == "error":
                     self.assertIn("phase lacks a DEM amount", result["reason"])
 
-    def test_execution_contradictions_precede_withheld_certificate(self):
+    def test_execution_contradictions_wait_for_the_bft_final_path(self):
+        # A signed failure or contradiction about a block that no certificate
+        # finalizes refutes nothing: it is as unresolved as a success there.
+        # With the canonical certificate restored the same result is `fail`.
+        canonical = self.cases["fv-bft-final-canonical-success"]["input"]["context"]["observation"]
         for suffix in ("record-wrong-payee-certificate-withheld", "execution-failed-certificate-withheld",
                        "record-wrong-hash-certificate-withheld"):
             with self.subTest(case=suffix):
                 case = self.cases["fv-bft-final-" + suffix]
                 self.assertNotIn("finalityCertificate", case["input"]["context"]["observation"])
-                self.assertEqual("fail", self.evaluate_case(case)["decision"])
+                result = self.evaluate_case(case)
+                self.assertEqual("indeterminate", result["decision"])
+                self.assertNotIn("Demos", result["reason"])
+                finalized = copy.deepcopy(case)
+                finalized["input"]["context"]["observation"]["finalityCertificate"] = copy.deepcopy(
+                    canonical["finalityCertificate"])
+                self.assertEqual("fail", self.evaluate_case(finalized)["decision"])
         control = copy.deepcopy(self.cases["fv-bft-final-canonical-success"])
         control["input"]["context"]["observation"].pop("finalityCertificate")
         self.assertEqual("indeterminate", self.evaluate_case(control)["decision"])

@@ -618,6 +618,21 @@ class PayDemCrashRestartTests(unittest.TestCase):
         self.assertEqual(["confirm", "broadcast"],
                          [entry["call"] for entry in reference.read_lines(work / "egress.jsonl")])
 
+    def test_an_executed_payment_in_a_block_not_yet_final_is_no_success(self):
+        """DEM-3 and PC-7: a bound confirmed record with its applied payment,
+        in a block no BFT certificate finalizes, is substrate, never ok. The
+        re-read after the block is final settles it, sending nothing."""
+        work = self.root / "unfinal"
+        first = run("pay", work, "boot-1", "--fv5", "unfinalized")
+        self.assertEqual(0, first.returncode, first.stderr)
+        result = json.loads(first.stdout)
+        self.assertEqual(("indeterminate", False, "substrate"), (result["expected"], result["ok"], result["errorClass"]))
+        final = run("pay", work, "boot-2")
+        self.assertEqual(0, final.returncode, final.stderr)
+        self.assertEqual("pass", json.loads(final.stdout)["expected"])
+        self.assertEqual(["confirm", "broadcast"],
+                         [entry["call"] for entry in reference.read_lines(work / "egress.jsonl")])
+
     def test_own_call_outcomes_classify_from_the_stored_journal(self):
         """F1 end to end: a refused or failed call after the bytes left is
         substrate and a restart sends nothing, only re-reads; a short balance

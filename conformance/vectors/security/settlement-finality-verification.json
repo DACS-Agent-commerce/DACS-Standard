@@ -359,7 +359,7 @@
     }
   },
   "count": 194,
-  "hash": "92d64629d218096dd740156bf06269d88fca70e0e014e16463900165caea01de",
+  "hash": "c87a56ed2d94e7f5ba4c422ad8ee30c455419f59cab8ab2a6a198de773d42d1f",
   "vectors": [
     {
       "name": "fv-block-depth-canonical-success",
@@ -43906,8 +43906,8 @@
     },
     {
       "name": "fv-bft-final-record-wrong-payee-certificate-withheld",
-      "expected": "fail",
-      "note": "deterministic result contradiction precedes withheld finality",
+      "expected": "indeterminate",
+      "note": "a signed failure or contradiction refutes nothing until its block's bft-final path verifies",
       "input": {
         "evidence": {
           "finalityBoundEvidenceVersion": "1",
@@ -44305,13 +44305,13 @@
         "acceptedAsFinal": false,
         "finalityClass": null,
         "producerReportTrustedAsProof": false,
-        "dacs5BundleDecision": "fail"
+        "dacs5BundleDecision": "indeterminate"
       }
     },
     {
       "name": "fv-bft-final-execution-failed-certificate-withheld",
-      "expected": "fail",
-      "note": "deterministic result contradiction precedes withheld finality",
+      "expected": "indeterminate",
+      "note": "a signed failure or contradiction refutes nothing until its block's bft-final path verifies",
       "input": {
         "evidence": {
           "finalityBoundEvidenceVersion": "1",
@@ -44709,13 +44709,13 @@
         "acceptedAsFinal": false,
         "finalityClass": null,
         "producerReportTrustedAsProof": false,
-        "dacs5BundleDecision": "fail"
+        "dacs5BundleDecision": "indeterminate"
       }
     },
     {
       "name": "fv-bft-final-record-wrong-hash-certificate-withheld",
-      "expected": "fail",
-      "note": "deterministic result contradiction precedes withheld finality",
+      "expected": "indeterminate",
+      "note": "a signed failure or contradiction refutes nothing until its block's bft-final path verifies",
       "input": {
         "evidence": {
           "finalityBoundEvidenceVersion": "1",
@@ -45113,7 +45113,7 @@
         "acceptedAsFinal": false,
         "finalityClass": null,
         "producerReportTrustedAsProof": false,
-        "dacs5BundleDecision": "fail"
+        "dacs5BundleDecision": "indeterminate"
       }
     },
     {

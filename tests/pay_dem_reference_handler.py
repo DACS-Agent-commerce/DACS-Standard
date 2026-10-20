@@ -385,7 +385,11 @@ class Fv5Authority:
         return generator.execution_result(generator.record(self.observes), network=network, block=block, keys=keys)
 
     def inclusion(self, tx_hash: str, network: dict[str, str]) -> dict[str, Any] | None:
-        if self.source == "none" or tx_hash != generator.TX_HASH:
+        """FV's bft-final source is separate from FV-5's result source: it
+        answers without one, since every final verdict (success included)
+        needs the inclusion. `unfinalized` serves a block no certificate
+        finalizes."""
+        if tx_hash != generator.TX_HASH:
             return None
         return generator.inclusion_proof(network=network, certified=self.source != "unfinalized")
 

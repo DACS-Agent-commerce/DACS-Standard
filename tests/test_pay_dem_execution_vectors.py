@@ -41,7 +41,13 @@ GUARDS = frozenset({
     "sign-requires-pinned-node",
     "sign-requires-applied-payment-authority",
     "sign-requires-gas-fee-separation-unscheduled",
-    "binding-refusal-is-permanent",
+    "binding-refusal-is-rail-unavailable",
+    # RAV-R3 for pay-dem, before rail selection
+    "preflight-requires-binding",
+    "preflight-selects-configured-rail",
+    "pay-dem-preflight-whatever-availability",
+    # DEMOS-MAPPING §A.2 pay-dem party address
+    "phase-party-address-projects",
     "first-broadcast-allowed",
     "retention-before-first-egress",
     "egress-only-confirm-then-broadcast",
@@ -190,6 +196,9 @@ SAFE_MAX = 2**53 - 1
 _ABSENT = object()
 HASH = re.compile(r"[0-9a-f]{64}")
 ADDRESS = re.compile(r"(?:0x)?([0-9a-f]{64})")
+# DEMOS-MAPPING §A.2 pay-dem party address: a Demos key, or a DACS-1
+# `did:demos:agent:` DID whose key component is 64 lower-case hex digits.
+PARTY_ADDRESS = re.compile(r"(?:0x|did:demos:agent:)?([0-9a-f]{64})")
 DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)")
 SIGNATURE = re.compile(r"0x[0-9a-f]{128}")
 RETAINED = {"jobId", "phaseIndex", "txHash", "nonce", "sender", "recipient", "amountOs"}
@@ -707,22 +716,59 @@ def complete_transfer(transfer) -> bool:
     )
 
 
+def party_address(value, off):
+    """The 64-hex Demos key a phase's `payer.payingKey` or
+    `payee.payeeAddress` projects to, or None when it is in no pay-dem form."""
+    if "phase-party-address-projects" in off:
+        # The wrong implementation compares the phase's spelling as given.
+        return value
+    match = PARTY_ADDRESS.fullmatch(value) if isinstance(value, str) else None
+    return match[1] if match else None
+
+
+BINDING = ("pinnedNodeConfigured", "appliedPaymentAuthorityConfigured", "gasFeeSeparationUnscheduled")
+UNSELECTABLE = frozenset({"disabled", "failed", "mocked"})
+RAV_R3_GATED = frozenset({"operator_gated", "closed_data", "bilateral"})
+
+
+def rail_preflight(protocol_input: dict, off) -> tuple[str, dict]:
+    """RAV-R3 for a new production session, before rail selection and so
+    before Agreement signature and the PIPE-6 commitment: a `pay-dem` rail is
+    selectable only when the payer's Demos binding holds DEM-1's three
+    members for the rail's network, whatever availability the rail shows."""
+    availability = protocol_input["availability"]
+    if availability not in UNSELECTABLE | RAV_R3_GATED | {"live"}:
+        return "error", {"railSelectable": False}
+    if availability in UNSELECTABLE:
+        return "fail", {"railSelectable": False}
+    gated = availability in RAV_R3_GATED or "pay-dem-preflight-whatever-availability" not in off
+    if gated and "preflight-requires-binding" not in off and any(
+        protocol_input.get(member) is not True for member in BINDING
+    ):
+        return "fail", {"railSelectable": False}
+    if "preflight-selects-configured-rail" in off:
+        return "fail", {"railSelectable": False}
+    return "pass", {"railSelectable": True}
+
+
 def pre_sign_gate(protocol_input: dict, off) -> tuple[str, dict]:
     """DEM-1 before signing: a Demos binding without pinned nodes, an
     applied-payment authority or a genesis attestation that `gasFeeSeparation`
-    is unscheduled cannot reach DEM-3 success, so the handler returns ok
-    false, errorClass permanent, and signs nothing."""
+    is unscheduled cannot reach DEM-3 success. The RAV-R3 preflight checked
+    the binding before the rail was selected, so at settle the rail is
+    non-operational for this payer: RAV-R4 substrate, and nothing is signed."""
     for guard, configured in (
         ("sign-requires-pinned-node", "pinnedNodeConfigured"),
         ("sign-requires-applied-payment-authority", "appliedPaymentAuthorityConfigured"),
         ("sign-requires-gas-fee-separation-unscheduled", "gasFeeSeparationUnscheduled"),
     ):
         if protocol_input.get(configured) is not True and guard not in off:
-            # The wrong implementation reports the refusal as a retryable substrate fault.
-            error_class = "substrate" if "binding-refusal-is-permanent" in off else "permanent"
+            # The wrong implementation blames the payer for a rail that is not
+            # operational (RAV-R4), after the payee may already have delivered.
+            error_class = "permanent" if "binding-refusal-is-rail-unavailable" in off else "substrate"
             return "fail", {"signPermitted": False, "ok": False, "errorClass": error_class}
     if "sign-allowed-when-configured" in off:
-        return "fail", {"signPermitted": False, "ok": False, "errorClass": "permanent"}
+        return "fail", {"signPermitted": False, "ok": False, "errorClass": "substrate"}
     return "pass", {"signPermitted": True, "ok": None, "errorClass": None}
 
 
@@ -795,12 +841,15 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
         return "error", {"broadcastPermitted": False}
     # 10^9 OS per DEM, by spelling: no int() on the untrusted decimal.
     phase_os = (match[1] + (match[2] or "").ljust(9, "0")).lstrip("0") or "0"
+    parties = {field: party_address(phase.get(field), off) for field in ("payerPayingKey", "payeeAddress")}
+    if None in parties.values():
+        return "error", {"broadcastPermitted": False}
     for guard, field, authority in (
         ("retained-sender-is-payer", "sender", "payerPayingKey"),
         ("retained-recipient-is-payee", "recipient", "payeeAddress"),
         ("retained-amount-is-phase-amount", "amountOs", "amountOs"),
     ):
-        if guard not in off and transfer.get(field) != (phase_os if field == "amountOs" else phase[authority]):
+        if guard not in off and transfer.get(field) != (phase_os if field == "amountOs" else parties[authority]):
             return refused
     if "signed-transaction-authentic" not in off and not authentic(
         protocol_input["signedTransaction"], off
@@ -875,18 +924,21 @@ def dem7(protocol_input: dict, off) -> str:
         and protocol_input["statusIndex"] == "included"
     ):
         return "pass"
+    phase = protocol_input["phase"]
+    payer, payee = (party_address(phase.get(field), off) for field in ("payerPayingKey", "payeeAddress"))
+    if payer is None or payee is None:
+        return "error"
     read = protocol_input["recordRead"]
     record = read.get("record") if read.get("state") == "found" else None
     projection = decode(record, off) if record is not None else None
     if projection is None or not pinned(read, off):
         return "indeterminate"
     reference = protocol_input["signedEvidence"]["txRef"]
-    phase = protocol_input["phase"]
     expected_values = {
         "txHash": reference["txHash"],
         "blockNumber": reference["blockNumber"],
-        "sender": phase["payerPayingKey"],
-        "recipient": phase["payeeAddress"],
+        "sender": payer,
+        "recipient": payee,
         "amountOs": _canonical(phase["amountOs"]),
     }
     is_bound = all(
@@ -1041,6 +1093,7 @@ OPERATIONS = {
     "resume-phase": resume,
     "apr-reconciliation-evidence": apr_evidence,
     "pre-sign-gate": pre_sign_gate,
+    "rail-preflight": rail_preflight,
     "broadcast-gate": broadcast_gate,
     "classify-egress-outcome": egress_outcome,
     "admit-evidence": admit,
@@ -1173,7 +1226,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
 
     def test_inclusion_alone_never_succeeds_or_authorizes(self):
         for vector in self.data["vectors"]:
-            if vector["operation"] in {"pre-sign-gate", "broadcast-gate", "project-settlement-id",
+            if vector["operation"] in {"pre-sign-gate", "rail-preflight", "broadcast-gate", "project-settlement-id",
                                        "resolve-settlement-group", "apr-reconciliation-evidence",
                                        "classify-egress-outcome"}:
                 continue
@@ -1194,7 +1247,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             vector["name"] for vector in self.data["vectors"]
             if vector["want"].get("deliveryAuthorized") or vector["want"].get("settlementAccounting")
         }
-        self.assertEqual({"delivery-after-all-gates", "delivery-same-tuple-readmitted"}, delivered)
+        self.assertEqual({"delivery-after-all-gates", "delivery-same-tuple-readmitted", "delivery-to-0x-payee-address",
+                          "delivery-to-did-payee-address", "delivery-from-0x-paying-key"}, delivered)
         for name in delivered:
             protocol_input = self.cases[name]["protocolInput"]
             self.assertIs(True, protocol_input["recordRead"]["authenticated"])
@@ -1290,7 +1344,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 self.assertTrue(edits_match(served))
         permitted = [vector["name"] for vector in self.data["vectors"] if vector["want"].get("broadcastPermitted")]
         self.assertEqual(["first-broadcast-after-durable-retention", "broadcast-prefixed-send-argument",
-                          "confirm-after-durable-retention", "broadcast-completes-own-confirm"], permitted)
+                          "broadcast-to-0x-payee-address", "broadcast-to-did-payee-address",
+                          "broadcast-from-did-paying-key", "confirm-after-durable-retention",
+                          "broadcast-completes-own-confirm"], permitted)
         for name in permitted:
             with self.subTest(name=name):
                 signed_content = self.cases[name]["protocolInput"]["signedTransaction"]["content"]
@@ -1554,7 +1610,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         spec = SPEC.read_text(encoding="utf-8")
         self.assertIn("The handler MUST NOT sign or broadcast a transfer unless its Demos binding configures", spec)
         self.assertIn("Demos binding without pinned nodes, an applied-payment authority or a genesis attestation that "
-                      "`gasFeeSeparation` is unscheduled → `permanent`", spec)
+                      "`gasFeeSeparation` is unscheduled, found at settle → `substrate`", spec)
         # Balance is permanent only before the first egress; a confirm refusal
         # after it leaves the signed bytes at a node, so it is DEM-5 substrate.
         self.assertIn("payer DEM balance insufficient before the first egress (no `confirm` or broadcast has carried "
@@ -1601,10 +1657,11 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     self.assertIs(True, vector["protocolInput"]["pinnedNodeConfigured"])
                     self.assertIs(True, vector["protocolInput"]["appliedPaymentAuthorityConfigured"])
                     self.assertIs(True, vector["protocolInput"]["gasFeeSeparationUnscheduled"])
-        # Before pay()/sign(): the refusal is the PC-4 result ok false,
-        # errorClass permanent, and there is no signed transaction to send.
-        self.assertIn('the handler MUST return `ok: false` with `errorClass: "permanent"` before it signs', spec)
-        refused = {"ok": False, "errorClass": "permanent", "signPermitted": False}
+        # Before pay()/sign(): the RAV-R3 preflight checked the binding before
+        # rail selection, so a refusal at settle is the RAV-R4 result ok false,
+        # errorClass substrate, and there is no signed transaction to send.
+        self.assertIn('the handler MUST return `ok: false` with `errorClass: "substrate"` before it signs', spec)
+        refused = {"ok": False, "errorClass": "substrate", "signPermitted": False}
         presign = {name: vector for name, vector in self.cases.items() if vector["operation"] == "pre-sign-gate"}
         self.assertEqual({"sign-with-pinned-node-and-applied-payment-authority", "sign-without-pinned-node",
                           "sign-without-applied-payment-authority", "sign-with-gas-fee-separation-scheduled",
@@ -1619,10 +1676,10 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     self.assertEqual(("pass", {"signPermitted": True, "ok": None, "errorClass": None}), evaluate(vector))
                     continue
                 self.assertEqual(("fail", refused), evaluate(vector))
-                # A handler that refuses as a retryable substrate fault pauses
-                # under ST-7 instead of ending the phase: it fails the vector.
-                self.assertEqual(("fail", dict(refused, errorClass="substrate")),
-                                 evaluate(vector, {"binding-refusal-is-permanent"}))
+                # A handler that blames the payer with permanent for a rail
+                # that is not operational at settle (RAV-R4) fails the vector.
+                self.assertEqual(("fail", dict(refused, errorClass="permanent")),
+                                 evaluate(vector, {"binding-refusal-is-rail-unavailable"}))
         for name, guard in (("sign-without-pinned-node", "sign-requires-pinned-node"),
                             ("sign-without-applied-payment-authority", "sign-requires-applied-payment-authority"),
                             ("sign-with-gas-fee-separation-scheduled", "sign-requires-gas-fee-separation-unscheduled"),
@@ -2024,8 +2081,10 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         restarted, is permanent."""
         spec = SPEC.read_text(encoding="utf-8")
         pc4 = spec[spec.index("**(PC-4)**"):spec.index("**(PC-5)**")]
-        self.assertIn("for `pay-dem`, only before the signed transfer's first egress (§9.5.9)", pc4)
-        self.assertIn("for `pay-dem`, an RPC failure is `substrate` (§9.5.9 DEM-5)", pc4)
+        self.assertIn("for `pay-dem`, only a refusal found before the signed transfer's first egress or a DEM-4 "
+                      "proven failure, nothing else (§9.5.9)", pc4)
+        self.assertIn("for `pay-dem`, never: every failure after the first egress, RPC failure and mempool "
+                      "congestion included, is `substrate` (§9.5.9 DEM-5)", pc4)
         egress = [vector for vector in self.data["vectors"] if vector["operation"] == "classify-egress-outcome"]
         self.assertLessEqual({
             "egress-insufficient-balance-before-first-egress",
@@ -2525,6 +2584,75 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         replaced = json.loads(json.dumps(self.cases["consumer-confirmed-gate-passes"]))
         replaced["protocolInput"]["recordRead"]["appliedTransfer"]["genesisHash"] = "f" * 64
         self.assertEqual("fail", evaluate(replaced)[0])
+
+    def test_party_addresses_compare_by_their_pay_dem_projection(self):
+        """Cold review P1-1: a genuine payment to the payee's key passes every
+        path whichever pay-dem spelling the Agreement used (the PB corpus's
+        0x key, the APR corpus's DACS-1 DID, the bare key), and a spelling in
+        no pay-dem form is error, never a comparison of spellings."""
+        demos = DEMOS.read_text(encoding="utf-8")
+        self.assertIn("A *pay-dem party address* is the authority side of that comparison", demos)
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("each as the DEMOS-MAPPING §A.2 *pay-dem party address* projects it", spec)
+        self.assertIn("projections of the authenticated phase's selected `payer.payingKey` and `payee.payeeAddress`", spec)
+        self.assertIn("and `payee.payeeAddress`, each as the DEMOS-MAPPING §A.2 *pay-dem party address*", spec)
+        key = generator.PAYEE_KEY
+        for name in ("first-broadcast-after-durable-retention", "consumer-confirmed-gate-passes",
+                     "delivery-after-all-gates"):
+            for spelling, expected in ((key, "pass"), ("0x" + key, "pass"), ("did:demos:agent:" + key, "pass"),
+                                       ("0x" + key.upper(), "error"), ("did:demos:agent:0x" + key, "error"),
+                                       ("did:key:" + key, "error"), ("0x" + key[:40], "error"), (None, "error")):
+                with self.subTest(name=name, spelling=spelling):
+                    case = json.loads(json.dumps(self.cases[name]))
+                    case["protocolInput"]["phase"]["payeeAddress"] = spelling
+                    self.assertEqual(expected, evaluate(case)[0])
+                    if expected == "pass" and spelling != key:
+                        # Comparing the spelling as given refuses a genuine payment.
+                        self.assertNotEqual("pass", evaluate(case, {"phase-party-address-projects"})[0])
+        # The PB and APR corpora's demos-native:DEM payout bindings are pay-dem
+        # party addresses, so PB-1 byte equality and DEM-1/DEM-7 agree.
+        security = ROOT / "conformance/vectors/security"
+        bindings = set()
+        for file_name in ("payee-destination-binding-v0.1.json", "alternative-payment-projection-v0.1.json"):
+            text = (security / file_name).read_text(encoding="utf-8")
+            bindings |= set(re.findall(r'"(?:0x[0-9a-f]{64}|did:demos:agent:[0-9a-f]{64})"', text))
+        self.assertTrue(bindings)
+        for binding in bindings:
+            with self.subTest(binding=binding):
+                self.assertIsNotNone(party_address(json.loads(binding), frozenset()))
+
+    def test_pay_dem_rail_is_preflighted_before_selection_and_refused_as_substrate_at_settle(self):
+        """Cold review P1-2: no session commits to a pay-dem rail whose payer
+        binding cannot execute it, whatever availability the rail shows, and
+        a binding found missing at settle is RAV-R4 substrate, not a payer
+        fault after the payee may already have delivered."""
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("For a `pay-dem` rail (§9.5.9) the preflight applies whatever the rail's availability, "
+                      "`live` included", spec)
+        self.assertIn("so before Agreement signature and the PIPE-6 commitment, and MUST NOT select or offer the rail "
+                      "without it", spec)
+        self.assertIn("one found missing at settle makes the rail non-operational for this payer under RAV-R4", spec)
+        preflights = {name: case for name, case in self.cases.items() if case["operation"] == "rail-preflight"}
+        self.assertEqual({"preflight-live-rail-with-binding", "preflight-live-rail-without-applied-payment-authority",
+                          "preflight-live-rail-without-fork-attestation",
+                          "preflight-operator-gated-rail-without-pinned-node",
+                          "preflight-operator-gated-rail-with-binding"}, set(preflights))
+        for availability in ("disabled", "failed", "mocked"):
+            with self.subTest(availability=availability):
+                case = json.loads(json.dumps(preflights["preflight-live-rail-with-binding"]))
+                case["protocolInput"]["availability"] = availability
+                self.assertEqual("fail", evaluate(case)[0])
+        unknown = json.loads(json.dumps(preflights["preflight-live-rail-with-binding"]))
+        unknown["protocolInput"]["availability"] = "Live"
+        self.assertEqual("error", evaluate(unknown)[0])
+        # RAV-R3 read literally gates only operator_gated, closed_data and
+        # bilateral, and would select a live pay-dem rail its payer cannot pay on.
+        live = preflights["preflight-live-rail-without-applied-payment-authority"]
+        self.assertEqual("pass", evaluate(live, {"pay-dem-preflight-whatever-availability"})[0])
+        for name, case in self.cases.items():
+            if case["operation"] == "pre-sign-gate" and case["expected"] != "pass":
+                with self.subTest(name=name):
+                    self.assertEqual("substrate", case["want"]["errorClass"])
 
 
 if __name__ == "__main__":

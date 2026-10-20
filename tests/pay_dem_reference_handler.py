@@ -11,8 +11,14 @@ reads back from storage, never from process-local state.
 restarts it from storage. Each `--mutant` is a wrong handler or payee that
 the harness must catch.
 
+`retentionDurable` is the one state input not read back: it is `True`
+because `Store.write` returns only once the journal, its directory and every
+directory it created are fsynced, which `test_pay_dem_crash_restart`
+witnesses by the order of fsync calls before the first egress.
+
 Run as a script, one process per start:
     pay_dem_reference_handler.py pay --work DIR --boot ID [--job JOB] [--crash POINT] [--mutant M]
+    pay_dem_reference_handler.py provision --work DIR --boot ID
     pay_dem_reference_handler.py deliver --work DIR --boot ID --job JOB [--crash POINT] [--mutant M]
 """
 
@@ -37,9 +43,11 @@ generator = oracle.generator
 CRASH_EXIT = 70
 JOURNAL = "pay-dem-journal.json"
 INDEX = "admission-index.json"
+DELIVERIES = "deliveries.jsonl"
 PAYER_MUTANTS = ("process-local-journal", "journal-after-confirm", "restart-from-progress", "no-fsync",
-                 "no-cross-phase-index")
-PAYEE_MUTANTS = ("process-local-index", "no-conditional-write")
+                 "no-cross-phase-index", "no-parent-fsync", "blind-first-retention", "progress-after-call")
+PAYEE_MUTANTS = ("process-local-index", "no-conditional-write", "empty-index-when-missing",
+                 "deliver-every-check")
 NO_GUARD_REMOVED = frozenset()
 
 
@@ -57,16 +65,35 @@ class Conflict(Exception):
     """The admission index changed after the snapshot a write was based on."""
 
 
+def _fsync_directory(path: Path) -> None:
+    directory = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+
+
 class Store:
     """One JSON document per name. A write goes to a temporary file that is
     flushed and fsynced, is renamed over the name, and then the directory is
-    fsynced, so the document survives a crash at any later step. Member
-    order is kept, so stored signed bytes read back unchanged."""
+    fsynced, so the document survives a crash at any later step. A directory
+    the store creates is fsynced in its parent before the store is used, so a
+    new store's own entry survives too. Member order is kept, so stored
+    signed bytes read back unchanged."""
 
-    def __init__(self, root: Path, *, fsync: bool = True):
+    def __init__(self, root: Path, *, fsync: bool = True, parent_fsync: bool = True):
         self.root = Path(root)
-        self.root.mkdir(parents=True, exist_ok=True)
         self.fsync = fsync
+        missing = []
+        path = self.root.absolute()
+        while not path.exists():
+            missing.append(path)
+            path = path.parent
+        for path in reversed(missing):
+            path.mkdir(exist_ok=True)
+            if fsync and parent_fsync:
+                # fsync(2): flushing a file does not flush the entry naming it.
+                _fsync_directory(path.parent)
 
     def write(self, name: str, value: Any) -> None:
         temporary = self.root / f".{name}.tmp"
@@ -77,11 +104,7 @@ class Store:
                 os.fsync(handle.fileno())
         os.replace(temporary, self.root / name)
         if self.fsync:
-            directory = os.open(self.root, os.O_RDONLY)
-            try:
-                os.fsync(directory)
-            finally:
-                os.close(directory)
+            _fsync_directory(self.root)
 
     def read(self, name: str) -> Any:
         try:
@@ -317,30 +340,50 @@ class PayerHandler:
         return {"expected": expected, **want}
 
     def pay(self, transaction: dict[str, Any]) -> dict[str, Any]:
-        if self.store.read(self.journal) is None:
-            if self._retained_elsewhere(transaction["hash"]):
-                # DEM-1: a hash retained for another phase is never retained
-                # or sent for this one; nothing leaves for this phase.
-                return {"expected": "fail", "broadcastPermitted": False, "cause": "hash-retained-for-another-phase"}
-            entry = {
-                "boot": self.boot,
-                "progress": "never-broadcast",
-                "retainedTransfer": generator.retained(jobId=self.job_id, phaseIndex=self.phase_index,
-                                                       txHash=transaction["hash"]),
-                "signedTransaction": transaction,
-                "confirmResponse": None,
-                "result": None,
-            }
-            if self.mutant == "journal-after-confirm":
-                # The wrong handler journals only once confirm has returned.
-                self._crash("before-confirm")
-                response = self.node.confirm(transaction)
-                self._crash("after-confirm")
-                entry.update(progress="confirm-returned", confirmResponse=response)
-            self._crash("before-retain")
-            self.store.write(self.journal, entry)
-            self._crash("after-retain")
-        return self.advance()
+        """Retain `transaction` as the phase's one transfer unless a start
+        already retained one. The retention is a create-if-absent under the
+        journal lock: a start that finds a retention continues it and never
+        retains or sends another transfer for the phase (DEM-1)."""
+        if self.mutant == "blind-first-retention":
+            # The wrong handler reads "no journal", then writes it unlocked.
+            refused = self._retain(transaction) if self.store.read(self.journal) is None else None
+        else:
+            with self.store.locked(self.journal):
+                refused = self._retain(transaction) if self.store.read(self.journal) is None else None
+        return self.advance() if refused is None else refused
+
+    def _retain(self, transaction: dict[str, Any]) -> dict[str, Any] | None:
+        if self._retained_elsewhere(transaction["hash"]):
+            # DEM-1: a hash retained for another phase is never retained
+            # or sent for this one; nothing leaves for this phase.
+            return {"expected": "fail", "broadcastPermitted": False, "cause": "hash-retained-for-another-phase"}
+        entry = {
+            "boot": self.boot,
+            "progress": "never-broadcast",
+            "retainedTransfer": generator.retained(jobId=self.job_id, phaseIndex=self.phase_index,
+                                                   txHash=transaction["hash"]),
+            "signedTransaction": transaction,
+            "confirmResponse": None,
+            "result": None,
+        }
+        if self.mutant == "journal-after-confirm":
+            # The wrong handler journals only once confirm has returned.
+            self._crash("before-confirm")
+            response = self.node.confirm(transaction)
+            self._crash("after-confirm")
+            entry.update(progress="confirm-returned", confirmResponse=response)
+        self._crash("before-retain")
+        self.store.write(self.journal, entry)
+        self._crash("after-retain")
+        return None
+
+    def _sending(self, entry: dict[str, Any], progress: str) -> dict[str, Any]:
+        """Write ahead: the journal reads as possibly sent before the call, so
+        an interruption of any kind, not only a returned failure, leaves the
+        call recorded as one that may have carried the bytes (DEM-6)."""
+        if self.mutant == "progress-after-call":
+            return entry
+        return self._save(entry, progress=progress)
 
     def advance(self) -> dict[str, Any]:
         """Continue the phase from what the journal holds. After a restart
@@ -356,11 +399,13 @@ class PayerHandler:
                 return self._classify(entry)
             if self.node.check_balance() != "sufficient":
                 return self._outcome("pre-egress-check", "insufficient-balance", entry)
+            entry = self._sending(entry, "confirm-sent-interrupted")
             self._crash("before-confirm")
             try:
                 response = self.node.confirm(entry["signedTransaction"])
             except CallFailed as failure:
-                self._save(entry, progress="confirm-sent-interrupted")
+                if entry["progress"] == "never-broadcast":
+                    self._save(entry, progress="confirm-sent-interrupted")
                 return self._outcome("confirm", failure.outcome, entry)
             self._crash("after-confirm")
             entry = self._save(entry, progress="confirm-returned", confirmResponse=response)
@@ -371,14 +416,17 @@ class PayerHandler:
                     self._save(entry, progress="maybe-broadcast")
                     return self._outcome("broadcast", "refused-by-dem1", entry)
                 return self._classify(entry)
+            entry = self._sending(entry, "maybe-broadcast")
             self._crash("before-broadcast")
             try:
                 self.node.broadcast(entry["confirmResponse"])
             except CallFailed as failure:
-                self._save(entry, progress="maybe-broadcast")
+                if entry["progress"] == "confirm-returned":
+                    self._save(entry, progress="maybe-broadcast")
                 return self._outcome("broadcast", failure.outcome, entry)
             self._crash("after-broadcast")
-            entry = self._save(entry, progress="maybe-broadcast")
+            if entry["progress"] == "confirm-returned":
+                entry = self._save(entry, progress="maybe-broadcast")
             self._crash("after-broadcast-journal")
         return self._classify(entry)
 
@@ -386,12 +434,18 @@ class PayerHandler:
 class Payee:
     """The payee's delivery check for the default transfer. Its history is
     the snapshot of its admission index; it adds an admission with a write
-    conditional on that snapshot's revision before it delivers."""
+    conditional on that snapshot's revision before it delivers. The index is
+    created empty once, by `provision`; a check never creates it. A missing
+    or malformed index, or one that lacks a tuple already delivered, is no
+    snapshot, so the check is `error` and nothing is delivered. Delivery is
+    idempotent on `(txHash, jobId, phaseIndex)`: a repeated check for an
+    admitted tuple returns `pass` and delivers nothing again."""
 
     def __init__(self, store: Store, work: Path, boot: str, *, crash_at: str | None = None,
                  mutant: str | None = None, exit_on_crash: bool = False):
         self.store, self.work, self.boot = store, Path(work), boot
         self.crash_at, self.mutant, self.exit_on_crash = crash_at, mutant, exit_on_crash
+        self.sink = self.work / DELIVERIES
 
     def _crash(self, point: str) -> None:
         if point == self.crash_at:
@@ -399,23 +453,60 @@ class Payee:
                 os._exit(CRASH_EXIT)
             raise Crashed(point)
 
-    def snapshot(self) -> dict[str, Any]:
-        return self.store.read(INDEX) or {"revision": 0, "admissions": []}
+    def provision(self) -> None:
+        """Create the empty index, once, before the payee's first check."""
+        with self.store.locked(INDEX):
+            if self.store.read(INDEX) is None:
+                self.store.write(INDEX, {"revision": 0, "admissions": []})
 
-    def check(self, job_id: str, phase_index: int, snapshot: dict[str, Any]) -> str:
+    def delivered(self) -> set[tuple[str, str, int]]:
+        return {delivery_key(entry) for entry in read_lines(self.sink)}
+
+    def snapshot(self) -> dict[str, Any] | None:
+        """The index as read for this check, or None when it cannot be one."""
+        try:
+            index = self.store.read(INDEX)
+        except ValueError:
+            return None
+        if index is None and self.mutant == "empty-index-when-missing":
+            # The wrong payee treats a lost index as an empty history.
+            return {"revision": 0, "admissions": []}
+        if not (isinstance(index, dict) and set(index) == {"revision", "admissions"}
+                and isinstance(index["revision"], int) and not isinstance(index["revision"], bool)
+                and isinstance(index["admissions"], list) and all(
+                    isinstance(admission, dict) and isinstance(admission.get("txRef"), dict)
+                    for admission in index["admissions"])):
+            return None
+        indexed = {delivery_key({"txHash": admission["txRef"].get("txHash"), **admission})
+                   for admission in index["admissions"]}
+        if self.mutant != "empty-index-when-missing" and not self.delivered() <= indexed:
+            # Rolled back or replaced: it no longer holds a delivered tuple.
+            return None
+        return index
+
+    def check(self, job_id: str, phase_index: int, snapshot: dict[str, Any] | None) -> str:
         protocol_input = generator.deliver("delivery", "pass", "DEM-7", [], "")["protocolInput"]
         protocol_input["phase"] = generator.phase(jobId=job_id, phaseIndex=phase_index)
-        protocol_input["consumerAdmissions"] = snapshot["admissions"]
+        protocol_input["consumerAdmissions"] = [] if snapshot is None else snapshot["admissions"]
         protocol_input["admissionIndex"] = snapshot
         return oracle.admit_for_delivery(protocol_input, NO_GUARD_REMOVED)[0]
 
     def _commit(self, based_on: dict[str, Any], admission: dict[str, Any]) -> None:
         with self.store.locked(INDEX):
             current = self.snapshot()
+            if current is None:
+                raise Conflict(None)
             if current["revision"] != based_on["revision"] and self.mutant != "no-conditional-write":
                 raise Conflict(current["revision"])
             self.store.write(INDEX, {"revision": current["revision"] + 1,
                                      "admissions": current["admissions"] + [admission]})
+
+    def _deliver_once(self, key: tuple[str, str, int]) -> None:
+        """The delivery effect, idempotent on its key: under the sink's lock
+        it happens only when no earlier delivery carries the key."""
+        with _Lock(self.work / f".{DELIVERIES}.lock"):
+            if self.mutant == "deliver-every-check" or key not in self.delivered():
+                _append(self.sink, {"txHash": key[0], "jobId": key[1], "phaseIndex": key[2], "boot": self.boot})
 
     def deliver(self, job_id: str, phase_index: int = generator.PHASE_INDEX, *,
                 between: Callable[[], None] | None = None) -> str:
@@ -435,29 +526,38 @@ class Payee:
                 except Conflict:
                     continue
                 self._crash("after-admission-write")
-            _append(self.work / "deliveries.jsonl", {"jobId": job_id, "phaseIndex": phase_index, "boot": self.boot})
+            self._deliver_once((admission["txRef"]["txHash"], job_id, phase_index))
             self._crash("after-delivery")
             return "pass"
+
+
+def delivery_key(entry: dict[str, Any]) -> tuple[str, str, int]:
+    return (entry.get("txHash"), entry.get("jobId"), entry.get("phaseIndex"))
 
 
 def payer(work: Path, boot: str, *, crash_at=None, mutant=None, exit_on_crash=False,
           job_id: str = generator.JOB_ID, **node) -> PayerHandler:
     store_dir = Path(work) / "store"
     store = (MemoryStore(store_dir) if mutant == "process-local-journal"
-             else Store(store_dir, fsync=mutant != "no-fsync"))
+             else Store(store_dir, fsync=mutant != "no-fsync", parent_fsync=mutant != "no-parent-fsync"))
     return PayerHandler(store, Node(work, boot, **node), boot, crash_at=crash_at, mutant=mutant,
                         exit_on_crash=exit_on_crash, job_id=job_id)
 
 
 def payee(work: Path, boot: str, *, crash_at=None, mutant=None, exit_on_crash=False) -> Payee:
     store_dir = Path(work) / "payee-store"
-    store = MemoryStore(store_dir) if mutant == "process-local-index" else Store(store_dir)
-    return Payee(store, work, boot, crash_at=crash_at, mutant=mutant, exit_on_crash=exit_on_crash)
+    if mutant == "process-local-index":
+        # The wrong payee keeps its index in memory, provisioned at each start.
+        made = Payee(MemoryStore(store_dir), work, boot, crash_at=crash_at, mutant=mutant,
+                     exit_on_crash=exit_on_crash)
+        made.provision()
+        return made
+    return Payee(Store(store_dir), work, boot, crash_at=crash_at, mutant=mutant, exit_on_crash=exit_on_crash)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("pay", "deliver"))
+    parser.add_argument("command", choices=("pay", "provision", "deliver"))
     parser.add_argument("--work", type=Path, required=True)
     parser.add_argument("--boot", required=True)
     parser.add_argument("--crash")
@@ -474,6 +574,9 @@ def main() -> int:
                         job_id=args.job or generator.JOB_ID, confirm=args.confirm, broadcast=args.broadcast,
                         balance=args.balance, relays_confirm=args.relays_confirm)
         result = handler.pay(generator.signed())
+    elif args.command == "provision":
+        payee(args.work, args.boot).provision()
+        result = {"provisioned": True}
     else:
         result = {"verdict": payee(args.work, args.boot, crash_at=args.crash, mutant=args.mutant,
                                    exit_on_crash=True).deliver(args.job)}

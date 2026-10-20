@@ -44,6 +44,8 @@ DEMOS_RECORD_PROFILE = "kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f4557
 POSITION_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 DEMOS_KEY_RE = re.compile(r"(?:0x)?([0-9a-f]{64})\Z")
+# DEMOS-MAPPING §A.2 pay-dem party address: the authority side only, never a record member.
+DEMOS_PARTY_ADDRESS_RE = re.compile(r"(?:0x|did:demos:agent:)?([0-9a-f]{64})\Z")
 DEM_AMOUNT_RE = re.compile(r"(0|[1-9][0-9]*)(?:\.([0-9]{1,9}))?\Z")
 DECIMAL_RE = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
 SIG_RE = re.compile(r"[A-Za-z0-9_-]+\Z")
@@ -1024,8 +1026,9 @@ def _demos_send_edits_match(content: dict) -> bool:
 
 
 def _party_demos_key(trusted: dict, claim: Any) -> str | None:
-    """The fixture party's Demos key: its pinned Ed25519 party key (the pay-dem
-    payee is intrinsically the primary claim's address, §9.5.1 Tier 1)."""
+    """The fixture party's Demos key: its pinned Ed25519 party key. FV-5 binds
+    the pay-dem party address projection of `payee.payeeAddress`, which PB-1
+    and PB-2 Tier 1 make the primary claim's key, so this is the same value."""
     try:
         raw = b64url_decode((trusted.get("partyKeys") or {}).get(claim))
     except (ValueError, TypeError, binascii.Error):
@@ -1092,7 +1095,9 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
     resolution = resolutions.get(expected["jobId"] + ":" + str(expected["phaseIndex"]))
     if not isinstance(resolution, dict) or resolution.get("payer") != expected["payer"]:
         return "indeterminate", "authenticated phase payingKey resolution unavailable"
-    payer = _demos_key(resolution.get("payingKey"))
+    paying_key = resolution.get("payingKey")
+    match = DEMOS_PARTY_ADDRESS_RE.match(paying_key) if isinstance(paying_key, str) else None
+    payer = match.group(1) if match else None
     payee = _party_demos_key(trusted, expected.get("payee"))
     if amount is None or payer is None or payee is None:
         return "error", "phase lacks a DEM amount or Demos party keys"

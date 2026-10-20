@@ -633,6 +633,19 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         merged = merge(self.trust, other["trustedOverrides"])["demosPhasePayingKeys"]["FV-392-bft-final:0"]
         self.assertEqual(self.trust["demosPhasePayingKeys"]["FV-392-bft-final:0"]["payingKey"], merged["payingKey"])
         self.assertNotEqual(self.trust["demosPhasePayingKeys"]["FV-392-bft-final:0"]["payer"], merged["payer"])
+        # FV-5 projects the resolved paying key as a DEMOS-MAPPING §A.2 pay-dem
+        # party address, as DEM-1 and DEM-7 do: bare, 0x and DID bind alike,
+        # and any other spelling binds no payer.
+        distinct = self.cases["fv-bft-final-selected-paying-key-distinct"]
+        trust = merge(self.trust, distinct.get("trustedOverrides") or {})
+        resolution = trust["demosPhasePayingKeys"]["FV-392-bft-final:0"]
+        key = resolution["payingKey"].removeprefix("0x")
+        for spelling, expected in ((key, "pass"), ("0x" + key, "pass"), ("did:demos:agent:" + key, "pass"),
+                                   ("0x" + key.upper(), "error"), ("did:demos:agent:0x" + key, "error")):
+            with self.subTest(payingKey=spelling):
+                spelled = copy.deepcopy(trust)
+                spelled["demosPhasePayingKeys"]["FV-392-bft-final:0"]["payingKey"] = spelling
+                self.assertEqual(expected, verify_finality(distinct["input"], spelled)["decision"])
 
     def test_trusted_overrides_do_not_depend_on_merge_semantics(self):
         # A runner may replace or deep-merge an overridden member; the decision is the same.

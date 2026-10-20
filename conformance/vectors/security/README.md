@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 267 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 284 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -1247,7 +1247,7 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-267 candidate vectors pin native-DEM settlement on execution, not inclusion.
+284 candidate vectors pin native-DEM settlement on execution, not inclusion.
 The node's status index may label a transaction `included` while its
 transaction record is `failed`, so the index is never decisive. Records use
 the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
@@ -1393,16 +1393,39 @@ short balance can be the transfer's own debit. Each result carries `cause`
 handler and payee (`tests/pay_dem_reference_handler.py`) that take every state
 input of these decisions from what they read back from storage. It stops
 them, one process per start, on each side of every transition and restarts
-them from storage. Their journal and index writes are conditional on the
-state they were read as. After a restart no signed effect leaves, every egress
-carried the bytes the stored journal already held, the journal file and
-directory were fsynced before the first egress, and one hash is delivered for
-at most one `(jobId, phaseIndex)`, including under two concurrent checks; a
-hash retained for one phase never leaves for another, read from the stored
-journals (`hashRetainedForOtherPhases`). Seven wrong variants (a
-process-local journal, a journal written after `confirm`, restart taken from
-saved progress, no fsync, a journal blind to other phases, a process-local
-admission index, an unconditional index write) each fail it.
+them from storage. The payer's first retention is a create-if-absent under
+the journal lock, it journals each call as possibly sent before making it,
+and its later journal saves and the payee's index writes are conditional on
+the state they were read as. After a restart no signed effect leaves, every
+egress carried the bytes the stored journal already held, the journal file,
+its directory and each directory the store created (in its parent) were
+fsynced before the first egress, and one hash is delivered for at most one
+`(jobId, phaseIndex)` and at most once for it, including under two
+concurrent checks; a hash retained for one phase never leaves for another,
+read from the stored journals (`hashRetainedForOtherPhases`). A call that
+carries the bytes and then raises an error the handler does not model, and
+is resumed in the same start, is not repeated and never ends `permanent`;
+two concurrent starts of one phase send one transfer; and a payee whose
+index is lost, corrupted or rolled back after a delivery delivers nothing
+more (its index is provisioned once, never by a check). Twelve wrong
+variants each fail it: a process-local journal, a journal written after
+`confirm`, progress journaled only after a call returns, restart taken from
+saved progress, no fsync, no fsync of a new directory's parent, an unlocked
+first retention, a journal blind to other phases, a process-local admission
+index, an unconditional index write, a lost index read as empty and a
+delivery on every check.
+
+`phase.payeeAddress` and `phase.payerPayingKey` are DEMOS-MAPPING §A.2 pay-dem
+party addresses: a bare or `0x` Demos key or a `did:demos:agent:` DID over 64
+lower-case hex digits, compared by the key they project to. The
+`broadcast-to-*`, `consumer-*-payee-address-*` and `delivery-*-payee-address`
+/ `delivery-from-0x-paying-key` cases pass a genuine payment under each
+spelling the PB and APR corpora use, and upper-case, `did:demos:agent:0x`
+and 20-byte addresses are `error` (guard `phase-party-address-projects`).
+`rail-preflight` cases apply RAV-R3 to a `pay-dem` rail whatever its
+availability, before selection and so before Agreement signature; a binding
+found missing at settle is `pre-sign-gate` `substrate` under RAV-R4 (guard
+`binding-refusal-is-rail-unavailable`).
 
 `project-settlement-id` cases derive `demos:{txHash}` from raw references, reject malformed or noncanonical current hashes, and collapse verified legacy spelling. `resolve-settlement-group` derives both raw IDs before grouping: one hash under two jobs, including a canonical and a verified legacy spelling, leaves both indeterminate, while distinct hashes pass. Admitted references retain their raw transaction references rather than a prefiltered same-hash tuple list. Settlement accounting and the DACS-5 derivation group only the presented `records`: `sb2-demos-unpresented-admission-not-added` passes although the consumer once admitted the same hash for another job outside that set (guard `sb2-presented-set-only`), so a re-run from the presented set reproduces the result.
 

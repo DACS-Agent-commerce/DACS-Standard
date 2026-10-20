@@ -5,10 +5,13 @@ A storage-backed reference payer handler and payee
 decisions from what they read back from storage. Each scenario runs one
 process per start: the first start is stopped (`os._exit`) on one side of a
 transition, then the handler or payee restarts from its storage. The
-invariants are what DEM-1, DEM-6 and DEM-7 promise across a crash. Each
-mutant, a handler or payee that keeps its state in process memory, journals
-late, trusts its saved progress, skips fsync or writes its index without a
-conditional write, must break one of them.
+invariants are what DEM-1, DEM-6 and DEM-7 promise across a crash, an
+in-process interruption and a concurrent start. Each mutant, a handler or
+payee that keeps its state in process memory, journals late or only after a
+call returns, trusts its saved progress, skips an fsync, retains a phase's
+first transfer without a create-if-absent, writes its index without a
+conditional write, treats a lost index as empty or delivers on every check,
+must break one of them.
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -98,7 +102,6 @@ def fsync_violations(root: Path, mutant: str | None = None) -> list[str]:
         events.append(("fsync", (status.st_dev, status.st_ino)))
         return real_fsync(fd)
 
-    handler = reference.payer(root, "boot-1", mutant=mutant)
     store = root / "store"
     journal = store / JOURNAL
 
@@ -106,8 +109,10 @@ def fsync_violations(root: Path, mutant: str | None = None) -> list[str]:
         status = os.stat(journal) if journal.exists() else None
         events.append(("egress:" + call, (status.st_dev, status.st_ino) if status else (0, 0)))
 
-    handler.node.observer = egress
     with mock.patch.object(reference.os, "fsync", fsync):
+        # The store directory is new: the handler creates it in this start.
+        handler = reference.payer(root, "boot-1", mutant=mutant)
+        handler.node.observer = egress
         handler.pay(generator.signed())
     first = next((i for i, (kind, _) in enumerate(events) if kind.startswith("egress:")), None)
     if first is None:
@@ -119,8 +124,12 @@ def fsync_violations(root: Path, mutant: str | None = None) -> list[str]:
     if journal_id not in before:
         violations.append("journal file not fsynced before the first egress")
     directory_id = (directory.st_dev, directory.st_ino)
-    if directory_id not in before or (journal_id in before and before.index(directory_id) < before.index(journal_id)):
+    last_journal = max((i for i, identity in enumerate(before) if identity == journal_id), default=-1)
+    if directory_id not in before[last_journal + 1:]:
         violations.append("journal directory not fsynced after the rename, before the first egress")
+    parent = os.stat(root)
+    if (parent.st_dev, parent.st_ino) not in before:
+        violations.append("new journal directory's entry not fsynced in its parent before the first egress")
     return violations
 
 
@@ -142,18 +151,26 @@ def cross_phase_violations(root: Path, mutant: str | None = None) -> list[str]:
 def payee_violations(root: Path, mutant: str | None = None) -> list[str]:
     """Stop the payee at each point, restart it, show it the same transfer
     for another job, then for its own again: at most one (jobId,
-    phaseIndex) ever receives delivery against the hash, and every delivered
-    tuple is in the durable index."""
+    phaseIndex) ever receives delivery against the hash, no tuple receives
+    it twice, and every delivered tuple is in the durable index."""
     violations = []
     for point in PAYEE_POINTS:
         work = root / point
+        provisioned = run("provision", work, "boot-0")
+        if provisioned.returncode != 0:
+            violations.append(f"{point}: provision failed: {provisioned.stderr[-400:]}")
+            continue
         steps = (("boot-1", generator.JOB_ID, point), ("boot-2", generator.OTHER_JOB_ID, None),
                  ("boot-3", generator.JOB_ID, None))
         for boot, job, crash in steps:
             result = run("deliver", work, boot, "--job", job, *_options(crash, mutant))
             if result.returncode not in (0, reference.CRASH_EXIT):
                 violations.append(f"{point}: {boot} failed: {result.stderr[-400:]}")
-        delivered = {(entry["jobId"], entry["phaseIndex"]) for entry in reference.read_lines(work / "deliveries.jsonl")}
+        deliveries = reference.read_lines(work / reference.DELIVERIES)
+        keys = [reference.delivery_key(entry) for entry in deliveries]
+        if len(keys) != len(set(keys)):
+            violations.append(f"{point}: one tuple delivered twice")
+        delivered = {(entry["jobId"], entry["phaseIndex"]) for entry in deliveries}
         if len(delivered) > 1:
             violations.append(f"{point}: one hash delivered for {sorted(delivered)}")
         index = reference.Store(work / "payee-store").read(reference.INDEX) or {"admissions": []}
@@ -163,11 +180,109 @@ def payee_violations(root: Path, mutant: str | None = None) -> list[str]:
     return violations
 
 
+def index_loss_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """Deliver against the transfer, then lose, corrupt or roll back the
+    index: a restarted payee shown the same hash for another job, or for its
+    own, refuses and delivers nothing. A check never creates the index."""
+    violations = []
+
+    def lose(store):
+        (store / reference.INDEX).unlink()
+
+    def corrupt(store):
+        (store / reference.INDEX).write_bytes(b"{")
+
+    def roll_back(store):
+        lose(store)
+        run("provision", store.parent, "boot-x")
+
+    for name, damage in (("lost", lose), ("corrupt", corrupt), ("rolled-back", roll_back)):
+        work = root / name
+        run("provision", work, "boot-0")
+        run("deliver", work, "boot-1", "--job", generator.JOB_ID, *_options(None, mutant))
+        damage(work / "payee-store")
+        for boot, job in (("boot-2", generator.OTHER_JOB_ID), ("boot-3", generator.JOB_ID)):
+            again = run("deliver", work, boot, "--job", job, *_options(None, mutant))
+            if again.returncode == 0 and json.loads(again.stdout)["verdict"] == "pass":
+                violations.append(f"{name}: {boot} delivered for {job} after the index was {name}")
+        count = len(reference.read_lines(work / reference.DELIVERIES))
+        if count != 1:
+            violations.append(f"{name}: {count} deliveries")
+    unprovisioned = run("deliver", root / "unprovisioned", "boot-1", "--job", generator.JOB_ID,
+                        *_options(None, mutant))
+    if unprovisioned.returncode == 0 and json.loads(unprovisioned.stdout)["verdict"] == "pass":
+        violations.append("a check created its own index and delivered")
+    return violations
+
+
+def concurrent_payer_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """Two starts of one phase, each with its own signed transfer, both find
+    no retention: at most one transfer ever leaves for the phase (DEM-1)."""
+    first = reference.payer(root, "boot-A", mutant=mutant)
+    second = reference.payer(root, "boot-B", mutant=mutant)
+    own = generator.signed()
+    other = generator.signed(dict(own["content"], timestamp=own["content"]["timestamp"] + 1))
+    real_write = first.store.write
+    started = []
+
+    def write_after_second_start(name, value):
+        # The first start has read "no journal"; the second starts now.
+        if not started:
+            thread = threading.Thread(target=second.pay, args=(other,), daemon=True)
+            started.append(thread)
+            thread.start()
+            thread.join(timeout=1.0)
+        return real_write(name, value)
+
+    first.store.write = write_after_second_start
+    first.pay(own)
+    started[0].join(timeout=30)
+    hashes = {entry["transaction"]["hash"] for entry in reference.read_lines(root / "egress.jsonl")}
+    return [] if len(hashes) <= 1 else [f"{len(hashes)} transfers left for one phase"]
+
+
+def interrupted_call_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """A call carries the bytes, then raises an error the handler does not
+    model (a socket timeout); the same start resumes the phase. It sends no
+    second call and never stores or returns permanent, even when the node
+    relayed the confirm and the payer's balance now shows the transfer's own
+    debit (DEM-5, DEM-6)."""
+    violations = []
+    for call in ("confirm", "broadcast"):
+        work = root / call
+        handler = reference.payer(work, "boot-1", mutant=mutant, relays_confirm=call == "confirm")
+        real = getattr(handler.node, call)
+        interrupted = []
+
+        def carry_then_time_out(value, real=real, interrupted=interrupted, node=handler.node):
+            reply = real(value)
+            if not interrupted:
+                interrupted.append(True)
+                node.balance = "insufficient"
+                raise TimeoutError("read timed out")
+            return reply
+
+        setattr(handler.node, call, carry_then_time_out)
+        try:
+            handler.pay(generator.signed())
+        except TimeoutError:
+            pass
+        result = handler.advance()
+        calls = [entry["call"] for entry in reference.read_lines(work / "egress.jsonl")]
+        if calls.count(call) > 1:
+            violations.append(f"{call}: second signed effect")
+        stored = (handler.store.read(handler.journal) or {}).get("result") or {}
+        if "permanent" in (result.get("errorClass"), stored.get("errorClass")):
+            violations.append(f"{call}: permanent after the bytes left")
+    return violations
+
+
 def concurrent_violations(root: Path, mutant: str | None = None) -> list[str]:
     """Two checks for different jobs read the same index snapshot; the
     second write must not succeed on that stale snapshot."""
     first = reference.payee(root, "boot-1", mutant=mutant)
     second = reference.payee(root, "boot-1", mutant=mutant)
+    first.provision()
     verdicts = {}
 
     def interleave():
@@ -244,6 +359,21 @@ class PayDemCrashRestartTests(unittest.TestCase):
     def test_journal_is_on_stable_storage_before_the_first_egress(self):
         self.assertEqual([], fsync_violations(self.root / "reference"))
         self.assertTrue(fsync_violations(self.root / "no-fsync", "no-fsync"))
+        self.assertEqual(["new journal directory's entry not fsynced in its parent before the first egress"],
+                         fsync_violations(self.root / "no-parent-fsync", "no-parent-fsync"))
+
+    def test_one_phase_retains_one_transfer_under_concurrent_starts(self):
+        self.assertEqual([], concurrent_payer_violations(self.root / "reference"))
+        self.assertTrue(concurrent_payer_violations(self.root / "blind", "blind-first-retention"))
+
+    def test_an_interrupted_call_is_journaled_as_possibly_sent_before_it_leaves(self):
+        self.assertEqual([], interrupted_call_violations(self.root / "reference"))
+        self.assertEqual(["confirm: permanent after the bytes left", "broadcast: second signed effect"],
+                         interrupted_call_violations(self.root / "late", "progress-after-call"))
+
+    def test_payee_never_delivers_after_its_index_is_lost_or_rolled_back(self):
+        self.assertEqual([], index_loss_violations(self.root / "reference"))
+        self.assertTrue(index_loss_violations(self.root / "empty", "empty-index-when-missing"))
 
     def test_every_wrong_payer_handler_is_caught(self):
         for mutant in ("process-local-journal", "journal-after-confirm", "restart-from-progress"):
@@ -253,6 +383,10 @@ class PayDemCrashRestartTests(unittest.TestCase):
     def test_payee_never_delivers_a_reused_hash_across_a_restart(self):
         self.assertEqual([], payee_violations(self.root / "reference"))
         self.assertTrue(payee_violations(self.root / "process-local-index", "process-local-index"))
+
+    def test_payee_delivers_an_admitted_tuple_once(self):
+        self.assertTrue(any("delivered twice" in violation
+                            for violation in payee_violations(self.root / "every", "deliver-every-check")))
 
     def test_payee_admission_write_is_conditional_on_its_snapshot(self):
         self.assertEqual([], concurrent_violations(self.root / "reference"))

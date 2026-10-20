@@ -643,9 +643,36 @@ def pre_sign(
         {
             "signPermitted": not refused,
             "ok": False if refused else None,
-            "errorClass": "permanent" if refused else None,
+            "errorClass": "substrate" if refused else None,
         },
-        "DEM-1", guards, note,
+        "DEM-1/RAV-R4", guards, note,
+    )
+
+
+# Guards each party-address vector names (DEMOS-MAPPING §A.2).
+PARTY_GUARDS = {
+    "gate": ["first-broadcast-allowed", "phase-party-address-projects", "submission-completes-own-confirm"],
+    "malformed": ["phase-party-address-projects", "submission-completes-own-confirm"],
+    "admit": ["consumer-admits-confirmed", "phase-party-address-projects"],
+    "malformed-admit": ["consumer-requires-confirmed-record", "phase-party-address-projects"],
+}
+
+
+def preflight(name: str, expected: str, guards: list[str], note: str, *, availability: str = "live",
+              pinned_node: Any = True, applied_authority: Any = True,
+              fee_separation_unscheduled: Any = True) -> dict[str, Any]:
+    """RAV-R3 for a new production session, before the rail is selected:
+    `availability` is the pinned RailDefinition's, and the binding members
+    are the payer's Demos binding for the rail's network."""
+    return _vector(
+        name, "rail-preflight",
+        _apply({
+            "availability": availability,
+            "pinnedNodeConfigured": pinned_node,
+            "appliedPaymentAuthorityConfigured": applied_authority,
+            "gasFeeSeparationUnscheduled": fee_separation_unscheduled,
+        }, {}),
+        expected, {"railSelectable": expected == "pass"}, "RAV-R3/DEM-1", guards, note,
     )
 
 
@@ -776,6 +803,7 @@ def deliver(
     admissions: list[dict[str, Any]] | None = None,
     index: Any = _OMIT,
     dem7_passed: bool = True,
+    phase_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """`index` is the payee's durable admission index as read for this check:
     by default exactly the presented history; a list builds a snapshot of
@@ -783,6 +811,8 @@ def deliver(
     protocol_input = _admit_input(
         found(record("confirmed"), authenticated=True) if read is None else read, "included"
     )
+    if phase_context is not None:
+        protocol_input["phase"] = phase_context
     protocol_input["otherGates"] = _apply(ALL_GATES_PASS, gates or {})
     presented = [_admission(admission) for admission in (admissions or [])]
     protocol_input["consumerAdmissions"] = presented
@@ -1806,24 +1836,87 @@ def build_vectors() -> list[dict[str, Any]]:
     vectors += [
         pre_sign("sign-with-pinned-node-and-applied-payment-authority", "pass", ["sign-allowed-when-configured"],
                  "A binding that pins nodes, configures applied-payment authority and attests gasFeeSeparation unscheduled lets the handler sign."),
-        pre_sign("sign-without-pinned-node", "fail", ["binding-refusal-is-permanent", "sign-requires-pinned-node"],
-                 "Without a pinned node no record binds: ok false, permanent, before pay() or sign().",
+        pre_sign("sign-without-pinned-node", "fail", ["binding-refusal-is-rail-unavailable", "sign-requires-pinned-node"],
+                 "Without a pinned node no record binds: ok false, substrate under RAV-R4, before pay() or sign().",
                  pinned_node=False),
         pre_sign("sign-without-applied-payment-authority", "fail",
-                 ["binding-refusal-is-permanent", "sign-requires-applied-payment-authority"],
-                 "Without applied-payment authority DEM-3 success is unreachable: ok false, permanent, nothing signed.",
+                 ["binding-refusal-is-rail-unavailable", "sign-requires-applied-payment-authority"],
+                 "Without applied-payment authority DEM-3 success is unreachable: ok false, substrate, nothing signed.",
                  applied_authority=False),
         pre_sign("sign-with-gas-fee-separation-scheduled", "fail",
-                 ["binding-refusal-is-permanent", "sign-requires-gas-fee-separation-unscheduled"],
+                 ["binding-refusal-is-rail-unavailable", "sign-requires-gas-fee-separation-unscheduled"],
                  "A network whose genesis schedules gasFeeSeparation, at any height, stores fee edits no record profile admits.",
                  fee_separation_unscheduled=False),
         pre_sign("sign-without-fork-attestation", "fail",
-                 ["binding-refusal-is-permanent", "sign-requires-gas-fee-separation-unscheduled"],
+                 ["binding-refusal-is-rail-unavailable", "sign-requires-gas-fee-separation-unscheduled"],
                  "RPC does not report gasFeeSeparation; a binding that attests nothing from genesis cannot sign.",
                  fee_separation_unscheduled=_OMIT),
-        pre_sign("sign-without-binding", "fail", ["binding-refusal-is-permanent"],
-                 "With nothing configured the refusal is still permanent, never substrate.",
+        pre_sign("sign-without-binding", "fail", ["binding-refusal-is-rail-unavailable"],
+                 "At settle, after the preflight passed, a missing binding is a rail that is not operational: "
+                 "substrate (RAV-R4), never permanent, so the payer is not blamed after the payee delivered.",
                  pinned_node=False, applied_authority=False, fee_separation_unscheduled=False),
+        # RAV-R3 for pay-dem: the binding is checked before the rail is
+        # selected, whatever availability the RailDefinition shows.
+        preflight("preflight-live-rail-with-binding", "pass", ["preflight-selects-configured-rail"],
+                  "A live pay-dem rail whose payer binding holds all three DEM-1 members is selectable."),
+        preflight("preflight-live-rail-without-applied-payment-authority", "fail",
+                  ["pay-dem-preflight-whatever-availability", "preflight-requires-binding"],
+                  "A live pay-dem RailDefinition does not show the binding: without an applied-payment authority the "
+                  "rail is not selected, so no Agreement commits to a rail the payer cannot pay on.",
+                  applied_authority=False),
+        preflight("preflight-live-rail-without-fork-attestation", "fail",
+                  ["pay-dem-preflight-whatever-availability", "preflight-requires-binding"],
+                  "A binding that attests nothing from genesis about gasFeeSeparation fails the preflight on a live rail.",
+                  fee_separation_unscheduled=_OMIT),
+        preflight("preflight-operator-gated-rail-without-pinned-node", "fail", ["preflight-requires-binding"],
+                  "RAV-R3 as written: an operator_gated pay-dem rail without pinned nodes is not selected.",
+                  availability="operator_gated", pinned_node=False),
+        preflight("preflight-operator-gated-rail-with-binding", "pass", ["preflight-selects-configured-rail"],
+                  "An operator_gated pay-dem rail with the binding in place is selectable.",
+                  availability="operator_gated"),
+    ]
+    # DEMOS-MAPPING §A.2 pay-dem party address: payee.payeeAddress and the
+    # payer.payingKey key are a Demos key (optional 0x) or a DACS-1
+    # did:demos:agent: DID; DEM-1, DEM-7 and FV-5 compare the 64 hex digits
+    # they project to, and any other spelling is error.
+    did = "did:demos:agent:"
+    vectors += [
+        gate("broadcast-to-0x-payee-address", "pass", "DEM-1", PARTY_GUARDS["gate"],
+             "A 0x-prefixed payeeAddress, the node's own spelling, projects to the retained recipient.",
+             phase_context=phase(payeeAddress="0x" + PAYEE_KEY)),
+        gate("broadcast-to-did-payee-address", "pass", "DEM-1", PARTY_GUARDS["gate"],
+             "A DACS-1 did:demos:agent: payout binding projects to its key component.",
+             phase_context=phase(payeeAddress=did + PAYEE_KEY)),
+        gate("broadcast-from-did-paying-key", "pass", "DEM-1", PARTY_GUARDS["gate"],
+             "The Demos key of payer.payingKey is projected the same way.",
+             phase_context=phase(payerPayingKey=did + PAYER_KEY)),
+        gate("broadcast-payee-address-upper-case", "error", "DEM-1", PARTY_GUARDS["malformed"],
+             "Upper-case hex is not a Demos key: the payee projects to nothing and nothing leaves.",
+             phase_context=phase(payeeAddress="0x" + PAYEE_KEY.upper())),
+        gate("broadcast-payee-address-did-with-0x", "error", "DEM-1", PARTY_GUARDS["malformed"],
+             "A DID key component is 64 bare lower-case hex digits; did:demos:agent:0x... is no pay-dem address.",
+             phase_context=phase(payeeAddress=did + "0x" + PAYEE_KEY)),
+        gate("broadcast-payee-address-evm-length", "error", "DEM-1", PARTY_GUARDS["malformed"],
+             "A 20-byte EVM address is not a Demos key.",
+             phase_context=phase(payeeAddress="0x" + PAYEE_KEY[:40])),
+        admit("consumer-0x-payee-address-passes", "pass", "DEM-7", PARTY_GUARDS["admit"],
+              "DEM-7 binds the record's recipient to the projection of payeeAddress, not its spelling.",
+              read=found(record("confirmed")), phase_context=phase(payeeAddress="0x" + PAYEE_KEY)),
+        admit("consumer-did-payee-address-passes", "pass", "DEM-7", PARTY_GUARDS["admit"],
+              "A did:demos:agent: payeeAddress binds the same recipient.",
+              read=found(record("confirmed")), phase_context=phase(payeeAddress=did + PAYEE_KEY)),
+        admit("consumer-payee-address-malformed", "error", "DEM-7", PARTY_GUARDS["malformed-admit"],
+              "A payeeAddress in no pay-dem form binds nothing: error, never a comparison of spellings.",
+              read=found(record("confirmed")), phase_context=phase(payeeAddress="0x" + PAYEE_KEY.upper())),
+        deliver("delivery-to-0x-payee-address", "pass", "DEM-7/FV-5", PARTY_GUARDS["admit"],
+                "A genuine payment to the payee's key authorizes delivery whichever pay-dem spelling the Agreement used.",
+                phase_context=phase(payeeAddress="0x" + PAYEE_KEY)),
+        deliver("delivery-to-did-payee-address", "pass", "DEM-7/FV-5", PARTY_GUARDS["admit"],
+                "The DACS-1 primary-claim DID spelling of the payout binding delivers too.",
+                phase_context=phase(payeeAddress=did + PAYEE_KEY)),
+        deliver("delivery-from-0x-paying-key", "pass", "DEM-7/FV-5", PARTY_GUARDS["admit"],
+                "A 0x-prefixed payer.payingKey key binds the same sender.",
+                phase_context=phase(payerPayingKey="0x" + PAYER_KEY)),
     ]
 
     ref = {"kind": "demos", "txHash": TX_HASH, "blockNumber": BLOCK}
@@ -2077,6 +2170,9 @@ def document() -> dict[str, Any]:
             "broadcastState": "never-broadcast (nothing has left the handler), confirm-returned (this uninterrupted submission's confirm just returned), confirm-sent-interrupted (a confirm was sent, then a timeout, error or restart) or maybe-broadcast; any other value is refused",
             "confirmResponse": "the demosdk 4.0.16 confirm() result (RPCResponseWithValidityData) that the current submission's confirm returned to the handler, even late, or null; null for a confirm request",
             "validityResponse": "what the demosdk broadcast(validationData) call carries, or null for a confirm request; the pinned node executes its response.data.transaction, so it must be exactly confirmResponse, with result 200, valid true and an embedded transaction whose content, hash and signature serialize as signedTransaction",
+            "payeeAddress": "phase member: payee.payeeAddress (and payerPayingKey the key payer.payingKey names), a DEMOS-MAPPING §A.2 pay-dem party address: a Demos key with optional 0x or a did:demos:agent: DID over 64 lower-case hex digits; DEM-1, DEM-7 and FV-5 compare the 64 digits it projects to, and any other value is error",
+            "availability": "rail-preflight: the pinned pay-dem RailDefinition's availability for a new production session; disabled, failed and mocked are not selectable, any other unknown value is error, and every other value still needs the payer binding's three DEM-1 members (RAV-R3, whatever the availability)",
+            "railSelectable": "rail-preflight want member: whether the orchestrator may select the rail, before Agreement signature and the PIPE-6 commitment",
             "pinnedNodeConfigured": "the Demos binding pins nodes under the native-send record profile for the phase's network; anything but true is refused",
             "appliedPaymentAuthorityConfigured": "the Demos binding configures an applied-payment authority for that network; anything but true is refused",
             "gasFeeSeparationUnscheduled": "the Demos binding attests, from that network's sealed genesis, that the gasFeeSeparation fork is unscheduled (activationHeight null); RPC does not report it, and with it active the node stores fee edits before the send's four, so anything but true (a scheduled height, an attestation the binding does not hold) is refused",

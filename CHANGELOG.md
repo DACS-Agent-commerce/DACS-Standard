@@ -42,6 +42,37 @@ The format used per release:
   catches; the conformance procedure adds in-process interruption, concurrent
   starts and index loss.
 
+### Fixed — pay-dem FV-5 authentication is the signed execution result
+
+- DEM-4's proven failure, DEM-7's authenticated `failed` refutation and
+  contradiction, delivery, resume and APR `closed-cannot-settle` evidence read
+  FV-5 as a flag or label that the node, a result source or the handler's own
+  journal wrote. They now verify FV-5's signed execution result itself, in the
+  settlement-finality corpus's form, against a trusted `fv5Policy` (authority
+  keys and threshold) with that corpus's own verifier. The result must name
+  the rail's network, the observed inclusion block ID and the record's own
+  hash and block, and carry exactly the record read. DEM-4 says a proof
+  retains that result exactly as received and that a resume and the APR
+  verifier verify it again.
+- 28 new `indeterminate` vectors refuse the earlier flag or label, a forged
+  result, one below the threshold, and a result for another network, block or
+  record, in `classify-execution`, `admit-evidence`, `admit-for-delivery`,
+  `resume-phase` and `apr-reconciliation-evidence`. Five guards pin them. No
+  earlier verdict changes. Two tests check that a flag or label never decides,
+  and that the oracle and the settlement-finality verifier agree on every
+  signed result.
+- The reference handler's FV-5 source signs results with the policy's keys or
+  forges them under the same authority names. A forged result leaves a failed
+  record `substrate` with nothing terminal stored, and a resume re-verifies the
+  stored result. The harness catches a handler that takes a result's
+  signatures on trust.
+- DEMOS-MAPPING §A.2 says the `gasFeeSeparation` attestation is the binding
+  operator's own reading of the sealed genesis. At the pinned node commit, the
+  genesis block hash does not commit to `forks`, so no verifier can check the
+  schedule against `genesisHash`.
+- The corpus has 335 vectors (36 `pass`, 123 `fail`, 159 `indeterminate`,
+  17 `error`) and 113 guards.
+
 ### Fixed — pay-dem binding for the rail's network; durable DEM-4 result in the reference
 
 - DEM-1 and RAV-R3 define "the phase's network": the pinned `RailDefinition`'s
@@ -72,8 +103,7 @@ The format used per release:
   store-wide lock. The harness catches four more wrong variants: a network
   taken from the binding, a trusted node read, an unjournaled failure and a
   per-phase retention lock.
-- The corpus has 307 vectors (36 `pass`, 123 `fail`, 131 `indeterminate`,
-  17 `error`) and 108 guards.
+- These add 23 vectors and 4 guards.
 
 ### Changed — native DEM applied-payment verification
 
@@ -92,7 +122,7 @@ The format used per release:
   vectors in both corpora cover each spelling the §A.2 profile projects alike:
   a `0x`-prefixed or bare `send` recipient argument (whose credit edit names it
   with a single `0x`), bare or prefixed party keys, a string or integer nonce,
-  and a string or number amount up to 2^53 − 1. The corpora contain 307 pay-dem
+  and a string or number amount up to 2^53 − 1. The corpora contain 335 pay-dem
   and 194 settlement-finality cases.
 - The DEMOS-MAPPING §A.2 profile covers only a network whose sealed genesis
   leaves the `gasFeeSeparation` fork unscheduled (`activationHeight: null`).
@@ -1388,7 +1418,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 307-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 335-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope

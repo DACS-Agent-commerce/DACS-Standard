@@ -280,7 +280,7 @@ def interrupted_call_violations(root: Path, mutant: str | None = None) -> list[s
 
 
 FAILED = ("--record-status", "failed")
-FV5 = ("--fv5-authenticates",)
+FV5 = ("--fv5", "policy")
 
 
 def _journal(work: Path) -> dict:
@@ -336,6 +336,26 @@ def plain_read_violations(root: Path, mutant: str | None = None) -> list[str]:
         violations.append(f"plain read classified {result.get('errorClass')}")
     if stored.get("result") is not None or stored.get("failureProof") is not None:
         violations.append("plain read stored a terminal result")
+    return violations
+
+
+def forged_fv5_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """DEM-4/FV-5: a result source that answers for a bound failed record
+    under the policy's authority names, with signatures no policy key
+    verifies, authenticates nothing. The result stays substrate, nothing
+    terminal is stored, and a restart still sends nothing."""
+    violations = []
+    for boot in ("boot-1", "boot-2"):
+        done = run("pay", root, boot, *_options(None, mutant, *FAILED, "--fv5", "forged"))
+        if done.returncode != 0:
+            return violations + [f"{boot}: failed: {done.stderr[-400:]}"]
+        result, stored = json.loads(done.stdout), _journal(root)
+        if result.get("errorClass") != "substrate":
+            violations.append(f"{boot}: forged FV-5 result classified {result.get('errorClass')}")
+        if stored.get("result") is not None or stored.get("failureProof") is not None:
+            violations.append(f"{boot}: forged FV-5 result stored a terminal result")
+    if [entry["boot"] for entry in reference.read_lines(root / "egress.jsonl")] != ["boot-1", "boot-1"]:
+        violations.append("egress after a restart")
     return violations
 
 
@@ -475,7 +495,9 @@ class PayDemCrashRestartTests(unittest.TestCase):
         work = self.root / "reference" / "uninterrupted"
         stored = _journal(work)
         self.assertEqual(("fail", "permanent"), (stored["result"]["expected"], stored["result"]["errorClass"]))
-        self.assertEqual({"classification": "permanent", "authentication": "fv5-bft-final",
+        # The proof keeps FV-5's signed execution result itself, not a label.
+        self.assertEqual({"classification": "permanent",
+                          "authentication": generator.execution_result(generator.record("failed")),
                           "inclusionBlock": generator.BLOCK, "record": generator.record("failed")},
                          stored["failureProof"])
         # The handler that returns permanent without journaling it reopens
@@ -488,11 +510,30 @@ class PayDemCrashRestartTests(unittest.TestCase):
         self.assertEqual(["plain read classified permanent", "plain read stored a terminal result"],
                          plain_read_violations(self.root / "trusting", "node-authenticates-read"))
 
+    def test_a_forged_fv5_result_is_never_terminal(self):
+        self.assertEqual([], forged_fv5_violations(self.root / "reference"))
+        # The handler that takes a result's signatures on trust ends the
+        # phase on the forgery and stores it as its proof.
+        self.assertEqual(["boot-1: forged FV-5 result classified permanent",
+                          "boot-1: forged FV-5 result stored a terminal result",
+                          "boot-2: forged FV-5 result classified permanent",
+                          "boot-2: forged FV-5 result stored a terminal result"],
+                         forged_fv5_violations(self.root / "unverified", "unverified-fv5-result"))
+
     def test_a_resume_reuses_only_an_authenticated_failure_proof(self):
-        """DEM-4: a stored proof that lost its FV-5 authentication or no
-        longer binds the retained transfer is not reused; the resume re-reads,
-        and without FV-5 that re-read stays substrate."""
+        """DEM-4: a stored proof whose FV-5 result no longer verifies (a
+        label, a forgery, an edited record, another network) or that no
+        longer binds the retained transfer is not reused; the resume
+        re-reads, and without FV-5 that re-read stays substrate."""
+        failed = generator.record("failed")
         for name, damage in (("plain-read", {"authentication": "rpc-read"}),
+                             ("label", {"authentication": "fv5-bft-final"}),
+                             ("forged", {"authentication": generator.execution_result(
+                                 failed, keys=generator.FORGED_FV5_SIGNERS)}),
+                             ("edited-result", {"authentication": dict(
+                                 generator.execution_result(failed), record=generator.record("pending"))}),
+                             ("other-network", {"authentication": generator.execution_result(
+                                 failed, network=generator.OTHER_NETWORK)}),
                              ("other-block", {"inclusionBlock": generator.BLOCK + 1})):
             with self.subTest(name=name):
                 work = self.root / name

@@ -8,9 +8,11 @@ inputs (`retentionDurable`, `restartedSinceRetention`, `broadcastState`,
 `signedTransaction`, the presented history, `admissionIndex` and a DEM-4
 failure proof) are derived from what this module reads back from storage,
 never from process-local state. The binding inputs are the rail's pinned
-network and the payer's per-network binding configuration, and a re-read's
-FV-5 and applied-payment authentication come from their own authorities,
-never from the node that served the record.
+network and the payer's per-network binding configuration. A re-read's
+applied-payment authority and FV-5 result come from their own sources, never
+from the node that served the record. The FV-5 result is the signed execution
+result itself, which the oracle verifies against the payer's trusted FV-5
+policy; a DEM-4 proof stores it verbatim, and a resume verifies it again.
 `test_pay_dem_crash_restart` stops it on both sides of every transition and
 restarts it from storage. Each `--mutant` is a wrong handler or payee that
 the harness must catch.
@@ -22,7 +24,7 @@ witnesses by the order of fsync calls before the first egress.
 
 Run as a script, one process per start:
     pay_dem_reference_handler.py pay --work DIR --boot ID [--job JOB] [--crash POINT] [--mutant M]
-        [--record-status S] [--node-claims-authentication] [--fv5-authenticates] [--rail-network N]
+        [--record-status S] [--node-claims-authentication] [--fv5 SOURCE] [--rail-network N]
     pay_dem_reference_handler.py provision --work DIR --boot ID
     pay_dem_reference_handler.py deliver --work DIR --boot ID --job JOB [--crash POINT] [--mutant M]
 """
@@ -55,7 +57,7 @@ RETENTION_LOCK = "retention"
 PAYER_MUTANTS = ("process-local-journal", "journal-after-confirm", "restart-from-progress", "no-fsync",
                  "no-cross-phase-index", "no-parent-fsync", "blind-first-retention", "progress-after-call",
                  "network-from-binding", "node-authenticates-read", "failure-not-journaled",
-                 "per-phase-retention-lock")
+                 "per-phase-retention-lock", "unverified-fv5-result")
 PAYEE_MUTANTS = ("process-local-index", "no-conditional-write", "empty-index-when-missing",
                  "deliver-every-check")
 NO_GUARD_REMOVED = frozenset()
@@ -209,8 +211,8 @@ class Node:
     those signed bytes. A broadcast executes the embedded transaction; with
     `relays_confirm`, a node that received the confirm submits it too. The
     executed record's status is `record_status`; a node that
-    `claims_authentication` adds its own FV-5 and applied-payment claims to
-    the plain read, which the handler never takes from it."""
+    `claims_authentication` adds its own FV-5 flag and applied-payment claims
+    to the plain read, which the handler never takes from it."""
 
     def __init__(self, work: Path, boot: str, *, confirm: str = "valid", broadcast: str = "accepted",
                  balance: str = "sufficient", relays_confirm: bool = False, record_status: str = "confirmed",
@@ -255,7 +257,7 @@ class Node:
             executing.discard("broadcast")
         if any(entry["call"] in executing for entry in read_lines(self.log)):
             if self.claims_authentication:
-                return generator.found(generator.record(self.record_status), authenticated=True)
+                return dict(generator.found(generator.record(self.record_status)), authenticated=True)
             return {"state": "found", "record": generator.record(self.record_status)}
         return dict(generator.NOT_FOUND)
 
@@ -276,18 +278,28 @@ class AppliedAuthority:
                 "appliedTransfer": read["appliedTransfer"]}
 
 
+FV5_SOURCES = ("none", "policy", "forged")
+
+
 class Fv5Authority:
-    """FV-5 for the rail's network: whether a record's execution result is
-    authenticated at its `bft-final` inclusion. The reference's is a fixture
-    that authenticates what it is configured to; the settlement-finality
-    corpus exercises the result signatures themselves. It is never the node
-    that served the record."""
+    """The independent execution-result source FV-5 reads for the rail's
+    network; it is never the node that served the record. It answers with a
+    signed execution result for the record at the observed inclusion block,
+    or with nothing. `policy` signs with the authorities the payer's FV-5
+    policy trusts; `forged` signs under the same authority names with other
+    keys. The handler never takes its word: the oracle verifies the result
+    against the trusted policy, so a forged result authenticates nothing."""
 
-    def __init__(self, authenticates: bool = False):
-        self.authenticates = authenticates
+    def __init__(self, source: str = "none"):
+        if source not in FV5_SOURCES:
+            raise ValueError(source)
+        self.source = source
 
-    def authenticated(self, record: dict[str, Any]) -> bool:
-        return self.authenticates
+    def result(self, record: dict[str, Any], network: dict[str, str], block: str) -> dict[str, Any] | None:
+        if self.source == "none":
+            return None
+        keys = generator.FV5_SIGNERS if self.source == "policy" else generator.FORGED_FV5_SIGNERS
+        return generator.execution_result(record, network=network, block=block, keys=keys)
 
 
 def binding_network(entry: dict[str, Any]) -> dict[str, str]:
@@ -306,13 +318,16 @@ class PayerHandler:
     Demos binding configuration, one entry per network. The gates find the
     entry for the rail's network themselves, and the re-read takes the
     applied-payment authority that entry configures and the FV-5 result from
-    their own sources, never from the node's reply."""
+    their own sources, never from the node's reply. `fv5_policy` is the FV-5
+    execution-result policy the payer trusts (authority keys and threshold),
+    from its configuration, never from a source or a node."""
 
     def __init__(self, store: Store, node: Node, boot: str, *, crash_at: str | None = None,
                  mutant: str | None = None, exit_on_crash: bool = False,
                  job_id: str = generator.JOB_ID, phase_index: int = generator.PHASE_INDEX,
                  rail_network: dict[str, str] = generator.NETWORK,
-                 bindings: list[dict[str, Any]] | None = None, fv5: Fv5Authority | None = None):
+                 bindings: list[dict[str, Any]] | None = None, fv5: Fv5Authority | None = None,
+                 fv5_policy: dict[str, Any] = generator.FV5_POLICY):
         self.store, self.node, self.boot = store, node, boot
         self.crash_at, self.mutant, self.exit_on_crash = crash_at, mutant, exit_on_crash
         self.job_id, self.phase_index = job_id, phase_index
@@ -324,6 +339,12 @@ class PayerHandler:
             # network from it, whatever network the rail settles on.
             self.rail_network = binding_network(self.bindings[0])
         self.fv5 = Fv5Authority() if fv5 is None else fv5
+        self.fv5_policy = fv5_policy
+        # The wrong handlers take a result's signatures on trust, or (the
+        # earlier draft) take a flag for FV-5 and store a label as its proof.
+        self.off = {"unverified-fv5-result": frozenset({"fv5-result-signed"}),
+                    "node-authenticates-read": frozenset({"fv5-authentication-is-a-signed-result"}),
+                    }.get(mutant, NO_GUARD_REMOVED)
 
     def _binding_input(self) -> dict[str, Any]:
         return {"railNetwork": self.rail_network, "demosBinding": self.bindings}
@@ -406,9 +427,10 @@ class PayerHandler:
     def _read(self, tx_hash: str) -> dict[str, Any]:
         """The re-read as the handler composes it: only the node's plain
         record and status, the build attestation its binding holds for that
-        node, and the applied-payment authority and FV-5 result from their
-        own sources. Whatever the node says about its own authentication is
-        dropped."""
+        node, the applied-payment authority, and the FV-5 source's signed
+        result for the record at the observed inclusion block, which the
+        oracle verifies. Whatever the node says about its own authentication
+        is dropped."""
         served = self.node.read(tx_hash)
         if self.mutant == "node-authenticates-read":
             # The wrong handler trusts the node's word for FV-5 and payment.
@@ -420,14 +442,17 @@ class PayerHandler:
         authority = self._applied_authority()
         if authority is not None and isinstance(record, dict):
             read.update(authority.attest(record))
-        if self.fv5.authenticated(record):
-            read["authenticated"] = True
+        if isinstance(record, dict):
+            result = self.fv5.result(record, self.rail_network, generator.INCLUDED_AT_BLOCK["blockId"])
+            if result is not None:
+                read["executionResult"] = result
         return read
 
     def _classify_input(self, entry: dict[str, Any], read: dict[str, Any]) -> dict[str, Any]:
         seen = read["state"] == "found"
         return {
             "railNetwork": self.rail_network,
+            "fv5Policy": self.fv5_policy,
             "retainedTransfer": entry["retainedTransfer"],
             "statusIndex": "included" if seen else "unknown",
             "inclusionObservation": generator.INCLUDED_AT_BLOCK if seen else None,
@@ -436,19 +461,20 @@ class PayerHandler:
 
     def _classify(self, entry: dict[str, Any]) -> dict[str, Any]:
         """Re-read the retained hash: the only step after a possible egress.
-        A DEM-4 failure is terminal: its record, FV-5 authentication,
-        classification and inclusion block are journaled with the result in
-        one conditional write before `permanent` is returned. Success is
-        never cached: each read re-derives it from the chain and the
-        authority."""
+        A DEM-4 failure is terminal: its record, FV-5's signed execution
+        result exactly as received, its classification and inclusion block
+        are journaled with the result in one conditional write before
+        `permanent` is returned. Success is never cached: each read
+        re-derives it from the chain and the authority."""
         read = self._read(entry["retainedTransfer"]["txHash"])
         protocol_input = self._classify_input(entry, read)
-        expected, want = oracle.classify(protocol_input, NO_GUARD_REMOVED)
+        expected, want = oracle.classify(protocol_input, self.off)
         result = {"expected": expected, **want}
         if expected == "fail" and self.mutant != "failure-not-journaled":
             proof = {
                 "classification": "permanent",
-                "authentication": "fv5-bft-final",
+                # Only the flag-trusting wrong handler reaches here without one.
+                "authentication": read.get("executionResult", "fv5-bft-final"),
                 "inclusionBlock": protocol_input["inclusionObservation"]["blockNumber"],
                 "record": read["record"],
             }
@@ -459,12 +485,13 @@ class PayerHandler:
 
     def _resume(self, entry: dict[str, Any]) -> dict[str, Any]:
         """DEM-4/DEM-6: a terminal failure is never reopened. Its retained
-        proof is reused only while it is FV-5-authenticated and still binds
-        the retained transfer; otherwise the retained hash is re-read, a
-        post-terminal read that changes no session state."""
+        proof is reused only while its stored FV-5 result still verifies
+        against the trusted policy and still binds the retained transfer;
+        otherwise the retained hash is re-read, a post-terminal read that
+        changes no session state."""
         read = self._read(entry["retainedTransfer"]["txHash"])
         expected, want = oracle.resume(
-            dict(self._classify_input(entry, read), retainedFailureProof=entry["failureProof"]), NO_GUARD_REMOVED,
+            dict(self._classify_input(entry, read), retainedFailureProof=entry["failureProof"]), self.off,
         )
         return {"expected": expected, **want}
 
@@ -682,13 +709,13 @@ RAIL_NETWORKS = {"mainnet": generator.NETWORK, "testnet": generator.OTHER_NETWOR
 
 def payer(work: Path, boot: str, *, crash_at=None, mutant=None, exit_on_crash=False,
           job_id: str = generator.JOB_ID, rail_network: dict[str, str] = generator.NETWORK,
-          bindings: list[dict[str, Any]] | None = None, fv5_authenticates: bool = False, **node) -> PayerHandler:
+          bindings: list[dict[str, Any]] | None = None, fv5: str = "none", **node) -> PayerHandler:
     store_dir = Path(work) / "store"
     store = (MemoryStore(store_dir) if mutant == "process-local-journal"
              else Store(store_dir, fsync=mutant != "no-fsync", parent_fsync=mutant != "no-parent-fsync"))
     return PayerHandler(store, Node(work, boot, **node), boot, crash_at=crash_at, mutant=mutant,
                         exit_on_crash=exit_on_crash, job_id=job_id, rail_network=rail_network,
-                        bindings=bindings, fv5=Fv5Authority(fv5_authenticates))
+                        bindings=bindings, fv5=Fv5Authority(fv5))
 
 
 def payee(work: Path, boot: str, *, crash_at=None, mutant=None, exit_on_crash=False) -> Payee:
@@ -716,7 +743,7 @@ def main() -> int:
     parser.add_argument("--relays-confirm", action="store_true")
     parser.add_argument("--record-status", choices=("confirmed", "failed"), default="confirmed")
     parser.add_argument("--node-claims-authentication", action="store_true")
-    parser.add_argument("--fv5-authenticates", action="store_true")
+    parser.add_argument("--fv5", choices=FV5_SOURCES, default="none")
     parser.add_argument("--rail-network", choices=tuple(RAIL_NETWORKS), default="mainnet")
     args = parser.parse_args()
     args.work.mkdir(parents=True, exist_ok=True)
@@ -725,7 +752,7 @@ def main() -> int:
                         job_id=args.job or generator.JOB_ID, confirm=args.confirm, broadcast=args.broadcast,
                         balance=args.balance, relays_confirm=args.relays_confirm,
                         record_status=args.record_status, claims_authentication=args.node_claims_authentication,
-                        fv5_authenticates=args.fv5_authenticates, rail_network=RAIL_NETWORKS[args.rail_network])
+                        fv5=args.fv5, rail_network=RAIL_NETWORKS[args.rail_network])
         result = handler.pay(generator.signed())
     elif args.command == "provision":
         payee(args.work, args.boot).provision()

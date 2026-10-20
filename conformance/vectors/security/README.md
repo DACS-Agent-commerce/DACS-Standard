@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 307 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 335 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -1247,7 +1247,7 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-307 candidate vectors pin native-DEM settlement on execution, not inclusion.
+335 candidate vectors pin native-DEM settlement on execution, not inclusion.
 The node's status index may label a transaction `included` while its
 transaction record is `failed`, so the index is never decisive. Records use
 the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
@@ -1272,12 +1272,26 @@ equal the retained signed transfer, whose block equals the inclusion
 observation, whose status is exactly `confirmed`, and whose committed payment debit and payee credit have independently authenticated state-transition authority. That authority must name the phase's pinned `network` (`networkId`, `genesisHash`) and the inclusion observation's `blockId`; one from another network, genesis or block ID at the same height, or one with no observed block ID to compare, is `indeterminate`. The live confirmed RPC sample remains indeterminate without that authority. The record must also carry the four edits of its send: the pinned node applies a send whose edits are missing or empty as a successful no-op, so `confirmed-no-op-*` cases stay `indeterminate` whether the authority shows the unchanged committed balances or reports a payment. Carrying the four edits is not payment either: `confirmed-four-edits-uncommitted-payment` stays `indeterminate` when the committed balances did not move. A record bound the same
 way with status `failed` is a durable `permanent` failure without
 `settlementFinality` only when it is authenticated under FV-5 at its
-`bft-final` inclusion (`recordRead.authenticated`). A plain RPC read of it is
+`bft-final` inclusion. That authentication is FV-5's signed execution result
+itself (`recordRead.executionResult`, in the settlement-finality corpus's
+form), which the case verifies against the trusted `fv5Policy` with the
+settlement-finality reference's own verifier. It needs the policy's threshold
+of distinct authority keys, names `railNetwork` and the inclusion
+observation's `blockId`, references the record's own hash and block, and
+carries exactly the record read. A read that only says it is authenticated
+(`authenticated: true`, the earlier draft's flag), a forged or under-signed
+result, and a result for another network, block or record are plain reads
+(`included-failed-fv5-*`, guards `fv5-authentication-is-a-signed-result`,
+`fv5-result-signed`, `fv5-result-binds-rail-network`,
+`fv5-result-binds-block-id`, `fv5-result-binds-record`). DEM-7 cases
+(`consumer-failed-fv5-*`) and delivery (`delivery-record-fv5-*`) verify the
+same result. A plain RPC read of it is
 `indeterminate`, even over committed balances that show the payment applied
 (`failed-plain-read-over-applied-payment`, guard
 `failure-requires-authentication`): a stale or dishonest pinned node can
-serve `failed` for a transfer that executed. The unbound `failed-*` cases are
-authenticated, so only the binding refuses them. Missing, unavailable, pending, aliased, case-variant,
+serve `failed` for a transfer that executed. The unbound `failed-*` cases
+carry a verifying FV-5 result, so only the binding refuses them; without an
+inclusion observation, FV-5 also has no block ID to bind. Missing, unavailable, pending, aliased, case-variant,
 mismatched, undecodable (missing, boolean, fractional or leading-zero
 numbers, a `0x` hash, upper-case keys, a non-native `content.type`, an inconsistent `send` payload) and
 unpinned-node records are `ok: false` with `errorClass: "substrate"`. They keep
@@ -1287,13 +1301,17 @@ delivery or settlement accounting; only `admit-for-delivery` does.
 
 `resume-phase` cases reuse a valid retained failure proof without a node
 read, refuse to reuse one corrupted in its nonce, recipient, block or status
-or whose `authentication` is not `fv5-bft-final` (a plain-read proof, guard
-`resume-requires-authenticated-proof`), and recover a confirmed transfer by
+or whose `authentication` is not FV-5's signed result for its own record on
+the rail's network (a plain-read proof, guard
+`resume-requires-authenticated-proof`; the earlier draft's `fv5-bft-final`
+label and a forged, under-signed or other-network or other-record result,
+`resume-failure-proof-fv5-*`), and recover a confirmed transfer by
 re-reading the retained hash, including after a plain-read failure.
 `apr-reconciliation-evidence` cases accept a DEM-4 proof as APR
-`closed-cannot-settle` evidence only when its `authentication` says FV-5
-authenticated its failed record at the `bft-final` inclusion; a plain RPC
-read is `indeterminate`.
+`closed-cannot-settle` evidence only when the APR check itself verifies its
+`authentication` as FV-5's signed result for its failed record on
+`railNetwork` under `fv5Policy`; a plain RPC read, a label and every result
+that does not verify are `indeterminate` (`apr-evidence-failure-proof-fv5-*`).
 `pre-sign-gate` cases check DEM-1 before demosdk `pay()`/`sign()`: their
 input holds no signed transaction, and a binding without pinned nodes, an
 applied-payment authority or a `gasFeeSeparation` attestation (from the rail
@@ -1407,13 +1425,23 @@ carries the bytes and then raises an error the handler does not model, and
 is resumed in the same start, is not repeated and never ends `permanent`;
 two concurrent starts of one phase send one transfer; and a payee whose
 index is lost, corrupted or rolled back after a delivery delivers nothing
-more (its index is provisioned once, never by a check). Twelve wrong
+more (its index is provisioned once, never by a check). The payer's re-read
+takes its FV-5 result from a source other than the node, and the oracle
+verifies that signed result against the payer's configured `fv5Policy`. A
+source that signs under the policy's authority names with other keys
+(`--fv5 forged`) leaves a failed record `substrate` and stores nothing
+terminal, before and after a restart. A DEM-4 proof stores the signed result
+verbatim, and a resume verifies it again: a label, a forgery, an edited
+result or another network's result is re-read instead. Seventeen wrong
 variants each fail it: a process-local journal, a journal written after
 `confirm`, progress journaled only after a call returns, restart taken from
 saved progress, no fsync, no fsync of a new directory's parent, an unlocked
-first retention, a journal blind to other phases, a process-local admission
-index, an unconditional index write, a lost index read as empty and a
-delivery on every check.
+first retention, a journal blind to other phases, a per-phase rather than
+store-wide retention lock, the rail's network taken from the binding, the
+node's own authentication claim taken for FV-5, a DEM-4 result not journaled
+with its proof, an FV-5 result taken without verifying its signatures, a
+process-local admission index, an unconditional index write, a lost index
+read as empty and a delivery on every check.
 
 `phase.payeeAddress` and `phase.payerPayingKey` are DEMOS-MAPPING §A.2 pay-dem
 party addresses: a bare or `0x` Demos key or a `did:demos:agent:` DID over 64

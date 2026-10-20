@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import copy
 import decimal
 import hashlib
@@ -22,6 +23,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey 
 
 from jcs import canonicalize  # noqa: E402
 from demos_json import stringify  # noqa: E402
+from settlement_finality_reference import DEMOS_EXECUTION_DOMAIN, hash_value  # noqa: E402
 
 _OMIT = object()
 
@@ -75,6 +77,52 @@ SCHEDULED_HEIGHT = 500000  # a future gasFeeSeparation activation height
 def block_id(number: int) -> str:
     """The synthetic block ID (block hash) of a block number."""
     return _hex("block:" + str(number))
+
+
+def _b64u(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+# FV-5's independent Demos execution-result source (DACS-4 §9.7.0 FV-5, the
+# settlement-finality corpus's `fixture-independent-results-v1` policy). The
+# verifier trusts these authority keys and threshold. Each authority signs a
+# result over the FV domain, and a result counts only when that many distinct
+# keys verify. The forged source claims the same authority names under keys
+# the policy does not hold. A flag or label that says a record is
+# authenticated is no result.
+FV5_SIGNERS = {name: _signing_key("fv5-" + name) for name in ("execution-a", "execution-b", "execution-c")}
+FORGED_FV5_SIGNERS = {name: _signing_key("forged-fv5-" + name) for name in FV5_SIGNERS}
+FV5_POLICY = {
+    "kind": "fixture-independent-results-v1",
+    "threshold": 2,
+    "authorityKeys": {name: _b64u(key.public_key().public_bytes_raw()) for name, key in FV5_SIGNERS.items()},
+}
+
+
+def execution_result(
+    value: dict[str, Any], *, network: dict[str, str] | None = None, block: str | None = None,
+    signers: tuple[str, ...] = ("execution-a", "execution-b"), keys: dict[str, Ed25519PrivateKey] = FV5_SIGNERS,
+) -> dict[str, Any]:
+    """FV-5's signed execution result for the record `value` on `network`,
+    in the settlement-finality corpus's form: it names the network, the
+    inclusion block ID (by default the observed inclusion's), the record's
+    own hash and block, and carries the record itself."""
+    network = NETWORK if network is None else network
+    number = value.get("blockNumber")
+    result = {
+        "kind": FV5_POLICY["kind"],
+        "networkId": network["networkId"], "genesisHash": network["genesisHash"],
+        "blockId": INCLUDED_AT_BLOCK["blockId"] if block is None else block,
+        "transactionRef": {"kind": "demos", "txHash": value.get("hash"), "blockNumber": number},
+        "record": copy.deepcopy(value),
+    }
+    digest = hash_value(result)
+    result["attestations"] = [
+        {"authorityRef": signer, "algorithm": "ed25519",
+         "value": _b64u(keys[signer].sign((DEMOS_EXECUTION_DOMAIN + digest).encode("ascii")))}
+        for signer in signers
+    ]
+    return result
 
 
 # DEMOS-MAPPING §A.2 node pin. A read's `nodeBuild` is the build attestation
@@ -341,10 +389,12 @@ def found(
 ) -> dict[str, Any]:
     """A found read. Its applied-payment authority reports the committed
     transition `state` that the scenario names (by default the phase's
-    payment applied), whatever the record claims or carries as edits."""
+    payment applied), whatever the record claims or carries as edits. An
+    `authenticated` read carries FV-5's signed execution result for the
+    record; a plain read carries none."""
     read: dict[str, Any] = {"state": "found", "nodeBuild": dict(node), "record": value}
-    if authenticated is not None:
-        read["authenticated"] = authenticated
+    if authenticated:
+        read["executionResult"] = execution_result(value)
     if applied:
         # Synthetic state-transition authority, separate from the RPC record:
         # it names the transaction it was asked about, and its debit and
@@ -368,6 +418,37 @@ NOT_FOUND = {"state": "not-found"}
 UNAVAILABLE = {"state": "unavailable"}
 INCLUDED_AT_BLOCK = {"blockNumber": BLOCK, "blockId": block_id(BLOCK)}
 
+
+
+def fv5_variants(value: dict[str, Any], *, proof: bool = False) -> list[tuple[str, str, Any, str]]:
+    """What FV-5 must refuse for the record `value`, each with the check that
+    refuses it: the earlier draft's flag (or, in a proof, its label), a
+    forged result, too few signatures, and a signed result for another
+    network, block or record. For a read the value is the read's added
+    members; for a proof it is the proof's `authentication`. A proof has no
+    inclusion observation of its own, so it has no block variant."""
+    other = record("failed" if value.get("status") == "confirmed" else "confirmed")
+    variants = [
+        ("fv5-flag-only", "fv5-authentication-is-a-signed-result",
+         "fv5-bft-final" if proof else {"authenticated": True},
+         "Saying FV-5 authenticated the record, as the earlier draft's flag and label did, carries no signed result."),
+        ("fv5-forged-result", "fv5-result-signed", execution_result(value, keys=FORGED_FV5_SIGNERS),
+         "A result under the policy's authority names whose signatures verify under no policy key authenticates nothing."),
+        ("fv5-result-below-threshold", "fv5-result-signed", execution_result(value, signers=("execution-a",)),
+         "One authority's signature is below the policy threshold of two."),
+        ("fv5-result-for-another-network", "fv5-result-binds-rail-network",
+         execution_result(value, network=OTHER_NETWORK),
+         "A signed result for another network does not authenticate the rail network's record."),
+        ("fv5-result-for-another-block", "fv5-result-binds-block-id",
+         execution_result(value, block=block_id(BLOCK + 1)),
+         "A signed result that names another block ID than the observed inclusion authenticates nothing."),
+        ("fv5-result-of-another-record", "fv5-result-binds-record", execution_result(other),
+         "The authorities signed another record than this one, with another status; it authenticates this one nothing."),
+    ]
+    if proof:
+        return [variant for variant in variants if variant[1] != "fv5-result-binds-block-id"]
+    return [(suffix, guard, value if suffix == "fv5-flag-only" else {"executionResult": value}, note)
+            for suffix, guard, value, note in variants]
 
 def handler_want(expected: str) -> dict[str, Any]:
     """PC-4 result and session consequence of one DEM-3/DEM-4/DEM-5 class."""
@@ -425,6 +506,7 @@ def classify(
         name, "classify-execution",
         {
             "railNetwork": NETWORK,
+            "fv5Policy": FV5_POLICY,
             "retainedTransfer": retained() if transfer is None else transfer,
             "statusIndex": status_index,
             "inclusionObservation": inclusion,
@@ -435,15 +517,18 @@ def classify(
 
 
 def failure_proof(
-    content: dict[str, Any] | None = None, *, authentication: str = "fv5-bft-final", **record_changes: Any,
+    content: dict[str, Any] | None = None, *, authentication: Any = _OMIT, **record_changes: Any,
 ) -> dict[str, Any]:
-    """A retained DEM-4 proof: the bound failed record, how it was
-    authenticated, its classification and inclusion block."""
+    """A retained DEM-4 proof: the bound failed record, its authentication,
+    its classification and inclusion block. The authentication is FV-5's
+    signed execution result for that record unless `authentication` replaces
+    it (a label, a plain read or another result)."""
+    failed = record(record_changes.pop("status", "failed"), content, **record_changes)
     return {
         "classification": "permanent",
-        "authentication": authentication,
+        "authentication": execution_result(failed) if authentication is _OMIT else authentication,
         "inclusionBlock": BLOCK,
-        "record": record(record_changes.pop("status", "failed"), content, **record_changes),
+        "record": failed,
     }
 
 
@@ -463,6 +548,7 @@ def resume(
         name, "resume-phase",
         {
             "railNetwork": NETWORK,
+            "fv5Policy": FV5_POLICY,
             "retainedTransfer": retained(),
             "retainedFailureProof": proof,
             "statusIndex": status_index,
@@ -747,6 +833,7 @@ def _admit_input(read: dict[str, Any], status_index: str) -> dict[str, Any]:
         },
         "phase": phase(),
         "railNetwork": NETWORK,
+        "fv5Policy": FV5_POLICY,
         "inclusionObservation": INCLUDED_AT_BLOCK,
         "statusIndex": status_index,
         "recordRead": read,
@@ -953,6 +1040,16 @@ def build_vectors() -> list[dict[str, Any]]:
             "A pinned node serves failed for a transfer whose committed payment applied: a plain read never ends the phase.",
             read=found(record("failed")),
         ),
+        # FV-5 is its signed execution result, verified against the trusted
+        # policy: anything less leaves the failed record unresolved.
+        *(
+            classify(
+                "included-failed-" + suffix, "indeterminate", "DEM-4/DEM-5/FV-5",
+                ["failure-requires-authentication", guard] + unresolved, note,
+                read=dict(found(record("failed"), state=ROLLED_BACK), **members),
+            )
+            for suffix, guard, members, note in fv5_variants(record("failed"))
+        ),
         classify(
             "node2-included-failed-record", "indeterminate", "DEM-2/DEM-4/DEM-5", ["failure-requires-authentication"] + unresolved,
             "A live node2 transfer whose status index said included while its record failed (TX_NONCE_INVALID_LOW), read by plain RPC: unresolved.",
@@ -961,7 +1058,11 @@ def build_vectors() -> list[dict[str, Any]]:
         classify(
             "node2-failed-record-authenticated", "fail", "DEM-2/DEM-4", ["failure-is-permanent", "failure-proof-retained", "no-replacement", "success-requires-record"],
             "The same live failed record, authenticated under FV-5 at its bft-final inclusion, is the DEM-4 terminal failure.",
-            read=found(copy.deepcopy(NODE2_FAILED), authenticated=True, state=ROLLED_BACK), transfer=live_failed, inclusion=live_failed_block,
+            # FV-5 binds the observed inclusion block ID, so this observation
+            # names one (synthetic, like the signed result itself).
+            read=dict(found(copy.deepcopy(NODE2_FAILED), state=ROLLED_BACK),
+                      executionResult=execution_result(NODE2_FAILED, block=block_id(NODE2_FAILED["blockNumber"]))),
+            transfer=live_failed, inclusion=dict(live_failed_block, blockId=block_id(NODE2_FAILED["blockNumber"])),
         ),
         classify(
             "included-pending", "indeterminate", "DEM-5", unresolved,
@@ -1213,8 +1314,8 @@ def build_vectors() -> list[dict[str, Any]]:
             read=found(record("failed", send_content(recipient=OTHER_KEY)), authenticated=True, state=ROLLED_BACK),
         ),
         classify(
-            "failed-without-inclusion-observation", "indeterminate", unbound, ["bind-block", "bind-requires-inclusion", "failure-requires-binding"],
-            "A failed record without an inclusion observation is not a bound failure.",
+            "failed-without-inclusion-observation", "indeterminate", unbound, ["bind-requires-inclusion"],
+            "A failed record without an inclusion observation is not a bound failure, and FV-5 has no observed block ID to bind.",
             read=found(record("failed"), authenticated=True, state=ROLLED_BACK), status_index="unknown", inclusion=None,
         ),
         classify(
@@ -1253,6 +1354,17 @@ def build_vectors() -> list[dict[str, Any]]:
             ["no-rebroadcast", "resume-requires-authenticated-proof", "resume-validates-failure-proof"] + unresolved,
             "A retained proof built on a plain RPC read (an earlier draft's DEM-4) is not reused; the resume re-reads.",
             proof=failure_proof(authentication="rpc-read"), read=NOT_FOUND,
+        ),
+        # A resume verifies the stored FV-5 result itself; one that does not
+        # verify, or the earlier draft's label, is not reused.
+        *(
+            resume(
+                "resume-failure-proof-" + suffix + "-not-reused", "indeterminate", "DEM-4/DEM-6/FV-5",
+                ["no-rebroadcast", "resume-requires-authenticated-proof", "resume-validates-failure-proof", guard]
+                + unresolved, note,
+                proof=failure_proof(authentication=authentication), read=NOT_FOUND,
+            )
+            for suffix, guard, authentication, note in fv5_variants(record("failed"), proof=True)
         ),
         resume(
             "resume-plain-read-failure-then-authenticated-confirmed", "pass", "DEM-3/DEM-4/DEM-6",
@@ -1561,6 +1673,14 @@ def build_vectors() -> list[dict[str, Any]]:
             "A failed record from a plain RPC read is not an authenticated refutation; the evidence stays indeterminate.",
             read=found(record("failed"), authenticated=False, state=ROLLED_BACK),
         ),
+        *(
+            admit(
+                "consumer-failed-" + suffix, "indeterminate", "DEM-7/FV-5",
+                ["consumer-failed-requires-authentication", "consumer-requires-confirmed-record", guard], note,
+                read=dict(found(record("failed"), state=ROLLED_BACK), **members),
+            )
+            for suffix, guard, members, note in fv5_variants(record("failed"))
+        ),
         admit(
             "consumer-wrong-payee-unauthenticated", "indeterminate", "DEM-7", ["consumer-binds-payee", "consumer-requires-confirmed-record"],
             "An unauthenticated read that pays another payee does not satisfy DEM-7.",
@@ -1596,6 +1716,14 @@ def build_vectors() -> list[dict[str, Any]]:
             "delivery-record-unauthenticated", "indeterminate", "DEM-7/FV-5", ["consumer-admits-confirmed", "delivery-requires-authenticated-record"],
             "A bound confirmed record from a plain RPC read is not BFT-final proof; no delivery.",
             read=found(record("confirmed")),
+        ),
+        *(
+            deliver(
+                "delivery-record-" + suffix, "indeterminate", "DEM-7/FV-5",
+                ["consumer-admits-confirmed", "delivery-requires-authenticated-record", guard], note,
+                read=dict(found(record("confirmed")), **members),
+            )
+            for suffix, guard, members, note in fv5_variants(record("confirmed"))
         ),
         deliver(
             "delivery-dem7-pending", "indeterminate", "DEM-7", ["consumer-requires-confirmed-record", "delivery-requires-dem7"],
@@ -2202,21 +2330,28 @@ def build_vectors() -> list[dict[str, Any]]:
                          state=committed(amount_os=OVERSIZED_OS + "000000000", payer_before=OVERSIZED_PAYER_OS)),
               phase_context=phase(amount={"amount": OVERSIZED_OS, "currency": "DEM"}, amountOs=OVERSIZED_OS + "000000000")),
     ]
-    # A DEM-4 proof is APR closed-cannot-settle evidence only when FV-5
-    # authenticates the failed record at its bft-final inclusion; the APR
-    # check verifies that itself rather than trusting the handler.
+    # A DEM-4 proof is APR closed-cannot-settle evidence only when it
+    # carries FV-5's signed execution result for its failed record on the
+    # rail's network; the APR check verifies that result itself against the
+    # trusted policy and never trusts the handler's word or label.
     for name, expected, authentication, guards, note in (
         ("apr-evidence-plain-rpc-failure-proof", "indeterminate", "rpc-read",
          ["apr-evidence-requires-authenticated-failure"],
          "The pin does not authenticate an RPC read, so a proof built on one authorizes no replacement job."),
-        ("apr-evidence-authenticated-failure-proof", "pass", "fv5-bft-final",
+        ("apr-evidence-authenticated-failure-proof", "pass", _OMIT,
          ["apr-evidence-from-authenticated-failure"],
-         "The same failed record authenticated under FV-5 at its bft-final inclusion is reconciliation evidence."),
+         "The same failed record with FV-5's signed execution result at its bft-final inclusion is reconciliation evidence."),
+        *(
+            ("apr-evidence-failure-proof-" + suffix, "indeterminate", authentication,
+             ["apr-evidence-requires-authenticated-failure", guard], note + " No replacement job is authorized.")
+            for suffix, guard, authentication, note in fv5_variants(record("failed"), proof=True)
+        ),
     ):
         vectors.append(_vector(
             name, "apr-reconciliation-evidence",
-            {"retainedTransfer": retained(), "retainedFailureProof": failure_proof(authentication=authentication)},
-            expected, {"reconciliationEvidence": expected == "pass"}, "DEM-4", guards, note,
+            {"railNetwork": NETWORK, "fv5Policy": FV5_POLICY, "retainedTransfer": retained(),
+             "retainedFailureProof": failure_proof(authentication=authentication)},
+            expected, {"reconciliationEvidence": expected == "pass"}, "DEM-4/FV-5", guards, note,
         ))
     for vector in vectors:
         if vector["operation"] == "project-settlement-id":
@@ -2250,10 +2385,12 @@ def document() -> dict[str, Any]:
             "status confirmed and independent applied-payment authority succeeds; a bound failed record authenticated under FV-5 "
             "at its bft-final inclusion is a permanent failure, and a plain RPC read of one is unresolved; "
             "anything else is a substrate result without a second broadcast. "
-            "appliedTransferAuthenticated, recordRead.authenticated, nodeBuild.source, "
-            "retainedFailureProof.authentication and otherGates are abstract inputs that state an "
-            "authentication result: this corpus pins the decisions over them, not the authentication "
-            "itself, which the settlement-finality corpus exercises with result signatures."
+            "FV-5 authentication is FV-5's signed execution result itself (recordRead.executionResult, "
+            "retainedFailureProof.authentication), which every operation verifies against fv5Policy "
+            "with the settlement-finality reference's verifier; a flag or label decides nothing. "
+            "appliedTransferAuthenticated, nodeBuild.source and otherGates are abstract inputs that "
+            "state an authentication result: this corpus pins the decisions over them, not the "
+            "authentication itself."
         ),
         "demosProfile": {
             "profile": "DEMOS-MAPPING §A.2 native-send record profile",
@@ -2279,8 +2416,10 @@ def document() -> dict[str, Any]:
             "payeeAddress": "phase member: payee.payeeAddress (and payerPayingKey the key payer.payingKey names), a DEMOS-MAPPING §A.2 pay-dem party address: a Demos key with optional 0x or a did:demos:agent: DID over 64 lower-case hex digits; DEM-1, DEM-7 and FV-5 compare the 64 digits it projects to, and any other value is error",
             "availability": "rail-preflight: the pinned pay-dem RailDefinition's availability for a new production session; disabled, failed and mocked are not selectable, any other unknown value is error, and every other value still needs the payer binding's three DEM-1 members for railNetwork (RAV-R3, whatever the availability)",
             "railSelectable": "rail-preflight want member: whether the orchestrator may select the rail, before Agreement signature and the PIPE-6 commitment",
-            "authenticated": "recordRead member: true when the record is authenticated under FV-5 at its bft-final inclusion; absent or false for a plain RPC read, which the node pin does not authenticate. A handler's DEM-4 failure and a consumer's DEM-7 failed refutation need true",
-            "retainedFailureProof": "the DEM-4 proof the handler retained: classification, authentication (fv5-bft-final when FV-5 authenticated the failed record at its bft-final inclusion, rpc-read for a plain read; anything else is not authenticated), inclusionBlock and the record. A resume reuses only an authenticated proof that still binds, and APR accepts only such a proof",
+            "fv5Policy": "the FV-5 independent execution-result policy the verifier trusts, from its own configuration: the settlement-finality corpus's fixture-independent-results-v1 kind, authorityKeys (base64url Ed25519) and threshold; a missing or malformed policy authenticates nothing",
+            "executionResult": "recordRead member: FV-5's signed execution result for the record (kind, networkId, genesisHash, blockId, transactionRef, record, attestations), as the settlement-finality corpus signs it over the FV domain. It authenticates the record only when at least the policy's threshold of distinct policy keys verify it, it names railNetwork and the inclusion observation's blockId, its transactionRef is the record's own (kind demos, hash, blockNumber) and its record serializes exactly as the record read. A handler's DEM-4 failure, a consumer's DEM-7 failed refutation or contradiction, and delivery need it; a plain RPC read has none",
+            "authenticated": "recordRead member of an earlier draft: a read that says it is FV-5-authenticated. It decides nothing, whoever sets it; the *-fv5-flag-only vectors pin that",
+            "retainedFailureProof": "the DEM-4 proof the handler retained: classification, authentication (FV-5's signed execution result for the proof's own record, stored verbatim; rpc-read for a plain read, and the earlier draft's fv5-bft-final label, are none), inclusionBlock and the record. A resume and an APR check each verify the result themselves against fv5Policy and railNetwork (the proof's own block ID, as it has no inclusion observation of its own); a resume reuses only a proof that verifies and still binds, and APR accepts only such a proof",
             "restartedSinceRetention": "false only when the handler has run without a restart since it retained the transfer; after a (re)start a retained transfer is maybe-broadcast whatever broadcastState was recorded, and anything but false is a restart. The handler derives it, and broadcastState and retentionDurable, from the journal it reads back from stable storage (the boot that wrote the retention against its own), never from process-local state; tests/test_pay_dem_crash_restart.py stops a storage-backed reference handler on both sides of every transition and witnesses that derivation",
             "signedTransaction": "the signed transaction itself as the DEM-1 retention holds it, read back from the journal: a confirm request carries these bytes, and a broadcast's validity response must embed them",
             "hashRetainedForOtherPhases": "the other (jobId, phaseIndex) whose stored journals retain the same hash, read from storage like restartedSinceRetention; any entry refuses the egress",

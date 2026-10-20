@@ -382,10 +382,20 @@ A consumer MUST resolve a rail by:
 PA-2 or PA-3 rail under steps 1–4 above, the registry-index receipt's and the
 definition receipt's `blockRef.timestamp` (CORE SR2-6 consensus time, unix
 milliseconds) and the definition's authenticated `governance.acceptedAt` MUST
-each be no later than the authenticated session `startedAt`. Each receipt MUST
+each be no later than the authenticated session `startedAt`. A substrate
+binding whose block time is not in unix milliseconds converts it to SR2-6
+milliseconds before this comparison; a receipt whose consensus time cannot be
+so expressed does not resolve the rail. Each receipt MUST
 be an authentic established `finalized` receipt written by the registry's
 authorized writer; a receipt from another writer is discarded (CORE SR2-11).
-A caller-supplied definition and steward signature without the pinned index
+The registry's authorized writer is the native writer the consumer pins for the
+anchoring authority of the rail's phase (the steward under PA-2), never a writer
+named by a receipt or a caller. Two canonically unequal authorized receipts for
+the index binding or for the definition binding are an equivocation (CORE §5):
+the rail does not resolve (`indeterminate`). A consumer that does not implement
+the anchoring signature of the rail's phase, such as a PA-3 multisig signature,
+leaves the rail unresolved (`indeterminate`) and MUST NOT verify it as another
+phase. A caller-supplied definition and steward signature without the pinned index
 membership and both finalized anchor bindings do not resolve a rail. A later
 index or definition MAY inform a new session but MUST NOT rewrite the rail
 authority of an existing session. RTB-1 governs that session resolution. A
@@ -482,13 +492,19 @@ that carries a SHA-256 digest (a `listingRef.contentHash`, the deliverable
 `hash`, the payer, payee and `SessionParty` `bundleHash`, and an identity-bound
 agreement party's `bundleHash`) MUST be 64 lowercase hexadecimal characters; a
 historical agreement party's `bundleHash` keeps its open string contract.
-Other unknown members, top-level or nested, remain subject to CORE SIG-5. For
-an `IdentityBoundPaymentPhaseInput`, a missing or empty
-`identityBindingCompanions` is missing authority under the identity-binding
-rules below: the handler returns `indeterminate` (`ok: false`,
-`errorClass: "substrate"`) with no rail call, not a PC-1 rejection. A present
-`identityBindingCompanions` that is not an array of
-`IdentityBoundAgreementCompanion` objects is a PC-1 rejection. The serialized
+Other unknown members, top-level or nested, remain subject to CORE SIG-5. The
+authenticated Listing's selection alone chooses between `PaymentPhaseInput` and
+`IdentityBoundPaymentPhaseInput` (§9.5.1): an agreement whose discriminator is
+not the kind the Listing selects, in either direction, is a PC-1 rejection. On
+the identity-bound path an absent `identityBindingCompanions` member is missing
+authority under the identity-binding rules below: the handler returns
+`indeterminate` (`ok: false`, `errorClass: "substrate"`) with no rail call, not
+a PC-1 rejection. A present `identityBindingCompanions` that is not a non-empty
+array of objects, each carrying an `identityBundle` or `compositeRecord`
+member, is a PC-1 rejection on either path, as IBH makes it `error`. Each
+companion's members are decided by the §9.5.1 IBH-1..IBH-5 rerun (a companion
+without its `identityBundle` is IBH `indeterminate`), which completes before
+any rail call. The serialized
 `SessionContext` omits the runtime `signer`. No handler may add, drop or rename
 a member to make an input fit its shape. A PC-1 rejection is `rejected` before
 any rail call and maps to `ok: false` with `errorClass: "permanent"`.
@@ -580,7 +596,10 @@ type IdentityBoundPaymentPhaseInput = PaymentPhaseInput & {
 `PaymentPhaseInput` and both nested party shapes retain their existing wire
 contract. When the authenticated Listing phase selects either identity-bound
 agreement, the handler MUST instead require the additional companion member of
-`IdentityBoundPaymentPhaseInput`. It reruns CORE IBH-1..IBH-5 and requires the
+`IdentityBoundPaymentPhaseInput`. That Listing selection, not the agreement's
+own discriminator or the phase input, selects the path; an agreement of the
+other kind is a PC-1 rejection. Before any rail call the handler reruns CORE
+IBH-1..IBH-5 and requires the
 recomputed digest and CVR to match the exact authenticated Identify/Vet
 admission retained for every identity-bound agreement party,
 including each `bidder-non-winning` party retained by a sealed-envelope
@@ -2405,7 +2424,11 @@ SettlementAmendment is anchored via SR-2 at dacs4:amendment:{jobId}:{evidenceHas
 
 - (AMEND-1) An amendment consumer MUST resolve `amendsEvidenceRef` to its
   anchored artifact and recompute the AttestationRef content hash before reading
-  any target member. It MUST select the target arm from exactly one recognized
+  any target member. It admits the amendment and the resolved target from their
+  exact received bytes under CORE CF-5 before any hash or signature check:
+  amendment bytes CF-5 refuses violate AMEND-1, and refused target bytes are a
+  substituted resolution. Unknown members of the signed `amendsEvidenceRef`
+  remain subject to CORE SIG-5. It MUST select the target arm from exactly one recognized
   evidence discriminator: `evidenceVersion` selects `SettlementEvidence` under
   `dacs-evidence:v1:`, `legacyTransitionEvidenceVersion` selects
   `LegacyTransitionSettlementEvidence` under
@@ -2444,8 +2467,9 @@ SettlementAmendment is anchored via SR-2 at dacs4:amendment:{jobId}:{evidenceHas
   that orchestrator's, two authorized but canonically unequal carriers for the
   address (an equivocation under CORE §5), a target or amendment signature
   under a registered `ComponentSignature` algorithm the consumer does not
-  implement, or resolved bytes that differ from an authentic finalized anchor
-  binding the reference's own hash, leaves the amendment `indeterminate`: it is
+  implement, or resolved bytes that CF-5 refuses or that differ from an
+  authentic finalized anchor binding the reference's own hash, leaves the
+  amendment `indeterminate`: it is
   neither included as a valid unwind nor recorded as a violation until the
   target resolves. AMEND-1 identifies the target only; a
   transition or finality-bound target's §9.7 reservation authority or

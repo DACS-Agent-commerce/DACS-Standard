@@ -329,6 +329,7 @@ const controls = new Set([
   "auction-pricing-selection-rule-mismatch-rejected",
   "complete-highest-price",
   "receipt-selection-rule-phase-mismatch-rejected",
+  "receipt-selection-rule-only-mismatch-rejected",
   "finalized-state-at-reveal-deadline",
   "finalized-state-before-reveal-deadline-rejected",
   "binding-definition-unavailable",

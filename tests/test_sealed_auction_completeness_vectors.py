@@ -840,6 +840,7 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "demand-role-direction-rejected",
             "complete-highest-price",
             "receipt-selection-rule-phase-mismatch-rejected",
+            "receipt-selection-rule-only-mismatch-rejected",
             "finalized-state-at-reveal-deadline",
             "finalized-state-before-reveal-deadline-rejected",
             "binding-definition-unavailable",
@@ -892,6 +893,13 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "reveal-at-commit-deadline-admitted",
         }
         self.assertEqual(set(actual), controls)
+        # The README states both counts in prose; keep them equal to the corpus.
+        readme = " ".join((VECTORS.parent / "README.md").read_text(encoding="utf-8").split())
+        count = len(self.data["vectors"])
+        self.assertIn(f"{count} deterministic cases exercise", readme)
+        self.assertIn(
+            f"executes {len(controls)} named controls from the {count}-case corpus", readme
+        )
         for vector in self.data["vectors"]:
             if vector["name"] not in actual:
                 continue
@@ -1095,6 +1103,34 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
         for key in ("listing", "receipt", "agreement", "context"):
             self.assertEqual(aligned[key], control[key])
         self.assertEqual(Evaluator(mismatch).evaluate(), "fail")
+
+    def test_receipt_rule_alone_must_equal_signed_phase_rule(self):
+        vectors = {item["name"]: item for item in self.data["vectors"]}
+        control = vectors["complete-highest-price"]
+        mismatch = vectors["receipt-selection-rule-only-mismatch-rejected"]
+        self.assertEqual(Evaluator(control).evaluate(), "pass")
+        self.assertEqual(mismatch["expected"], "fail")
+        # Pricing and the invocation follow the lowest-price phase rule, so the
+        # pricing and invocation checks pass; only the receipt disagrees.
+        self.assertEqual(mismatch["receipt"]["selectionRule"], "highest-price")
+        self.assertEqual(mismatch["listing"]["parameters"]["selectionRule"], "lowest-price")
+        self.assertEqual(
+            mismatch["listing"]["pricing"], {"kind": "auction", "selectionRule": "lowest-price"}
+        )
+        self.assertEqual(
+            mismatch["context"]["authenticatedInvocation"]["selectionRule"], "lowest-price"
+        )
+        aligned = copy.deepcopy(mismatch)
+        aligned["listing"]["parameters"]["selectionRule"] = "highest-price"
+        aligned["context"]["authenticatedInvocation"]["selectionRule"] = "highest-price"
+        del aligned["listing"]["pricing"]
+        for key in ("listing", "receipt", "agreement", "context"):
+            self.assertEqual(aligned[key], control[key])
+        self.assertEqual(Evaluator(mismatch).evaluate(), "fail")
+        # Absent pricing skips the pricing check; the receipt check still refuses.
+        unpriced = copy.deepcopy(mismatch)
+        del unpriced["listing"]["pricing"]
+        self.assertEqual(Evaluator(unpriced).evaluate(), "fail")
 
     def test_unsupported_rules_fail_before_runtime_outcome_is_read(self):
         cases = [

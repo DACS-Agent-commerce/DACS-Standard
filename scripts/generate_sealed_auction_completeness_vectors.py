@@ -1182,13 +1182,21 @@ def build() -> dict:
     vectors.append(make_vector("complete-highest-price", "pass", "highest price deterministically selects bidder C", entries, records, high_receipt, signed_agreement(high_receipt)))
     # §8.4.3: the receipt rule MUST equal the signed phase rule too. Receipt,
     # agreement and pricing agree on highest-price and the invocation matches
-    # the phase, so only the lowest-price phase rule refuses this selection.
+    # the lowest-price phase, so the receipt and the pricing checks both
+    # refuse this selection.
     phase_rule_invocation = invocation_authority(high_receipt)
     phase_rule_invocation["selectionRule"] = "lowest-price"
     receipt_rule_mismatch = make_vector("receipt-selection-rule-phase-mismatch-rejected", "fail", "receipt and pricing selectionRule must equal the signed phase selectionRule", entries, records, high_receipt, signed_agreement(high_receipt), authenticated_invocation=phase_rule_invocation)
     receipt_rule_mismatch["listing"]["parameters"]["selectionRule"] = "lowest-price"
     receipt_rule_mismatch["listing"]["pricing"] = {"kind": "auction", "selectionRule": "highest-price"}
     vectors.append(receipt_rule_mismatch)
+    # SAC-7 alone: pricing and the invocation equal the lowest-price phase
+    # rule, so only the highest-price receipt (and the agreement signed over
+    # it) disagrees with the signed phase rule.
+    receipt_only_mismatch = make_vector("receipt-selection-rule-only-mismatch-rejected", "fail", "receipt selectionRule must equal the signed phase selectionRule when pricing matches the phase", entries, records, high_receipt, signed_agreement(high_receipt), authenticated_invocation=phase_rule_invocation)
+    receipt_only_mismatch["listing"]["parameters"]["selectionRule"] = "lowest-price"
+    receipt_only_mismatch["listing"]["pricing"] = {"kind": "auction", "selectionRule": "lowest-price"}
+    vectors.append(receipt_only_mismatch)
 
     omitted = copy.deepcopy(receipt)
     omitted["entries"] = [entry for entry in omitted["entries"] if entry["recordRef"]["contentHash"] != receipt["winner"]["revealRef"]["contentHash"]]

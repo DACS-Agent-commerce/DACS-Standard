@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -347,36 +348,71 @@ class VendoredVectorDriftTests(unittest.TestCase):
         self.assertEqual(result["comparisonHash"]["standard"], data["hash"])
         self.assertEqual(report["summary"]["uncheckable"], 0)
 
-    def test_fallback_unencodable_vendored_copy_is_drift(self):
-        # As in canonical mode, the Standard's vectors hash under the verified
-        # encoding, so a vendored value that encoding refuses is a known difference.
-        # Only the UTF-8 encodings refuse a lone surrogate.
+    def test_invalid_unicode_is_bad_input_on_either_side(self):
+        # A lone surrogate escape is not Unicode text. RFC 8785 refuses it and
+        # the security validator cannot verify a set holding one, so the checker
+        # refuses it on either side, in every mode, instead of hashing it under
+        # an ASCII encoding and reporting a match.
         name = "wide-int-v0.1"
-        ascii_encoding, utf8_encoding = "compact insertion-order (ascii)", "compact insertion-order (utf-8)"
-        for encoding, vectors in ((ascii_encoding, [{"input": BIG}]),
-                                  (utf8_encoding, [{"input": BIG, "name": "é"}])):
-            with self.subTest(encoding=encoding):
-                data = make_set(name, vectors)
-                data["hash"] = hashlib.sha256(CHECKER.canonical_encoding(vectors, encoding)).hexdigest()
-                write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
-                edited = [dict(vectors[0], name="\ud800")]
-                write_json(self.vendored_set(name), dict(data, vectors=edited))
-                code, report = self.run_checker()
-                result = self.result_for(report, name)
-                self.assertEqual((code, result["status"], result["changes"]), (1, "drifted", ["vectors"]))
-                self.assertEqual(result["comparison"], "declared-encoding-sha256+parsed-json")
-                self.assertEqual(result["hashEncoding"], encoding)
-                self.assertEqual(result["comparisonHash"]["standard"], data["hash"])
-                self.assertFalse(report["uncheckable"])
-                self.assertIn(f"DRIFTED  {name}", CHECKER.render_text(report))
-                if encoding == ascii_encoding:
-                    vendored_hash = hashlib.sha256(CHECKER.canonical_encoding(edited, encoding)).hexdigest()
-                    self.assertEqual(result["comparisonHash"]["vendored"], vendored_hash)
-                    self.assertNotEqual(vendored_hash, data["hash"])
-                    self.assertNotIn("cannot be hashed", result["comparisonNote"])
+        valid = make_set(name, [{"input": BIG, "name": "w1"}])
+        lone = make_set(name, [{"input": BIG, "name": "\ud800"}])
+        self.assertIn(b'"\\ud800"', json.dumps(lone).encode())
+        standard_path = self.standard / "conformance" / "vectors" / f"{name}.json"
+        modes = ((), ("--sets-only",), ("--subset",), ("--subset", "--sets-only"))
+        for side, path, label in (("standard", standard_path, f"{name}.json"),
+                                  ("vendored", self.vendored_set(name), f"security/{name}.json")):
+            for args in modes:
+                with self.subTest(side=side, args=args):
+                    write_json(standard_path, valid)
+                    write_json(self.vendored_set(name), valid)
+                    write_json(path, lone)
+                    code, report = self.run_checker(*args)
+                    self.assertEqual(code, 2, report)
+                    self.assertEqual(
+                        report["error"],
+                        f"{side} {label}: invalid JSON: a string is not valid Unicode (surrogates not allowed)")
+        # Other JSON files are held to the same rule, even when --sets-only ignores them.
+        write_json(standard_path, valid)
+        write_json(self.vendored_set(name), valid)
+        write_json(self.vendored / "golden.json", {"signing": {"note": "\udc00"}})
+        for args in modes:
+            with self.subTest(file="golden.json", args=args):
+                code, report = self.run_checker(*args)
+                self.assertEqual((code, report["error"]), (
+                    2, "vendored golden.json: invalid JSON: a string is not valid Unicode (surrogates not allowed)"))
+        # An escaped surrogate pair is one valid code point, so it still matches.
+        write_json(self.vendored / "golden.json", {"signing": {}})
+        pair = make_set(name, [{"input": BIG, "name": "\U0001f600"}])
+        self.assertIn(b'"\\ud83d\\ude00"', json.dumps(pair).encode())
+        write_json(standard_path, pair)
+        write_json(self.vendored_set(name), pair)
+        code, report = self.run_checker()
+        self.assertEqual((code, self.result_for(report, name)["status"]), (0, "match"))
+
+    def test_checker_and_security_validator_agree_on_invalid_unicode(self):
+        # The validator gates the Standard's own sets, so a set it rejects
+        # must not be a set the checker accepts, and it reports the cause
+        # rather than raising UnicodeEncodeError.
+        validator = sys.modules["validate_security_vectors"]
+        name = "wide-int-v0.1"
+        for label, text, valid in (("lone surrogate", "\ud800", False), ("surrogate pair", "\U0001f600", True)):
+            with self.subTest(label=label):
+                data = make_set(name, [{"name": text, "expected": "pass", "input": BIG}])
+                path = self.tmp / label.replace(" ", "-") / f"{name}.json"
+                write_json(path, data)
+                errors, count = validator.validate_set(str(path))
+                standard = self.tmp / label.replace(" ", "-") / "standard"
+                write_json(standard / "conformance" / "vectors" / f"{name}.json", data)
+                vendored = self.tmp / label.replace(" ", "-") / "vendored"
+                write_json(vendored / f"{name}.json", data)
+                code, report = self.run_checker(standard=standard, vendored=vendored)
+                if valid:
+                    self.assertEqual((errors, count, code), ([], 1, 0))
                 else:
-                    self.assertIsNone(result["comparisonHash"]["vendored"])
-                    self.assertIn(f"vendored: cannot be hashed using {encoding} (", result["comparisonNote"])
+                    self.assertEqual(
+                        errors, [f"{name}.json: a string in 'vectors' is not valid Unicode (surrogates not allowed)"])
+                    self.assertEqual(code, 2)
+                    self.assertIn("is not valid Unicode", report["error"])
 
     def test_fallback_reordered_members_under_insertion_order_encoding_are_drift(self):
         # Parsed values ignore member order, but an insertion-order encoding
@@ -443,21 +479,6 @@ class VendoredVectorDriftTests(unittest.TestCase):
         encoded = {encoding: CHECKER.canonical_encoding(vectors, encoding) for encoding in CHECKER.CANONICAL_ENCODINGS}
         self.assertEqual(encoded, expected)
         self.assertEqual(sys.modules["validate_security_vectors"].canonical_encodings(vectors), expected)
-
-    def test_fallback_standard_lone_surrogate_keeps_its_ascii_encoding(self):
-        # A UTF-8 refusal does not hide the ASCII encoding that verifies the declared hash.
-        name = "wide-int-v0.1"
-        encoding = "compact insertion-order (ascii)"
-        vectors = [{"input": BIG, "name": "\ud800"}]
-        data = make_set(name, vectors)
-        self.assertEqual(data["hash"], hashlib.sha256(CHECKER.canonical_encoding(vectors, encoding)).hexdigest())
-        write_json(self.standard / "conformance" / "vectors" / f"{name}.json", data)
-        write_json(self.vendored_set(name), data)
-        code, report = self.run_checker()
-        result = self.result_for(report, name)
-        self.assertEqual((code, result["status"], result["hashEncoding"]), (0, "match", encoding))
-        self.assertEqual(result["comparisonHash"], {"standard": data["hash"], "vendored": data["hash"]})
-        self.assertFalse(report["uncheckable"])
 
     def test_neither_hash_available_is_uncheckable(self):
         name = "wide-int-v0.1"
@@ -528,6 +549,67 @@ class VendoredVectorDriftTests(unittest.TestCase):
         code, report = self.run_checker()
         self.assertEqual(code, 2)
         self.assertIn("symlinked directory", report["error"])
+
+    def test_symlinked_or_special_json_file_is_bad_input(self):
+        # A link to the Standard's own file would compare that file with itself,
+        # and a FIFO would block the read, so neither is a vendored copy.
+        selection = self.tmp / "selection"
+        selection.mkdir()
+        path = selection / "alpha-v0.1.json"
+        standard_alpha = self.standard / "conformance" / "vectors" / "security" / "alpha-v0.1.json"
+        for label, make in (("link to the Standard's file", lambda: path.symlink_to(standard_alpha)),
+                            ("dangling link", lambda: path.symlink_to(self.tmp / "absent.json"))):
+            make()
+            for args in ((), ("--subset",), ("--subset", "--sets-only")):
+                with self.subTest(label=label, args=args):
+                    code, report = self.run_checker(*args, vendored=selection)
+                    self.assertEqual((code, report.get("error")), (2, f"symlinked file is not supported: {path}"))
+            path.unlink()
+        if hasattr(os, "mkfifo"):
+            os.mkfifo(path)
+            code, report = self.run_checker("--subset", "--sets-only", vendored=selection)
+            self.assertEqual((code, report.get("error")), (2, f"not a regular file: {path}"))
+            path.unlink()
+        # The Standard's tree is read the same way.
+        shutil.copy(standard_alpha, path)
+        moved = self.tmp / "alpha-v0.1.json"
+        standard_alpha.rename(moved)
+        standard_alpha.symlink_to(moved)
+        code, report = self.run_checker("--subset", "--sets-only", vendored=selection)
+        self.assertEqual((code, report.get("error")), (2, f"symlinked file is not supported: {standard_alpha}"))
+        standard_alpha.unlink()
+        moved.rename(standard_alpha)
+        code, report = self.run_checker("--subset", "--sets-only", vendored=selection)
+        self.assertEqual((code, report["summary"]["match"]), (0, 1))
+
+    def test_copy_named_after_a_standard_set_must_hold_that_set(self):
+        # The Standard names each set after its file stem. A consumer that loads
+        # vectors by file name would run one set's vectors as another's, so a
+        # swapped or misnamed copy is bad input in every mode, not a match.
+        alpha, beta = self.vendored_set("alpha-v0.1"), self.vendored_set("beta-v0.1")
+        alpha_bytes, beta_bytes = alpha.read_bytes(), beta.read_bytes()
+        alpha.write_bytes(beta_bytes)
+        beta.write_bytes(alpha_bytes)
+        message = ("vendored {path}: holds set 'beta-v0.1', but has the file name of the Standard's set "
+                   "'alpha-v0.1'")
+        for args in ((), ("--sets-only",), ("--subset",), ("--subset", "--sets-only")):
+            with self.subTest(args=args):
+                code, report = self.run_checker(*args)
+                self.assertEqual((code, report.get("error")),
+                                 (2, message.format(path="security/alpha-v0.1.json")))
+        # A selection of one misnamed file cannot pass as a subset either.
+        selection = self.tmp / "selection"
+        selection.mkdir()
+        (selection / "alpha-v0.1.json").write_bytes(beta_bytes)
+        code, report = self.run_checker("--subset", "--sets-only", vendored=selection)
+        self.assertEqual((code, report.get("error")), (2, message.format(path="alpha-v0.1.json")))
+        # Under its own name, or a name no Standard set has, the same bytes match.
+        for name in ("beta-v0.1.json", "beta-copy.json"):
+            with self.subTest(name=name):
+                next(selection.iterdir()).rename(selection / name)
+                code, report = self.run_checker("--subset", "--sets-only", vendored=selection)
+                self.assertEqual((code, report["summary"]["match"]), (0, 1))
+                self.assertEqual(self.result_for(report, "beta-v0.1")["vendoredPath"], name)
 
     def test_float_zero_sign_is_preserved_but_spelling_is_not(self):
         self.assertFalse(CHECKER.same_json([0.0], [-0.0]))

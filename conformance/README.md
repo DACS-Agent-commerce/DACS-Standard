@@ -64,11 +64,13 @@ has been fetched (`git fetch --tags`), which a shallow or single-branch
 clone may not have done.
 
 Point the tool at the directory holding vector sets, such as `vectors/`,
-rather than a copy of the whole `conformance/` tree. Incomplete set objects
-and symlinked subdirectories are bad input. Each Standard set is named after
-its file stem, so a vendored file with the file name of a Standard set that
-does not hold a complete set, such as one that lost its `set` member or is
-wrapped in an array, is also bad input, in every mode.
+rather than a copy of the whole `conformance/` tree. Incomplete set objects,
+symlinked subdirectories and files, JSON paths that are not regular files,
+and strings that are not valid Unicode (a lone surrogate escape) are bad
+input. Each Standard set is named after its file stem, so a vendored file
+with the file name of a Standard set must hold that complete set. One that
+lost its `set` member, is wrapped in an array or holds another set is also
+bad input, in every mode.
 
 Other JSON files under `vectors/`, such as `golden.json`, the
 `dacs-v0.1-*` paths and `examples/`, are matched by their path relative to
@@ -112,10 +114,9 @@ When the Standard supplies the verified encoding, the checker hashes the
 vendored copy under that encoding even if its own declared hash is stale or
 edited. Those changes report drift with exit 1. When the Standard's vectors
 canonicalize and the vendored vectors do not, the vectors differ and the set
-is reported as drifted. The same applies when the vendored vectors cannot be
-encoded with the Standard's verified declared encoding. Each encoding is tried
-on its own, so a lone surrogate, which only the UTF-8 encodings refuse, still
-hashes under an ASCII encoding.
+is reported as drifted. Because invalid Unicode is bad input on either side,
+every accepted encoding can encode the vectors it compares, as
+`scripts/validate_security_vectors.py` requires of the Standard's own sets.
 
 Both modes also compare type-strict parsed values: Unicode normalization,
 `1.0` versus `1`, and float zero-sign changes are drift. Numbers use Python's

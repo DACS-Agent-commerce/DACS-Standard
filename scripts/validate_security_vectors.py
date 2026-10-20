@@ -17,7 +17,8 @@ This validator checks each set against its own claims:
   array. Sets from different authors used slightly different canonical
   encodings (insertion-order vs sorted keys; ASCII-escaped vs raw UTF-8), so
   any of the four compact-JSON variants is accepted — but the hash MUST match
-  one of them, so a stale hash after an edit still fails;
+  one of them, so a stale hash after an edit still fails. A string that is
+  not valid Unicode (a lone surrogate escape) fails under every variant;
 - every vector carries a unique, non-empty ``name``;
 - every vector carries a verdict field (``expected``; legacy sb2 uses
   ``decision``) whose value is a known DACS verdict — the §7.5.1 four-value
@@ -165,11 +166,17 @@ def validate_set(path: str) -> tuple[list[str], int]:
 
     want_hash = data["hash"]
     matched = None
-    for label, encoded in canonical_encodings(vectors).items():
+    try:
+        encodings = canonical_encodings(vectors)
+    except UnicodeEncodeError as exc:
+        # A lone surrogate escape is not Unicode text, so no hash can verify it.
+        errors.append(f"{name}: a string in 'vectors' is not valid Unicode ({exc.reason})")
+        encodings = {}
+    for label, encoded in encodings.items():
         if hashlib.sha256(encoded).hexdigest() == want_hash:
             matched = label
             break
-    if matched is None:
+    if matched is None and encodings:
         errors.append(
             f"{name}: 'hash' does not match sha256 of the vectors array under any "
             f"accepted canonical encoding — stale hash after an edit?")

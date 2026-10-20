@@ -17,8 +17,8 @@ checkout (its working tree, or ``--rev``) and under the vendored directory,
 and are matched by their ``set`` name, so the vendored layout may be flat or
 keep the ``security/`` subdirectory. An object with any required set member
 must have all five members. Each Standard set is named after its file stem,
-so a vendored file with the file name of a Standard set must hold a complete
-set in every mode.
+so a vendored file with the file name of a Standard set must hold that
+complete set in every mode.
 
 Every other JSON file, such as ``golden.json``, the ``dacs-v0.1-*`` paths and
 ``examples/``, is matched by its path relative to the vectors directory and
@@ -58,11 +58,9 @@ any of these differ:
   reported; otherwise the first one is. The Standard's verified encoding can
   also hash a vendored copy whose own declared hash is stale or edited.
   When the Standard's vectors canonicalize and the vendored ones do not,
-  the vectors differ and the set is drifted. The same holds when the
-  Standard's vectors hash under the verified declared encoding and the
-  vendored ones cannot be encoded with it. Each encoding is tried on its
-  own, so a lone surrogate, which only the UTF-8 encodings refuse, still
-  hashes under an ASCII one;
+  the vectors differ and the set is drifted. A string that is not valid
+  Unicode (a lone surrogate escape) is bad input on either side, so every
+  encoding can encode what is compared;
 - ``count``: the vendored ``count`` differs from the Standard's, or from the
   vendored ``vectors`` length;
 - ``hash``: the vendored declared ``hash`` differs from the Standard's;
@@ -77,10 +75,11 @@ any of these differ:
 Exit status: 0 when every set and compared file matches, 1 when any set or
 file is drifted, missing (unless ``--subset``) or extra, 2 on any
 uncheckable set, including a missing or extra one, or bad input
-(unreadable paths or revision, symlinked subdirectories,
-invalid or excessively nested JSON, a set file missing a required member,
-a file named after a Standard set that is not a set, or two files declaring
-the same set). Exit 2 takes precedence over drift.
+(unreadable paths or revision, symlinked subdirectories or files, a JSON
+path that is not a regular file, invalid or excessively nested JSON, a
+string that is not valid Unicode, a set file missing a required member,
+a file named after a Standard set that is not that set, or two files
+declaring the same set). Exit 2 takes precedence over drift.
 
 Dependency-free stdlib, matching the other validators.
 """
@@ -145,15 +144,24 @@ def _reject_constant(name: str) -> Any:
 
 
 def parse_json(raw: bytes, label: str) -> Any:
-    """Parse one JSON file strictly: no duplicate members or non-JSON constants."""
+    """Parse one JSON file strictly: no duplicate members, non-JSON constants or lone surrogates."""
     try:
-        return json.loads(
+        data = json.loads(
             raw.decode("utf-8"),
             object_pairs_hook=_unique_members,
             parse_constant=_reject_constant,
         )
     except (ValueError, RecursionError) as exc:
         raise BadInput(f"{label}: invalid JSON: {exc}") from exc
+    # A \ud800-style escape decodes to a lone surrogate, which is not Unicode
+    # text: RFC 8785 refuses it and the security validator cannot encode it.
+    try:
+        json.dumps(data, ensure_ascii=False).encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise BadInput(f"{label}: invalid JSON: a string is not valid Unicode ({exc.reason})") from exc
+    except RecursionError as exc:
+        raise BadInput(f"{label}: invalid JSON: too deeply nested to check") from exc
+    return data
 
 
 def parse_set(data: Any, label: str, sets_only: bool = False) -> VectorSet | None:
@@ -179,16 +187,13 @@ def parse_set(data: Any, label: str, sets_only: bool = False) -> VectorSet | Non
         hash_error = str(exc)
     encoded_hashes = {}
     if content_hash is None:
-        # Each encoding is tried on its own, so a value one encoding refuses
-        # (a lone surrogate in UTF-8) leaves the others usable.
+        # parse_json refused invalid Unicode, so every encoding can encode the vectors.
         for encoding in CANONICAL_ENCODINGS:
             try:
                 encoded_hashes[encoding] = hashlib.sha256(
                     canonical_encoding(data["vectors"], encoding)).hexdigest()
             except RecursionError as exc:
                 raise BadInput(f"{label}: vectors are too deeply nested to hash") from exc
-            except (TypeError, ValueError):
-                pass
     return VectorSet(
         name=data["set"],
         path=label,
@@ -212,8 +217,9 @@ def index_sets(
     """Split parsed files into sets keyed by name and other JSON keyed by path.
 
     ``set_files`` maps the file names of the Standard's sets to their set
-    names. A file with one of those names must hold a complete set in every
-    mode, so a damaged copy is bad input rather than ignored or missing.
+    names. A file with one of those names must hold that complete set in every
+    mode, so a damaged or swapped copy is bad input rather than ignored,
+    missing or matched against another set.
     """
     sets: dict[str, VectorSet] = {}
     others: dict[str, Any] = {}
@@ -224,6 +230,11 @@ def index_sets(
         if vector_set is None and expected is not None:
             raise BadInput(
                 f"{side} {label}: is not a vector set, but has the file name of the Standard's set {expected!r}"
+            )
+        if vector_set is not None and expected is not None and vector_set.name != expected:
+            raise BadInput(
+                f"{side} {label}: holds set {vector_set.name!r}, but has the file name of the Standard's set "
+                f"{expected!r}"
             )
         if vector_set is None:
             others[label] = data
@@ -256,6 +267,12 @@ def read_tree(base: Path) -> list[tuple[str, bytes]]:
             if not filename.endswith(".json"):
                 continue
             path = Path(dirpath) / filename
+            # A symlink can make another tree's file pass as a copy, and a
+            # FIFO or device would block the read.
+            if path.is_symlink():
+                raise BadInput(f"symlinked file is not supported: {path}")
+            if not path.is_file():
+                raise BadInput(f"not a regular file: {path}")
             try:
                 raw = path.read_bytes()
             except OSError as exc:
@@ -362,14 +379,6 @@ def compare(standard: VectorSet, vendored: VectorSet) -> dict[str, Any]:
                         canonical_encoding(vector_set.vectors, encoding)).hexdigest()
                 except RecursionError as exc:
                     raise BadInput(f"set {standard.name!r}: vectors are too deeply nested to hash") from exc
-                except (TypeError, ValueError) as exc:
-                    if side == "standard":
-                        raise BadInput(
-                            f"set {standard.name!r}: vectors cannot be hashed using {encoding}: {exc}") from exc
-                    # The Standard's vectors hash under this encoding and the
-                    # vendored ones do not, so the vectors differ.
-                    hashes[side] = None
-                    note += f"; vendored: cannot be hashed using {encoding} ({exc}), so the vectors differ"
         else:
             comparison = "uncheckable"
             note = f"no canonical or verified declared-encoding hash ({note})"

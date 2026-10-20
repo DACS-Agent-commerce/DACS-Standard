@@ -152,3 +152,15 @@ The vector validator checks:
 These vectors are non-normative tooling around the standard. The normative source
 remains the [spec documents](../../spec/). When a vector and
 the specification disagree, the specification wins and the vector should be fixed.
+
+The negotiated x402 corpus also exercises Solana transaction-specific authorization
+retention: complete v0 framing, verified client signatures, sponsor
+co-signing, authenticated finalized transaction identity, retry and response loss,
+substituted transactions and other signers, and unavailable identity lookups.
+Before signing, each message must be exactly the payment: one `TransferChecked`
+between the derived associated token accounts for exactly the signed amount, the
+Memo, bounded compute budget, and nothing else. Each fixture's message encodes
+that vector's own terms. Legacy framing and the sanitizer rules are covered by
+`tests/test_solana_authorization.py`, not by the vectors. Offline signed wire
+fixtures model transaction identity; authenticated ledger fixtures still supply
+execution outcomes and finality. They do not implement a live RPC resolver.

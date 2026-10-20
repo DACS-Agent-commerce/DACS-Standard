@@ -150,7 +150,7 @@ def vector(name, expected, note, rail, **ctx):
 
 
 def build() -> dict:
-    live_x402 = sign_rail("x402:default", "live")
+    live_x402 = sign_rail("x402:availability-test", "live")
     live_old = sign_rail("x402:revision-test", "live", 1)
     disabled = sign_rail("x402:revision-test", "disabled", 2)
     failed = sign_rail("x402:failure-test", "failed")
@@ -229,14 +229,14 @@ def build() -> dict:
             "malformed-rail",
             "error",
             "missing availability and railVersion is malformed",
-            {"railId": "x402:default"},
+            {"railId": "x402:availability-test"},
             pinned_digest="00" * 32,
         ),
         vector(
             "unknown-availability-value",
             "error",
             "an unknown availability value is malformed",
-            sign_rail("x402:default", "experimental"),
+            sign_rail("x402:availability-test", "experimental"),
         ),
     ]
     return {

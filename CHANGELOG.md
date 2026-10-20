@@ -13,6 +13,36 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — pay-dem party address, rail preflight and reference witness
+
+- DEMOS-MAPPING §A.2 defines the *pay-dem party address*: `payee.payeeAddress`,
+  its payout binding and the `payer.payingKey` key are a Demos key (optional
+  `0x`) or a `did:demos:agent:` DID over 64 lower-case hex digits, and DEM-1,
+  DEM-7 and FV-5 compare the key they project to. A genuine payment no longer
+  fails because the Agreement spelled the payee as the node does (`0x`) or as
+  DACS-1 does (DID); any other value is `error`. Twelve vectors pin it.
+- RAV-R3's preflight applies to a `pay-dem` rail whatever its availability, so
+  no session selects the rail, signs an Agreement or commits to it unless the
+  payer's binding holds DEM-1's three members. A binding found missing at
+  settle is RAV-R4 `substrate`, not `permanent`, so an honest payer is not
+  blamed after the payee delivered. A new `rail-preflight` operation (5
+  vectors) pins the preflight; the 5 refusing `pre-sign-gate` vectors now
+  pin `substrate`.
+- PC-4: for `pay-dem`, `permanent` is only a refusal found before the first
+  egress or a DEM-4 proven failure, and `transient` never applies.
+- DEM-1 makes a phase's retention an atomic create-if-absent and flushes each
+  directory the store creates. DEM-6 journals each call as possibly sent
+  before making it, requires a start identifier no earlier start used, and
+  qualifies apply-time dedup by the `nonceEnforcement` fork. DEM-7 has the
+  payee create its index once, treat a missing, malformed or rolled-back index
+  as no snapshot (`error`), and deliver idempotently on
+  `(txHash, jobId, phaseIndex)`.
+- The reference payer and payee and their crash-restart harness implement and
+  witness each of these, with five more wrong variants that the harness
+  catches; the conformance procedure adds in-process interruption, concurrent
+  starts and index loss. The corpus has 284 vectors (33 `pass`, 103 `fail`,
+  131 `indeterminate`, 17 `error`) and 104 guards.
+
 ### Changed — native DEM applied-payment verification
 
 - DACS-4 DEM-3/DEM-7 and FV-5 require independently authenticated committed
@@ -30,7 +60,7 @@ The format used per release:
   vectors in both corpora cover each spelling the §A.2 profile projects alike:
   a `0x`-prefixed or bare `send` recipient argument (whose credit edit names it
   with a single `0x`), bare or prefixed party keys, a string or integer nonce,
-  and a string or number amount up to 2^53 − 1. The corpora contain 267 pay-dem
+  and a string or number amount up to 2^53 − 1. The corpora contain 284 pay-dem
   and 194 settlement-finality cases.
 - The DEMOS-MAPPING §A.2 profile covers only a network whose sealed genesis
   leaves the `gasFeeSeparation` fork unscheduled (`activationHeight: null`).

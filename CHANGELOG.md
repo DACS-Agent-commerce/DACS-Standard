@@ -13,6 +13,41 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — pay-dem start identity survives a lost store; a found record is flushed before it is trusted
+
+- DEM-6: a start's identifier must not repeat after the handler's other
+  state is lost, or restored from an older copy. The reference handler drew
+  it from a counter in its store, which read a missing counter as zero. A
+  restart after that counter was lost or rolled back took the crashed start's
+  identity. It then sent `confirm` and `broadcast` (stopped after the
+  retention) or `broadcast` (stopped after `confirm` was journaled). It never
+  sent one call twice. The handler now draws 128 random bits for each start,
+  and keeps no start state.
+- DEM-7: an admission or a delivery record counts only once it is on stable
+  storage. A payee that stopped after writing its first delivery record, and
+  before fsyncing it or its directory entry, left a record that a restarted
+  check trusted. That check returned `pass` with nothing fsynced, so a power
+  loss could drop the record while the admission stayed, and a later check
+  delivered again. Now:
+  - the payee fsyncs an existing delivery record and its directory before
+    relying on it;
+  - every append fsyncs the directory, not only the append that creates the
+    file;
+  - `Store.read` fsyncs the document's directory before returning;
+  - creating the store's directories flushes the entry of the deepest one
+    that already exists, which an interrupted start may have left unflushed.
+- The crash-restart harness adds:
+  - the loss, and the rollback, of every stored document but the journals,
+    after each payer crash point;
+  - payee crash points between each write and its flush
+    (`before-admission-directory-fsync`, `before-delivery-fsync`,
+    `before-delivery-directory-fsync`), with the fsync order on restart;
+  - a store directory that an interrupted start created.
+
+  Two new wrong variants (`counter-reset-when-missing`,
+  `trust-unflushed-record`) each fail it, for 23 in all. The corpus is
+  unchanged apart from one field description: 362 vectors and 118 guards.
+
 ### Fixed — pay-dem ended phases stay ended; start identity and delivery record are the handler's own
 
 - DEM-4/DEM-6: a phase with a retained failure proof has ended. When the
@@ -33,8 +68,8 @@ The format used per release:
     refuses an inclusion-only success. Their verdicts do not change.
 - DEM-6: the start identifier that decides whether a start has fallen since
   the retention is made durable by the handler itself, never supplied by its
-  caller. The reference handler mints it from a durable counter in its store.
-  The caller's `--boot` only labels egress, so a restarted process that
+  caller. The reference handler mints it itself (now 128 random bits per
+  start; see the entry above). The caller's `--boot` only labels egress, so a restarted process that
   repeats the value sends nothing.
 - The reference payee's delivery record now reaches stable storage as a
   `Store` document does: the record is fsynced, and then the directory entry

@@ -40,8 +40,40 @@ The format used per release:
 - The reference payer and payee and their crash-restart harness implement and
   witness each of these, with five more wrong variants that the harness
   catches; the conformance procedure adds in-process interruption, concurrent
-  starts and index loss. The corpus has 284 vectors (33 `pass`, 103 `fail`,
-  131 `indeterminate`, 17 `error`) and 104 guards.
+  starts and index loss.
+
+### Fixed — pay-dem binding for the rail's network; durable DEM-4 result in the reference
+
+- DEM-1 and RAV-R3 define "the phase's network": the pinned `RailDefinition`'s
+  `consumerFinalityProfile.settlement` network and genesis, the rail's only
+  signed network identity, never one the binding supplies. The handler uses
+  its binding for that network, and each member (pinned nodes, applied-payment
+  authority, sealed-genesis `gasFeeSeparation` attestation) must name that
+  network and genesis. DEMOS-MAPPING §A.2 says the attestation names its
+  network and genesis. A handler that keeps one binding for every network
+  would otherwise sign and debit the payer on a network whose record can
+  never settle.
+- `pre-sign-gate`, `broadcast-gate` and `rail-preflight` now take
+  `railNetwork` and the payer's per-network `demosBinding` configuration
+  instead of three caller-computed booleans; `classify-execution`,
+  `resume-phase` and `admit-*` take the same `railNetwork` instead of a
+  binding-derived `network`. Twenty-three new vectors refuse a binding only
+  for another network or genesis, pinned nodes or an authority for another
+  network, and a fork attestation from another genesis, each at sign,
+  `confirm`, broadcast and preflight, and pass the rail's entry among
+  several. Four guards pin them.
+- The reference handler finds its binding entry by the rail's network, runs
+  the pre-sign gate before it retains anything, and composes a re-read from
+  the node's plain record, the configured applied-payment authority and a
+  separate FV-5 authority; a node's own authentication claim is dropped. A
+  DEM-4 failure is journaled with its proof in one conditional write before
+  `permanent` is returned, and a resume reuses only a proof that still
+  authenticates and binds. Retention and the cross-phase hash check share one
+  store-wide lock. The harness catches four more wrong variants: a network
+  taken from the binding, a trusted node read, an unjournaled failure and a
+  per-phase retention lock.
+- The corpus has 307 vectors (36 `pass`, 123 `fail`, 131 `indeterminate`,
+  17 `error`) and 108 guards.
 
 ### Changed — native DEM applied-payment verification
 
@@ -60,7 +92,7 @@ The format used per release:
   vectors in both corpora cover each spelling the §A.2 profile projects alike:
   a `0x`-prefixed or bare `send` recipient argument (whose credit edit names it
   with a single `0x`), bare or prefixed party keys, a string or integer nonce,
-  and a string or number amount up to 2^53 − 1. The corpora contain 284 pay-dem
+  and a string or number amount up to 2^53 − 1. The corpora contain 307 pay-dem
   and 194 settlement-finality cases.
 - The DEMOS-MAPPING §A.2 profile covers only a network whose sealed genesis
   leaves the `gasFeeSeparation` fork unscheduled (`activationHeight: null`).
@@ -70,14 +102,14 @@ The format used per release:
   default and its devnet genesis activate the fork, and RPC does not report
   it). DEM-1 therefore also requires the Demos binding to attest the fork
   unscheduled for the phase's network, from that network's genesis, before
-  signing (`permanent` otherwise) and at every egress. New vectors refuse a
+  signing (RAV-R4 `substrate` otherwise) and at every egress. New vectors refuse a
   binding that attests the fork scheduled or attests nothing, and keep a
   fee-separated `confirmed` record `indeterminate` on the handler, consumer
   and FV-5 paths. DEM-6's "never repeat a call" now has corpus vectors for a
   second `confirm` after an interrupted `confirm`, after a possible broadcast
   and after this submission's `confirm` returned.
-  Migration: a runner of the earlier corpus passes `gasFeeSeparationUnscheduled`
-  to its `pre-sign-gate` and `broadcast-gate` checks.
+  Migration: the binding members are now the `demosBinding` configuration
+  read for `railNetwork` (see "pay-dem binding for the rail's network" above).
 - The DEM-1 signed transaction must be the complete demosdk 4.0.16 native-send
   envelope that the pinned node admits. It carries a positive integer
   `timestamp`, `from_ed25519_address`, a fee object with exactly `network_fee`,
@@ -123,8 +155,8 @@ The format used per release:
   completes the same uninterrupted submission may follow, and a timeout,
   error or restart leaves only re-reads. The handler also refuses to sign
   unless its Demos binding configures pinned nodes and an applied-payment
-  authority, since DEM-3 success is otherwise unreachable; this is
-  `permanent` before any effect. The DACS-4 maturity table now lists
+  authority, since DEM-3 success is otherwise unreachable; this is RAV-R4
+  `substrate` before any effect. The DACS-4 maturity table now lists
   `pay-dem`.
 - A demosdk `broadcast` carries the validity response that `confirm`
   returned, and the pinned node executes the transaction embedded in it, so
@@ -217,7 +249,7 @@ The format used per release:
 - The DEM-1 refusal before signing has its own `pre-sign-gate` vectors. Their
   input holds no signed transaction, and a binding without pinned nodes or an
   applied-payment authority must return `ok: false` with
-  `errorClass: "permanent"`, never `substrate`. A test also checks that every
+  `errorClass: "substrate"` (RAV-R4), never `permanent`. A test also checks that every
   DEM-1 refusal at `broadcast` is the same refusal at `confirm`, and an unknown
   `request` value is refused.
 - DEMOS-MAPPING §A.2 notes that `confirmTx` admission also regenerates edits
@@ -1356,7 +1388,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 267-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 307-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope

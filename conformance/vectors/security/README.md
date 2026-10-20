@@ -1437,9 +1437,10 @@ short balance can be the transfer's own debit. Each result carries `cause`
 handler and payee (`tests/pay_dem_reference_handler.py`) that take every state
 input of these decisions from what they read back from storage. It stops
 them, one process per start, on each side of every transition and restarts
-them from storage. Each start mints its identifier from a durable counter in
-the payer's store; the caller's `--boot` only labels its egress, so a restart
-that repeats it is still a restart. The payer's first retention is a create-if-absent under
+them from storage. Each start draws its identifier as 128 random bits, which
+need no stored state, so losing or restoring the payer's store never repeats
+one; the caller's `--boot` only labels its egress, so a restart that repeats
+it is still a restart. The payer's first retention is a create-if-absent under
 the journal lock, it journals each call as possibly sent before making it,
 and its later journal saves and the payee's index writes are conditional on
 the state they were read as. After a restart no signed effect leaves, every
@@ -1469,7 +1470,12 @@ result of another record, another network's result, and a missing,
 unfinalized or other-block inclusion are re-read instead, and when that
 re-read serves a confirmed record with its applied payment, the phase stays
 ended: nothing is returned as success, written or sent. A crash on either
-side of the pre-egress `permanent` refusal write sends nothing. Twenty-one wrong
+side of the pre-egress `permanent` refusal write sends nothing. A restart
+after every stored document but the journals is lost, or restored from an
+older copy, sends nothing at any crash point. A payee that stops between an
+admission's rename and its directory fsync, or between a delivery record's
+write and its fsync or its directory's, flushes what it finds before relying
+on it when it restarts, and delivers once. Twenty-three wrong
 variants each fail it: a process-local journal, a journal written after
 `confirm`, progress journaled only after a call returns, restart taken from
 saved progress, no fsync, no fsync of a new directory's parent, an unlocked
@@ -1478,10 +1484,11 @@ store-wide retention lock, the rail's network taken from the binding, the
 node's own authentication claim taken for FV-5, a DEM-4 result not journaled
 with its proof, an FV-5 result taken without verifying its signatures, a
 signed failure taken without its `bft-final` inclusion, the caller's start
-value taken as the start identifier, an ended phase re-derived from a re-read,
-a process-local admission index, an unconditional index write, a lost index
-read as empty, a delivery on every check and a new delivery record whose
-directory entry is not fsynced.
+value taken as the start identifier, a start counter that a lost or restored
+store resets, an ended phase re-derived from a re-read, a process-local
+admission index, an unconditional index write, a lost index read as empty, a
+delivery on every check, a new delivery record whose directory entry is not
+fsynced and an index entry or delivery record trusted before it is flushed.
 
 `phase.payeeAddress` and `phase.payerPayingKey` are DEMOS-MAPPING §A.2 pay-dem
 party addresses: a bare or `0x` Demos key or a `did:demos:agent:` DID over 64

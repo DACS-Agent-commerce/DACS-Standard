@@ -23,15 +23,21 @@ the harness must catch.
 because `Store.write` returns only once the journal, its directory and every
 directory it created are fsynced, which `test_pay_dem_crash_restart`
 witnesses by the order of fsync calls before the first egress. A delivery
-record reaches stable storage the same way, file and new directory entry,
-before `deliver` returns.
+record reaches stable storage the same way, file and then directory entry,
+before `deliver` returns. A record a decision trusts is flushed before it is
+trusted, since an interrupted start can leave one that a restart can read but
+a power loss can still remove: `Store.read` fsyncs the document's directory,
+the payee fsyncs an existing delivery record and its directory entry before
+it counts as delivered, and `durable_directories` flushes the entry of the
+deepest directory that already exists.
 
 Whether a start has fallen since the retention compares the start recorded
-in the journal with this start's identifier, which the handler mints from a
-durable counter in its store; `--boot` only labels a process's egress, so a
-restarted process that repeats it is still a restart (DEM-6). A stored
-terminal failure is never reopened: when its proof no longer verifies, the
-re-read is post-terminal and never returns success.
+in the journal with this start's identifier: 128 random bits the handler
+draws for each start, which no loss or rollback of its store can make it
+repeat; `--boot` only labels a process's egress, so a restarted process that
+repeats it is still a restart (DEM-6). A stored terminal failure is never
+reopened: when its proof no longer verifies, the re-read is post-terminal and
+never returns success.
 
 Run as a script, one process per start:
     pay_dem_reference_handler.py pay --work DIR --boot ID [--job JOB] [--crash POINT] [--mutant M]
@@ -47,6 +53,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import secrets
 import sys
 from typing import Any, Callable
 
@@ -62,6 +69,7 @@ CRASH_EXIT = 70
 JOURNAL = "pay-dem-journal.json"
 INDEX = "admission-index.json"
 DELIVERIES = "deliveries.jsonl"
+# Only the wrong handler that counts its starts keeps this document.
 STARTS = "starts.json"
 # One lock for every phase's retention, so the create-if-absent and the
 # cross-phase hash check are one step for the whole store.
@@ -70,9 +78,9 @@ PAYER_MUTANTS = ("process-local-journal", "journal-after-confirm", "restart-from
                  "no-cross-phase-index", "no-parent-fsync", "blind-first-retention", "progress-after-call",
                  "network-from-binding", "node-authenticates-read", "failure-not-journaled",
                  "per-phase-retention-lock", "unverified-fv5-result", "fv5-result-alone",
-                 "caller-start-id", "terminal-reopens")
+                 "caller-start-id", "terminal-reopens", "counter-reset-when-missing")
 PAYEE_MUTANTS = ("process-local-index", "no-conditional-write", "empty-index-when-missing",
-                 "deliver-every-check", "no-sink-parent-fsync")
+                 "deliver-every-check", "no-sink-parent-fsync", "trust-unflushed-record")
 NO_GUARD_REMOVED = frozenset()
 
 
@@ -100,12 +108,16 @@ def _fsync_directory(path: Path) -> None:
 
 def durable_directories(root: Path, *, parent_fsync: bool = True) -> None:
     """Create `root` and each missing ancestor, fsyncing each new directory's
-    parent, so every entry on the path survives a crash."""
+    parent, so every entry on the path survives a crash. The deepest
+    directory that already exists can be the last one an interrupted start
+    created before it fsynced the parent, so that entry is flushed first."""
     missing = []
     path = Path(root).absolute()
     while not path.exists():
         missing.append(path)
         path = path.parent
+    if parent_fsync:
+        _fsync_directory(path.parent)
     for path in reversed(missing):
         path.mkdir(exist_ok=True)
         if parent_fsync:
@@ -118,24 +130,20 @@ class Store:
     flushed and fsynced, is renamed over the name, and then the directory is
     fsynced, so the document survives a crash at any later step. A directory
     the store creates is fsynced in its parent before the store is used, so a
-    new store's own entry survives too. Member order is kept, so stored
-    signed bytes read back unchanged."""
+    new store's own entry survives too. A read fsyncs the directory before
+    the document is returned: a start that stopped between the rename and the
+    directory fsync leaves a document a later start can read but a power loss
+    can still remove. Member order is kept, so stored signed bytes read back
+    unchanged."""
 
-    def __init__(self, root: Path, *, fsync: bool = True, parent_fsync: bool = True):
+    def __init__(self, root: Path, *, fsync: bool = True, parent_fsync: bool = True, flush_reads: bool = True):
         self.root = Path(root)
         self.fsync = fsync
+        self.flush_reads = flush_reads
         durable_directories(self.root, parent_fsync=fsync and parent_fsync)
 
-    def next_start(self) -> str:
-        """A start identifier no earlier start on this store used: a durable
-        counter, advanced under its lock and on stable storage before the
-        start makes any decision (DEM-6)."""
-        with self.locked(STARTS):
-            number = (self.read(STARTS) or {"starts": 0})["starts"] + 1
-            self.write(STARTS, {"starts": number})
-        return f"start-{number}"
-
-    def write(self, name: str, value: Any) -> None:
+    def write(self, name: str, value: Any, *, between: Callable[[], None] | None = None) -> None:
+        """`between` runs after the rename and before the directory fsync."""
         temporary = self.root / f".{name}.tmp"
         with open(temporary, "wb") as handle:
             handle.write(json.dumps(value).encode("utf-8"))
@@ -143,14 +151,21 @@ class Store:
             if self.fsync:
                 os.fsync(handle.fileno())
         os.replace(temporary, self.root / name)
+        if between is not None:
+            between()
         if self.fsync:
             _fsync_directory(self.root)
 
     def read(self, name: str) -> Any:
         try:
-            return json.loads((self.root / name).read_bytes())
+            stored = (self.root / name).read_bytes()
         except FileNotFoundError:
             return None
+        if self.fsync and self.flush_reads:
+            # The file was fsynced before its rename; this makes the rename
+            # that named it durable before anything acts on it.
+            _fsync_directory(self.root)
+        return json.loads(stored)
 
     def locked(self, name: str):
         """An exclusive lock for a read-compare-write of `name`."""
@@ -167,7 +182,7 @@ class MemoryStore(Store):
         self.root = Path(root)
         self.documents: dict[str, str] = {}
 
-    def write(self, name: str, value: Any) -> None:
+    def write(self, name: str, value: Any, **_: Any) -> None:
         self.documents[name] = json.dumps(value)
 
     def read(self, name: str) -> Any:
@@ -197,18 +212,47 @@ class _Lock:
             self.handle.close()
 
 
-def _append(path: Path, entry: dict[str, Any], *, parent_fsync: bool = True) -> None:
+def _append(path: Path, entry: dict[str, Any], *, parent_fsync: bool = True,
+            crash: Callable[[str], None] | None = None) -> None:
     """An effect outside the handler: it has happened once this returns. The
-    line is fsynced, and an append that creates the file also fsyncs the
-    directory that now names it, as `Store` does for its documents."""
+    line is fsynced, and then the directory that names the file, after every
+    append, as `Store` does for its documents. `crash` is called before each
+    fsync with `fsync` or `directory-fsync`."""
     durable_directories(path.parent, parent_fsync=parent_fsync)
-    created = not path.exists()
     with open(path, "a", encoding="utf-8") as handle:
         handle.write(json.dumps(entry) + "\n")
         handle.flush()
+        if crash is not None:
+            crash("fsync")
         os.fsync(handle.fileno())
-    if created and parent_fsync:
+    if crash is not None:
+        crash("directory-fsync")
+    if parent_fsync:
         _fsync_directory(path.parent)
+
+
+def flush_existing(path: Path) -> None:
+    """Put a file that an interrupted start may have left unflushed, and the
+    directory entry naming it, on stable storage; nothing when it is absent."""
+    try:
+        handle = os.open(path, os.O_RDONLY)
+    except FileNotFoundError:
+        return
+    try:
+        os.fsync(handle)
+    finally:
+        os.close(handle)
+    _fsync_directory(path.parent)
+
+
+def counted_start(store: Store) -> str:
+    """The wrong start identifier: a counter in the store, which reads a lost
+    counter as zero and a restored older copy as its older count, so an
+    earlier start's identifier comes back."""
+    with store.locked(STARTS):
+        number = (store.read(STARTS) or {"starts": 0})["starts"] + 1
+        store.write(STARTS, {"starts": number})
+    return f"start-{number}"
 
 
 def same_signed_bytes(retained: Any, carried: Any) -> bool:
@@ -355,9 +399,10 @@ class PayerHandler:
     PC-4 result. The journal holds the retained transfer, the signed
     transaction itself, the start that wrote it, its progress, the confirm's
     validity response, any terminal result and, with a DEM-4 result, its
-    failure proof. Each handler is one start: its identifier is minted from
-    the store's durable start counter (`Store.next_start`), never taken from
-    the caller, whose `boot` only labels its egress.
+    failure proof. Each handler is one start: its identifier is 128 random
+    bits drawn for the start, which needs no stored state, so no loss or
+    rollback of the store repeats it; it is never taken from the caller,
+    whose `boot` only labels its egress.
 
     `rail_network` is the pinned RailDefinition's
     `consumerFinalityProfile.settlement` network; `bindings` is the payer's
@@ -381,9 +426,16 @@ class PayerHandler:
                  finality_trust: dict[str, Any] = generator.FINALITY_TRUST):
         self.store, self.node, self.boot = store, node, boot
         self.crash_at, self.mutant, self.exit_on_crash = crash_at, mutant, exit_on_crash
-        # DEM-6: an identifier no earlier start used. The wrong handler takes
-        # the caller's value, which a restarted process can repeat.
-        self.start = boot if mutant == "caller-start-id" else store.next_start()
+        # DEM-6: an identifier no earlier start used, whatever happened to the
+        # store. The wrong handlers take the caller's value, which a restarted
+        # process can repeat, or count starts in the store, which a lost or
+        # restored counter repeats.
+        if mutant == "caller-start-id":
+            self.start = boot
+        elif mutant == "counter-reset-when-missing":
+            self.start = counted_start(store)
+        else:
+            self.start = secrets.token_hex(16)
         self.job_id, self.phase_index = job_id, phase_index
         self.journal = journal_name(job_id, phase_index)
         self.bindings = [generator.binding_entry()] if bindings is None else bindings
@@ -739,16 +791,23 @@ class Payee:
             if current["revision"] != based_on["revision"] and self.mutant != "no-conditional-write":
                 raise Conflict(current["revision"])
             self.store.write(INDEX, {"revision": current["revision"] + 1,
-                                     "admissions": current["admissions"] + [admission]})
+                                     "admissions": current["admissions"] + [admission]},
+                             between=lambda: self._crash("before-admission-directory-fsync"))
 
     def _deliver_once(self, key: tuple[str, str, int]) -> None:
         """The delivery effect, idempotent on its key: under the sink's lock
-        it happens only when no earlier delivery carries the key."""
+        it happens only when no earlier delivery carries the key. An earlier
+        record counts only once it is on stable storage: a start that stopped
+        before fsyncing it or its directory entry leaves one this check can
+        read but a power loss can remove, while the admission stays durable."""
         with _Lock(self.work / f".{DELIVERIES}.lock"):
+            if self.mutant != "trust-unflushed-record":
+                flush_existing(self.sink)
             if self.mutant == "deliver-every-check" or key not in self.delivered():
                 # The wrong payee leaves the new record's directory entry unflushed.
                 _append(self.sink, {"txHash": key[0], "jobId": key[1], "phaseIndex": key[2], "boot": self.boot},
-                        parent_fsync=self.mutant != "no-sink-parent-fsync")
+                        parent_fsync=self.mutant != "no-sink-parent-fsync",
+                        crash=lambda step: self._crash(f"before-delivery-{step}"))
 
     def deliver(self, job_id: str, phase_index: int = generator.PHASE_INDEX, *,
                 between: Callable[[], None] | None = None) -> str:
@@ -804,7 +863,9 @@ def payee(work: Path, boot: str, *, crash_at=None, mutant=None, exit_on_crash=Fa
                      exit_on_crash=exit_on_crash)
         made.provision()
         return made
-    return Payee(Store(store_dir), work, boot, crash_at=crash_at, mutant=mutant, exit_on_crash=exit_on_crash)
+    # The wrong payee trusts an index entry or delivery record as it finds it.
+    store = Store(store_dir, flush_reads=mutant != "trust-unflushed-record")
+    return Payee(store, work, boot, crash_at=crash_at, mutant=mutant, exit_on_crash=exit_on_crash)
 
 
 def main() -> int:

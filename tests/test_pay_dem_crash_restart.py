@@ -13,9 +13,11 @@ first transfer without a create-if-absent, locks only its own phase while it
 checks the other phases' hashes, takes the network from its binding, trusts
 the node's word that a read is authenticated, returns a DEM-4 failure
 without journaling it, takes its caller's start value as its start
-identifier, re-derives an ended phase from a re-read, writes its index
-without a conditional write, treats a lost index as empty, delivers on every
-check or leaves a new delivery record's directory entry unflushed, must
+identifier, counts its starts in a store that a loss or restore resets,
+re-derives an ended phase from a re-read, writes its index without a
+conditional write, treats a lost index as empty, delivers on every check,
+leaves a new delivery record's directory entry unflushed or trusts an index
+entry or delivery record that an interrupted start left unflushed, must
 break one of them.
 """
 
@@ -28,6 +30,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+from typing import Callable
 import unittest
 from unittest import mock
 
@@ -42,7 +45,10 @@ PAYER_POINTS = (
     "before-retain", "after-retain", "before-confirm", "after-confirm", "after-confirm-journal",
     "before-broadcast", "after-broadcast", "after-broadcast-journal",
 )
-PAYEE_POINTS = ("before-admission-write", "after-admission-write", "after-delivery")
+# Each point between a write and its flush leaves a record a restart can read
+# before it is on stable storage.
+FLUSH_POINTS = ("before-admission-directory-fsync", "before-delivery-fsync", "before-delivery-directory-fsync")
+PAYEE_POINTS = ("before-admission-write", "after-admission-write", *FLUSH_POINTS, "after-delivery")
 JOURNAL = reference.journal_name(generator.JOB_ID, generator.PHASE_INDEX)
 
 
@@ -57,21 +63,55 @@ def _options(crash: str | None = None, mutant: str | None = None, *extra: str) -
     return [*(["--crash", crash] if crash else []), *(["--mutant", mutant] if mutant else []), *extra]
 
 
+def start_state(work: Path) -> list[Path]:
+    """The payer's stored documents other than its journals."""
+    return sorted(path for path in (work / "store").glob("*") if path.is_file()
+                  and not path.name.startswith(".") and not path.name.endswith(reference.JOURNAL))
+
+
+def start_state_loss_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """DEM-6 across a partial restore: once the first start stops at any
+    point, every stored document but the journals is lost, or restored from
+    the copy an earlier start left. A restart still sends nothing."""
+    def lose(work, older):
+        for path in start_state(work):
+            path.unlink()
+
+    def roll_back(work, older):
+        lose(work, older)
+        for name, content in older.items():
+            (work / "store" / name).write_bytes(content)
+
+    return [f"{name}: {violation}" for name, damage in (("lost", lose), ("rolled-back", roll_back))
+            for violation in payer_violations(root / name, mutant, damage=damage)]
+
+
 def payer_violations(root: Path, mutant: str | None = None, *node: str,
-                     restarts: tuple[str, ...] = ("boot-2", "boot-3")) -> list[str]:
+                     restarts: tuple[str, ...] = ("boot-2", "boot-3"),
+                     damage: Callable[[Path, dict[str, bytes]], None] | None = None) -> list[str]:
     """Stop the payer at each point, restart it twice, and check DEM-1/DEM-6.
     `restarts` are the caller's labels for the restarted processes: the same
     label as the first start's is a caller that reuses its value, which the
-    handler must not take as its own start identity. Egress after the restart
-    is what the log holds beyond what it held when the first start stopped."""
+    handler must not take as its own start identity. With `damage`, an
+    earlier start first stops before it retains anything, and once the first
+    start stops, `damage` changes the store given a copy of its documents
+    other than journals as that earlier start left them. Egress after the
+    restart is what the log holds beyond what it held when the first start
+    stopped."""
     violations = []
     signed = generator.signed()
     for point in PAYER_POINTS:
         work = root / point
+        older = {}
+        if damage is not None:
+            run("pay", work, "boot-0", *_options("before-retain", mutant, *node))
+            older = {path.name: path.read_bytes() for path in start_state(work)}
         first = run("pay", work, "boot-1", *_options(point, mutant, *node))
         if first.returncode not in (0, reference.CRASH_EXIT):
             violations.append(f"{point}: first start failed: {first.stderr[-400:]}")
             continue
+        if damage is not None:
+            damage(work, older)
         retained_at_restart = (work / "store" / JOURNAL).exists()
         sent_before_restart = len(reference.read_lines(work / "egress.jsonl"))
         results = []
@@ -101,10 +141,14 @@ def payer_violations(root: Path, mutant: str | None = None, *node: str,
     return violations
 
 
-def fsync_violations(root: Path, mutant: str | None = None) -> list[str]:
+def fsync_violations(root: Path, mutant: str | None = None, *, existing_store: bool = False) -> list[str]:
     """The journal reaches stable storage, its file and then its directory
-    flushed after the rename, before the first egress."""
+    flushed after the rename, before the first egress. With `existing_store`,
+    the store directory is one an interrupted start created and stopped
+    before flushing its entry in the parent; this start flushes it."""
     events: list[tuple[str, tuple[int, int]]] = []
+    if existing_store:
+        (root / "store").mkdir(parents=True)
     real_fsync = os.fsync
 
     def fsync(fd):
@@ -139,7 +183,7 @@ def fsync_violations(root: Path, mutant: str | None = None) -> list[str]:
         violations.append("journal directory not fsynced after the rename, before the first egress")
     parent = os.stat(root)
     if (parent.st_dev, parent.st_ino) not in before:
-        violations.append("new journal directory's entry not fsynced in its parent before the first egress")
+        violations.append("journal directory's entry not fsynced in its parent before the first egress")
     return violations
 
 
@@ -171,6 +215,52 @@ def delivery_fsync_violations(root: Path, mutant: str | None = None) -> list[str
     last = max((i for i, identity in enumerate(events) if identity == sink_id), default=-1)
     if directory_id not in events[last + 1:]:
         violations.append("new delivery record's directory entry not fsynced before deliver returned")
+    return violations
+
+
+def interrupted_delivery_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """DEM-7 once-only across a crash between a write and its flush: the
+    first start stops after the admission index's rename and before its
+    directory fsync, or after the delivery record's write and before its
+    fsync or its directory's. A restart finds a record it can read that a
+    power loss could still remove, so it flushes the record before trusting
+    it: the index entry before the delivery effect, the delivery record and
+    then its directory entry before `deliver` returns, with one delivery."""
+    violations = []
+    real_fsync = os.fsync
+    for point in FLUSH_POINTS:
+        work = root / point
+        run("provision", work, "boot-0")
+        first = run("deliver", work, "boot-1", "--job", generator.JOB_ID, *_options(point, mutant))
+        if first.returncode != reference.CRASH_EXIT:
+            violations.append(f"{point}: first start did not stop: {first.stderr[-400:]}")
+            continue
+        events: list[tuple[int, int]] = []
+
+        def fsync(fd, events=events):
+            status = os.fstat(fd)
+            events.append((status.st_dev, status.st_ino))
+            return real_fsync(fd)
+
+        with mock.patch.object(reference.os, "fsync", fsync):
+            verdict = reference.payee(work, "boot-2", mutant=mutant).deliver(generator.JOB_ID)
+        if verdict != "pass":
+            violations.append(f"{point}: restart did not deliver: {verdict}")
+            continue
+        identity = {name: (status.st_dev, status.st_ino) for name, status in (
+            ("index", os.stat(work / "payee-store")), ("sink", os.stat(work / reference.DELIVERIES)),
+            ("directory", os.stat(work)))}
+        first_sink = events.index(identity["sink"]) if identity["sink"] in events else len(events)
+        last_sink = max((i for i, seen in enumerate(events) if seen == identity["sink"]), default=-1)
+        if point == "before-admission-directory-fsync" and identity["index"] not in events[:first_sink]:
+            violations.append(f"{point}: admission index entry not fsynced before the delivery record")
+        if identity["sink"] not in events:
+            violations.append(f"{point}: delivery record not fsynced before deliver returned")
+        if identity["directory"] not in events[last_sink + 1:]:
+            violations.append(f"{point}: delivery record's directory entry not fsynced before deliver returned")
+        count = len(reference.read_lines(work / reference.DELIVERIES))
+        if count != 1:
+            violations.append(f"{point}: {count} deliveries")
     return violations
 
 
@@ -618,10 +708,37 @@ class PayDemCrashRestartTests(unittest.TestCase):
         self.assertIn("after-confirm-journal: egress after restart ['broadcast']",
                       payer_violations(self.root / "caller", "caller-start-id", restarts=("boot-1", "boot-1")))
 
+    def test_a_restart_after_its_start_state_is_lost_or_rolled_back_sends_nothing(self):
+        """DEM-6: a start's identifier needs no stored state, so losing every
+        stored document but the journals, or restoring an older copy of
+        them, never gives a restart an earlier start's identity. The handler
+        that counts its starts in its store repeats one and completes the
+        crashed start's submission."""
+        self.assertEqual([], start_state_loss_violations(self.root / "reference"))
+        counting = start_state_loss_violations(self.root / "counter", "counter-reset-when-missing")
+        for damage in ("lost", "rolled-back"):
+            with self.subTest(damage=damage):
+                self.assertIn(f"{damage}: after-confirm-journal: egress after restart ['broadcast']", counting)
+                self.assertTrue(any(violation.startswith(f"{damage}: after-retain: egress after restart ['confirm'")
+                                    for violation in counting), counting)
+
     def test_first_delivery_record_is_on_stable_storage_before_deliver_returns(self):
         self.assertEqual([], delivery_fsync_violations(self.root / "reference"))
         self.assertEqual(["new delivery record's directory entry not fsynced before deliver returned"],
                          delivery_fsync_violations(self.root / "no-sink-parent-fsync", "no-sink-parent-fsync"))
+
+    def test_a_record_an_interrupted_start_left_unflushed_is_flushed_before_it_is_trusted(self):
+        """DEM-7 once-only: a restart that finds an admission or a delivery
+        record an interrupted start never flushed makes it durable before it
+        acts on it, so a later power loss cannot drop the record while the
+        admission stays and let a further check deliver again. The payee that
+        trusts what it finds returns with the record still unflushed (its
+        directory entry is flushed with the store's own on start)."""
+        self.assertEqual([], interrupted_delivery_violations(self.root / "reference"))
+        self.assertEqual(["before-admission-directory-fsync: admission index entry not fsynced before the delivery record",
+                          "before-delivery-fsync: delivery record not fsynced before deliver returned",
+                          "before-delivery-directory-fsync: delivery record not fsynced before deliver returned"],
+                         interrupted_delivery_violations(self.root / "trusting", "trust-unflushed-record"))
 
     def test_a_plain_read_of_a_failed_record_is_never_terminal(self):
         self.assertEqual([], plain_read_violations(self.root / "reference"))
@@ -727,9 +844,13 @@ class PayDemCrashRestartTests(unittest.TestCase):
 
     def test_journal_is_on_stable_storage_before_the_first_egress(self):
         self.assertEqual([], fsync_violations(self.root / "reference"))
+        # A store directory an interrupted start created is flushed in its parent too.
+        self.assertEqual([], fsync_violations(self.root / "existing", existing_store=True))
         self.assertTrue(fsync_violations(self.root / "no-fsync", "no-fsync"))
-        self.assertEqual(["new journal directory's entry not fsynced in its parent before the first egress"],
-                         fsync_violations(self.root / "no-parent-fsync", "no-parent-fsync"))
+        for name, existing in (("no-parent-fsync", False), ("no-parent-fsync-existing", True)):
+            with self.subTest(name=name):
+                self.assertEqual(["journal directory's entry not fsynced in its parent before the first egress"],
+                                 fsync_violations(self.root / name, "no-parent-fsync", existing_store=existing))
 
     def test_one_phase_retains_one_transfer_under_concurrent_starts(self):
         self.assertEqual([], concurrent_payer_violations(self.root / "reference"))
@@ -778,10 +899,11 @@ class PayDemCrashRestartTests(unittest.TestCase):
     def test_gate_state_comes_from_storage_not_the_caller(self):
         """The reference passes the oracle no caller flag: every state member
         of its gate input is the journal it read back, including the other
-        phases that retain the same hash. Its start identifier is minted from
-        the store, never the caller's value: a handler constructed later is a
-        new start, even with the same caller value, and only the start that
-        wrote the journal may complete its submission."""
+        phases that retain the same hash. Its start identifier is drawn fresh
+        for each start, never the caller's value and never from stored state:
+        a handler constructed later is a new start, even with the same caller
+        value, and only the start that wrote the journal may complete its
+        submission."""
         writer = reference.payer(self.root / "state", "boot-1")
         writer.store.write(JOURNAL, {
             "start": writer.start, "progress": "confirm-returned",
@@ -797,8 +919,9 @@ class PayDemCrashRestartTests(unittest.TestCase):
                 self.assertEqual({"retentionDurable": True, "restartedSinceRetention": True,
                                   "broadcastState": "confirm-returned"}, restarted._state(entry))
                 self.assertFalse(restarted._permits("broadcast-retained", entry))
-        # The start counter is itself on stable storage: a new process reads it back.
-        self.assertEqual({"starts": 3}, reference.Store(self.root / "state" / "store").read(reference.STARTS))
+        # No stored document but the journal decides a start's identity.
+        self.assertEqual([], start_state(self.root / "state"))
+        self.assertEqual(32, len(writer.start))
         # A journal that names no start, such as one an earlier handler wrote
         # with the caller's value, reads as another start's: nothing leaves.
         legacy = {key: value for key, value in entry.items() if key != "start"}

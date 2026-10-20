@@ -706,6 +706,22 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_pay_dem_execution_vectors.py",
         "test": "PayDemExecutionVectorTests.test_every_vector_fails_when_each_named_guard_is_removed",
     },
+    "pr432-pay-dem-own-call-outcome-witness": {
+        "file": "tests/test_pay_dem_execution_vectors.py",
+        "test": "PayDemExecutionVectorTests.test_own_call_outcomes_after_the_first_egress_are_substrate",
+    },
+    "pr432-pay-dem-admission-index-witness": {
+        "file": "tests/test_pay_dem_execution_vectors.py",
+        "test": "PayDemExecutionVectorTests.test_payee_history_is_the_snapshot_of_its_durable_admission_index",
+    },
+    "pr432-pay-dem-crash-restart-witness": {
+        "file": "tests/test_pay_dem_crash_restart.py",
+        "test": "PayDemCrashRestartTests.test_every_wrong_payer_handler_is_caught",
+    },
+    "pr432-pay-dem-payee-restart-witness": {
+        "file": "tests/test_pay_dem_crash_restart.py",
+        "test": "PayDemCrashRestartTests.test_payee_never_delivers_a_reused_hash_across_a_restart",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

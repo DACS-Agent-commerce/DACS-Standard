@@ -32,12 +32,18 @@
     "gasFeeSeparationUnscheduled": "the Demos binding attests, from that network's sealed genesis, that the gasFeeSeparation fork is unscheduled (activationHeight null); RPC does not report it, and with it active the node stores fee edits before the send's four, so anything but true (a scheduled height, an attestation the binding does not hold) is refused",
     "authenticated": "recordRead member: true when the record is authenticated under FV-5 at its bft-final inclusion; absent or false for a plain RPC read, which the node pin does not authenticate. A handler's DEM-4 failure and a consumer's DEM-7 failed refutation need true",
     "retainedFailureProof": "the DEM-4 proof the handler retained: classification, authentication (fv5-bft-final when FV-5 authenticated the failed record at its bft-final inclusion, rpc-read for a plain read; anything else is not authenticated), inclusionBlock and the record. A resume reuses only an authenticated proof that still binds, and APR accepts only such a proof",
-    "restartedSinceRetention": "false only when the handler has run without a restart since it retained the transfer; after a (re)start a retained transfer is maybe-broadcast whatever broadcastState was recorded, and anything but false is a restart",
+    "restartedSinceRetention": "false only when the handler has run without a restart since it retained the transfer; after a (re)start a retained transfer is maybe-broadcast whatever broadcastState was recorded, and anything but false is a restart. The handler derives it, and broadcastState and retentionDurable, from the journal it reads back from stable storage (the boot that wrote the retention against its own), never from process-local state; tests/test_pay_dem_crash_restart.py stops a storage-backed reference handler on both sides of every transition and witnesses that derivation",
+    "signedTransaction": "the signed transaction itself as the DEM-1 retention holds it, read back from the journal: a confirm request carries these bytes, and a broadcast's validity response must embed them",
+    "hashRetainedForOtherPhases": "the other (jobId, phaseIndex) whose stored journals retain the same hash, read from storage like restartedSinceRetention; any entry refuses the egress",
+    "call": "classify-egress-outcome: the handler's own step that returned, pre-egress-check (its balance read before any confirm or broadcast carried the signed bytes), confirm or broadcast; any other value may have carried the bytes",
+    "outcome": "classify-egress-outcome: what that step returned: insufficient-balance, refused-not-valid (demosdk confirm()/broadcast() valid false), refused-by-dem1 (the handler's own refusal of the completing broadcast), transport-error, timeout, accepted, or anything else (unrecognized). Only insufficient-balance found by a pre-egress-check on an un-restarted journal recording never-broadcast is permanent; every other outcome is substrate with the retained hash kept and no further call, never transient",
+    "cause": "classify-egress-outcome want member: call:outcome, so the result keeps the step and reply that produced it",
     "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) of pay-dem records the consumer admitted earlier. For admit-for-delivery they are the payee's own admissions, which its delivery check presents with the evidence: derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error. For resolve-settlement-group they lie outside the presented records, and settlement accounting and the DACS-5 derivation never add them",
+    "admissionIndex": "admit-for-delivery: the snapshot (revision, admissions) of the payee's durable admission index read for this check. consumerAdmissions must equal its admissions as a multiset of exact JCS bytes; a missing or malformed snapshot, or a presented history that omits or adds an admission, is error and authorizes no delivery. The payee adds this phase's admission with a write conditional on that revision",
     "guards": "checks whose removal makes this vector fail"
   },
-  "count": 250,
-  "hash": "ffecac4e818b3d22d838bee27c6a1db55b13f88e860a570d1209b7b75df7c4aa",
+  "count": 267,
+  "hash": "7e819a4a6e8ea5c45b25976c3aef45287efc0a02e5232ce1ea7117e7b6177e3c",
   "vectors": [
     {
       "name": "included-confirmed",
@@ -21281,7 +21287,11 @@
           "sb1": "pass",
           "pb": "pass"
         },
-        "consumerAdmissions": []
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
       },
       "expected": "pass",
       "want": {
@@ -21423,7 +21433,11 @@
           "sb1": "pass",
           "pb": "pass"
         },
-        "consumerAdmissions": []
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -21567,7 +21581,11 @@
           "sb1": "pass",
           "pb": "pass"
         },
-        "consumerAdmissions": []
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -21711,7 +21729,11 @@
           "sb1": "pass",
           "pb": "pass"
         },
-        "consumerAdmissions": []
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -21855,7 +21877,11 @@
           "sb1": "fail",
           "pb": "pass"
         },
-        "consumerAdmissions": []
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
       },
       "expected": "fail",
       "want": {
@@ -21999,7 +22025,11 @@
           "sb1": "pass",
           "pb": "fail"
         },
-        "consumerAdmissions": []
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
       },
       "expected": "fail",
       "want": {
@@ -22153,7 +22183,21 @@
               "blockNumber": 42
             }
           }
-        ]
+        ],
+        "admissionIndex": {
+          "revision": 1,
+          "admissions": [
+            {
+              "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQS",
+              "phaseIndex": 1,
+              "txRef": {
+                "kind": "demos",
+                "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "blockNumber": 42
+              }
+            }
+          ]
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -22308,7 +22352,22 @@
             },
             "legacy": true
           }
-        ]
+        ],
+        "admissionIndex": {
+          "revision": 1,
+          "admissions": [
+            {
+              "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQS",
+              "phaseIndex": 1,
+              "txRef": {
+                "kind": "demos",
+                "txHash": "0x2FB29AEA17FFED038874912FA040ABE126EAF313FF5322EFE4D9B59B5709DADE",
+                "blockNumber": 42
+              },
+              "legacy": true
+            }
+          ]
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -22464,7 +22523,21 @@
               "blockNumber": 42
             }
           }
-        ]
+        ],
+        "admissionIndex": {
+          "revision": 1,
+          "admissions": [
+            {
+              "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQS",
+              "phaseIndex": 1,
+              "txRef": {
+                "kind": "demos",
+                "txHash": "0x2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "blockNumber": 42
+              }
+            }
+          ]
+        }
       },
       "expected": "error",
       "want": {
@@ -22620,7 +22693,21 @@
               "blockNumber": 42
             }
           }
-        ]
+        ],
+        "admissionIndex": {
+          "revision": 1,
+          "admissions": [
+            {
+              "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+              "phaseIndex": 2,
+              "txRef": {
+                "kind": "demos",
+                "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "blockNumber": 42
+              }
+            }
+          ]
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -22774,7 +22861,21 @@
               "blockNumber": 42
             }
           }
-        ]
+        ],
+        "admissionIndex": {
+          "revision": 1,
+          "admissions": [
+            {
+              "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+              "phaseIndex": 1,
+              "txRef": {
+                "kind": "demos",
+                "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "blockNumber": 42
+              }
+            }
+          ]
+        }
       },
       "expected": "pass",
       "want": {
@@ -22788,6 +22889,1020 @@
         "sb2-same-tuple-idempotent"
       ],
       "note": "Re-presenting the same evidence for the same tuple is idempotent."
+    },
+    {
+      "name": "delivery-history-omits-indexed-admission",
+      "operation": "admit-for-delivery",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "authenticated": true,
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        },
+        "otherGates": {
+          "fv": "pass",
+          "sb1": "pass",
+          "pb": "pass"
+        },
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 1,
+          "admissions": [
+            {
+              "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQS",
+              "phaseIndex": 1,
+              "txRef": {
+                "kind": "demos",
+                "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "blockNumber": 42
+              }
+            }
+          ]
+        }
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": true,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/SB-2",
+      "guards": [
+        "consumer-admits-confirmed",
+        "delivery-history-is-admission-index"
+      ],
+      "note": "The payee's admission index holds this hash for another job, but the presented history omits it, as a restart with process-local history would; the reused hash never delivers."
+    },
+    {
+      "name": "delivery-history-adds-unindexed-admission",
+      "operation": "admit-for-delivery",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "authenticated": true,
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        },
+        "otherGates": {
+          "fv": "pass",
+          "sb1": "pass",
+          "pb": "pass"
+        },
+        "consumerAdmissions": [
+          {
+            "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQS",
+            "phaseIndex": 1,
+            "txRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            }
+          }
+        ],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": true,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/SB-2",
+      "guards": [
+        "consumer-admits-confirmed",
+        "delivery-history-is-admission-index"
+      ],
+      "note": "A presented admission that the payee's index does not hold is not its snapshot: error."
+    },
+    {
+      "name": "delivery-without-admission-index",
+      "operation": "admit-for-delivery",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "authenticated": true,
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        },
+        "otherGates": {
+          "fv": "pass",
+          "sb1": "pass",
+          "pb": "pass"
+        },
+        "consumerAdmissions": [],
+        "admissionIndex": null
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": true,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/SB-2",
+      "guards": [
+        "consumer-admits-confirmed",
+        "delivery-requires-admission-index"
+      ],
+      "note": "Without a snapshot of the payee's durable admission index its history cannot be shown complete: error."
+    },
+    {
+      "name": "delivery-admission-index-malformed-revision",
+      "operation": "admit-for-delivery",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "network": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "authenticated": true,
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c8a0503797807b59ec364703cf96c62e6b42261597160d7966b333a4e77f4ab7",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        },
+        "otherGates": {
+          "fv": "pass",
+          "sb1": "pass",
+          "pb": "pass"
+        },
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": "0",
+          "admissions": []
+        }
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": true,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/SB-2",
+      "guards": [
+        "consumer-admits-confirmed",
+        "delivery-requires-admission-index"
+      ],
+      "note": "An index snapshot whose revision is not a safe integer cannot be the conditional write's base: error."
+    },
+    {
+      "name": "egress-insufficient-balance-before-first-egress",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "never-broadcast",
+        "restartedSinceRetention": false,
+        "call": "pre-egress-check",
+        "outcome": "insufficient-balance"
+      },
+      "expected": "fail",
+      "want": {
+        "ok": false,
+        "errorClass": "permanent",
+        "executionState": "not-sent",
+        "evidence": "none",
+        "nextAction": "terminal-failure",
+        "onPauseExpiry": null,
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "pre-egress-check:insufficient-balance"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-1/DEM-5",
+      "guards": [
+        "pre-egress-refusal-is-permanent"
+      ],
+      "note": "The handler's own balance read finds the payer short before any confirm or broadcast carried the signed transfer: permanent, nothing sent."
+    },
+    {
+      "name": "egress-insufficient-balance-after-restart",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "never-broadcast",
+        "restartedSinceRetention": true,
+        "call": "pre-egress-check",
+        "outcome": "insufficient-balance"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "pre-egress-check:insufficient-balance"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5/DEM-6",
+      "guards": [
+        "post-egress-refusal-is-unresolved",
+        "restart-is-maybe-broadcast"
+      ],
+      "note": "After a restart a retained transfer may have left, whatever its journal records, so a short balance can be its own debit: substrate, re-read only."
+    },
+    {
+      "name": "egress-insufficient-balance-after-interrupted-confirm",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "confirm-sent-interrupted",
+        "restartedSinceRetention": false,
+        "call": "pre-egress-check",
+        "outcome": "insufficient-balance"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "pre-egress-check:insufficient-balance"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5/DEM-6",
+      "guards": [
+        "confirm-egress-may-broadcast",
+        "post-egress-refusal-is-unresolved"
+      ],
+      "note": "A confirm that was cut off carried the signed bytes; a short balance afterwards proves nothing."
+    },
+    {
+      "name": "egress-confirm-refused-insufficient-balance",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "never-broadcast",
+        "restartedSinceRetention": false,
+        "call": "confirm",
+        "outcome": "insufficient-balance"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "confirm:insufficient-balance"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5/DEM-6",
+      "guards": [
+        "post-egress-refusal-is-unresolved"
+      ],
+      "note": "demosdk confirm() throws valid false for insufficient balance after the node received the bytes: substrate with the retained hash kept, never permanent."
+    },
+    {
+      "name": "egress-confirm-refused-not-valid",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "never-broadcast",
+        "restartedSinceRetention": false,
+        "call": "confirm",
+        "outcome": "refused-not-valid"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "confirm:refused-not-valid"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5/DEM-6",
+      "guards": [
+        "post-egress-refusal-is-unresolved"
+      ],
+      "note": "Any confirm refusal comes from a node that holds the signed bytes: substrate."
+    },
+    {
+      "name": "egress-confirm-transport-error",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "never-broadcast",
+        "restartedSinceRetention": false,
+        "call": "confirm",
+        "outcome": "transport-error"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "confirm:transport-error"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5/DEM-6",
+      "guards": [
+        "call-error-is-unresolved"
+      ],
+      "note": "A confirm that errored may have reached the node: substrate, never transient, and no repeat."
+    },
+    {
+      "name": "egress-confirm-timeout",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "never-broadcast",
+        "restartedSinceRetention": false,
+        "call": "confirm",
+        "outcome": "timeout"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "confirm:timeout"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5/DEM-6",
+      "guards": [
+        "call-error-is-unresolved"
+      ],
+      "note": "A confirm that timed out may have reached the node: substrate, and no repeat."
+    },
+    {
+      "name": "egress-confirm-unrecognized-outcome",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "never-broadcast",
+        "restartedSinceRetention": false,
+        "call": "confirm",
+        "outcome": "http-418"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "confirm:http-418"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5/DEM-6",
+      "guards": [
+        "call-error-is-unresolved"
+      ],
+      "note": "An unrecognized confirm reply is unresolved: fail closed to substrate."
+    },
+    {
+      "name": "egress-broadcast-transport-error",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "confirm-returned",
+        "restartedSinceRetention": false,
+        "call": "broadcast",
+        "outcome": "transport-error"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "broadcast:transport-error"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5/DEM-6",
+      "guards": [
+        "call-error-is-unresolved"
+      ],
+      "note": "demosdk broadcast() returns a 500 envelope on transport failure; the bytes may be in a mempool."
+    },
+    {
+      "name": "egress-broadcast-refused-not-valid",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "confirm-returned",
+        "restartedSinceRetention": false,
+        "call": "broadcast",
+        "outcome": "refused-not-valid"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "broadcast:refused-not-valid"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5/DEM-6",
+      "guards": [
+        "post-egress-refusal-is-unresolved"
+      ],
+      "note": "A broadcast refusal follows a confirm that already carried the bytes: substrate."
+    },
+    {
+      "name": "egress-broadcast-refused-by-dem1-after-valid-confirm",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "confirm-returned",
+        "restartedSinceRetention": false,
+        "call": "broadcast",
+        "outcome": "refused-by-dem1"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "broadcast:refused-by-dem1"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5/DEM-6",
+      "guards": [
+        "post-egress-refusal-is-unresolved"
+      ],
+      "note": "The handler's own DEM-1 refusal of the completing broadcast comes after its confirm egress: substrate, re-read only."
+    },
+    {
+      "name": "egress-broadcast-accepted-is-not-success",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "confirm-returned",
+        "restartedSinceRetention": false,
+        "call": "broadcast",
+        "outcome": "accepted"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "broadcast:accepted"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-3/DEM-5",
+      "guards": [
+        "success-requires-record"
+      ],
+      "note": "An accepted broadcast is not an executed transfer; the handler reads the record next."
+    },
+    {
+      "name": "egress-balance-read-error-before-first-egress",
+      "operation": "classify-egress-outcome",
+      "protocolInput": {
+        "broadcastState": "never-broadcast",
+        "restartedSinceRetention": false,
+        "call": "pre-egress-check",
+        "outcome": "transport-error"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "ok": false,
+        "errorClass": "substrate",
+        "executionState": "indeterminate",
+        "evidence": "none",
+        "nextAction": "st7-pause-re-read-retained-hash",
+        "onPauseExpiry": "failed-substrate-without-replacement",
+        "retainedHashKept": true,
+        "terminalFailureProofRetained": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false,
+        "broadcastPermitted": false,
+        "replacementPermitted": false,
+        "cause": "pre-egress-check:transport-error"
+      },
+      "rule": "DACS-4 §9.5.9 DEM-5",
+      "guards": [
+        "call-error-is-unresolved"
+      ],
+      "note": "A Demos node or RPC failure is substrate for pay-dem, never PC-4 transient."
     },
     {
       "name": "confirmed-non-native-type",
@@ -31267,7 +32382,11 @@
           "sb1": "pass",
           "pb": "pass"
         },
-        "consumerAdmissions": []
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
       },
       "expected": "indeterminate",
       "want": {

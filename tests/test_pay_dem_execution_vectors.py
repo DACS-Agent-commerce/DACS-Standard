@@ -105,6 +105,10 @@ GUARDS = frozenset({
     "apr-evidence-from-authenticated-failure",
     # DEM-5
     "unresolved-authorizes-nothing",
+    # DEM-5/DEM-6 once the handler's own check or call returns (PC-4 pay-dem rows)
+    "pre-egress-refusal-is-permanent",
+    "post-egress-refusal-is-unresolved",
+    "call-error-is-unresolved",
     # DEM-6
     "no-rebroadcast",
     "no-replacement",
@@ -131,6 +135,8 @@ GUARDS = frozenset({
     "delivery-requires-sb1",
     "delivery-requires-pb",
     "delivery-sb2-own-admissions",
+    "delivery-requires-admission-index",
+    "delivery-history-is-admission-index",
     "sb2-admitted-legacy-collapse",
     "sb2-admitted-malformed-error",
     "sb2-same-tuple-idempotent",
@@ -168,6 +174,16 @@ HANDLER_WANT = {
         "settlementAccounting": False, "broadcastPermitted": False,
         "replacementPermitted": False,
     },
+}
+# A refusal before the first egress: nothing has carried the signed bytes, so
+# no node holds them and the phase ends permanent (§9.5.9 failure modes).
+NOT_SENT_WANT = {
+    "ok": False, "errorClass": "permanent", "executionState": "not-sent",
+    "evidence": "none", "nextAction": "terminal-failure",
+    "onPauseExpiry": None, "retainedHashKept": True,
+    "terminalFailureProofRetained": False, "deliveryAuthorized": False,
+    "settlementAccounting": False, "broadcastPermitted": False,
+    "replacementPermitted": False,
 }
 
 SAFE_MAX = 2**53 - 1
@@ -810,6 +826,48 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
     return "pass", {"broadcastPermitted": True}
 
 
+# Outcomes that refuse the transfer: demosdk confirm() or broadcast() with
+# valid false (for example "Insufficient balance"), the handler's own balance
+# read before any egress, and its DEM-1 refusal of the completing broadcast.
+CALL_REFUSALS = frozenset({"insufficient-balance", "refused-not-valid", "refused-by-dem1"})
+
+
+def egress_outcome(protocol_input: dict, off) -> tuple[str, dict]:
+    """The PC-4 class once the handler's own pre-egress check, `confirm` or
+    `broadcast` returns. From the first egress on a node may hold the signed
+    bytes, so every outcome is DEM-5 substrate with the retained hash kept and
+    no further call; only a refusal found before it is permanent."""
+    call, outcome = protocol_input["call"], protocol_input["outcome"]
+    cause = f"{call}:{outcome}"
+    unresolved = ("indeterminate", dict(HANDLER_WANT["indeterminate"], cause=cause))
+    state = protocol_input["broadcastState"]
+    if protocol_input.get("restartedSinceRetention") is not False and "restart-is-maybe-broadcast" not in off:
+        state = "maybe-broadcast"
+    if state == "confirm-sent-interrupted" and "confirm-egress-may-broadcast" in off:
+        state = "never-broadcast"
+    # Any call, including an unrecognized one, may have carried the bytes.
+    sent = call != "pre-egress-check" or state != "never-broadcast"
+    if outcome == "accepted" and call == "broadcast" and "success-requires-record" in off:
+        # The wrong implementation reports an accepted broadcast as paid.
+        return "pass", dict(HANDLER_WANT["pass"], cause=cause)
+    if outcome in CALL_REFUSALS:
+        if not sent and outcome == "insufficient-balance":
+            if "pre-egress-refusal-is-permanent" in off:
+                return unresolved
+            return "fail", dict(NOT_SENT_WANT, cause=cause)
+        if sent and "post-egress-refusal-is-unresolved" in off:
+            # The wrong implementation follows the bare PC-4 row "refused by
+            # chain, insufficient balance" after the bytes have left.
+            return "fail", dict(NOT_SENT_WANT, cause=cause)
+        return unresolved
+    if outcome != "accepted" and "call-error-is-unresolved" in off:
+        # The wrong implementation classifies an RPC failure, a timeout or an
+        # unrecognized reply as PC-4 transient and repeats the call.
+        return "indeterminate", dict(unresolved[1], errorClass="transient", nextAction="repeat-call",
+                                     onPauseExpiry=None, broadcastPermitted=True)
+    return unresolved
+
+
 def dem7(protocol_input: dict, off) -> str:
     """DEM-7 consumer gate, including the payee before delivery."""
     if (
@@ -861,6 +919,24 @@ def admit(protocol_input: dict, off) -> tuple[str, dict]:
     return verdict, {"dem7GatePassed": verdict == "pass", "deliveryAuthorized": False}
 
 
+def admission_index(index) -> bool:
+    """A snapshot of the payee's durable admission index: its revision and
+    every admission it holds."""
+    return (
+        isinstance(index, dict)
+        and set(index) == {"revision", "admissions"}
+        and isinstance(index["revision"], int)
+        and _safe_integer(index["revision"])
+        and isinstance(index["admissions"], list)
+        and all(isinstance(admission, dict) for admission in index["admissions"])
+    )
+
+
+def history(admissions) -> list:
+    """Admissions compared as a multiset of their exact JCS bytes."""
+    return sorted(canonicalize(admission) for admission in admissions)
+
+
 def admit_for_delivery(protocol_input: dict, off) -> tuple[str, dict]:
     gate = dem7(protocol_input, off)
 
@@ -886,10 +962,19 @@ def admit_for_delivery(protocol_input: dict, off) -> tuple[str, dict]:
         "jobId": protocol_input["phase"]["jobId"],
         "phaseIndex": protocol_input["phase"]["phaseIndex"],
     }
+    # The payee's history is the snapshot of its durable admission index read
+    # for this check. A presented list that omits or adds an admission, as a
+    # restart with process-local history would, is not that history.
+    admissions = protocol_input["consumerAdmissions"]
+    index = protocol_input.get("admissionIndex")
+    if not admission_index(index):
+        if "delivery-requires-admission-index" not in off:
+            return result("error")
+    elif history(admissions) != history(index["admissions"]) and "delivery-history-is-admission-index" not in off:
+        return result("error")
     # SB-1 projects every admitted reference, collapsing a verified legacy
     # spelling, before SB-2 compares; one that cannot project is malformed.
     presented = demos_id(protocol_input["signedEvidence"]["txRef"], off)
-    admissions = protocol_input["consumerAdmissions"]
     keys = [
         demos_id(admitted["txRef"], off,
                  legacy=admitted.get("legacy") is True and "sb2-admitted-legacy-collapse" not in off)
@@ -957,6 +1042,7 @@ OPERATIONS = {
     "apr-reconciliation-evidence": apr_evidence,
     "pre-sign-gate": pre_sign_gate,
     "broadcast-gate": broadcast_gate,
+    "classify-egress-outcome": egress_outcome,
     "admit-evidence": admit,
     "admit-for-delivery": admit_for_delivery,
     "project-settlement-id": project_id,
@@ -1088,7 +1174,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
     def test_inclusion_alone_never_succeeds_or_authorizes(self):
         for vector in self.data["vectors"]:
             if vector["operation"] in {"pre-sign-gate", "broadcast-gate", "project-settlement-id",
-                                       "resolve-settlement-group", "apr-reconciliation-evidence"}:
+                                       "resolve-settlement-group", "apr-reconciliation-evidence",
+                                       "classify-egress-outcome"}:
                 continue
             read = vector["protocolInput"]["recordRead"]
             record = read.get("record") if read.get("state") == "found" else None
@@ -1714,18 +1801,22 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             for legacy, verdict in ((True, "indeterminate"), (False, "error"), (None, "error")):
                 with self.subTest(spelling=spelling[:6], legacy=legacy):
                     case = json.loads(json.dumps(base))
-                    admission = case["protocolInput"]["consumerAdmissions"][0]
-                    admission["txRef"]["txHash"] = spelling
-                    if legacy is not None:
-                        admission["legacy"] = legacy
+                    # The presented history and the index snapshot hold the same admission.
+                    for admission in (case["protocolInput"]["consumerAdmissions"][0],
+                                      case["protocolInput"]["admissionIndex"]["admissions"][0]):
+                        admission["txRef"]["txHash"] = spelling
+                        if legacy is not None:
+                            admission["legacy"] = legacy
                     expected, want = evaluate(case)
                     self.assertEqual(verdict, expected)
                     self.assertFalse(want["deliveryAuthorized"])
                     self.assertFalse(want["settlementAccounting"])
         # The same spelling for the same tuple is still idempotent.
         same = json.loads(json.dumps(self.cases["delivery-same-tuple-readmitted"]))
-        same["protocolInput"]["consumerAdmissions"][0]["txRef"]["txHash"] = "0x" + tx_hash.upper()
-        same["protocolInput"]["consumerAdmissions"][0]["legacy"] = True
+        for admission in (same["protocolInput"]["consumerAdmissions"][0],
+                          same["protocolInput"]["admissionIndex"]["admissions"][0]):
+            admission["txRef"]["txHash"] = "0x" + tx_hash.upper()
+            admission["legacy"] = True
         self.assertEqual("pass", evaluate(same)[0])
         group = self.cases["sb2-demos-legacy-spelling-collision"]
         self.assertEqual(["indeterminate", "indeterminate"],
@@ -1854,7 +1945,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("For a bound record whose status is exactly `failed` and that is authenticated under FV-5 "
                       "at its `bft-final` inclusion, the handler MUST return", spec)
         self.assertIn("The handler MUST NOT return `errorClass: \"permanent\"` for it; it stays unresolved under DEM-5.", spec)
-        self.assertIn("a bound `failed` record from a plain RPC read.", spec)
+        self.assertIn("a bound `failed` record from a plain RPC read, and every outcome of the handler's own "
+                      "check or call once the signed transaction may have left", spec)
         self.assertIn("- bound `failed` record from a plain RPC read → `substrate`", spec)
         self.assertIn("An FV `fail` result alone does not show both", spec)
         terminal = 0
@@ -1922,6 +2014,142 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     else:
                         case["protocolInput"]["restartedSinceRetention"] = restarted
                     self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(case))
+
+    def test_own_call_outcomes_after_the_first_egress_are_substrate(self):
+        """PC-4 for pay-dem: once a confirm or broadcast may have carried the
+        signed bytes, a refusal (insufficient balance included), a transport
+        error, a timeout, an unrecognized reply and an accepted broadcast are
+        each DEM-5 substrate with the retained hash kept and no further call.
+        Only a refusal found before any egress, on a journal that has not
+        restarted, is permanent."""
+        spec = SPEC.read_text(encoding="utf-8")
+        pc4 = spec[spec.index("**(PC-4)**"):spec.index("**(PC-5)**")]
+        self.assertIn("for `pay-dem`, only before the signed transfer's first egress (§9.5.9)", pc4)
+        self.assertIn("for `pay-dem`, an RPC failure is `substrate` (§9.5.9 DEM-5)", pc4)
+        egress = [vector for vector in self.data["vectors"] if vector["operation"] == "classify-egress-outcome"]
+        self.assertLessEqual({
+            "egress-insufficient-balance-before-first-egress",
+            "egress-confirm-refused-insufficient-balance",
+            "egress-confirm-transport-error",
+            "egress-confirm-timeout",
+            "egress-broadcast-transport-error",
+            "egress-broadcast-refused-by-dem1-after-valid-confirm",
+        }, {vector["name"] for vector in egress})
+        permanent = 0
+        for vector in egress:
+            value, want = vector["protocolInput"], vector["want"]
+            with self.subTest(name=vector["name"]):
+                cause = f'{value["call"]}:{value["outcome"]}'
+                self.assertEqual(cause, want["cause"])
+                before = (value["call"] == "pre-egress-check" and value["broadcastState"] == "never-broadcast"
+                          and value["restartedSinceRetention"] is False)
+                if before and value["outcome"] == "insufficient-balance":
+                    self.assertEqual(("fail", dict(NOT_SENT_WANT, cause=cause)), evaluate(vector))
+                    permanent += 1
+                else:
+                    self.assertEqual(("indeterminate", dict(HANDLER_WANT["indeterminate"], cause=cause)),
+                                     evaluate(vector))
+        self.assertEqual(1, permanent)
+        # The wrong implementations follow the bare PC-4 rows after the bytes
+        # left; each is caught by a vector.
+        for guard, wrong in (("post-egress-refusal-is-unresolved", "permanent"),
+                             ("call-error-is-unresolved", "transient")):
+            with self.subTest(guard=guard):
+                self.assertTrue([vector["name"] for vector in egress
+                                 if evaluate(vector, {guard})[1]["errorClass"] == wrong])
+        self.assertIs(True, evaluate(self.cases["egress-broadcast-accepted-is-not-success"],
+                                     {"success-requires-record"})[1]["ok"])
+        # The control refused before any egress becomes substrate as soon as
+        # anything says the bytes may have left, or says nothing (fail closed).
+        control = self.cases["egress-insufficient-balance-before-first-egress"]
+        for member, value in (
+            ("restartedSinceRetention", True), ("restartedSinceRetention", None),
+            ("restartedSinceRetention", "false"), ("restartedSinceRetention", 0),
+            ("restartedSinceRetention", _ABSENT), ("broadcastState", "confirm-sent-interrupted"),
+            ("broadcastState", "confirm-returned"), ("broadcastState", "maybe-broadcast"),
+            ("broadcastState", "unrecognized"), ("call", "confirm"), ("call", "broadcast"),
+            ("call", "sr3-proxy-submission"),
+        ):
+            with self.subTest(member=member, value=value):
+                case = json.loads(json.dumps(control))
+                if value is _ABSENT:
+                    del case["protocolInput"][member]
+                else:
+                    case["protocolInput"][member] = value
+                expected, want = evaluate(case)
+                self.assertEqual("indeterminate", expected)
+                self.assertEqual("substrate", want["errorClass"])
+                self.assertFalse(want["broadcastPermitted"])
+
+    def test_payee_history_is_the_snapshot_of_its_durable_admission_index(self):
+        """DEM-7: the history the payee presents before delivery is the
+        snapshot of its durable admission index. A presented list that omits
+        an indexed admission, as a restart with process-local history would,
+        never lets a reused hash deliver."""
+        spec = SPEC.read_text(encoding="utf-8")
+        dem7 = spec[spec.index("**(DEM-7) Consumer admission.**"):spec.index("**Finality.** Demos")]
+        self.assertIn("The payee's admissions are its *admission index*", dem7)
+        self.assertIn("MUST durably add each admitted evidence", dem7)
+        self.assertIn("with a write conditional on that snapshot's revision", dem7)
+        self.assertIn("is `error` and authorizes no delivery", dem7)
+        deliveries = [vector for vector in self.data["vectors"] if vector["operation"] == "admit-for-delivery"]
+        for vector in deliveries:
+            with self.subTest(name=vector["name"]):
+                self.assertIn("admissionIndex", vector["protocolInput"])
+                if vector["want"]["deliveryAuthorized"]:
+                    value = vector["protocolInput"]
+                    self.assertEqual(history(value["consumerAdmissions"]),
+                                     history(value["admissionIndex"]["admissions"]))
+        # The reviewer's probe: the earlier admission dropped from the
+        # presented history delivered against the reused hash before this rule.
+        base = self.cases["delivery-hash-admitted-for-another-job"]
+        dropped = json.loads(json.dumps(base))
+        dropped["protocolInput"]["consumerAdmissions"] = []
+        expected, want = evaluate(dropped)
+        self.assertEqual("error", expected)
+        self.assertFalse(want["deliveryAuthorized"])
+        self.assertFalse(want["settlementAccounting"])
+        self.assertEqual("pass", evaluate(dropped, {"delivery-history-is-admission-index"})[0])
+        self.assertEqual(dropped["protocolInput"],
+                         self.cases["delivery-history-omits-indexed-admission"]["protocolInput"])
+        # The snapshot is a multiset: order does not matter, a duplicate does.
+        reordered = json.loads(json.dumps(base))
+        extra = dict(reordered["protocolInput"]["consumerAdmissions"][0], phaseIndex=generator.PHASE_INDEX + 1)
+        reordered["protocolInput"]["consumerAdmissions"].append(extra)
+        reordered["protocolInput"]["admissionIndex"]["admissions"].insert(0, dict(extra))
+        self.assertEqual("indeterminate", evaluate(reordered)[0])
+        reordered["protocolInput"]["consumerAdmissions"].append(dict(extra))
+        self.assertEqual("error", evaluate(reordered)[0])
+        # No snapshot at all, in any spelling, is error.
+        control = self.cases["delivery-after-all-gates"]
+        for index in (_ABSENT, None, [], {"revision": 0}, {"revision": -1, "admissions": []},
+                      {"revision": True, "admissions": []}, {"revision": 0, "admissions": [None]},
+                      {"revision": 0, "admissions": [], "extra": 1}):
+            with self.subTest(index=index):
+                case = json.loads(json.dumps(control))
+                if index is _ABSENT:
+                    del case["protocolInput"]["admissionIndex"]
+                else:
+                    case["protocolInput"]["admissionIndex"] = index
+                self.assertEqual("error", evaluate(case)[0])
+                self.assertFalse(evaluate(case)[1]["deliveryAuthorized"])
+
+    def test_signed_nonce_above_the_safe_integer_bound_is_refused(self):
+        """DEMOS-MAPPING §A.2 bounds the signed nonce at 2^53 - 1. JCS cannot
+        carry a larger integer in the corpus (nor can demosdk's serializer
+        hash one), so this raises the nonce of a bound-valid transfer in memory."""
+        at_bound = generator.consistent(generator.send_content(nonce=SAFE_MAX, amount=generator.AMOUNT_OS),
+                                        nonce=SAFE_MAX)
+        control = generator.gate("nonce-at-bound", "pass", "DEM-1", ["first-broadcast-allowed"], "",
+                                 signed_transaction=at_bound["signed_transaction"], transfer=at_bound["transfer"])
+        self.assertEqual(("pass", {"broadcastPermitted": True}), evaluate(control))
+        self.assertIsNotNone(decode(at_bound["signed_transaction"], frozenset(), executed=False))
+        for nonce in (SAFE_MAX + 1, 2**64):
+            with self.subTest(nonce=nonce):
+                case = json.loads(json.dumps(control))
+                case["protocolInput"]["signedTransaction"]["content"]["nonce"] = nonce
+                self.assertIsNone(decode(case["protocolInput"]["signedTransaction"], frozenset(), executed=False))
+                self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(case))
 
     def test_every_authority_is_the_change_of_its_committed_balances(self):
         """Every passing record carries the four edits of its send, and every

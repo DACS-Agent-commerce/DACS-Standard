@@ -710,6 +710,60 @@ def admit(
 ALL_GATES_PASS = {"fv": "pass", "sb1": "pass", "pb": "pass"}
 
 
+def _admission(admission: dict[str, Any]) -> dict[str, Any]:
+    """One raw admitted reference: `txHash` overrides the canonical spelling
+    and `legacy` marks verified legacy evidence."""
+    return _apply(
+        {
+            "jobId": admission["jobId"],
+            "phaseIndex": admission["phaseIndex"],
+            "txRef": {"kind": "demos", "txHash": admission.get("txHash", TX_HASH), "blockNumber": BLOCK},
+            "legacy": admission.get("legacy", _OMIT),
+        },
+        {},
+    )
+
+
+def not_sent_want() -> dict[str, Any]:
+    """PC-4 result of a refusal before the first egress: nothing carried the
+    signed bytes, so no node holds them and the phase ends permanent."""
+    return dict(
+        handler_want("fail"),
+        executionState="not-sent", evidence="none", terminalFailureProofRetained=False,
+    )
+
+
+def egress(
+    name: str,
+    expected: str,
+    rule: str,
+    guards: list[str],
+    note: str,
+    *,
+    call: str,
+    outcome: str,
+    broadcast_state: str | None = None,
+    restarted: Any = False,
+) -> dict[str, Any]:
+    """The handler's own pre-egress check, `confirm` or `broadcast` has
+    returned `outcome`; `broadcastState` and `restartedSinceRetention` are
+    what the handler reads back from its journal, as at `broadcast-gate`."""
+    if broadcast_state is None:
+        broadcast_state = "confirm-returned" if call == "broadcast" else "never-broadcast"
+    cause = f"{call}:{outcome}"
+    want = not_sent_want() if expected == "fail" else handler_want(expected)
+    return _vector(
+        name, "classify-egress-outcome",
+        {
+            "broadcastState": broadcast_state,
+            "restartedSinceRetention": restarted,
+            "call": call,
+            "outcome": outcome,
+        },
+        expected, dict(want, cause=cause), rule, guards, note,
+    )
+
+
 def deliver(
     name: str,
     expected: str,
@@ -720,26 +774,23 @@ def deliver(
     read: dict[str, Any] | None = None,
     gates: dict[str, str] | None = None,
     admissions: list[dict[str, Any]] | None = None,
+    index: Any = _OMIT,
     dem7_passed: bool = True,
 ) -> dict[str, Any]:
+    """`index` is the payee's durable admission index as read for this check:
+    by default exactly the presented history; a list builds a snapshot of
+    other admissions, and None or a dict is passed through as given."""
     protocol_input = _admit_input(
         found(record("confirmed"), authenticated=True) if read is None else read, "included"
     )
     protocol_input["otherGates"] = _apply(ALL_GATES_PASS, gates or {})
-    # Each admission is a raw reference: `txHash` overrides the canonical
-    # spelling and `legacy` marks verified legacy evidence.
-    protocol_input["consumerAdmissions"] = [
-        _apply(
-            {
-                "jobId": admission["jobId"],
-                "phaseIndex": admission["phaseIndex"],
-                "txRef": {"kind": "demos", "txHash": admission.get("txHash", TX_HASH), "blockNumber": BLOCK},
-                "legacy": admission.get("legacy", _OMIT),
-            },
-            {},
-        )
-        for admission in (admissions or [])
-    ]
+    presented = [_admission(admission) for admission in (admissions or [])]
+    protocol_input["consumerAdmissions"] = presented
+    if index is _OMIT:
+        index = {"revision": len(presented), "admissions": [dict(admission) for admission in presented]}
+    elif isinstance(index, list):
+        index = {"revision": len(index), "admissions": [_admission(admission) for admission in index]}
+    protocol_input["admissionIndex"] = index
     return _vector(
         name, "admit-for-delivery", protocol_input, expected,
         {
@@ -1517,6 +1568,95 @@ def build_vectors() -> list[dict[str, Any]]:
             "Re-presenting the same evidence for the same tuple is idempotent.",
             admissions=[{"jobId": JOB_ID, "phaseIndex": PHASE_INDEX}],
         ),
+        # The payee's history is the snapshot of its durable admission index:
+        # a presented list that differs from it, or no index, is no history.
+        deliver(
+            "delivery-history-omits-indexed-admission", "error", "DEM-7/SB-2",
+            ["consumer-admits-confirmed", "delivery-history-is-admission-index"],
+            "The payee's admission index holds this hash for another job, but the presented history omits it, "
+            "as a restart with process-local history would; the reused hash never delivers.",
+            index=[{"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX}],
+        ),
+        deliver(
+            "delivery-history-adds-unindexed-admission", "error", "DEM-7/SB-2",
+            ["consumer-admits-confirmed", "delivery-history-is-admission-index"],
+            "A presented admission that the payee's index does not hold is not its snapshot: error.",
+            admissions=[{"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX}], index=[],
+        ),
+        deliver(
+            "delivery-without-admission-index", "error", "DEM-7/SB-2",
+            ["consumer-admits-confirmed", "delivery-requires-admission-index"],
+            "Without a snapshot of the payee's durable admission index its history cannot be shown complete: error.",
+            index=None,
+        ),
+        deliver(
+            "delivery-admission-index-malformed-revision", "error", "DEM-7/SB-2",
+            ["consumer-admits-confirmed", "delivery-requires-admission-index"],
+            "An index snapshot whose revision is not a safe integer cannot be the conditional write's base: error.",
+            index={"revision": "0", "admissions": []},
+        ),
+    ]
+    # DEM-5/DEM-6 once the handler's own call returns: after the first egress
+    # a node may hold the signed bytes, so a refusal, an error, a timeout or an
+    # accepted broadcast leaves execution unresolved; only a refusal found
+    # before any egress is permanent.
+    vectors += [
+        egress("egress-insufficient-balance-before-first-egress", "fail", "DEM-1/DEM-5",
+               ["pre-egress-refusal-is-permanent"],
+               "The handler's own balance read finds the payer short before any confirm or broadcast carried "
+               "the signed transfer: permanent, nothing sent.",
+               call="pre-egress-check", outcome="insufficient-balance"),
+        egress("egress-insufficient-balance-after-restart", "indeterminate", "DEM-5/DEM-6",
+               ["post-egress-refusal-is-unresolved", "restart-is-maybe-broadcast"],
+               "After a restart a retained transfer may have left, whatever its journal records, so a short "
+               "balance can be its own debit: substrate, re-read only.",
+               call="pre-egress-check", outcome="insufficient-balance", restarted=True),
+        egress("egress-insufficient-balance-after-interrupted-confirm", "indeterminate", "DEM-5/DEM-6",
+               ["confirm-egress-may-broadcast", "post-egress-refusal-is-unresolved"],
+               "A confirm that was cut off carried the signed bytes; a short balance afterwards proves nothing.",
+               call="pre-egress-check", outcome="insufficient-balance", broadcast_state="confirm-sent-interrupted"),
+        egress("egress-confirm-refused-insufficient-balance", "indeterminate", "DEM-5/DEM-6",
+               ["post-egress-refusal-is-unresolved"],
+               "demosdk confirm() throws valid false for insufficient balance after the node received the bytes: "
+               "substrate with the retained hash kept, never permanent.",
+               call="confirm", outcome="insufficient-balance"),
+        egress("egress-confirm-refused-not-valid", "indeterminate", "DEM-5/DEM-6",
+               ["post-egress-refusal-is-unresolved"],
+               "Any confirm refusal comes from a node that holds the signed bytes: substrate.",
+               call="confirm", outcome="refused-not-valid"),
+        egress("egress-confirm-transport-error", "indeterminate", "DEM-5/DEM-6",
+               ["call-error-is-unresolved"],
+               "A confirm that errored may have reached the node: substrate, never transient, and no repeat.",
+               call="confirm", outcome="transport-error"),
+        egress("egress-confirm-timeout", "indeterminate", "DEM-5/DEM-6",
+               ["call-error-is-unresolved"],
+               "A confirm that timed out may have reached the node: substrate, and no repeat.",
+               call="confirm", outcome="timeout"),
+        egress("egress-confirm-unrecognized-outcome", "indeterminate", "DEM-5/DEM-6",
+               ["call-error-is-unresolved"],
+               "An unrecognized confirm reply is unresolved: fail closed to substrate.",
+               call="confirm", outcome="http-418"),
+        egress("egress-broadcast-transport-error", "indeterminate", "DEM-5/DEM-6",
+               ["call-error-is-unresolved"],
+               "demosdk broadcast() returns a 500 envelope on transport failure; the bytes may be in a mempool.",
+               call="broadcast", outcome="transport-error"),
+        egress("egress-broadcast-refused-not-valid", "indeterminate", "DEM-5/DEM-6",
+               ["post-egress-refusal-is-unresolved"],
+               "A broadcast refusal follows a confirm that already carried the bytes: substrate.",
+               call="broadcast", outcome="refused-not-valid"),
+        egress("egress-broadcast-refused-by-dem1-after-valid-confirm", "indeterminate", "DEM-5/DEM-6",
+               ["post-egress-refusal-is-unresolved"],
+               "The handler's own DEM-1 refusal of the completing broadcast comes after its confirm egress: "
+               "substrate, re-read only.",
+               call="broadcast", outcome="refused-by-dem1"),
+        egress("egress-broadcast-accepted-is-not-success", "indeterminate", "DEM-3/DEM-5",
+               ["success-requires-record"],
+               "An accepted broadcast is not an executed transfer; the handler reads the record next.",
+               call="broadcast", outcome="accepted"),
+        egress("egress-balance-read-error-before-first-egress", "indeterminate", "DEM-5",
+               ["call-error-is-unresolved"],
+               "A Demos node or RPC failure is substrate for pay-dem, never PC-4 transient.",
+               call="pre-egress-check", outcome="transport-error"),
     ]
     for name, content, guard in (
         ("non-native-type", send_content(type="escrow"), "decode-type"),
@@ -1942,8 +2082,14 @@ def document() -> dict[str, Any]:
             "gasFeeSeparationUnscheduled": "the Demos binding attests, from that network's sealed genesis, that the gasFeeSeparation fork is unscheduled (activationHeight null); RPC does not report it, and with it active the node stores fee edits before the send's four, so anything but true (a scheduled height, an attestation the binding does not hold) is refused",
             "authenticated": "recordRead member: true when the record is authenticated under FV-5 at its bft-final inclusion; absent or false for a plain RPC read, which the node pin does not authenticate. A handler's DEM-4 failure and a consumer's DEM-7 failed refutation need true",
             "retainedFailureProof": "the DEM-4 proof the handler retained: classification, authentication (fv5-bft-final when FV-5 authenticated the failed record at its bft-final inclusion, rpc-read for a plain read; anything else is not authenticated), inclusionBlock and the record. A resume reuses only an authenticated proof that still binds, and APR accepts only such a proof",
-            "restartedSinceRetention": "false only when the handler has run without a restart since it retained the transfer; after a (re)start a retained transfer is maybe-broadcast whatever broadcastState was recorded, and anything but false is a restart",
+            "restartedSinceRetention": "false only when the handler has run without a restart since it retained the transfer; after a (re)start a retained transfer is maybe-broadcast whatever broadcastState was recorded, and anything but false is a restart. The handler derives it, and broadcastState and retentionDurable, from the journal it reads back from stable storage (the boot that wrote the retention against its own), never from process-local state; tests/test_pay_dem_crash_restart.py stops a storage-backed reference handler on both sides of every transition and witnesses that derivation",
+            "signedTransaction": "the signed transaction itself as the DEM-1 retention holds it, read back from the journal: a confirm request carries these bytes, and a broadcast's validity response must embed them",
+            "hashRetainedForOtherPhases": "the other (jobId, phaseIndex) whose stored journals retain the same hash, read from storage like restartedSinceRetention; any entry refuses the egress",
+            "call": "classify-egress-outcome: the handler's own step that returned, pre-egress-check (its balance read before any confirm or broadcast carried the signed bytes), confirm or broadcast; any other value may have carried the bytes",
+            "outcome": "classify-egress-outcome: what that step returned: insufficient-balance, refused-not-valid (demosdk confirm()/broadcast() valid false), refused-by-dem1 (the handler's own refusal of the completing broadcast), transport-error, timeout, accepted, or anything else (unrecognized). Only insufficient-balance found by a pre-egress-check on an un-restarted journal recording never-broadcast is permanent; every other outcome is substrate with the retained hash kept and no further call, never transient",
+            "cause": "classify-egress-outcome want member: call:outcome, so the result keeps the step and reply that produced it",
             "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) of pay-dem records the consumer admitted earlier. For admit-for-delivery they are the payee's own admissions, which its delivery check presents with the evidence: derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error. For resolve-settlement-group they lie outside the presented records, and settlement accounting and the DACS-5 derivation never add them",
+            "admissionIndex": "admit-for-delivery: the snapshot (revision, admissions) of the payee's durable admission index read for this check. consumerAdmissions must equal its admissions as a multiset of exact JCS bytes; a missing or malformed snapshot, or a presented history that omits or adds an admission, is error and authorizes no delivery. The payee adds this phase's admission with a write conditional on that revision",
             "guards": "checks whose removal makes this vector fail",
         },
         "count": len(vectors),

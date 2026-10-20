@@ -54,8 +54,16 @@ passing claim:
   records. The v0.4 `private-deliverables-v0.1` security set probes the DV
   rules, but its vectors are not cases in the pinned conformance manifest.
   Delivery is therefore `partial` and claimed only as `implemented`;
-- the out-of-scope `rfq` pattern is listed as `unsupported`; and
-- `availability` is omitted, as IM-2 allows for a non-operational library capability.
+- the out-of-scope `rfq` pattern is listed as `unsupported`;
+- the `delivery-type` capability's `id` is the phase kind
+  `deliver-storage-program`. §14.10 does not define the `id` tokens for each
+  capability `kind`; DACS-4 names the deliverable kind itself
+  `storage-program`; and
+- `availability` is omitted. These examples describe no deployment, so they
+  have no operational state to report. IM-2 allows the omission for a
+  non-operational library capability; a report from a running seller or
+  buyer would give an availability for each capability, as
+  `fixed-price-x402-seller.json` does.
 
 `fixed-price-x402-seller.json` makes no passing claim. A `capability` claim
 that is `conformance-tested` reports the whole capability (§14.10), but none
@@ -67,14 +75,30 @@ PS-1..PS-3, is therefore `partial` and claimed only as `implemented`, as in the
 the single golden pass case `settlement-x402-pass`, which exercises none of
 the X402-1..X402-4 rejection paths in DACS-4 §9.5.7 or the SB-1..SB-3 session
 binding in §9.5.8, so `pay-x402` is `partial` and claimed only as
-`implemented`. Like the DEM rail claims, it claims its `x402:default` rail
-against the §9.4.2 registry entry, since RD-1..RD-5 are rail-author duties.
+`implemented`. Like the `fixed-price-pay-dem-*` DEM rail claims, it claims its
+`x402:default` rail against the §9.4.2 registry entry, since RD-1..RD-5 are
+rail-author duties. Open issue #274 reports that this registry entry cannot
+be resolved as written.
 
-All the examples follow one rule for `ruleRefs`: an `implemented` claim names
-the rules its role implements, whether or not a cited case exercises them;
-its `result`, the capability's `testStatus` and the cited cases say how much
-of that is tested. So both seller examples name PS-1..PS-3 for fixed-price,
-and the `pay-x402` claim names SB-1..SB-3.
+These three examples, `fixed-price-x402-seller.json` and the two
+`fixed-price-pay-dem-*` examples, follow one rule for `ruleRefs`: an
+`implemented` claim names the rules its role implements, whether or not a
+cited case exercises them; its `result`, the capability's `testStatus` and
+the cited cases say how much of that is tested. So both of their seller
+examples name PS-1..PS-3 for fixed-price, and each seller's payment claim
+names the §9.5.8 settlement rules for its rail: the `pay-x402` claim names
+SB-1..SB-3, and the `pay-dem` claim names SB-1 and SB-2, because v0.4
+defines no SB-3 binding for `pay-dem`.
+
+The `pay-dem-rfq-*` and `verifier-indexer.json` examples predate this scoping
+and are not narrowed by it. They pin `9a1ca62`, whose conformance manifest is
+byte-identical to v0.4's. On the same single candidate case,
+`pb2-tier1-pay-dem-intrinsic-matches`, both `pay-dem-rfq-*` examples claim
+`pay-dem` as `conformance-tested` with test status `passed`, and claim the
+DEM rail against RD-1..RD-5; the seller also names PB-1..PB-3.
+`verifier-indexer.json` claims `derive-reputation` as `conformance-tested`
+on two cases, one of them a candidate. Under the scoping above, these would
+be `implemented` claims on `partial` capabilities.
 
 This scoping is the examples' own choice. IM-4 requires only that cited case
 ids exist in the pinned conformance manifest, and the validator does not check

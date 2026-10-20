@@ -141,6 +141,12 @@ the notes below name a later head.
 | #356, #371 | issue, draft PR | — | A pre-normative delivery-or-remedy profile; its first binding is an EVM escrow rail, not `pay-dem` |
 | #99 | issue | §10.4.2, §10.4.3, §11.2.1 | An optional DACS-X dispute-output interface and deterministic fixture contract over the bundle divergence walk |
 
+Two draft pull requests opened on 2026-10-19, after that inventory, and are
+not described in the table: #434 (base `next`) proposes every-profile DACS-4
+rules for PC-1 typed payment input, AMEND-1 target resolution and an RTB-1
+rail-authority time bound, and #435, stacked on #434, carries the candidate
+Atomic DACS Work profile (RFC #320).
+
 #432 concerns the payment step itself. At the pinned revision, §9.5.9 step 5
 returns success once the transfer reaches the terminal `included` state, and
 its failure modes expect a failed transfer to reach `failed`. #432 reports
@@ -185,8 +191,11 @@ No open issue tracks these vector gaps yet:
 DEMOS-MAPPING §A.2 ("128 KB cap") and in the GLOSSARY entry for Storage
 Program ("128 KB soft cap"). The Demos node enforces 1 MiB
 (`STORAGE_PROGRAM_MAX_SIZE_BYTES = 1048576` in `GCRStorageProgramRoutines.ts`
-at `kynesyslabs/node` `61b8e75`, `stabilisation` line), as does
-`@kynesyslabs/demosdk` 4.0.16. Two non-normative docs also say "128 KB cap"
+at `kynesyslabs/node` `61b8e75`, `stabilisation` line).
+`@kynesyslabs/demosdk` 4.0.16 declares the same 1 MiB constant
+(`STORAGE_PROGRAM_CONSTANTS.MAX_SIZE_BYTES`), but only its opt-in
+`StorageProgram.validateSize` helper checks it; the SDK's own write path
+does not call that helper. Two non-normative docs also say "128 KB cap"
 in their SR-2 rows: `docs/builders-guide.md` and `docs/flow-trace.md`.
 Open draft PR #426 (head `b2d32bb`, 2026-10-19) proposes stating 128 KB in
 all four places as a DACS soft limit of 131,072 bytes, stricter than the 1 MB

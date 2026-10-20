@@ -45,7 +45,7 @@
       "roles": ["seller"],
       "modules": ["DACS-4"],
       "capabilityRefs": ["pay-dem"],
-      "ruleRefs": ["DACS-4-9.5.9"],
+      "ruleRefs": ["DACS-4-9.5.9", "SB-1", "SB-2"],
       "evidenceRefs": ["pay-dem-vectors"]
     },
     {

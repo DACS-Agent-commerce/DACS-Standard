@@ -242,8 +242,16 @@ class FpDemCurrentRulesMapTests(unittest.TestCase):
                      "`docs/builders-guide.md` and `docs/flow-trace.md`.",
                      "Open draft PR #426 (head `b2d32bb`, 2026-10-19) proposes stating 128 KB in all four "
                      "places as a DACS soft limit of 131,072 bytes, stricter than the 1 MB substrate cap, "
-                     "rewrites both docs the same way"):
+                     "rewrites both docs the same way",
+                     # The SDK declares the constant; only an opt-in helper checks it.
+                     "`@kynesyslabs/demosdk` 4.0.16 declares the same 1 MiB constant "
+                     "(`STORAGE_PROGRAM_CONSTANTS.MAX_SIZE_BYTES`), but only its opt-in "
+                     "`StorageProgram.validateSize` helper checks it",
+                     # Pull requests opened after the dated inventory are named as such.
+                     "Two draft pull requests opened on 2026-10-19, after that inventory, and are not "
+                     "described in the table: #434 (base `next`)"):
             self.assertIn(text, gaps)
+        self.assertNotIn("as does `@kynesyslabs/demosdk`", gaps)
         # Those are every 128 KB statement at the pin: four in spec/, two in docs/.
         listed = subprocess.run(["git", "-C", str(ROOT), "grep", "-l", "128 KB", PIN, "--", "spec", "docs"],
                                 capture_output=True, text=True, check=True).stdout.split()

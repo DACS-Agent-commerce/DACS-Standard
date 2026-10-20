@@ -10,6 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "validate_implementation_manifests.py"
 EXAMPLE_DIR = ROOT / "conformance" / "implementation-manifests"
 V04_COMMIT = "4bb9e48a1095ab32c06c25b7c0b52018d3ce4091"
+# The examples the README scopes to their evidence, and the older ones it names as not narrowed.
+SCOPED_EXAMPLES = ("fixed-price-x402-seller.json", "fixed-price-pay-dem-seller.json", "fixed-price-pay-dem-buyer.json")
+OLDER_EXAMPLES = ("pay-dem-rfq-buyer.json", "pay-dem-rfq-seller.json", "verifier-indexer.json")
 
 
 def git_show(commit, path):
@@ -110,7 +113,7 @@ class ImplementationManifestTests(unittest.TestCase):
                     other_side = "PS-" if role == "buyer" else "PB-"
                     self.assertFalse({rule for rule in rules if rule.startswith(other_side)}, claim["id"])
                 self.assertEqual(claims["pay-dem"]["ruleRefs"], ["DACS-4-9.5.9", "PB-1", "PB-2", "PB-3"]
-                                 if role == "buyer" else ["DACS-4-9.5.9"])
+                                 if role == "buyer" else ["DACS-4-9.5.9", "SB-1", "SB-2"])
                 self.assertIn("DACS-3-8.4.1", claims["fixed-price"]["ruleRefs"])
                 self.assertEqual(claims["storage-program-delivery"]["ruleRefs"], ["DACS-4-9.6.1"])
         readme = (EXAMPLE_DIR / "README.md").read_text(encoding="utf-8")
@@ -176,24 +179,82 @@ class ImplementationManifestTests(unittest.TestCase):
         self.assertIn("claims its `x402:default` rail against the §9.4.2 registry entry", " ".join(readme.split()))
 
     def test_examples_share_one_rule_for_implemented_rule_refs(self):
-        # An implemented claim names the rules its role implements; the result,
-        # testStatus and cited cases say how much is tested. So the two seller
-        # examples name the same PS-* rules although no cited case exercises PS-1 or PS-2.
-        fixed_price = {}
-        for name in ("fixed-price-x402-seller.json", "fixed-price-pay-dem-seller.json"):
+        # In the three scoped examples, an implemented claim names the rules its
+        # role implements; the result, testStatus and cited cases say how much is
+        # tested. So both seller examples name the same PS-* rules although no
+        # cited case exercises PS-1 or PS-2, and each seller payment claim names
+        # the §9.5.8 SB-1/SB-2 settlement rules (SB-3 only where the rail defines it).
+        for name in SCOPED_EXAMPLES:
             manifest = load_example(name)
-            claim = next(claim for claim in manifest["claims"] if claim["capabilityRefs"] == ["fixed-price"])
-            self.assertEqual((claim["result"], claim["roles"]), ("implemented", ["seller"]), name)
-            fixed_price[name] = sorted(rule for rule in claim["ruleRefs"] if rule.startswith("PS-"))
+            with self.subTest(example=name):
+                self.assertEqual([claim["id"] for claim in manifest["claims"]
+                                  if claim["result"] in {"conformant", "conformance-tested"}], [])
+                self.assertNotIn("passed", {cap["testStatus"] for cap in manifest["capabilities"]})
+        fixed_price, payment = {}, {}
+        for name, pay in (("fixed-price-x402-seller.json", "pay-x402"), ("fixed-price-pay-dem-seller.json", "pay-dem")):
+            claims = {claim["capabilityRefs"][0]: claim for claim in load_example(name)["claims"]}
+            self.assertEqual((claims["fixed-price"]["result"], claims["fixed-price"]["roles"]),
+                             ("implemented", ["seller"]), name)
+            fixed_price[name] = sorted(rule for rule in claims["fixed-price"]["ruleRefs"] if rule.startswith("PS-"))
+            payment[pay] = claims[pay]["ruleRefs"]
         self.assertEqual(list(fixed_price.values()), [["PS-1", "PS-2", "PS-3"]] * 2, fixed_price)
-        pay_x402 = next(claim for claim in load_example()["claims"] if claim["capabilityRefs"] == ["pay-x402"])
-        self.assertEqual(pay_x402["ruleRefs"], ["DACS-4-9.5.7", "SB-1", "SB-2", "SB-3"])
+        self.assertEqual(payment, {"pay-x402": ["DACS-4-9.5.7", "SB-1", "SB-2", "SB-3"],
+                                   "pay-dem": ["DACS-4-9.5.9", "SB-1", "SB-2"]})
+        # At the FP-DEM pin, SB-3 defines bindings for pay-x402 and pay-ap2 only.
+        settle = git_show(V04_COMMIT, "spec/DACS-4-SETTLE.md")
+        sb3 = settle.split("- **(SB-3) ", 1)[1].split("\n", 1)[0]
+        self.assertIn("v0.2 defines one for `pay-x402`; v0.3 adds the `pay-ap2`", sb3)
+        self.assertNotIn("pay-dem", sb3)
         flat = " ".join((EXAMPLE_DIR / "README.md").read_text(encoding="utf-8").split())
-        for text in ("All the examples follow one rule for `ruleRefs`: an `implemented` claim names the rules "
-                     "its role implements, whether or not a cited case exercises them;",
-                     "So both seller examples name PS-1..PS-3 for fixed-price, and the `pay-x402` claim names "
-                     "SB-1..SB-3.",
+        for text in ("These three examples, `fixed-price-x402-seller.json` and the two `fixed-price-pay-dem-*` "
+                     "examples, follow one rule for `ruleRefs`: an `implemented` claim names the rules its role "
+                     "implements, whether or not a cited case exercises them;",
+                     "the `pay-x402` claim names SB-1..SB-3, and the `pay-dem` claim names SB-1 and SB-2, "
+                     "because v0.4 defines no SB-3 binding for `pay-dem`.",
                      "Its fixed-price claim, which names PS-1..PS-3, is therefore `partial`"):
+            self.assertIn(text, flat)
+        self.assertNotIn("All the examples follow one rule", flat)
+
+    def test_readme_names_the_older_examples_it_does_not_narrow(self):
+        # Every example is either scoped by the README's rule or named as older
+        # and not narrowed, and what the README says those older ones claim holds.
+        names = {path.name for path in EXAMPLE_DIR.glob("*.json")}
+        self.assertEqual(names, set(SCOPED_EXAMPLES) | set(OLDER_EXAMPLES))
+        self.assertFalse(set(SCOPED_EXAMPLES) & set(OLDER_EXAMPLES))
+        v04_suite = git_show(V04_COMMIT, "conformance/MANIFEST.json")
+        for name in OLDER_EXAMPLES:
+            manifest = load_example(name)
+            suite_pin = manifest["conformanceSuite"]
+            self.assertEqual((manifest["profile"]["commit"][:7], suite_pin["commit"][:7]), ("9a1ca62", "9a1ca62"))
+            self.assertEqual(git_show(suite_pin["commit"], suite_pin["manifestPath"]), v04_suite)
+        suite = json.loads(v04_suite)
+        tiers = {case["id"]: case["status"] for case in suite["cases"]}
+
+        def claim_cases(manifest, capability):
+            runs = {run["id"]: run for run in manifest["testRuns"]}
+            claim = next(claim for claim in manifest["claims"] if claim["capabilityRefs"] == [capability])
+            cap = next(cap for cap in manifest["capabilities"] if cap["ref"] == capability)
+            return claim, cap, [case for ref in claim["evidenceRefs"] for case in runs[ref]["caseIds"]]
+
+        for name, role in (("pay-dem-rfq-buyer.json", "buyer"), ("pay-dem-rfq-seller.json", "seller")):
+            manifest = load_example(name)
+            claim, cap, cases = claim_cases(manifest, "pay-dem")
+            self.assertEqual((claim["result"], cap["testStatus"], cases),
+                             ("conformance-tested", "passed", ["pb2-tier1-pay-dem-intrinsic-matches"]), name)
+            self.assertEqual(tiers["pb2-tier1-pay-dem-intrinsic-matches"], "candidate")
+            self.assertEqual(claim["ruleRefs"], ["PB-1", "PB-2", "PB-3"], name)
+            rail, _cap, _cases = claim_cases(manifest, "demos-native-dem-rail")
+            self.assertEqual(rail["ruleRefs"], ["RD-1", "RD-2", "RD-3", "RD-4", "RD-5"], name)
+        claim, cap, cases = claim_cases(load_example("verifier-indexer.json"), "derive-reputation")
+        self.assertEqual((claim["result"], cap["testStatus"], len(cases)), ("conformance-tested", "passed", 2))
+        self.assertEqual(sorted(tiers[case] for case in cases), ["candidate", "golden"])
+        flat = " ".join((EXAMPLE_DIR / "README.md").read_text(encoding="utf-8").split())
+        for text in ("The `pay-dem-rfq-*` and `verifier-indexer.json` examples predate this scoping and are not "
+                     "narrowed by it. They pin `9a1ca62`, whose conformance manifest is byte-identical to v0.4's.",
+                     "both `pay-dem-rfq-*` examples claim `pay-dem` as `conformance-tested` with test status "
+                     "`passed`, and claim the DEM rail against RD-1..RD-5; the seller also names PB-1..PB-3.",
+                     "`verifier-indexer.json` claims `derive-reputation` as `conformance-tested` on two cases, "
+                     "one of them a candidate."):
             self.assertIn(text, flat)
 
     def seller_example(self):

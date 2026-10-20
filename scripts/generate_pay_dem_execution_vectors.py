@@ -1178,6 +1178,9 @@ def _live(value: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
 def build_vectors() -> list[dict[str, Any]]:
     unbound = "DEM-2/DEM-5"
     unresolved = ["success-requires-record", "unresolved-authorizes-nothing"]
+    # After a retained DEM-4 result the phase has ended: an inclusion-only
+    # success on the re-read is also refused as post-terminal (DEM-6).
+    post_terminal = ["unresolved-authorizes-nothing"]
     live_confirmed, live_confirmed_block = _live(NODE2_CONFIRMED)
     live_failed, live_failed_block = _live(NODE2_FAILED)
     payload = send_content()
@@ -1571,29 +1574,29 @@ def build_vectors() -> list[dict[str, Any]]:
             proof=failure_proof(), read=UNAVAILABLE,
         ),
         resume(
-            "resume-corrupted-failure-proof", "indeterminate", "DEM-4/DEM-6", ["bind-nonce", "no-rebroadcast", "resume-validates-failure-proof"] + unresolved,
+            "resume-corrupted-failure-proof", "indeterminate", "DEM-4/DEM-6", ["bind-nonce", "no-rebroadcast", "resume-validates-failure-proof"] + post_terminal,
             "A retained proof whose nonce no longer binds is not reused; re-read only.",
             proof=failure_proof(send_content(nonce=str(NONCE + 1))), read=NOT_FOUND,
         ),
         resume(
-            "resume-corrupted-failure-proof-recipient", "indeterminate", "DEM-4/DEM-6", ["bind-recipient", "no-rebroadcast", "resume-validates-failure-proof"] + unresolved,
+            "resume-corrupted-failure-proof-recipient", "indeterminate", "DEM-4/DEM-6", ["bind-recipient", "no-rebroadcast", "resume-validates-failure-proof"] + post_terminal,
             "A retained proof for another recipient is not reused.",
             proof=failure_proof(send_content(recipient=OTHER_KEY)), read=NOT_FOUND,
         ),
         resume(
             # Its retained bft-final inclusion is in the transfer's own block too.
-            "resume-corrupted-failure-proof-block", "indeterminate", "DEM-4/DEM-6", ["no-rebroadcast", "resume-validates-failure-proof"] + unresolved,
+            "resume-corrupted-failure-proof-block", "indeterminate", "DEM-4/DEM-6", ["no-rebroadcast", "resume-validates-failure-proof"] + post_terminal,
             "A retained proof whose record is in another block than its inclusion block is not reused.",
             proof=failure_proof(blockNumber=BLOCK + 1), read=NOT_FOUND,
         ),
         resume(
-            "resume-corrupted-failure-proof-status", "indeterminate", "DEM-4/DEM-6", ["no-rebroadcast", "resume-validates-failure-proof"] + unresolved,
+            "resume-corrupted-failure-proof-status", "indeterminate", "DEM-4/DEM-6", ["no-rebroadcast", "resume-validates-failure-proof"] + post_terminal,
             "A retained proof whose record is not failed is not a failure proof.",
             proof=failure_proof(status="pending"), read=NOT_FOUND,
         ),
         resume(
             "resume-plain-read-failure-proof-not-reused", "indeterminate", "DEM-4/DEM-6",
-            ["no-rebroadcast", "resume-requires-authenticated-proof", "resume-validates-failure-proof"] + unresolved,
+            ["no-rebroadcast", "resume-requires-authenticated-proof", "resume-validates-failure-proof"] + post_terminal,
             "A retained proof built on a plain RPC read (an earlier draft's DEM-4) is not reused; the resume re-reads.",
             proof=failure_proof(authentication="rpc-read"), read=NOT_FOUND,
         ),
@@ -1603,7 +1606,7 @@ def build_vectors() -> list[dict[str, Any]]:
             resume(
                 "resume-failure-proof-" + suffix + "-not-reused", "indeterminate", "DEM-4/DEM-6/FV-5",
                 ["no-rebroadcast", "resume-requires-authenticated-proof", "resume-validates-failure-proof", guard]
-                + unresolved, note,
+                + post_terminal, note,
                 proof=failure_proof(authentication=authentication), read=NOT_FOUND,
             )
             for suffix, guard, authentication, note in fv5_variants(record("failed"), proof=True)
@@ -1615,16 +1618,29 @@ def build_vectors() -> list[dict[str, Any]]:
             resume(
                 "resume-failure-proof-" + suffix + "-not-reused", "indeterminate", "DEM-4/DEM-6/FV-5",
                 ["no-rebroadcast", "resume-requires-authenticated-proof", "resume-validates-failure-proof", *guards]
-                + unresolved, note,
+                + post_terminal, note,
                 proof=failure_proof(inclusion=inclusion), read=NOT_FOUND,
             )
             for suffix, guards, inclusion, note in bft_final_variants()
         ),
         resume(
-            "resume-plain-read-failure-then-authenticated-confirmed", "pass", "DEM-3/DEM-4/DEM-6",
-            ["resume-requires-authenticated-proof", "resume-validates-failure-proof", "success-authorizes-no-delivery", "success-branch"],
-            "After a plain-read failed record, the re-read finds the bound confirmed record with its applied payment: success, never a terminal failure.",
+            "resume-plain-read-failure-then-authenticated-confirmed", "indeterminate", "DEM-4/DEM-6",
+            ["resume-requires-authenticated-proof", "resume-validates-failure-proof", "terminal-never-reopens",
+             "unresolved-authorizes-nothing"],
+            "A phase ended on a plain-read failed record (an earlier draft's DEM-4). The proof is not reused, and the "
+            "re-read that finds the bound confirmed record with its applied payment is post-terminal: it never reopens "
+            "the phase as paid.",
             proof=failure_proof(authentication="rpc-read"), read=found(record("confirmed")),
+        ),
+        resume(
+            "resume-failure-proof-no-longer-verifies-then-confirmed", "indeterminate", "DEM-4/DEM-6/FV-5",
+            ["fv5-result-signed", "resume-requires-authenticated-proof", "resume-validates-failure-proof",
+             "terminal-never-reopens", "unresolved-authorizes-nothing"],
+            "A phase ended on a DEM-4 proof whose FV-5 result the payer's policy no longer verifies. The proof is not "
+            "reused, and the re-read that finds the bound confirmed record with its applied payment is post-terminal: "
+            "it never reopens the phase as paid.",
+            proof=failure_proof(authentication=execution_result(record("failed"), keys=FORGED_FV5_SIGNERS)),
+            read=found(record("confirmed")),
         ),
         resume(
             "resume-without-proof-not-found", "indeterminate", "DEM-6", ["no-rebroadcast"],
@@ -2724,8 +2740,8 @@ def document() -> dict[str, Any]:
             "finalityProfile": "the rail's signed consumerFinalityProfile.settlement ChainFinalityProfile (kind bft-final, networkId and genesisHash of railNetwork, observation, validatorSetRef, quorumNumerator, quorumDenominator); one of another kind or network verifies nothing",
             "finalityTrust": "the verifier's own trust for that profile: validatorSets (by content hash), observationAuthorityKeys (base64url Ed25519) and verificationTimeMs, its local clock",
             "authenticated": "recordRead member of an earlier draft: a read that says it is FV-5-authenticated. It decides nothing, whoever sets it; the *-fv5-flag-only vectors pin that",
-            "retainedFailureProof": "the DEM-4 proof the handler retained: classification, authentication (FV-5's signed execution result for the proof's own record, stored verbatim; rpc-read for a plain read, and the earlier draft's fv5-bft-final label, are none), inclusionProof (FV's bft-final inclusion observation, stored verbatim), inclusionBlock and the record. A resume and an APR check each verify both themselves, the result against fv5Policy and railNetwork and the inclusion against finalityProfile and finalityTrust in the block the result names (the proof has no inclusion observation of its own); a resume reuses only a proof that verifies and still binds, and APR accepts only such a proof",
-            "restartedSinceRetention": "false only when the handler has run without a restart since it retained the transfer; after a (re)start a retained transfer is maybe-broadcast whatever broadcastState was recorded, and anything but false is a restart. The handler derives it, and broadcastState and retentionDurable, from the journal it reads back from stable storage (the boot that wrote the retention against its own), never from process-local state; tests/test_pay_dem_crash_restart.py stops a storage-backed reference handler on both sides of every transition and witnesses that derivation",
+            "retainedFailureProof": "the DEM-4 proof the handler retained: classification, authentication (FV-5's signed execution result for the proof's own record, stored verbatim; rpc-read for a plain read, and the earlier draft's fv5-bft-final label, are none), inclusionProof (FV's bft-final inclusion observation, stored verbatim), inclusionBlock and the record. A resume and an APR check each verify both themselves, the result against fv5Policy and railNetwork and the inclusion against finalityProfile and finalityTrust in the block the result names (the proof has no inclusion observation of its own); a resume reuses only a proof that verifies and still binds, and APR accepts only such a proof. A retained proof means the phase ended: a resume whose proof does not verify re-reads, and that post-terminal re-read can prove the failure again but is never pass",
+            "restartedSinceRetention": "false only when the handler has run without a restart since it retained the transfer; after a (re)start a retained transfer is maybe-broadcast whatever broadcastState was recorded, and anything but false is a restart. The handler derives it, and broadcastState and retentionDurable, from the journal it reads back from stable storage (the start that wrote the retention against its own, an identifier the handler mints from a durable counter and never takes from its caller), never from process-local state; tests/test_pay_dem_crash_restart.py stops a storage-backed reference handler on both sides of every transition and witnesses that derivation",
             "signedTransaction": "the signed transaction itself as the DEM-1 retention holds it, read back from the journal: a confirm request carries these bytes, and a broadcast's validity response must embed them",
             "hashRetainedForOtherPhases": "the other (jobId, phaseIndex) whose stored journals retain the same hash, read from storage like restartedSinceRetention; any entry refuses the egress",
             "call": "classify-egress-outcome: the handler's own step that returned, pre-egress-check (its balance read before any confirm or broadcast carried the signed bytes), confirm or broadcast; any other value may have carried the bytes",

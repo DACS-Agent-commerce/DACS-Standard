@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 361 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 362 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -1247,7 +1247,7 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-361 candidate vectors pin native-DEM settlement on execution, not inclusion.
+362 candidate vectors pin native-DEM settlement on execution, not inclusion.
 The node's status index may label a transaction `included` while its
 transaction record is `failed`, so the index is never decisive. Records use
 the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
@@ -1325,8 +1325,12 @@ the rail's network (a plain-read proof, guard
 label and a forged, under-signed or other-network or other-record result,
 `resume-failure-proof-fv5-*`; a retained `inclusionProof` that does not
 verify or is of another block, `resume-failure-proof-bft-final-*`), and
-recover a confirmed transfer by re-reading the retained hash, including after
-a plain-read failure. `apr-reconciliation-evidence` cases accept a DEM-4
+recover a confirmed transfer by re-reading the retained hash when no failure
+proof is retained. A retained proof means the phase ended: a re-read that
+replaces a proof that does not verify is post-terminal, so a confirmed record
+with its applied payment is `indeterminate`, never `pass`, after a plain-read
+failure and after a proof that no longer verifies (guard
+`terminal-never-reopens`). `apr-reconciliation-evidence` cases accept a DEM-4
 proof as APR `closed-cannot-settle` evidence only when the APR check itself
 verifies its `authentication` as FV-5's signed result for its failed record
 on `railNetwork` under `fv5Policy`, and its `inclusionProof` as the
@@ -1433,13 +1437,16 @@ short balance can be the transfer's own debit. Each result carries `cause`
 handler and payee (`tests/pay_dem_reference_handler.py`) that take every state
 input of these decisions from what they read back from storage. It stops
 them, one process per start, on each side of every transition and restarts
-them from storage. The payer's first retention is a create-if-absent under
+them from storage. Each start mints its identifier from a durable counter in
+the payer's store; the caller's `--boot` only labels its egress, so a restart
+that repeats it is still a restart. The payer's first retention is a create-if-absent under
 the journal lock, it journals each call as possibly sent before making it,
 and its later journal saves and the payee's index writes are conditional on
 the state they were read as. After a restart no signed effect leaves, every
 egress carried the bytes the stored journal already held, the journal file,
 its directory and each directory the store created (in its parent) were
-fsynced before the first egress, and one hash is delivered for at most one
+fsynced before the first egress, a new delivery record and then its directory
+entry are fsynced before `deliver` returns, and one hash is delivered for at most one
 `(jobId, phaseIndex)` and at most once for it, including under two
 concurrent checks; a hash retained for one phase never leaves for another,
 read from the stored journals (`hashRetainedForOtherPhases`). A call that
@@ -1459,7 +1466,10 @@ after a restart; so does a node that serves `failed` for an executed transfer.
 A DEM-4 proof stores the signed result and the inclusion verbatim, and a
 resume verifies both again: a label, a forgery, an edited result, a signed
 result of another record, another network's result, and a missing,
-unfinalized or other-block inclusion are re-read instead. Eighteen wrong
+unfinalized or other-block inclusion are re-read instead, and when that
+re-read serves a confirmed record with its applied payment, the phase stays
+ended: nothing is returned as success, written or sent. A crash on either
+side of the pre-egress `permanent` refusal write sends nothing. Twenty-one wrong
 variants each fail it: a process-local journal, a journal written after
 `confirm`, progress journaled only after a call returns, restart taken from
 saved progress, no fsync, no fsync of a new directory's parent, an unlocked
@@ -1467,9 +1477,11 @@ first retention, a journal blind to other phases, a per-phase rather than
 store-wide retention lock, the rail's network taken from the binding, the
 node's own authentication claim taken for FV-5, a DEM-4 result not journaled
 with its proof, an FV-5 result taken without verifying its signatures, a
-signed failure taken without its `bft-final` inclusion, a process-local
-admission index, an unconditional index write, a lost index
-read as empty and a delivery on every check.
+signed failure taken without its `bft-final` inclusion, the caller's start
+value taken as the start identifier, an ended phase re-derived from a re-read,
+a process-local admission index, an unconditional index write, a lost index
+read as empty, a delivery on every check and a new delivery record whose
+directory entry is not fsynced.
 
 `phase.payeeAddress` and `phase.payerPayingKey` are DEMOS-MAPPING §A.2 pay-dem
 party addresses: a bare or `0x` Demos key or a `did:demos:agent:` DID over 64

@@ -115,6 +115,9 @@ GUARDS = frozenset({
     "resume-reuses-failure-proof",
     "resume-validates-failure-proof",
     "resume-requires-authenticated-proof",
+    # DEM-6: a phase with a retained DEM-4 result has ended; a re-read after
+    # its proof stops verifying is post-terminal and never a success
+    "terminal-never-reopens",
     "apr-evidence-requires-authenticated-failure",
     "apr-evidence-from-authenticated-failure",
     # DEM-4 and DEM-7 under FV-5: the signed execution result itself
@@ -845,7 +848,13 @@ def resume(protocol_input: dict, off) -> tuple[str, dict]:
             and (authenticated_proof(proof, protocol_input, off) or "resume-requires-authenticated-proof" in off)
         ):
             return handler_result("fail", protocol_input, off)
-    return classify(protocol_input, off)
+    expected, want = classify(protocol_input, off)
+    if proof is not None and expected == "pass" and "terminal-never-reopens" not in off:
+        # DEM-6: the phase ended on its retained failure. The re-read that
+        # replaces a proof that no longer verifies is post-terminal: it can
+        # prove the failure again, but it never reopens the phase as paid.
+        return handler_result("indeterminate", protocol_input, off)
+    return expected, want
 
 
 def apr_evidence(protocol_input: dict, off) -> tuple[str, dict]:
@@ -2489,13 +2498,41 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertEqual((generator.AMOUNT_OS, generator.AMOUNT_OS), committed_change(read["appliedTransfer"]))
         self.assertEqual("indeterminate", evaluate(forged)[0])
         self.assertEqual("fail", evaluate(forged, {"failure-requires-authentication"})[0])
-        # After that plain-read failure, a later re-read of the retained hash
-        # finds the executed transfer: success, never a reused failure proof.
+        # A phase that an earlier draft ended on that plain-read failure:
+        # the proof is never reused, and the later re-read that finds the
+        # executed transfer is post-terminal, so it never reopens the phase.
         later = self.cases["resume-plain-read-failure-then-authenticated-confirmed"]
         self.assertEqual("rpc-read", later["protocolInput"]["retainedFailureProof"]["authentication"])
-        self.assertEqual("pass", evaluate(later)[0])
+        self.assertEqual("indeterminate", evaluate(later)[0])
         self.assertEqual("fail", evaluate(later, {"resume-requires-authenticated-proof"})[0])
         self.assertEqual("indeterminate", evaluate(self.cases["resume-plain-read-failure-proof-not-reused"])[0])
+
+    def test_a_resume_after_a_terminal_failure_never_succeeds(self):
+        """DEM-4/DEM-6: a retained failure proof means the phase ended. A
+        resume reuses the proof only while it verifies; otherwise it re-reads,
+        and that post-terminal read can prove the failure again but never
+        returns pass, whatever the record and authority show. The handler
+        that re-derives the ended phase from the re-read alone reopens it."""
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("That re-read is post-terminal (DEM-6): it returns `errorClass: \"permanent\"` only when it "
+                      "proves the failure again, and otherwise `ok: false` with `errorClass: \"substrate\"`; it MUST NOT "
+                      "return `ok: true`, whatever the record and its applied-payment authority show.", spec)
+        ended = [vector for vector in self.data["vectors"]
+                 if vector["operation"] == "resume-phase" and vector["protocolInput"]["retainedFailureProof"] is not None]
+        self.assertGreaterEqual(len(ended), 15)
+        for vector in ended:
+            with self.subTest(name=vector["name"]):
+                self.assertNotEqual("pass", vector["expected"])
+                self.assertNotEqual("pass", evaluate(vector)[0])
+        for name in ("resume-plain-read-failure-then-authenticated-confirmed",
+                     "resume-failure-proof-no-longer-verifies-then-confirmed"):
+            with self.subTest(name=name):
+                vector = self.cases[name]
+                self.assertEqual("confirmed", vector["protocolInput"]["recordRead"]["record"]["status"])
+                self.assertIn("terminal-never-reopens", vector["guards"])
+                self.assertEqual("pass", evaluate(vector, {"terminal-never-reopens"})[0])
+        # Without a retained proof nothing has ended, and the re-read settles.
+        self.assertEqual("pass", evaluate(self.cases["resume-without-proof-confirmed"])[0])
 
     def test_restart_makes_a_retained_transfer_maybe_broadcast(self):
         """DEM-6: a crash can fall between a call that carried the signed

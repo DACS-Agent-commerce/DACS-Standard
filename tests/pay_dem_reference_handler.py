@@ -22,7 +22,16 @@ the harness must catch.
 `retentionDurable` is the one state input not read back: it is `True`
 because `Store.write` returns only once the journal, its directory and every
 directory it created are fsynced, which `test_pay_dem_crash_restart`
-witnesses by the order of fsync calls before the first egress.
+witnesses by the order of fsync calls before the first egress. A delivery
+record reaches stable storage the same way, file and new directory entry,
+before `deliver` returns.
+
+Whether a start has fallen since the retention compares the start recorded
+in the journal with this start's identifier, which the handler mints from a
+durable counter in its store; `--boot` only labels a process's egress, so a
+restarted process that repeats it is still a restart (DEM-6). A stored
+terminal failure is never reopened: when its proof no longer verifies, the
+re-read is post-terminal and never returns success.
 
 Run as a script, one process per start:
     pay_dem_reference_handler.py pay --work DIR --boot ID [--job JOB] [--crash POINT] [--mutant M]
@@ -53,15 +62,17 @@ CRASH_EXIT = 70
 JOURNAL = "pay-dem-journal.json"
 INDEX = "admission-index.json"
 DELIVERIES = "deliveries.jsonl"
+STARTS = "starts.json"
 # One lock for every phase's retention, so the create-if-absent and the
 # cross-phase hash check are one step for the whole store.
 RETENTION_LOCK = "retention"
 PAYER_MUTANTS = ("process-local-journal", "journal-after-confirm", "restart-from-progress", "no-fsync",
                  "no-cross-phase-index", "no-parent-fsync", "blind-first-retention", "progress-after-call",
                  "network-from-binding", "node-authenticates-read", "failure-not-journaled",
-                 "per-phase-retention-lock", "unverified-fv5-result", "fv5-result-alone")
+                 "per-phase-retention-lock", "unverified-fv5-result", "fv5-result-alone",
+                 "caller-start-id", "terminal-reopens")
 PAYEE_MUTANTS = ("process-local-index", "no-conditional-write", "empty-index-when-missing",
-                 "deliver-every-check")
+                 "deliver-every-check", "no-sink-parent-fsync")
 NO_GUARD_REMOVED = frozenset()
 
 
@@ -87,6 +98,21 @@ def _fsync_directory(path: Path) -> None:
         os.close(directory)
 
 
+def durable_directories(root: Path, *, parent_fsync: bool = True) -> None:
+    """Create `root` and each missing ancestor, fsyncing each new directory's
+    parent, so every entry on the path survives a crash."""
+    missing = []
+    path = Path(root).absolute()
+    while not path.exists():
+        missing.append(path)
+        path = path.parent
+    for path in reversed(missing):
+        path.mkdir(exist_ok=True)
+        if parent_fsync:
+            # fsync(2): flushing a file does not flush the entry naming it.
+            _fsync_directory(path.parent)
+
+
 class Store:
     """One JSON document per name. A write goes to a temporary file that is
     flushed and fsynced, is renamed over the name, and then the directory is
@@ -98,16 +124,16 @@ class Store:
     def __init__(self, root: Path, *, fsync: bool = True, parent_fsync: bool = True):
         self.root = Path(root)
         self.fsync = fsync
-        missing = []
-        path = self.root.absolute()
-        while not path.exists():
-            missing.append(path)
-            path = path.parent
-        for path in reversed(missing):
-            path.mkdir(exist_ok=True)
-            if fsync and parent_fsync:
-                # fsync(2): flushing a file does not flush the entry naming it.
-                _fsync_directory(path.parent)
+        durable_directories(self.root, parent_fsync=fsync and parent_fsync)
+
+    def next_start(self) -> str:
+        """A start identifier no earlier start on this store used: a durable
+        counter, advanced under its lock and on stable storage before the
+        start makes any decision (DEM-6)."""
+        with self.locked(STARTS):
+            number = (self.read(STARTS) or {"starts": 0})["starts"] + 1
+            self.write(STARTS, {"starts": number})
+        return f"start-{number}"
 
     def write(self, name: str, value: Any) -> None:
         temporary = self.root / f".{name}.tmp"
@@ -171,12 +197,18 @@ class _Lock:
             self.handle.close()
 
 
-def _append(path: Path, entry: dict[str, Any]) -> None:
-    """An effect outside the handler: it has happened once this returns."""
+def _append(path: Path, entry: dict[str, Any], *, parent_fsync: bool = True) -> None:
+    """An effect outside the handler: it has happened once this returns. The
+    line is fsynced, and an append that creates the file also fsyncs the
+    directory that now names it, as `Store` does for its documents."""
+    durable_directories(path.parent, parent_fsync=parent_fsync)
+    created = not path.exists()
     with open(path, "a", encoding="utf-8") as handle:
         handle.write(json.dumps(entry) + "\n")
         handle.flush()
         os.fsync(handle.fileno())
+    if created and parent_fsync:
+        _fsync_directory(path.parent)
 
 
 def same_signed_bytes(retained: Any, carried: Any) -> bool:
@@ -321,9 +353,11 @@ def binding_network(entry: dict[str, Any]) -> dict[str, str]:
 class PayerHandler:
     """The payer's pay-dem handler for one phase, from signed transfer to its
     PC-4 result. The journal holds the retained transfer, the signed
-    transaction itself, the start (`boot`) that wrote it, its progress, the
-    confirm's validity response, any terminal result and, with a DEM-4
-    result, its failure proof.
+    transaction itself, the start that wrote it, its progress, the confirm's
+    validity response, any terminal result and, with a DEM-4 result, its
+    failure proof. Each handler is one start: its identifier is minted from
+    the store's durable start counter (`Store.next_start`), never taken from
+    the caller, whose `boot` only labels its egress.
 
     `rail_network` is the pinned RailDefinition's
     `consumerFinalityProfile.settlement` network; `bindings` is the payer's
@@ -347,6 +381,9 @@ class PayerHandler:
                  finality_trust: dict[str, Any] = generator.FINALITY_TRUST):
         self.store, self.node, self.boot = store, node, boot
         self.crash_at, self.mutant, self.exit_on_crash = crash_at, mutant, exit_on_crash
+        # DEM-6: an identifier no earlier start used. The wrong handler takes
+        # the caller's value, which a restarted process can repeat.
+        self.start = boot if mutant == "caller-start-id" else store.next_start()
         self.job_id, self.phase_index = job_id, phase_index
         self.journal = journal_name(job_id, phase_index)
         self.bindings = [generator.binding_entry()] if bindings is None else bindings
@@ -359,11 +396,13 @@ class PayerHandler:
         self.fv5_policy = fv5_policy
         self.finality = {"finalityProfile": finality_profile, "finalityTrust": finality_trust}
         # The wrong handlers take a result's signatures on trust, take the
-        # signed result alone for DEM-4 without its bft-final inclusion, or
-        # (the earlier draft) take a flag for FV-5 and store a label as its proof.
+        # signed result alone for DEM-4 without its bft-final inclusion,
+        # (the earlier draft) take a flag for FV-5 and store a label as its
+        # proof, or re-derive an ended session from a re-read alone.
         self.off = {"unverified-fv5-result": frozenset({"fv5-result-signed"}),
                     "fv5-result-alone": frozenset({"failure-requires-bft-final-inclusion"}),
                     "node-authenticates-read": frozenset({"fv5-authentication-is-a-signed-result"}),
+                    "terminal-reopens": frozenset({"terminal-never-reopens"}),
                     }.get(mutant, NO_GUARD_REMOVED)
 
     def _binding_input(self) -> dict[str, Any]:
@@ -409,8 +448,10 @@ class PayerHandler:
         ]
 
     def _state(self, entry: dict[str, Any]) -> dict[str, Any]:
-        """Gate state derived from the journal as read back from storage."""
-        restarted = entry["boot"] != self.boot
+        """Gate state derived from the journal as read back from storage. A
+        journal that names no start (one written before starts were minted)
+        reads as written by another start."""
+        restarted = entry.get("start") != self.start
         if self.mutant == "restart-from-progress":
             # The wrong handler trusts the progress it saved and never asks
             # whether a start has fallen since the retention.
@@ -442,7 +483,9 @@ class PayerHandler:
         )
         result = {"expected": expected, **want}
         if want["errorClass"] == "permanent":
+            self._crash("before-refusal-result")
             self._save(self.store.read(self.journal), result=result)
+            self._crash("after-refusal-result")
         return result
 
     def _read(self, tx_hash: str) -> dict[str, Any]:
@@ -515,7 +558,8 @@ class PayerHandler:
         proof is reused only while its stored FV-5 result and bft-final
         inclusion still verify against the payer's own trust, name one block
         and still bind the retained transfer; otherwise the retained hash is
-        re-read, a post-terminal read that changes no session state."""
+        re-read, a post-terminal read that changes no session state: it
+        writes nothing, and the oracle never makes it a success."""
         read = self._read(entry["retainedTransfer"]["txHash"])
         expected, want = oracle.resume(
             dict(self._classify_input(entry, read), retainedFailureProof=entry["failureProof"]), self.off,
@@ -553,7 +597,7 @@ class PayerHandler:
             # or sent for this one; nothing leaves for this phase.
             return {"expected": "fail", "broadcastPermitted": False, "cause": "hash-retained-for-another-phase"}
         entry = {
-            "boot": self.boot,
+            "start": self.start,
             "progress": "never-broadcast",
             "retainedTransfer": generator.retained(jobId=self.job_id, phaseIndex=self.phase_index,
                                                    txHash=transaction["hash"]),
@@ -608,7 +652,7 @@ class PayerHandler:
             self._crash("after-confirm-journal")
         if entry["progress"] == "confirm-returned":
             if not self._permits("broadcast-retained", entry):
-                if entry["boot"] == self.boot:
+                if entry.get("start") == self.start:
                     self._save(entry, progress="maybe-broadcast")
                     return self._outcome("broadcast", "refused-by-dem1", entry)
                 return self._classify(entry)
@@ -702,7 +746,9 @@ class Payee:
         it happens only when no earlier delivery carries the key."""
         with _Lock(self.work / f".{DELIVERIES}.lock"):
             if self.mutant == "deliver-every-check" or key not in self.delivered():
-                _append(self.sink, {"txHash": key[0], "jobId": key[1], "phaseIndex": key[2], "boot": self.boot})
+                # The wrong payee leaves the new record's directory entry unflushed.
+                _append(self.sink, {"txHash": key[0], "jobId": key[1], "phaseIndex": key[2], "boot": self.boot},
+                        parent_fsync=self.mutant != "no-sink-parent-fsync")
 
     def deliver(self, job_id: str, phase_index: int = generator.PHASE_INDEX, *,
                 between: Callable[[], None] | None = None) -> str:
@@ -782,7 +828,7 @@ def main() -> int:
     parser.add_argument("--executed", choices=RECORD_STATUSES)
     parser.add_argument("--rail-network", choices=tuple(RAIL_NETWORKS), default="mainnet")
     args = parser.parse_args()
-    args.work.mkdir(parents=True, exist_ok=True)
+    durable_directories(args.work)
     if args.command == "pay":
         handler = payer(args.work, args.boot, crash_at=args.crash, mutant=args.mutant, exit_on_crash=True,
                         job_id=args.job or generator.JOB_ID, confirm=args.confirm, broadcast=args.broadcast,

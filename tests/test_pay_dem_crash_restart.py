@@ -12,8 +12,11 @@ call returns, trusts its saved progress, skips an fsync, retains a phase's
 first transfer without a create-if-absent, locks only its own phase while it
 checks the other phases' hashes, takes the network from its binding, trusts
 the node's word that a read is authenticated, returns a DEM-4 failure
-without journaling it, writes its index without a conditional write, treats
-a lost index as empty or delivers on every check, must break one of them.
+without journaling it, takes its caller's start value as its start
+identifier, re-derives an ended phase from a re-read, writes its index
+without a conditional write, treats a lost index as empty, delivers on every
+check or leaves a new delivery record's directory entry unflushed, must
+break one of them.
 """
 
 from __future__ import annotations
@@ -54,8 +57,13 @@ def _options(crash: str | None = None, mutant: str | None = None, *extra: str) -
     return [*(["--crash", crash] if crash else []), *(["--mutant", mutant] if mutant else []), *extra]
 
 
-def payer_violations(root: Path, mutant: str | None = None, *node: str) -> list[str]:
-    """Stop the payer at each point, restart it twice, and check DEM-1/DEM-6."""
+def payer_violations(root: Path, mutant: str | None = None, *node: str,
+                     restarts: tuple[str, ...] = ("boot-2", "boot-3")) -> list[str]:
+    """Stop the payer at each point, restart it twice, and check DEM-1/DEM-6.
+    `restarts` are the caller's labels for the restarted processes: the same
+    label as the first start's is a caller that reuses its value, which the
+    handler must not take as its own start identity. Egress after the restart
+    is what the log holds beyond what it held when the first start stopped."""
     violations = []
     signed = generator.signed()
     for point in PAYER_POINTS:
@@ -65,9 +73,9 @@ def payer_violations(root: Path, mutant: str | None = None, *node: str) -> list[
             violations.append(f"{point}: first start failed: {first.stderr[-400:]}")
             continue
         retained_at_restart = (work / "store" / JOURNAL).exists()
-        sent_before_restart = bool(reference.read_lines(work / "egress.jsonl"))
+        sent_before_restart = len(reference.read_lines(work / "egress.jsonl"))
         results = []
-        for boot in ("boot-2", "boot-3"):
+        for boot in restarts:
             again = run("pay", work, boot, *_options(None, mutant, *node))
             if again.returncode != 0:
                 violations.append(f"{point}: {boot} failed: {again.stderr[-400:]}")
@@ -77,7 +85,7 @@ def payer_violations(root: Path, mutant: str | None = None, *node: str) -> list[
         calls = [entry["call"] for entry in egress]
         if calls.count("confirm") > 1 or calls.count("broadcast") > 1:
             violations.append(f"{point}: second signed effect {calls}")
-        after_restart = [entry for entry in egress if entry["boot"] != "boot-1"]
+        after_restart = egress[sent_before_restart:]
         if after_restart and (retained_at_restart or sent_before_restart):
             violations.append(f"{point}: egress after restart {[entry['call'] for entry in after_restart]}")
         for entry in egress:
@@ -132,6 +140,37 @@ def fsync_violations(root: Path, mutant: str | None = None) -> list[str]:
     parent = os.stat(root)
     if (parent.st_dev, parent.st_ino) not in before:
         violations.append("new journal directory's entry not fsynced in its parent before the first egress")
+    return violations
+
+
+def delivery_fsync_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """The first delivery creates its record: the record's file and then the
+    directory entry naming it reach stable storage before `deliver` returns,
+    so a power loss after the delivery never loses it while the admission
+    index, already durable, still holds the admission (DEM-7 once-only)."""
+    events: list[tuple[int, int]] = []
+    real_fsync = os.fsync
+
+    def fsync(fd):
+        status = os.fstat(fd)
+        events.append((status.st_dev, status.st_ino))
+        return real_fsync(fd)
+
+    work = root / "fresh" / "payee"
+    with mock.patch.object(reference.os, "fsync", fsync):
+        made = reference.payee(work, "boot-1", mutant=mutant)
+        made.provision()
+        verdict = made.deliver(generator.JOB_ID)
+    if verdict != "pass":
+        return [f"no delivery: {verdict}"]
+    sink, directory = os.stat(work / reference.DELIVERIES), os.stat(work)
+    sink_id, directory_id = (sink.st_dev, sink.st_ino), (directory.st_dev, directory.st_ino)
+    violations = []
+    if sink_id not in events:
+        violations.append("delivery record not fsynced before deliver returned")
+    last = max((i for i, identity in enumerate(events) if identity == sink_id), default=-1)
+    if directory_id not in events[last + 1:]:
+        violations.append("new delivery record's directory entry not fsynced before deliver returned")
     return violations
 
 
@@ -324,6 +363,38 @@ def failure_proof_violations(root: Path, mutant: str | None = None) -> list[str]
     return violations
 
 
+def terminal_reopen_violations(root: Path, mutant: str | None = None) -> list[str]:
+    """DEM-4/DEM-6: once a phase ends on a proven failure, its stored proof
+    stops verifying (here: its FV-5 result is now signed by keys outside the
+    payer's policy), and a later re-read serves `confirmed` with the applied
+    payment authenticated. The proof is not reused, and the re-read is
+    post-terminal: it never returns success or anchors success evidence,
+    the stored terminal result and proof stay as written, and nothing is sent."""
+    if run("pay", root, "boot-1", *_options(None, mutant, *FAILED, *FV5)).returncode != 0:
+        return ["no terminal failure stored"]
+    store = reference.Store(root / "store")
+    entry = store.read(JOURNAL)
+    if (entry or {}).get("failureProof") is None:
+        return ["no terminal failure stored"]
+    invalid = dict(entry, failureProof=dict(entry["failureProof"], authentication=generator.execution_result(
+        generator.record("failed"), keys=generator.FORGED_FV5_SIGNERS)))
+    store.write(JOURNAL, invalid)
+    again = run("pay", root, "boot-2", *_options(None, mutant, "--record-status", "confirmed",
+                                                  "--executed", "confirmed", *FV5))
+    if again.returncode != 0:
+        return [f"restart failed: {again.stderr[-400:]}"]
+    result, violations = json.loads(again.stdout), []
+    if result.get("ok") or result.get("expected") == "pass" or result.get("nextAction") == "anchor-success-evidence":
+        violations.append(f"terminal failure reopened as {result.get('expected')}")
+    if result.get("deliveryAuthorized") or result.get("settlementAccounting"):
+        violations.append("post-terminal read authorized delivery or accounting")
+    if store.read(JOURNAL) != invalid:
+        violations.append("post-terminal read changed the stored session")
+    if [entry["boot"] for entry in reference.read_lines(root / "egress.jsonl")] != ["boot-1", "boot-1"]:
+        violations.append("egress after the terminal failure")
+    return violations
+
+
 def plain_read_violations(root: Path, mutant: str | None = None) -> list[str]:
     """DEM-4/DEM-5: a pinned node that serves a bound failed record and
     calls its own read authenticated proves nothing; without FV-5 the result
@@ -488,6 +559,22 @@ class PayDemCrashRestartTests(unittest.TestCase):
                 self.assertEqual(then_class, json.loads(again.stdout)["errorClass"])
                 self.assertEqual(calls, [entry["call"] for entry in reference.read_lines(work / "egress.jsonl")])
 
+    def test_a_crash_around_the_pre_egress_refusal_write_sends_nothing(self):
+        """A short balance found before any egress ends the phase permanent.
+        A crash before that write leaves a retention with no result, which a
+        restart treats as possibly sent and only re-reads (substrate); a crash
+        after it leaves the stored refusal. Either way nothing is sent."""
+        for point, then_class in (("before-refusal-result", "substrate"), ("after-refusal-result", "permanent")):
+            with self.subTest(point=point):
+                work = self.root / point
+                first = run("pay", work, "boot-1", "--crash", point, "--balance", "insufficient")
+                self.assertEqual(reference.CRASH_EXIT, first.returncode, first.stderr)
+                for boot in ("boot-2", "boot-1"):
+                    again = run("pay", work, boot, "--balance", "sufficient")
+                    self.assertEqual(0, again.returncode, again.stderr)
+                    self.assertEqual(then_class, json.loads(again.stdout)["errorClass"])
+                self.assertEqual([], reference.read_lines(work / "egress.jsonl"))
+
     def test_a_hash_retained_for_one_phase_never_leaves_for_another(self):
         self.assertEqual([], cross_phase_violations(self.root / "reference"))
         self.assertTrue(cross_phase_violations(self.root / "no-cross-phase-index", "no-cross-phase-index"))
@@ -514,6 +601,27 @@ class PayDemCrashRestartTests(unittest.TestCase):
         # applied-payment authority observes the rolled-back apply).
         self.assertIn("uninterrupted: terminal failure reopened as indeterminate",
                       failure_proof_violations(self.root / "late", "failure-not-journaled"))
+
+    def test_a_terminal_failure_never_reopens_when_its_proof_stops_verifying(self):
+        self.assertEqual([], terminal_reopen_violations(self.root / "reference"))
+        # The handler that re-derives a terminal session from the re-read
+        # alone returns success for a phase that ended permanent.
+        self.assertEqual(["terminal failure reopened as pass"],
+                         terminal_reopen_violations(self.root / "reopening", "terminal-reopens"))
+
+    def test_a_restart_that_reuses_the_callers_start_value_sends_nothing(self):
+        """DEM-6: each start has an identifier no earlier start used, which
+        the handler mints itself. A restarted process given the same caller
+        value as the start that crashed is still a restart: nothing is sent,
+        at every point, including the broadcast after `after-confirm-journal`."""
+        self.assertEqual([], payer_violations(self.root / "reference", restarts=("boot-1", "boot-1")))
+        self.assertIn("after-confirm-journal: egress after restart ['broadcast']",
+                      payer_violations(self.root / "caller", "caller-start-id", restarts=("boot-1", "boot-1")))
+
+    def test_first_delivery_record_is_on_stable_storage_before_deliver_returns(self):
+        self.assertEqual([], delivery_fsync_violations(self.root / "reference"))
+        self.assertEqual(["new delivery record's directory entry not fsynced before deliver returned"],
+                         delivery_fsync_violations(self.root / "no-sink-parent-fsync", "no-sink-parent-fsync"))
 
     def test_a_plain_read_of_a_failed_record_is_never_terminal(self):
         self.assertEqual([], plain_read_violations(self.root / "reference"))
@@ -656,7 +764,7 @@ class PayDemCrashRestartTests(unittest.TestCase):
     def test_journal_save_never_overwrites_newer_progress(self):
         handler = reference.payer(self.root / "stale", "boot-1")
         handler.store.write(JOURNAL, {
-            "boot": "boot-1", "progress": "never-broadcast",
+            "start": handler.start, "progress": "never-broadcast",
             "retainedTransfer": generator.retained(), "signedTransaction": generator.signed(),
             "confirmResponse": None, "result": None,
         })
@@ -670,18 +778,33 @@ class PayDemCrashRestartTests(unittest.TestCase):
     def test_gate_state_comes_from_storage_not_the_caller(self):
         """The reference passes the oracle no caller flag: every state member
         of its gate input is the journal it read back, including the other
-        phases that retain the same hash."""
-        handler = reference.payer(self.root / "state", "boot-2")
-        handler.store.write(JOURNAL, {
-            "boot": "boot-1", "progress": "confirm-returned",
+        phases that retain the same hash. Its start identifier is minted from
+        the store, never the caller's value: a handler constructed later is a
+        new start, even with the same caller value, and only the start that
+        wrote the journal may complete its submission."""
+        writer = reference.payer(self.root / "state", "boot-1")
+        writer.store.write(JOURNAL, {
+            "start": writer.start, "progress": "confirm-returned",
             "retainedTransfer": generator.retained(), "signedTransaction": generator.signed(),
             "confirmResponse": generator.validity_response(generator.signed()), "result": None,
         })
-        entry = handler.store.read(JOURNAL)
-        self.assertEqual({"retentionDurable": True, "restartedSinceRetention": True,
-                          "broadcastState": "confirm-returned"}, handler._state(entry))
-        self.assertFalse(handler._permits("broadcast-retained", entry))
-        self.assertTrue(reference.payer(self.root / "state", "boot-1")._permits("broadcast-retained", entry))
+        entry = writer.store.read(JOURNAL)
+        self.assertTrue(writer._permits("broadcast-retained", entry))
+        for boot in ("boot-2", "boot-1"):
+            with self.subTest(boot=boot):
+                restarted = reference.payer(self.root / "state", boot)
+                self.assertNotEqual(writer.start, restarted.start)
+                self.assertEqual({"retentionDurable": True, "restartedSinceRetention": True,
+                                  "broadcastState": "confirm-returned"}, restarted._state(entry))
+                self.assertFalse(restarted._permits("broadcast-retained", entry))
+        # The start counter is itself on stable storage: a new process reads it back.
+        self.assertEqual({"starts": 3}, reference.Store(self.root / "state" / "store").read(reference.STARTS))
+        # A journal that names no start, such as one an earlier handler wrote
+        # with the caller's value, reads as another start's: nothing leaves.
+        legacy = {key: value for key, value in entry.items() if key != "start"}
+        legacy["boot"] = "boot-1"
+        self.assertTrue(writer._state(legacy)["restartedSinceRetention"])
+        self.assertFalse(writer._permits("broadcast-retained", legacy))
         other = reference.payer(self.root / "state", "boot-1", job_id=generator.OTHER_JOB_ID)
         self.assertEqual([{"jobId": generator.JOB_ID, "phaseIndex": generator.PHASE_INDEX}],
                          other._retained_elsewhere(entry["retainedTransfer"]["txHash"]))

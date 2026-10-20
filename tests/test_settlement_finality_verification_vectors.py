@@ -170,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(297, self.data["count"])
+        self.assertEqual(312, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -419,7 +419,8 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ]),
             # FV entry: an absent key for a signer trusted authority names is
             # missing authority; treating it as a bad signature gives fail.
-            ('key_state = "indeterminate", "trusted key for the authenticated phase orchestrator unavailable"', "pass", 1, "fail", [
+            ('key_state = "indeterminate", "trusted key for the authenticated phase orchestrator unavailable"',
+             'return "fail", "finality-bound evidence signature does not verify", None', 1, "fail", [
                 "fv-trusted-party-key-for-orchestrator-absent",
             ]),
             ('if authority_ref not in keys:\n            valid_value = _signature_encoding(attestation.get("value"))', "if False:\n            pass", 1, "fail", [
@@ -433,6 +434,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ('return decision == "indeterminate" and reason in reasons', "return False", 1, "indeterminate", [
                 "fv-trusted-party-key-for-orchestrator-absent-agreement-signature-invalid",
                 "fv-trusted-party-key-for-orchestrator-absent-rail-signature-invalid",
+                "fv-rail-signature-ecdsa-steward-keys-unavailable-depth-echo-mismatch",
             ]),
             # SIG-7: skipping a keyless attestation without its key-free
             # length check admits the wrong-length value.
@@ -457,8 +459,54 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 "fv-keyless-evidence-signature-noncanonical",
                 "fv-orchestrator-key-absent-evidence-signature-noncanonical",
             ]),
-            ('if key_state[0] == "indeterminate" and not _signature_encoding(signature["value"]):', "if False:", 1, "indeterminate", [
+            # SIG-7 step 4 needs no key: skipping it for an absent key admits
+            # the wrong-length Ed25519 or high-S ECDSA value as unavailable.
+            ('    if not _signature_encoding(envelope["value"], algorithm):\n        return "fail"\n', "", 1, "indeterminate", [
                 "fv-keyless-evidence-signature-wrong-length",
+                "fv-rail-signature-ecdsa-high-s-steward-keys-unavailable",
+                "fv-evidence-signature-ecdsa-high-s-party-keys-unavailable",
+                "fv-agreement-signature-ecdsa-high-s-party-keys-unavailable",
+            ]),
+            # SIG-7 step 1: ComponentSignature and AgreementSignature admit
+            # ecdsa-secp256k1, so an Ed25519-only set misreports every
+            # registered ECDSA envelope as malformed.
+            ('        and value.get("algorithm") in algorithms\n', '        and value.get("algorithm") == "ed25519"\n', 1, "error", [
+                "fv-rail-signature-ecdsa-steward-keys-unavailable",
+                "fv-rail-signature-ecdsa-high-s-steward-keys-unavailable",
+                "fv-rail-signature-ecdsa-steward-key-ed25519",
+                "fv-rail-signature-ecdsa-steward-keys-unavailable-depth-echo-mismatch",
+                "fv-evidence-signature-ecdsa-party-keys-unavailable",
+                "fv-evidence-signature-ecdsa-orchestrator-key-ed25519",
+                "fv-agreement-signature-ecdsa-party-keys-unavailable",
+                "fv-agreement-signature-ecdsa-buyer-key-ed25519",
+            ]),
+            # SIG-7 step 3 precedes step 5: a verifier that reports an
+            # unimplemented algorithm before consulting the signer's
+            # authenticated Ed25519 key never reaches the mismatch.
+            ('    if keyed and algorithm != "ed25519":\n        return "fail"\n',
+             '    if algorithm != "ed25519":\n        return "unavailable"\n', 1, None, [
+                "fv-rail-signature-ecdsa-steward-key-ed25519",
+                "fv-evidence-signature-ecdsa-orchestrator-key-ed25519",
+                "fv-agreement-signature-ecdsa-buyer-key-ed25519",
+            ]),
+            # FV entry: a rail signer outside a configured steward map is not
+            # a trusted steward; deferring it as an absent key reaches the
+            # governance check instead.
+            ('    if keys is not None and signer not in keys:\n        return "fail", "rail steward signature does not verify", None\n', "", 1, "error", [
+                "fv-rail-signer-outside-steward-map",
+            ]),
+            # HTLC-8 timing inputs: trusting the lock event's minedAt instead
+            # of the inclusion header's timestamp passes both cases.
+            ('    source_mined = _inclusion_timestamp(context["sourceLock"])\n    destination_mined = _inclusion_timestamp(context["destinationLock"])\n',
+             '    source_mined = events["sourceLock"].get("minedAt")\n    destination_mined = events["destinationLock"].get("minedAt")\n', 1, "pass", [
+                "fv-htlc-lock-inclusion-timestamp-missing",
+                "fv-htlc-lock-mined-at-differs-from-inclusion-timestamp",
+            ]),
+            # HTLC-8 compares integer milliseconds; a finite-number check lets
+            # a fractional minedAt reach the header comparison.
+            ('        or any(not _safe_integer(event.get(field)) for field in conditional & {"expiry", "minedAt"})',
+             '        or any(not _finite_time(event.get(field)) for field in conditional & {"expiry", "minedAt"})', 1, "fail", [
+                "fv-htlc-lock-mined-at-not-integer",
             ]),
         ]
         for old, new, count, mutant_decision, names in guards:
@@ -473,6 +521,69 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                         self.assertNotEqual(case["expected"], result["decision"], result["reason"])
                     else:
                         self.assertEqual(mutant_decision, result["decision"], result["reason"])
+
+    def test_envelope_verdict_applies_sig7_steps_3_to_5_per_algorithm(self):
+        """CORE §B.7 SIG-7 for ComponentSignature/AgreementSignature: the
+        key-free ECDSA format check rejects every non-canonical DER form, and
+        a registered algorithm without a key defers instead of erroring."""
+        from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+
+        n = SFV.SECP256K1_ORDER
+        good = finality_fixtures.FixtureFactory().sign_ecdsa("steward", SFV.RAIL_DOMAIN, "ab" * 32)
+        r, s = SFV.asymmetric_utils.decode_dss_signature(SFV.b64url_decode(good))
+
+        def b64(raw):
+            return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+        def der_integer(value, pad=b""):
+            body = pad + value.to_bytes((value.bit_length() + 8) // 8, "big")
+            return b"\x02" + bytes([len(body)]) + body
+
+        def sequence(*items):
+            body = b"".join(items)
+            return b"\x30" + bytes([len(body)]) + body
+
+        self.assertTrue(SFV._signature_encoding(good, "ecdsa-secp256k1"))
+        rejected = {
+            "high-s": encode_dss_signature(r, n - s),
+            "r-zero": encode_dss_signature(0, s),
+            "r-at-order": encode_dss_signature(n, s),
+            "s-zero": encode_dss_signature(r, 0),
+            "non-minimal-integer": sequence(der_integer(r, b"\x00"), der_integer(s)),
+            "trailing-byte": encode_dss_signature(r, s) + b"\x00",
+            "three-element-sequence": sequence(der_integer(r), der_integer(s), der_integer(1)),
+            "fixed-width": r.to_bytes(32, "big") + s.to_bytes(32, "big"),
+        }
+        for name, raw in rejected.items():
+            with self.subTest(form=name):
+                self.assertFalse(SFV._signature_encoding(b64(raw), "ecdsa-secp256k1"))
+
+        ed_key = Ed25519PrivateKey.from_private_bytes(b"\x07" * 32)
+        keys = {"did:demos:signer": b64(ed_key.public_key().public_bytes_raw())}
+        digest = "cd" * 32
+        ed_value = b64(ed_key.sign((SFV.RAIL_DOMAIN + digest).encode("ascii")))
+        rows = [
+            ("ed25519", ed_value, keys, "pass"),
+            ("ed25519", ed_value, None, "unavailable"),
+            ("ed25519", b64(b"\x01" * 63), None, "fail"),
+            ("ecdsa-secp256k1", good, keys, "fail"),  # step 3: the key is Ed25519
+            ("ecdsa-secp256k1", good, None, "unavailable"),
+            ("ecdsa-secp256k1", b64(encode_dss_signature(r, n - s)), None, "fail"),
+            ("sr1-aggregate", ed_value, keys, "fail"),
+            ("sr1-aggregate", ed_value, None, "unavailable"),  # no §B.7 format to check
+        ]
+        for algorithm, value, key_map, expected in rows:
+            envelope = {"signer": "did:demos:signer", "algorithm": algorithm, "value": value}
+            with self.subTest(algorithm=algorithm, keyed=key_map is not None, expected=expected):
+                self.assertTrue(SFV._signature_shape(envelope, "signer", SFV.COMPONENT_SIGNATURE_ALGORITHMS))
+                self.assertEqual(
+                    expected,
+                    SFV._envelope_verdict(envelope, "did:demos:signer", key_map, SFV.RAIL_DOMAIN, digest),
+                )
+        # Step 1: the fixture authority types keep their ed25519-only set.
+        self.assertFalse(SFV._signature_shape(
+            {"signer": "did:demos:signer", "algorithm": "ecdsa-secp256k1", "value": good}, "signer",
+        ))
 
     def test_malformed_validator_set_map_is_error_on_every_bft_path(self):
         """FV entry: a non-object trusted validatorSets map is malformed."""
@@ -618,6 +729,12 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ("fv-block-depth-canonical-success", ("observation", "authorityEvidence"), "malformed chain authority evidence"),
             ("fv-bft-final-canonical-success", ("observation", "finalityCertificate"), "malformed BFT certificate"),
             ("fv-provider-receipt-canonical-success", (), "malformed provider finality context"),
+            # Members compared with a signed value are shape-checked first.
+            ("fv-block-depth-canonical-success", ("observation", "transactionRef"), "malformed observation transaction reference"),
+            ("fv-htlc-reveal-canonical-success", ("sourceLock", "transactionRef"), "malformed observation transaction reference"),
+            ("fv-provider-receipt-canonical-success", ("responseAttestation",), "malformed provider response attestation reference"),
+            ("fv-provider-receipt-canonical-success", ("responseAttestation", "anchor"), "malformed provider response attestation reference"),
+            ("fv-ap2-sr3-canonical-success", ("receiptTransactionObservation", "transactionRef"), "malformed SR-3 native transaction reference"),
         ):
             case = self.cases[name]
             value = copy.deepcopy(case["input"])

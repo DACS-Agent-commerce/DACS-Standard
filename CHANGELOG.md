@@ -93,7 +93,7 @@ except where a bullet names the earlier check that decides it.
   `canonical-hex-signature-value` `fail`). DACS-5 SPA-1 now states that its
   admission reports every rejected artifact as `fail`.
   - `settlement-finality-verification` (292 → 297): the six
-    `*-signature-nonminimal-base64url` cases, the six keyless or
+    `*-signature-nonminimal-base64url` cases, the seven keyless or
     checkpoint-absent `*-noncanonical` cases and
     `fv-bft-validator-set-absent-algorithm-unsupported` move from `fail` to
     `error`. Five cases are new: a canonical 63-byte value on a keyless
@@ -129,9 +129,52 @@ except where a bullet names the earlier check that decides it.
 - **FRC-8 closure depth** (DACS-4 §9.7.0 FRC-8; **(normative)**) — the
   observed arm's `observation` is a `FinalityVerificationContext`, closed by
   its own types at every depth, and `transportMetadata` is the only open
-  member. A test adds a member at each nesting level of the chain, BFT and
-  provider contexts and requires `error`. Compatibility: the reference already
-  enforced this, so no verdict changes.
+  member. A test adds a member at each nesting level of the chain, BFT,
+  HTLC, SR-3 and provider contexts, including the observation
+  `transactionRef`, the SR-3 native `transactionRef` and the provider
+  `responseAttestation` and its `anchor`, and requires `error`.
+  Compatibility: those last four members used to be compared with the signed
+  value before their shape was checked, so an extra member there was `fail`;
+  it is now `error`. No committed verdict changes.
+- **Registered signature algorithms on FV envelopes and the HTLC mined
+  instant** (CORE §B.7 SIG-7; DACS-4 §9.7.0 FV entry, HTLC-8;
+  **(normative)**):
+  - The evidence, rail and Agreement signatures are `ComponentSignature` and
+    `AgreementSignature` envelopes, so `ecdsa-secp256k1` and `sr1-aggregate`
+    are inside their set. The FV reference no longer reports them as
+    malformed. It applies SIG-7 steps 3–6:
+    - a signer whose trusted key is Ed25519 is an algorithm-metadata
+      mismatch (`fail`);
+    - without the key, a non-canonical ECDSA DER value (high S, non-minimal,
+      out of range, trailing bytes) is `fail`;
+    - a canonical value is deferred like an absent key (`indeterminate`), so
+      a later deterministic `fail` still decides.
+  - HTLC-8's mined instant is the lock's inclusion-header `timestamp` in the
+    fixture header codec. A missing or non-integer timestamp is `error`; a
+    lock event `minedAt` that differs from it is `fail`; a non-integer
+    `minedAt` or `expiry` is `error`.
+  - `settlement-finality-verification` (297 → 312):
+    - ten `fv-{rail,evidence,agreement}-signature-ecdsa-*` cases;
+    - `fv-rail-signer-outside-steward-map` (`fail`);
+    - `fv-htlc-lock-inclusion-timestamp-missing` and `-malformed`
+      (`error`), `fv-htlc-lock-mined-at-differs-from-inclusion-timestamp`
+      (`fail`), `fv-htlc-lock-mined-at-not-integer` (`error`).
+
+    Each case has a guard-removal witness. The HTLC lock observations in this
+    corpus and in the two current-use corpora are regenerated with header
+    timestamps.
+  - A test pins that the merge-base PDE-5 mismatch cases
+    (`credential-ref-mismatch`, `-access-model-mismatch`,
+    `-renewal-mismatch`, `-cleartext-digest-mismatch`,
+    `-ciphertext-hash-substitution`) and
+    `entitlement-record-at-other-renewal-address` keep a genuine delivery
+    signature, bundle signatures and a resolving reference. So only their
+    PDE-5 join decides them.
+
+  Compatibility: no committed verdict changes. A verifier that answered
+  `error` for a well-formed registered ECDSA envelope now answers `fail` or
+  `indeterminate`. One that took the HTLC mined instant from the event alone
+  fails the new timestamp cases.
 
 - **Executable finality-resolution corpus** (DACS-4 §9.7.0; #416 follow-up) —
   every `finality-resolution-context-v1` case now carries its complete

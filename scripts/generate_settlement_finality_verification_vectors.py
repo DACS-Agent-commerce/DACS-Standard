@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature, encode_dss_signature
 
 try:
     from scripts.jcs import canonicalize
@@ -28,6 +29,11 @@ try:
         hash_value,
         keccak256,
     )
+    from scripts.secp256k1_fixture import (
+        SECP256K1_ORDER,
+        deterministic_ecdsa_signature,
+        fixture_private_value,
+    )
 except ImportError:
     from jcs import canonicalize
     from settlement_finality_reference import (
@@ -43,6 +49,11 @@ except ImportError:
         hash_value,
         keccak256,
     )
+    from secp256k1_fixture import (
+        SECP256K1_ORDER,
+        deterministic_ecdsa_signature,
+        fixture_private_value,
+    )
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +67,8 @@ OLD_OUTPUT = (
 )
 VERIFICATION_TIME = 1_900_000_010_000
 OBSERVED_AT = 1_900_000_000_000
+# chain_observation default: an htlc-lock's inclusion header carries its minedAt.
+LOCK_EVENT_TIME = object()
 FINALITY_BUNDLE_DOMAIN = "dacs-finality-bound-evidence-fault-bundle:v1:"
 FINALITY_POINTER_DOMAIN = "dacs-finality-bound-evidence-fault-bundle-pointer:v1:"
 LISTING_DOMAIN = "dacs-listing:v1:"
@@ -260,6 +273,7 @@ class FixtureFactory:
         parent_id: str | None = None,
         transaction_mutation=None,
         observed_at: int = OBSERVED_AT,
+        block_timestamp=LOCK_EVENT_TIME,
     ) -> dict:
         event_proof = self.merkle_proof(
             "fixture-event-merkle-v1", "eventBytes", event, label + ":event"
@@ -290,6 +304,12 @@ class FixtureFactory:
         }
         if commitment is not None and head_position == inclusion_position:
             inclusion_header["commitment"] = commitment
+        # HTLC-8: the block that includes a lock carries its mined instant,
+        # which the lock event records as minedAt.
+        if block_timestamp is LOCK_EVENT_TIME:
+            block_timestamp = event.get("minedAt") if event.get("eventType") == "htlc-lock" else None
+        if block_timestamp is not None:
+            inclusion_header["timestamp"] = block_timestamp
         inclusion_id = hash_value(inclusion_header)
         inclusion = {
             "id": inclusion_id,
@@ -573,6 +593,18 @@ class FixtureFactory:
         digest = artifact_hash(rail, "signature")
         rail["signature"]["value"] = self.sign_digest(key_name, RAIL_DOMAIN, digest)
 
+    def sign_ecdsa(self, key_name: str, domain: str, digest: str, *, high_s: bool = False) -> str:
+        """A deterministic RFC 6979 low-S DER secp256k1 value over the SIG-1
+        bytes; ``high_s`` re-encodes the same (r, n - s), which CORE §B.7
+        rejects before any key is consulted."""
+        der = deterministic_ecdsa_signature(
+            fixture_private_value(("fv-ecdsa:" + key_name).encode()), (domain + digest).encode("ascii")
+        )
+        if high_s:
+            r, s = decode_dss_signature(der)
+            der = encode_dss_signature(r, SECP256K1_ORDER - s)
+        return b64u(der)
+
     def resign_evidence(self, evidence: dict, *, domain=EVIDENCE_DOMAIN, key_name="orchestrator") -> None:
         evidence["signature"] = {
             "signer": CLAIMS[key_name], "algorithm": "ed25519", "value": "",
@@ -796,7 +828,7 @@ class FixtureFactory:
         self.controls[control_key] = copy.deepcopy(value)
         return value
 
-    def rebuild_observation_event(self, value: dict, path: tuple[str, ...], mutate) -> None:
+    def rebuild_observation_event(self, value: dict, path: tuple[str, ...], mutate, *, block_timestamp=LOCK_EVENT_TIME) -> None:
         observation = value["context"]
         for segment in path:
             observation = observation[segment]
@@ -822,7 +854,8 @@ class FixtureFactory:
             label = "rebuilt:tank:" + arm
             commitment = None
         rebuilt = self.chain_observation(
-            chain_profile, ref, event, label, commitment=commitment
+            chain_profile, ref, event, label, commitment=commitment,
+            block_timestamp=block_timestamp,
         )
         target = value["context"]
         for segment in path[:-1]:
@@ -2275,6 +2308,70 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
     vectors.append(case("fv-htlc-destination-lock-one-ms-before-source-finality", "fail", "the destination lock is mined 1ms before the source lock's pinned finality instant", destination_locked_after(finality_ms - 1)))
     vectors.append(case("fv-htlc-destination-lock-at-source-finality", "pass", "the destination lock is mined exactly at the source lock's pinned finality instant", destination_locked_after(finality_ms)))
     rail("fv-htlc-source-finality-parameter-missing", "the signed HTLC rail omits sourceFinalitySec, the pinned bound HTLC-7 and HTLC-8 are evaluated against", "htlc-reveal", lambda r: r["parameters"].pop("sourceFinalitySec"))
+
+    # HTLC-8 timing inputs: the mined instant is the lock's inclusion-header
+    # timestamp. Each case rebuilds the destination lock's observation, so
+    # its header, proofs and authority signatures are genuine.
+    def destination_lock_header(block_timestamp, event_update=None):
+        value = factory.model_input("htlc-reveal")
+        factory.rebuild_observation_event(
+            value, ("destinationLock",), event_update or (lambda event: None),
+            block_timestamp=block_timestamp,
+        )
+        return value
+
+    destination_mined = 1_899_990_000_000 + 700_000
+    vectors.append(case("fv-htlc-lock-inclusion-timestamp-missing", "error", "the destination lock's authenticated inclusion header carries no timestamp, so no authenticated mined instant exists; the event's minedAt cannot stand in for it", destination_lock_header(None)))
+    vectors.append(case("fv-htlc-lock-inclusion-timestamp-malformed", "error", "the destination lock's inclusion header timestamp is a decimal string, not integer Unix milliseconds", destination_lock_header(str(destination_mined))))
+    vectors.append(case("fv-htlc-lock-mined-at-differs-from-inclusion-timestamp", "fail", "the destination lock event claims minedAt exactly at the source lock's pinned finality instant, with a matching expiry, but its inclusion block is timestamped 1s after the source lock", destination_lock_header(1_899_990_001_000, lambda event: event.update({"minedAt": 1_899_990_600_000, "expiry": 1_899_990_600_000 + 3_600_000}))))
+    vectors.append(case("fv-htlc-lock-mined-at-not-integer", "error", "the destination lock event's minedAt is a non-integral number; HTLC-8 compares integer Unix milliseconds", destination_lock_header(destination_mined, lambda event: event.update({"minedAt": destination_mined + 0.5}))))
+
+    # SIG-7 on ComponentSignature and AgreementSignature envelopes, whose set
+    # admits ecdsa-secp256k1: steps 3-5 decide, never step 1. The fixture's
+    # trusted keys are Ed25519, so a keyed signer naming ECDSA is a metadata
+    # mismatch (fail). Without the key, a canonical low-S DER value is
+    # deferred (indeterminate) and a high-S one can never verify (fail).
+    # The signatures are outside the hashes they sign, so nothing else moves.
+    def ecdsa_rail(high_s=False):
+        def apply(value):
+            rail_value = value["rail"]
+            rail_value["signature"]["algorithm"] = "ecdsa-secp256k1"
+            rail_value["signature"]["value"] = factory.sign_ecdsa("steward", RAIL_DOMAIN, artifact_hash(rail_value, "signature"), high_s=high_s)
+        return apply
+
+    def ecdsa_evidence(high_s=False):
+        def apply(value):
+            evidence = value["evidence"]
+            evidence["signature"]["algorithm"] = "ecdsa-secp256k1"
+            evidence["signature"]["value"] = factory.sign_ecdsa("orchestrator", EVIDENCE_DOMAIN, artifact_hash(evidence, "signature"), high_s=high_s)
+        return apply
+
+    def ecdsa_agreement(high_s=False):
+        def apply(value):
+            agreement = value["agreement"]
+            agreement["signatures"][0]["algorithm"] = "ecdsa-secp256k1"
+            agreement["signatures"][0]["value"] = factory.sign_ecdsa("buyer", AGREEMENT_DOMAIN, artifact_hash(agreement, "signatures"), high_s=high_s)
+        return apply
+
+    def depth_echo_mismatch(value):
+        value["evidence"]["settlementFinality"]["finalityBlocks"] = 13
+        factory.resign_evidence(value["evidence"])
+
+    no_steward = {"stewardKeys": None}
+    no_party = {"partyKeys": None}
+    vectors.extend([
+        case("fv-rail-signature-ecdsa-steward-keys-unavailable", "indeterminate", "the rail carries a canonical low-S DER ecdsa-secp256k1 steward signature and no steward key map is configured; a registered algorithm without a key is deferred, not malformed", changed("block-depth", ecdsa_rail()), trusted_overrides=no_steward),
+        case("fv-rail-signature-ecdsa-high-s-steward-keys-unavailable", "fail", "with no steward key map, the ecdsa-secp256k1 rail signature is the high-S form of a genuine value, which CORE §B.7 rejects without a key", changed("block-depth", ecdsa_rail(high_s=True)), trusted_overrides=no_steward),
+        case("fv-rail-signature-ecdsa-steward-key-ed25519", "fail", "the trusted steward key is Ed25519, and the rail envelope names ecdsa-secp256k1 for that steward (SIG-7 algorithm-metadata mismatch)", changed("block-depth", ecdsa_rail())),
+        case("fv-rail-signature-ecdsa-steward-keys-unavailable-depth-echo-mismatch", "fail", "an ECDSA rail signature without a steward key is deferred, so the signed report's depth mismatch still decides", changed("block-depth", lambda v: (ecdsa_rail()(v), depth_echo_mismatch(v))), trusted_overrides=no_steward),
+        case("fv-rail-signer-outside-steward-map", "fail", "the rail is genuinely signed by the phase orchestrator, whom the configured steward key map does not hold", changed("block-depth", lambda v: factory.resign_rail(v["rail"], key_name="orchestrator"))),
+        case("fv-evidence-signature-ecdsa-party-keys-unavailable", "indeterminate", "the evidence carries a canonical low-S DER ecdsa-secp256k1 orchestrator signature and no party key map is configured", changed("block-depth", ecdsa_evidence()), trusted_overrides=no_party),
+        case("fv-evidence-signature-ecdsa-high-s-party-keys-unavailable", "fail", "with no party key map, the ecdsa-secp256k1 evidence signature is the high-S form of a genuine value", changed("block-depth", ecdsa_evidence(high_s=True)), trusted_overrides=no_party),
+        case("fv-evidence-signature-ecdsa-orchestrator-key-ed25519", "fail", "the orchestrator's trusted key is Ed25519, and the evidence envelope names ecdsa-secp256k1 for it", changed("block-depth", ecdsa_evidence())),
+        case("fv-agreement-signature-ecdsa-party-keys-unavailable", "indeterminate", "the buyer's agreement signature is a canonical low-S DER ecdsa-secp256k1 value and no party key map is configured", changed("block-depth", ecdsa_agreement()), trusted_overrides=no_party),
+        case("fv-agreement-signature-ecdsa-high-s-party-keys-unavailable", "fail", "with no party key map, the buyer's ecdsa-secp256k1 agreement signature is the high-S form of a genuine value", changed("block-depth", ecdsa_agreement(high_s=True)), trusted_overrides=no_party),
+        case("fv-agreement-signature-ecdsa-buyer-key-ed25519", "fail", "the buyer's trusted key is Ed25519, and the buyer's agreement signature names ecdsa-secp256k1", changed("block-depth", ecdsa_agreement())),
+    ])
 
     # §9.5.6 step 6: the AP2 protocolVersion selects the rules of its era; a
     # version whose rules the verifier does not implement is error.

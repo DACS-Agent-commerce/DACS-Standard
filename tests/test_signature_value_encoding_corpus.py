@@ -39,6 +39,9 @@ NONCANONICAL_ECDSA_CASES = {
     ("canonical-channel-message-v0.6.json", "canonical-ecdsa-high-s"),
     ("canonical-channel-message-v0.6.json", "canonical-ecdsa-fixed-width-r-s"),
     ("canonical-channel-message-v0.6.json", "canonical-ecdsa-der-long-form-length"),
+    ("settlement-finality-verification.json", "fv-rail-signature-ecdsa-high-s-steward-keys-unavailable"),
+    ("settlement-finality-verification.json", "fv-evidence-signature-ecdsa-high-s-party-keys-unavailable"),
+    ("settlement-finality-verification.json", "fv-agreement-signature-ecdsa-high-s-party-keys-unavailable"),
 }
 
 # Cases about a registered algorithm the fixture resolver does not implement.

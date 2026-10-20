@@ -18,6 +18,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric import utils as asymmetric_utils
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 try:
@@ -55,6 +56,12 @@ KNOWN_MODELS = frozenset(PAYMENT_PHASE_BY_MODEL)
 # AP2 wire versions whose rules this reference implements (DACS-4 §9.5.6
 # step 6); equals tests/test_ap2_reference_fixture.py's pinned version.
 AP2_PROTOCOL_VERSIONS = frozenset({"0.2"})
+# CORE §B.7 SIG-7 step 1 sets. ``ComponentSignature`` (evidence, rail) and
+# ``AgreementSignature`` admit all three registered names; the fixture
+# authority, certificate and provider attestation types admit ``ed25519``.
+COMPONENT_SIGNATURE_ALGORITHMS = frozenset({"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
+ED25519_ONLY = frozenset({"ed25519"})
+SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -168,6 +175,19 @@ def _attestation_ref(value: Any, *, extended: bool = False) -> bool:
     )
 
 
+FIXTURE_HEADER_MEMBERS = frozenset({"networkId", "genesisHash", "position", "parentId", "transactionsRoot"})
+
+
+def _fixture_header_shape(header: Any) -> bool:
+    """The fixture block-header codec. ``commitment`` is optional, and so is
+    ``timestamp``: the block's time as integer Unix milliseconds (DACS-4
+    HTLC-8 reads a lock's mined instant from it)."""
+    return (
+        _exact_object(header, FIXTURE_HEADER_MEMBERS, {"commitment", "timestamp"})
+        and ("timestamp" not in header or _safe_integer(header["timestamp"]))
+    )
+
+
 def _public_key(keys: Any, signer: Any) -> bytes | None:
     if not isinstance(keys, dict) or not isinstance(signer, str):
         return None
@@ -230,15 +250,50 @@ def _signature_wire(value: Any) -> bool:
     return True
 
 
-def _signature_encoding(value: Any) -> bool:
-    """The SIG-6 algorithm stage a keyed Ed25519 verification applies first:
-    exactly 64 decoded bytes. A signature skipped for lack of a key still
-    gets it, so a wrong-length value is ``fail`` (SIG-7) whether or not the
-    verifier holds the key."""
+def _signature_encoding(value: Any, algorithm: str = "ed25519") -> bool:
+    """SIG-7 step 4, which needs no key: the decoded value has its
+    algorithm's format. ``ed25519`` is exactly 64 bytes; ``ecdsa-secp256k1``
+    is strict DER with ``1 <= r < n`` and low S, never normalised. CORE §B.7
+    defines no decoded format for ``sr1-aggregate``, so it has no step-4
+    check. A signature skipped for lack of a key still gets this check, so an
+    invalid format is ``fail`` whether or not the verifier holds the key."""
     try:
-        return len(b64url_decode(value)) == 64
+        raw = b64url_decode(value)
     except (ValueError, TypeError, binascii.Error):
         return False
+    if algorithm == "ed25519":
+        return len(raw) == 64
+    if algorithm == "ecdsa-secp256k1":
+        try:
+            r, s = asymmetric_utils.decode_dss_signature(raw)
+        except ValueError:
+            return False
+        return (
+            asymmetric_utils.encode_dss_signature(r, s) == raw
+            and 1 <= r < SECP256K1_ORDER
+            and 1 <= s <= SECP256K1_ORDER // 2
+        )
+    return algorithm == "sr1-aggregate"
+
+
+def _envelope_verdict(envelope: dict, signer: str, keys: dict | None, domain: str, digest: str) -> str:
+    """CORE §B.7 SIG-7 steps 3-6 for an envelope that passed
+    ``_signature_shape`` (steps 1-2). ``keys`` is the verifier's usable key
+    map, or ``None`` when the map itself is missing or empty. The fixture's
+    trusted keys are raw Ed25519 public keys, so they authenticate
+    ``ed25519`` for their signers: another registered name for a keyed
+    signer is a metadata mismatch (step 3). Returns ``pass``, ``fail``, or
+    ``unavailable`` (step 5: the signer's key is absent or this reference
+    does not implement the registered algorithm), which the caller defers."""
+    algorithm = envelope["algorithm"]
+    keyed = keys is not None and signer in keys
+    if keyed and algorithm != "ed25519":
+        return "fail"
+    if not _signature_encoding(envelope["value"], algorithm):
+        return "fail"
+    if not keyed:
+        return "unavailable"
+    return "pass" if _verify_ed25519(keys, signer, domain, digest, envelope["value"]) else "fail"
 
 
 def _verify_ed25519(keys: Any, signer: Any, domain: str, digest: str, value: Any) -> bool:
@@ -257,10 +312,12 @@ def _verify_ed25519(keys: Any, signer: Any, domain: str, digest: str, value: Any
         return False
 
 
-def _signature_shape(value: Any, signer_field: str) -> bool:
+def _signature_shape(value: Any, signer_field: str, algorithms: frozenset = ED25519_ONLY) -> bool:
+    """SIG-7 steps 1-2 (``error``): the closed envelope, an algorithm in its
+    type's set, and the SIG-6 wire encoding."""
     return (
         _exact_object(value, {signer_field, "algorithm", "value"})
-        and value.get("algorithm") == "ed25519"
+        and value.get("algorithm") in algorithms
         and _nonempty_string(value.get(signer_field))
         and _signature_wire(value.get("value"))
     )
@@ -361,7 +418,10 @@ def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str
     signatures = agreement.get("signatures")
     if not isinstance(signatures, list) or len(signatures) != 2:
         return "error", "agreement signatures malformed", None
-    if any(not _signature_shape(signature, "party") for signature in signatures):
+    if any(
+        not _signature_shape(signature, "party", COMPONENT_SIGNATURE_ALGORITHMS)
+        for signature in signatures
+    ):
         return "error", "malformed agreement signature", None
     key_state = _trusted_key_map(trusted, "partyKeys")
     if key_state is not None and key_state[0] == "error":
@@ -377,18 +437,15 @@ def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str
         return "fail", "agreement lacks a required party signature", None
     # Check every signature a trusted key covers before reporting a session
     # party's absent key, so a bad signature is not hidden (FV-10).
+    unavailable = False
     for signature in signatures:
-        if signature["party"] in keys:
-            valid = _verify_ed25519(
-                keys, signature["party"], AGREEMENT_DOMAIN, digest, signature["value"]
-            )
-        else:
-            valid = _signature_encoding(signature["value"])
-        if not valid:
+        verdict = _envelope_verdict(signature, signature["party"], keys, AGREEMENT_DOMAIN, digest)
+        if verdict == "fail":
             return "fail", "agreement signature does not verify", None
+        unavailable = unavailable or verdict == "unavailable"
     if key_state is not None:
         return key_state[0], key_state[1], terms
-    if not signed <= set(keys):
+    if unavailable:
         return "indeterminate", "trusted key for an authenticated session party unavailable", terms
     return "pass", "agreement authenticated", terms
 
@@ -552,20 +609,19 @@ def _verify_rail(rail: Any, evidence: dict, agreement_terms: dict, trusted: dict
     if not _exact_object(rail, required):
         return "error", "malformed RailDefinition", None
     signature = rail.get("signature")
-    if not _signature_shape(signature, "signer"):
+    if not _signature_shape(signature, "signer", COMPONENT_SIGNATURE_ALGORITHMS):
         return "error", "malformed rail signature", None
     digest = artifact_hash(rail, "signature")
     signer = signature["signer"]
     key_state = _trusted_key_map(trusted, "stewardKeys")
     if key_state is not None and key_state[0] == "error":
         return key_state[0], key_state[1], None
-    if key_state is None:
-        valid = _verify_ed25519(
-            trusted.get("stewardKeys"), signer, RAIL_DOMAIN, digest, signature["value"]
-        )
-    else:
-        valid = _signature_encoding(signature["value"])
-    if not valid:
+    # A signer outside a configured steward map is not a trusted steward
+    # (FV entry); only a missing or empty map defers.
+    keys = trusted["stewardKeys"] if key_state is None else None
+    if keys is not None and signer not in keys:
+        return "fail", "rail steward signature does not verify", None
+    if _envelope_verdict(signature, signer, keys, RAIL_DOMAIN, digest) == "fail":
         return "fail", "rail steward signature does not verify", None
     reference = evidence.get("railDefinitionRef")
     agreement_rail = agreement_terms.get("rail")
@@ -741,7 +797,7 @@ def _evidence_shape(evidence: Any) -> bool:
         )
         and _finite_time(evidence.get("observedAt"))
         and _attestation_ref(evidence.get("railDefinitionRef"), extended=True)
-        and _signature_shape(signature, "signer")
+        and _signature_shape(signature, "signer", COMPONENT_SIGNATURE_ALGORITHMS)
     )
 
 
@@ -768,17 +824,17 @@ def _verify_evidence(evidence: Any, trusted: dict) -> tuple[str, str, dict | Non
     if signature.get("signer") != session.get("phaseOrchestrator"):
         return "fail", "evidence signer is not the authenticated phase orchestrator", None
     key_state = _trusted_key_map(trusted, "partyKeys")
-    if key_state is None and signature["signer"] not in trusted["partyKeys"]:
-        key_state = "indeterminate", "trusted key for the authenticated phase orchestrator unavailable"
-    if key_state is not None:
-        if key_state[0] == "indeterminate" and not _signature_encoding(signature["value"]):
-            return "fail", "finality-bound evidence signature does not verify", None
+    if key_state is not None and key_state[0] == "error":
         return key_state[0], key_state[1], session
+    keys = trusted["partyKeys"] if key_state is None else None
     digest = artifact_hash(evidence, "signature")
-    if not _verify_ed25519(
-        trusted.get("partyKeys"), signature["signer"], EVIDENCE_DOMAIN, digest, signature["value"]
-    ):
+    verdict = _envelope_verdict(signature, signature["signer"], keys, EVIDENCE_DOMAIN, digest)
+    if verdict == "fail":
         return "fail", "finality-bound evidence signature does not verify", None
+    if verdict == "unavailable":
+        if key_state is None:
+            key_state = "indeterminate", "trusted key for the authenticated phase orchestrator unavailable"
+        return key_state[0], key_state[1], session
     return "pass", "evidence authenticated", session
 
 
@@ -887,7 +943,8 @@ def _verify_event_economics(event: Any, reference: dict, expected: dict) -> tupl
             not _nonempty_string(event.get(field))
             for field in conditional - {"expiry", "minedAt"}
         )
-        or any(not _finite_time(event.get(field)) for field in conditional & {"expiry", "minedAt"})
+        # HTLC-8 compares lock times as integer Unix milliseconds.
+        or any(not _safe_integer(event.get(field)) for field in conditional & {"expiry", "minedAt"})
         or any(
             not _sha256(event.get(field))
             for field in conditional & {"hashlock", "sourceEventHash", "destinationEventHash"}
@@ -1085,6 +1142,10 @@ def _verify_chain_observation(
         return _result("error", "malformed chain finality profile"), None
     if observation.get("networkId") != profile.get("networkId") or observation.get("genesisHash") != profile.get("genesisHash"):
         return _result("fail", "chain network or genesis differs from signed rail profile"), None
+    # FRC-8 closure below the arm: a malformed member is error before it is
+    # compared with the signed value.
+    if not _transaction_ref_shape(observation.get("transactionRef")):
+        return _result("error", "malformed observation transaction reference"), None
     if canonical_bytes(observation.get("transactionRef")) != canonical_bytes(reference):
         return _result("fail", "observation transaction reference differs from signed evidence"), None
     if not _chain_ref_matches_profile(reference, profile):
@@ -1134,8 +1195,7 @@ def _verify_chain_observation(
         _head_raw, head_header = decode_json_bytes(head["header"])
     except (ValueError, TypeError, UnicodeError, json.JSONDecodeError, binascii.Error):
         return _result("error", "malformed raw block header bytes"), None
-    required_header = {"networkId", "genesisHash", "position", "parentId", "transactionsRoot"}
-    if not _exact_object(inclusion_header, required_header, {"commitment"}) or not _exact_object(head_header, required_header, {"commitment"}):
+    if not _fixture_header_shape(inclusion_header) or not _fixture_header_shape(head_header):
         return _result("error", "malformed fixture block header"), None
     if (
         hash_value(inclusion_header) != inclusion["id"]
@@ -1178,7 +1238,7 @@ def _verify_chain_observation(
         except (ValueError, TypeError, UnicodeError, json.JSONDecodeError, binascii.Error):
             return _result("error", "malformed ancestry header bytes"), None
         position = int(link["position"])
-        if not _exact_object(header, required_header, {"commitment"}):
+        if not _fixture_header_shape(header):
             return _result("error", "malformed ancestry header body"), None
         if (
             position != previous_position + 1
@@ -1301,7 +1361,14 @@ def _verify_sr3_native_transaction(
         return "error", "malformed trusted SR-3 native transaction finality profile"
     if observation.get("networkId") != profile.get("networkId") or observation.get("genesisHash") != profile.get("genesisHash"):
         return "fail", "SR-3 native transaction network or genesis differs from signed profile"
-    if canonical_bytes(observation.get("transactionRef")) != canonical_bytes(reference):
+    native_ref = observation.get("transactionRef")
+    if not (
+        _exact_object(native_ref, {"kind", "value"})
+        and _nonempty_string(native_ref.get("kind"))
+        and _nonempty_string(native_ref.get("value"))
+    ):
+        return "error", "malformed SR-3 native transaction reference"
+    if canonical_bytes(native_ref) != canonical_bytes(reference):
         return "fail", "SR-3 native transaction reference differs from signed evidence"
     if not _chain_ref_matches_profile(reference, profile):
         return "fail", "signed SR-3 native transaction reference is on the wrong profile network"
@@ -1354,8 +1421,7 @@ def _verify_sr3_native_transaction(
         _head_raw, head_header = decode_json_bytes(head["header"])
     except (ValueError, TypeError, UnicodeError, json.JSONDecodeError, binascii.Error):
         return "error", "malformed SR-3 raw block header bytes"
-    required_header = {"networkId", "genesisHash", "position", "parentId", "transactionsRoot"}
-    if not _exact_object(inclusion_header, required_header, {"commitment"}) or not _exact_object(head_header, required_header, {"commitment"}):
+    if not _fixture_header_shape(inclusion_header) or not _fixture_header_shape(head_header):
         return "error", "malformed SR-3 fixture block header"
     if (
         hash_value(inclusion_header) != inclusion["id"]
@@ -1398,7 +1464,7 @@ def _verify_sr3_native_transaction(
         except (ValueError, TypeError, UnicodeError, json.JSONDecodeError, binascii.Error):
             return "error", "malformed SR-3 ancestry header bytes"
         position = int(link["position"])
-        if not _exact_object(header, required_header, {"commitment"}):
+        if not _fixture_header_shape(header):
             return "error", "malformed SR-3 ancestry header body"
         if (
             position != previous_position + 1
@@ -1599,6 +1665,16 @@ def _chain_native_hashes(network_id: str) -> frozenset | None:
     return HTLC_CHAIN_NATIVE_HASHES.get(network_id.split(":", 1)[0])
 
 
+def _inclusion_timestamp(observation: dict) -> int | None:
+    """The ``timestamp`` of an observation's inclusion header. Called only
+    after ``_verify_chain_observation`` returned the observation's event,
+    so the header bytes are already decoded, shape-checked and hashed to the
+    authenticated block id."""
+    _raw, header = decode_json_bytes(observation["inclusionBlock"]["header"])
+    timestamp = header.get("timestamp")
+    return timestamp if _safe_integer(timestamp) else None
+
+
 def _htlc_hash_selection(profile: dict, parameters: dict) -> dict | None:
     """HTLC-6 on the signed rail alone. A selection the leg chain cannot
     compute is a structural impossibility (error), never a mismatch."""
@@ -1677,10 +1753,21 @@ def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, t
         return _result("error", "HTLC signed timing parameters are malformed")
     source_expiry = events["sourceLock"].get("expiry")
     destination_expiry = events["destinationLock"].get("expiry")
-    source_mined = events["sourceLock"].get("minedAt")
-    destination_mined = events["destinationLock"].get("minedAt")
-    if any(not _finite_time(value) for value in (source_expiry, destination_expiry, source_mined, destination_mined)):
+    # HTLC-8 timing inputs: a lock's mined instant is its authenticated
+    # inclusion block's timestamp, decoded from the exact header bytes the
+    # chain observation hashed to the block id. The lock event's minedAt
+    # must agree with it; it is never the source of the instant.
+    source_mined = _inclusion_timestamp(context["sourceLock"])
+    destination_mined = _inclusion_timestamp(context["destinationLock"])
+    if source_mined is None or destination_mined is None:
+        return _result("error", "HTLC lock inclusion block yields no authenticated mined instant")
+    if any(not _safe_integer(value) for value in (source_expiry, destination_expiry)):
         return _result("error", "HTLC authenticated timing fields are malformed")
+    if (
+        events["sourceLock"].get("minedAt") != source_mined
+        or events["destinationLock"].get("minedAt") != destination_mined
+    ):
+        return _result("fail", "HTLC lock event minedAt differs from its inclusion block timestamp")
     if (
         source_expiry != source_mined + parameters["timelockSourceSec"] * 1000
         or destination_expiry != destination_mined + parameters["timelockDestSec"] * 1000
@@ -1776,6 +1863,8 @@ def _verify_provider(input_value: dict, profile: dict, expected: dict, trusted: 
     sr3 = ref.get("kind") == "ap2-sr3"
     if not sr3 and "receiptTransactionObservation" in context:
         return _result("error", "frozen AP2 reference must not carry SR-3 native transaction authority")
+    if not _attestation_ref(context.get("responseAttestation")):
+        return _result("error", "malformed provider response attestation reference")
     if context.get("providerRef") != ref.get("providerRef") or canonical_bytes(context.get("responseAttestation")) != canonical_bytes(ref.get("receiptAttestation")):
         return _result("fail", "provider context differs from signed provider reference")
     try:

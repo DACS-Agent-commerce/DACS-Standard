@@ -13,6 +13,56 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — pay-dem: every final verdict needs the transaction's bft-final inclusion; APR preflights a pay-dem rail
+
+- DEM-3 and PC-7: the payer returned `ok: true` for a bound `confirmed`
+  record with its applied payment without checking that the transaction's
+  block was final. `included-confirmed` passed with no inclusion observation,
+  profile or trust. Success now also needs the FV `bft-final` verification of
+  the retained transaction's inclusion in the observed block. Missing,
+  unfinalized, forged-certificate, absent, off-head, other-block and
+  other-network inclusions are `substrate` (`included-confirmed-bft-final-*`,
+  `resume-without-proof-confirmed-bft-final-inclusion-unfinalized`, guard
+  `success-requires-bft-final-inclusion`).
+- FV-5 and DEM-7: the settlement-finality reference returned an execution
+  result's `fail` (a signed failure or contradiction) before it verified the
+  inclusion path. A signed result about a fork, or about a block no
+  certificate finalizes, therefore refuted a payment.
+  - The reference now returns that `fail` only once the inclusion, head and
+    finality checks pass. Until then the verdict is theirs. A malformed
+    result is still `error`.
+  - The three `fv-bft-final-*-certificate-withheld` cases change from `fail`
+    to `indeterminate`.
+  - DEM-7's FV-5 refutation and delivery each need the same `bft-final`
+    inclusion of the presented reference (`consumer-failed-bft-final-*`,
+    `delivery-bft-final-*`; guards
+    `consumer-refutation-requires-bft-final-inclusion` and
+    `delivery-requires-bft-final-inclusion`). Delivery no longer rests on
+    the abstract FV gate alone.
+- DEM-4 no longer says FV-5 returns `fail` before its inclusion checks.
+- RAV-R3 and APR-3: the `alternative-payment-projection` corpus selected a
+  `live` `demos-native:DEM` definition with no `consumerFinalityProfile` and no
+  payer binding, and expected `pass`. That contradicts RAV-R3, which
+  preflights a `pay-dem` rail whatever its availability.
+  - The DEM definition now carries a `bft-final` profile, and the runtime
+    carries the payer's binding (`payDemBinding`).
+  - The APR runner applies the pay-dem corpus's own `rail-preflight` check.
+  - Four new vectors reject a selection with no profile, with no binding,
+    with a binding for another network, or with a binding that lacks an
+    applied-payment authority (`selected-dem-*-rejected`). That set now has
+    49 vectors.
+  - RAV-R3 says that a `pay-dem` definition without a
+    `consumerFinalityProfile` is not selectable.
+- The reference handler's FV `bft-final` inclusion source answers apart from
+  its FV-5 result source. A new crash test shows that a payment in a
+  non-final block is `substrate`, and that the re-read after finality settles
+  it without sending anything.
+- Pay-dem corpus: 383 vectors (36 `pass`, 125 `fail`, 205 `indeterminate`,
+  17 `error`) and 121 guards. A runner of the 362-case corpus must verify
+  `recordRead.inclusionProof` for success, for a DEM-7 `fail` and for
+  delivery. It must also read `finalityProfile` and `finalityTrust` on
+  `admit-evidence` and `admit-for-delivery`.
+
 ### Fixed — pay-dem start identity survives a lost store; a found record is flushed before it is trusted
 
 - DEM-6: a start's identifier must not repeat after the handler's other
@@ -240,7 +290,7 @@ The format used per release:
   vectors in both corpora cover each spelling the §A.2 profile projects alike:
   a `0x`-prefixed or bare `send` recipient argument (whose credit edit names it
   with a single `0x`), bare or prefixed party keys, a string or integer nonce,
-  and a string or number amount up to 2^53 − 1. The corpora contain 361 pay-dem
+  and a string or number amount up to 2^53 − 1. The corpora contain 383 pay-dem
   and 194 settlement-finality cases.
 - The DEMOS-MAPPING §A.2 profile covers only a network whose sealed genesis
   leaves the `gasFeeSeparation` fork unscheduled (`activationHeight: null`).
@@ -1536,7 +1586,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 361-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 383-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope
@@ -1579,7 +1629,10 @@ The format used per release:
   re-verification under DEM-7 returns `fail` for an FV-5-authenticated bound
   failed record, `indeterminate` for a plain RPC read of one, and
   `indeterminate` without a bound confirmed record and applied-payment authority. No artifact shape,
-  signature domain, rail definition or registry entry changes. This
+  signature domain or registry entry changes. A `pay-dem` `RailDefinition`
+  without a `consumerFinalityProfile` is no longer selectable (RAV-R3): one
+  that should stay selectable needs a `bft-final` profile, and the payer needs
+  a Demos binding for its network. This
   correction is part of the unreleased DACS-4 v0.8 candidate and allocates
   no new version.
 

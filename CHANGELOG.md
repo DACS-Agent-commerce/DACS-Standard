@@ -13,6 +13,42 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — pay-dem: a DEM-7 applied-authority contradiction needs its bft-final inclusion; a plain observation refutes nothing
+
+- DEM-7 and DEMOS-MAPPING §A.2: a consumer returned `fail` when an
+  applied-payment authority contradicted a bound `confirmed` record, with no
+  `bft-final` inclusion. It compared the authority's block ID with its own
+  plain inclusion observation. That contradicted the *Finality* rule. A
+  stale or forked pinned node naming another block ID at the height turned
+  every passing `admit-evidence` and `admit-for-delivery` case into `fail`,
+  even with an honest authority and a final canonical inclusion.
+  - The contradiction is now `fail` only with the FV `bft-final`
+    verification of the signed reference's inclusion in the block that the
+    authority names, and only when it still contradicts against that
+    verified block. Otherwise it is `indeterminate`.
+  - `consumer-applied-transfer-other-block-id` changes from `fail` to
+    `indeterminate`: an authority about another block than the reference's
+    `bft-final` inclusion refutes nothing.
+  - New guard `consumer-contradiction-requires-bft-final-inclusion`. New
+    cases: every contradiction without its inclusion
+    (`*-bft-final-inclusion-missing`), one contradiction under each `bft-final`
+    failure (`consumer-four-edits-uncommitted-payment-bft-final-*`), and a
+    stale observation (`*-stale-observed-block-refutes-nothing`).
+  - `consumer-wrong-block-unauthenticated`'s authority now names the
+    observed block, so it still witnesses `consumer-binds-block`.
+- FV-10's "deterministic `fail` before unrelated uncertainty" now refers to
+  FV-5: the finality of the block an execution result is about is not
+  unrelated, so a signed failure or contradiction is `fail` only once that
+  inclusion, head and finality verify.
+- Two tests check the *Finality* rule across the whole corpus, not branch by
+  branch. Stripping every `bft-final` inclusion proof, or every finality
+  certificate, leaves no final verdict. Changing only the observed block ID
+  never creates one and never turns a payment into `fail`.
+- Pay-dem corpus: 401 vectors (36 `pass`, 124 `fail`, 224 `indeterminate`,
+  17 `error`) and 122 guards. A runner must verify `recordRead.inclusionProof`
+  in the authority's block before an applied-authority contradiction is
+  `fail`.
+
 ### Fixed — pay-dem: every final verdict needs the transaction's bft-final inclusion; APR preflights a pay-dem rail
 
 - DEM-3 and PC-7: the payer returned `ok: true` for a bound `confirmed`

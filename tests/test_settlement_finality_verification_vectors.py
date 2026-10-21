@@ -170,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(204, self.data["count"])
+        self.assertEqual(212, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -715,20 +715,22 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual(3, len(all_of_n["input"]["context"]["observation"]["executionResult"]["attestations"]))
 
     def test_demos_sender_binds_the_payer_bundle_key_claims(self):
-        """The sender binds a Demos key claim of the payer's pinned bundle,
-        the authenticated source a consumer holds: any of them binds, the
-        primary party signer binds only as such a claim, and another payer's
-        claims, or none, resolve nothing."""
+        """The sender binds a controlled Demos key claim of the payer's pinned
+        bundle, the authenticated source a consumer holds: any of them binds,
+        the primary party signer binds only as such a claim, and another
+        payer's claims, or none, resolve nothing."""
         for suffix, expected in (("distinct", "pass"), ("any-of-bundle", "pass"), ("wrong", "fail"),
                                  ("unavailable", "indeterminate"), ("other-payer", "indeterminate"),
                                  ("payer-missing", "indeterminate"), ("claims-empty", "error"),
-                                 ("claims-malformed", "error")):
+                                 ("claims-malformed", "error"), ("claim-not-an-object", "error"),
+                                 ("claim-control-unknown", "error"), ("claim-extra-member", "error")):
             with self.subTest(case=suffix):
                 result = self.evaluate_case(self.cases["fv-bft-final-payer-key-claim-" + suffix])
                 self.assertEqual(expected, result["decision"])
                 if suffix in {"unavailable", "other-payer", "payer-missing"}:
                     self.assertIn("payer bundle Demos key claims unavailable", result["reason"])
-                if suffix in {"claims-empty", "claims-malformed"}:
+                if suffix in {"claims-empty", "claims-malformed", "claim-not-an-object",
+                              "claim-control-unknown", "claim-extra-member"}:
                     self.assertIn("malformed payer bundle Demos key claims", result["reason"])
         CLAIMS = finality_fixtures.CLAIMS
         # Another payer's claims hold the sender's key: only the payer binding rejects it.
@@ -737,17 +739,56 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertIsNone(merged[CLAIMS["buyer"]])
         self.assertIn(self.trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0], merged[CLAIMS["seller"]])
         # FV-5 projects each claim as a DEMOS-MAPPING §A.2 pay-dem party
-        # address, as DEM-1 and DEM-7 do: bare, 0x and DID bind alike, and
-        # any other spelling is malformed configuration.
+        # address, as DEM-1 and DEM-7 do: bare, 0x and DID bind alike. Any
+        # other spelling is no Demos key claim: skipped, so a bundle with no
+        # other controlled claim authenticates no sender.
         distinct = self.cases["fv-bft-final-payer-key-claim-distinct"]
         trust = merge(self.trust, distinct.get("trustedOverrides") or {})
-        key = trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0].removeprefix("0x")
+        key = trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0]["claim"].removeprefix("0x")
         for spelling, expected in ((key, "pass"), ("0x" + key, "pass"), ("did:demos:agent:" + key, "pass"),
-                                   ("0x" + key.upper(), "error"), ("did:demos:agent:0x" + key, "error")):
+                                   ("0x" + key.upper(), "indeterminate"), ("did:demos:agent:0x" + key, "indeterminate")):
             with self.subTest(claim=spelling):
                 spelled = copy.deepcopy(trust)
-                spelled["demosPayerKeyClaims"][CLAIMS["buyer"]] = [spelling]
+                spelled["demosPayerKeyClaims"][CLAIMS["buyer"]][0]["claim"] = spelling
                 self.assertEqual(expected, verify_finality(distinct["input"], spelled)["decision"])
+
+    def test_a_listed_demos_key_binds_only_with_a_control_proof(self):
+        """A payer's bundle can list another party's Demos key (DACS-1 §6.3.2
+        step 6: resolution alone establishes no control). That party's transfer
+        binds nothing for the payer, whichever way the claim is spelled or
+        listed, and the same claim binds once its control is proved."""
+        CLAIMS = finality_fixtures.CLAIMS
+        listed = self.cases["fv-bft-final-payer-key-claim-listed-not-controlled"]
+        trust = merge(self.trust, listed["trustedOverrides"])
+        claims = trust["demosPayerKeyClaims"][CLAIMS["buyer"]]
+        foreign = [claim for claim in claims if claim["control"] == "none"]
+        self.assertEqual(1, len(foreign))
+        self.assertEqual("fail", verify_finality(listed["input"], trust)["decision"])
+        key = foreign[0]["claim"]
+        for spelling in (key, "0x" + key, "did:demos:agent:" + key):
+            with self.subTest(listed=spelling):
+                spelled = copy.deepcopy(trust)
+                spelled["demosPayerKeyClaims"][CLAIMS["buyer"]] = [
+                    claim if claim["control"] != "none" else dict(claim, claim=spelling) for claim in claims]
+                self.assertEqual("fail", verify_finality(listed["input"], spelled)["decision"])
+        # Control proved (either mechanism): the same listing now binds.
+        for control in ("presentation-signature", "sr1-linkage"):
+            with self.subTest(control=control):
+                proved = copy.deepcopy(trust)
+                for claim in proved["demosPayerKeyClaims"][CLAIMS["buyer"]]:
+                    claim["control"] = control
+                self.assertEqual("pass", verify_finality(listed["input"], proved)["decision"])
+        # Only the uncontrolled claim: nothing binds, so no sender is authenticated.
+        alone = self.cases["fv-bft-final-payer-key-claim-none-controlled"]
+        self.assertEqual("indeterminate", self.evaluate_case(alone)["decision"])
+        self.assertIn("controls no Demos key claim", self.evaluate_case(alone)["reason"])
+        # The payer's own transfer is undisturbed by the extra listed key, and
+        # claims that are no Demos key are skipped rather than refused.
+        for name in ("listed-beside-controlled", "non-demos-skipped"):
+            with self.subTest(case=name):
+                self.assertEqual("pass", self.evaluate_case(self.cases["fv-bft-final-payer-key-claim-" + name])["decision"])
+        self.assertEqual("indeterminate", self.evaluate_case(
+            self.cases["fv-bft-final-payer-key-claim-malformed-spelling-uncounted"])["decision"])
 
     def test_trusted_overrides_do_not_depend_on_merge_semantics(self):
         # A runner may replace or deep-merge an overridden member; the decision is the same.

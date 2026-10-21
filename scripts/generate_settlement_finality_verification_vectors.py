@@ -100,6 +100,12 @@ MODEL_PHASE = {
 }
 
 
+def controlled_claim(claim: str, control: str = "presentation-signature") -> dict:
+    """A payer bundle claim with how its control was proved (DACS-1 §6.3.2
+    step 6), or "none" for a claim the bundle only lists."""
+    return {"claim": claim, "control": control}
+
+
 def canonical_bytes(value) -> bytes:
     return canonicalize(value).encode("utf-8")
 
@@ -171,7 +177,8 @@ class FixtureFactory:
                 },
             },
             # The Demos key claims of each payer's party bundle that the
-            # Agreement pins (payer.bundleHash), as PB-1 authenticates it.
+            # Agreement pins (payer.bundleHash), each with how the payer
+            # proved control of it (DACS-1 §6.3.2 step 6), or "none".
             "demosPayerKeyClaims": {},
         }
         self.controls = {}
@@ -788,7 +795,8 @@ class FixtureFactory:
         session = self.session(model, agreement, phase, rail_id, rail_version)
         self.trusted["sessionAuthorityByJob"][job_id] = copy.deepcopy(session)
         if model == "bft-final":
-            self.trusted["demosPayerKeyClaims"][session["payer"]] = [self.demos_key("buyer")]
+            self.trusted["demosPayerKeyClaims"][session["payer"]] = [
+                controlled_claim(self.demos_key("buyer"))]
         rail = self.rail(model, phase, rail_id, rail_version)
         profile = rail["consumerFinalityProfile"]
 
@@ -1907,31 +1915,53 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         if resign:
             factory.sign_execution_result(observation)
         vectors.append(case("fv-bft-final-" + name, "error", "a malformed execution result is not evidence", value))
-    # DEM-7/FV-5: the sender binds a Demos key claim of the payer's pinned,
-    # authenticated party bundle; nothing a consumer receives names the
-    # payer's per-phase selection, and the payer's own word is no source.
+    # DEM-7/FV-5: the sender binds a controlled Demos key claim of the payer's
+    # pinned party bundle; nothing a consumer receives names the payer's
+    # per-phase selection, the payer's own word is no source, and a claim the
+    # bundle only lists (another party's key) binds nothing.
     claimed_key = factory.demos_key("orchestrator")
-    only_claimed = {CLAIMS["buyer"]: [claimed_key]}
-    vectors.append(case("fv-bft-final-payer-key-claim-distinct", "pass", "a Demos key claim of the payer's bundle may differ from the party signer",
-                        demos_record(**{"from": "0x" + claimed_key, "from_ed25519_address": "0x" + claimed_key}),
-                        trusted_overrides={"demosPayerKeyClaims": only_claimed}))
-    vectors.append(case("fv-bft-final-payer-key-claim-any-of-bundle", "pass", "any Demos key claim of the payer's bundle binds the sender",
-                        demos_record(**{"from": "0x" + claimed_key, "from_ed25519_address": "0x" + claimed_key}),
+    only_claimed = {CLAIMS["buyer"]: [controlled_claim(claimed_key, "sr1-linkage")]}
+    claimed_sender = demos_record(**{"from": "0x" + claimed_key, "from_ed25519_address": "0x" + claimed_key})
+    buyer_claim = controlled_claim(factory.demos_key("buyer"))
+    vectors.append(case("fv-bft-final-payer-key-claim-distinct", "pass", "a controlled Demos key claim of the payer's bundle may differ from the party signer",
+                        claimed_sender, trusted_overrides={"demosPayerKeyClaims": only_claimed}))
+    vectors.append(case("fv-bft-final-payer-key-claim-any-of-bundle", "pass", "any controlled Demos key claim of the payer's bundle binds the sender",
+                        claimed_sender,
                         trusted_overrides={"demosPayerKeyClaims": {
-                            CLAIMS["buyer"]: [factory.demos_key("buyer"), "did:demos:agent:" + claimed_key]}}))
-    vectors.append(case("fv-bft-final-payer-key-claim-wrong", "fail", "a sender that is no Demos key claim of the payer's bundle, the primary party signer included, contradicts the phase",
+                            CLAIMS["buyer"]: [buyer_claim, controlled_claim("did:demos:agent:" + claimed_key, "sr1-linkage")]}}))
+    vectors.append(case("fv-bft-final-payer-key-claim-wrong", "fail", "a sender that is no controlled Demos key claim of the payer's bundle, the primary party signer included, contradicts the phase",
                         factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": only_claimed}))
+    # Another party's key that the payer's bundle lists with no control proof:
+    # its transfer binds nothing, and the payer's own claim still does.
+    listed_only = {CLAIMS["buyer"]: [buyer_claim, controlled_claim(claimed_key, "none")]}
+    vectors.append(case("fv-bft-final-payer-key-claim-listed-not-controlled", "fail", "a Demos key the payer's bundle lists without a control proof is another party's key, so its transfer contradicts the phase",
+                        claimed_sender, trusted_overrides={"demosPayerKeyClaims": listed_only}))
+    vectors.append(case("fv-bft-final-payer-key-claim-listed-beside-controlled", "pass", "listing another party's key beside the payer's own controlled claim does not disturb the payer's own transfer",
+                        factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": listed_only}))
+    vectors.append(case("fv-bft-final-payer-key-claim-none-controlled", "indeterminate", "a bundle that proves control of no Demos key claim authenticates no sender, even one it lists",
+                        claimed_sender, trusted_overrides={"demosPayerKeyClaims": {CLAIMS["buyer"]: [controlled_claim(claimed_key, "none")]}}))
+    vectors.append(case("fv-bft-final-payer-key-claim-non-demos-skipped", "pass", "a claim that is no Demos key is skipped, never an error",
+                        factory.model_input("bft-final"),
+                        trusted_overrides={"demosPayerKeyClaims": {CLAIMS["buyer"]: [
+                            controlled_claim("0x" + "ab" * 20), buyer_claim, controlled_claim("lei:529900T8BM49AURSDO55")]}}))
+    vectors.append(case("fv-bft-final-payer-key-claim-malformed-spelling-uncounted", "indeterminate", "a controlled claim that does not project to a Demos key is not a Demos key claim",
+                        factory.model_input("bft-final"),
+                        trusted_overrides={"demosPayerKeyClaims": {CLAIMS["buyer"]: [
+                            controlled_claim("0x" + factory.demos_key("buyer").upper())]}}))
     vectors.append(case("fv-bft-final-payer-key-claim-unavailable", "indeterminate", "no payer key may be inferred without the payer's authenticated bundle",
                         factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": None}))
     for name, bundles, expected in (
         # Override members merge: the payer's own entry is cleared, so only
         # another payer's bundle claims the sender's key.
-        ("other-payer", {CLAIMS["buyer"]: None, CLAIMS["seller"]: [factory.demos_key("buyer")]}, "indeterminate"),
+        ("other-payer", {CLAIMS["buyer"]: None, CLAIMS["seller"]: [buyer_claim]}, "indeterminate"),
         ("payer-missing", {CLAIMS["buyer"]: None}, "indeterminate"),
         ("claims-empty", {CLAIMS["buyer"]: []}, "error"),
         ("claims-malformed", [], "error"),
+        ("claim-not-an-object", {CLAIMS["buyer"]: [factory.demos_key("buyer")]}, "error"),
+        ("claim-control-unknown", {CLAIMS["buyer"]: [controlled_claim(factory.demos_key("buyer"), "self-declared")]}, "error"),
+        ("claim-extra-member", {CLAIMS["buyer"]: [dict(buyer_claim, verified=True)]}, "error"),
     ):
-        vectors.append(case("fv-bft-final-payer-key-claim-" + name, expected, "the sender binds the Demos key claims of this phase's payer's bundle",
+        vectors.append(case("fv-bft-final-payer-key-claim-" + name, expected, "the sender binds the controlled Demos key claims of this phase's payer's bundle",
                             factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": bundles}))
 
     provider_not_captured, provider_override = factory.provider_variant(status="declined")

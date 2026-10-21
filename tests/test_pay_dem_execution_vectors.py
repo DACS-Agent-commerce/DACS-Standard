@@ -176,6 +176,7 @@ GUARDS = frozenset({
     "consumer-binds-hash",
     "consumer-binds-block",
     "consumer-binds-payer",
+    "consumer-binds-controlled-claims-only",
     "consumer-binds-payee",
     "consumer-binds-amount",
     "consumer-failed-refutes",
@@ -999,6 +1000,29 @@ def party_address(value, off):
     return match[1] if match else None
 
 
+CLAIM_CONTROLS = frozenset({"presentation-signature", "sr1-linkage"})
+
+
+def payer_claims(phase, off):
+    """The 64-hex keys of the controlled Demos key claims of the payer's party
+    bundle (DEMOS-MAPPING §A.2) that DEM-7 binds a record's sender to, or None
+    when the phase's claims are malformed. A bundle that lists a key with no
+    proof of control, or claims that are no Demos key, adds nothing. Without
+    `payerKeyClaims` the bundle claims one controlled key, the handler's
+    `payer.payingKey` (§9.5.1)."""
+    claims = phase.get("payerKeyClaims")
+    if claims is None:
+        key = party_address(phase.get("payerPayingKey"), off)
+        return None if key is None else {key}
+    if not (isinstance(claims, list) and claims and all(
+            isinstance(claim, dict) and set(claim) == {"claim", "control"} and isinstance(claim["claim"], str)
+            and (claim["control"] in CLAIM_CONTROLS or claim["control"] == "none") for claim in claims)):
+        return None
+    listed = "consumer-binds-controlled-claims-only" in off
+    return {key for key in (party_address(claim["claim"], off) for claim in claims
+                            if listed or claim["control"] in CLAIM_CONTROLS) if key is not None}
+
+
 # Every input a final pay-dem verdict consumes, as one network's binding
 # members: DEM-2's pinned nodes, DEM-3's applied-payment authority, the
 # profile's fork scope, the bft-final trust DEM-3, DEM-4 and DEM-7 verify
@@ -1327,9 +1351,11 @@ def dem7(protocol_input: dict, off) -> str:
     ):
         return "pass"
     phase = protocol_input["phase"]
-    payer, payee = (party_address(phase.get(field), off) for field in ("payerPayingKey", "payeeAddress"))
-    if payer is None or payee is None:
+    payers, payee = payer_claims(phase, off), party_address(phase.get("payeeAddress"), off)
+    if payers is None or payee is None:
         return "error"
+    if not payers:
+        return "indeterminate"  # the payer's bundle controls no Demos key claim
     read = protocol_input["recordRead"]
     # FV-10: FV's own error or fail on the presented reference's bft-final
     # inclusion (a forged certificate, a transaction proven absent, a block
@@ -1349,12 +1375,13 @@ def dem7(protocol_input: dict, off) -> str:
     expected_values = {
         "txHash": reference["txHash"],
         "blockNumber": reference["blockNumber"],
-        "sender": payer,
+        "sender": payers,
         "recipient": payee,
         "amountOs": _canonical(phase["amountOs"]),
     }
     is_bound = all(
-        projection[field] == value or f"consumer-binds-{guard}" in off
+        (projection[field] in value if field == "sender" else projection[field] == value)
+        or f"consumer-binds-{guard}" in off
         for (field, value), guard in zip(expected_values.items(), ("hash", "block", "payer", "payee", "amount"))
     )
     status = projection["status"]
@@ -2624,9 +2651,10 @@ class PayDemExecutionVectorTests(unittest.TestCase):
 
     def test_signed_results_get_one_record_decision_across_corpora(self):
         """Every signed FV-5 result in this corpus (a read's, a retained
-        proof's) goes through the settlement-finality reference's full record
-        decision for the phase: result authentication, the applied-transfer
-        check both corpora share, and DEM-7's record decision. A result the
+        proof's) goes through the settlement-finality reference's own entry
+        points for the phase, `_verify_demos_execution` then
+        `_verify_demos_record`, with no check of this test's own: the
+        applied-transfer check both corpora share lives in them. A result the
         oracle reads as authenticating nothing is never FV's `fail` or `pass`;
         a handler's DEM-4 failure and APR evidence rest only on FV's `fail`;
         and a consumer's FV-5 refutation is FV's `fail`."""
@@ -2641,7 +2669,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             trusted = {
                 "demosExecutionPolicy": value.get("fv5Policy"),
                 "demosRecordProfile": DEMOS_RECORD_PROFILE,
-                "demosPayerKeyClaims": {"payer": [phase.get("payerPayingKey", transfer.get("sender"))]},
+                "demosPayerKeyClaims": {"payer": phase.get("payerKeyClaims") or [{
+                    "claim": phase.get("payerPayingKey", transfer.get("sender")), "control": "presentation-signature"}]},
                 "partyKeys": {"payee": base64.urlsafe_b64encode(bytes.fromhex(payee)).decode().rstrip("=")},
             }
             expected = {"jobId": job, "phaseIndex": index, "payer": "payer", "payee": "payee",
@@ -2652,9 +2681,6 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             decision, _reason, verified = _verify_demos_execution(observation, reference, trusted)
             if decision != "pass":
                 return decision
-            if "appliedTransfer" in verified and not demos_applied_transfer_binds_record(
-                    verified["appliedTransfer"], verified["record"]):
-                return "indeterminate"
             # Without a carried applied transfer, the read's own applied-payment
             # authority (DEMOS-MAPPING §A.2) stands in for it, as on the pay-dem path.
             applied = verified.get("appliedTransfer")
@@ -3579,7 +3605,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("by itself it authorizes neither delivery nor *settlement accounting*", spec)
         self.assertIn("MUST NOT broadcast a transaction that the profile does not authenticate", spec)
         self.assertIn("authenticate the full result record independently", spec)
-        self.assertIn("a Demos key claim of the payer's party bundle\n  that the Agreement pins", spec)
+        self.assertIn("a controlled Demos key claim of the payer's party\n  bundle that the Agreement pins", spec)
+        self.assertNotIn("authenticated as PB-1\n  authenticates that bundle", spec)
         self.assertIn("unavailable\n  execution-result authentication is `indeterminate`", spec)
         self.assertIn("*Signed transaction.*", demos)
         self.assertIn("SHA-256 of the UTF-8 `JSON.stringify(content)`", demos)
@@ -3688,7 +3715,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("A *pay-dem party address* is the authority side of that comparison", demos)
         spec = SPEC.read_text(encoding="utf-8")
         self.assertIn("each as the DEMOS-MAPPING §A.2 *pay-dem party address* projects it", spec)
-        self.assertIn("projection of a Demos key claim of the payer's party bundle that the Agreement pins", spec)
+        self.assertIn("projection of a *controlled Demos key claim* of the payer's party bundle that the Agreement pins", spec)
+        self.assertNotIn("authenticated as PB-1 authenticates that bundle", spec)
+        self.assertIn("A Demos key claim is *controlled* when the party proved control of that exact claim under DACS-1 §6.3.2 step (6)", demos)
         self.assertNotIn("selected `payer.payingKey`", spec)
         self.assertIn("and `payee.payeeAddress`, each as the DEMOS-MAPPING §A.2 *pay-dem party address*", spec)
         key = generator.PAYEE_KEY

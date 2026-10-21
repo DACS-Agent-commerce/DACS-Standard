@@ -46,7 +46,12 @@ SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 DEMOS_KEY_RE = re.compile(r"(?:0x)?([0-9a-f]{64})\Z")
 # DEMOS-MAPPING §A.2 pay-dem party address: the authority side only, never a record member.
 DEMOS_PARTY_ADDRESS_RE = re.compile(r"(?:0x|did:demos:agent:)?([0-9a-f]{64})\Z")
-DEM_AMOUNT_RE = re.compile(r"(0|[1-9][0-9]*)(?:\.([0-9]{1,9}))?\Z")
+# How a payer bundle claim's control was established (DACS-1 §6.3.2 step 6):
+# the claim's own bundle presentation signature, or an SR-1 linkage. A listed
+# claim with no such proof is carried as "none" and binds nothing.
+DEMOS_CLAIM_CONTROLS = frozenset({"presentation-signature", "sr1-linkage"})
+DEMOS_CLAIM_UNCONTROLLED = "none"
+DEM_AMOUNT_RE =re.compile(r"(0|[1-9][0-9]*)(?:\.([0-9]{1,9}))?\Z")
 DECIMAL_RE = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
 SIG_RE = re.compile(r"[A-Za-z0-9_-]+\Z")
 MAX_SAFE_INTEGER = 9_007_199_254_740_991
@@ -1219,11 +1224,13 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
     if problem is not None:
         return "indeterminate", "Demos applied transfer " + problem + " (DEM-7)"
     amount = DEM_AMOUNT_RE.match(expected.get("amount") or "") if expected.get("currency") == "DEM" else None
-    # The sender binds the Demos key claims of the payer's party bundle that
-    # the Agreement pins (payer.bundleHash), as PB-1 authenticates it; the
-    # handler's payer.payingKey is one of them (§9.5.1). Nothing a consumer
-    # receives names the payer's per-phase selection, and a key the payer's
-    # message names is unauthenticated.
+    # The sender binds the controlled Demos key claims of the payer's party
+    # bundle that the Agreement pins (payer.bundleHash): the claims whose
+    # control the payer proved under DACS-1 §6.3.2 step (6). A claim the
+    # bundle only lists binds nothing, since another payer's key could be
+    # listed in it. The handler's payer.payingKey is such a claim (§9.5.1).
+    # Nothing a consumer receives names the payer's per-phase selection, and a
+    # key the payer's message names is unauthenticated.
     bundles = trusted.get("demosPayerKeyClaims")
     if bundles is None:
         return "indeterminate", "payer bundle Demos key claims unavailable"
@@ -1232,12 +1239,20 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
     claims = bundles.get(expected["payer"])
     if claims is None:
         return "indeterminate", "payer bundle Demos key claims unavailable"
-    if not (isinstance(claims, list) and claims and all(isinstance(claim, str) for claim in claims)):
+    if not (isinstance(claims, list) and claims and all(
+            isinstance(claim, dict) and set(claim) == {"claim", "control"}
+            and isinstance(claim["claim"], str) and claim["control"] in DEMOS_CLAIM_CONTROLS | {DEMOS_CLAIM_UNCONTROLLED}
+            for claim in claims)):
         return "error", "malformed payer bundle Demos key claims"
-    matches = [DEMOS_PARTY_ADDRESS_RE.match(claim) for claim in claims]
-    payers = {match.group(1) for match in matches if match}
+    # A claim that is no Demos key (an EVM address, a LEI) is not a Demos key
+    # claim: it is skipped, never an error.
+    controlled = [DEMOS_PARTY_ADDRESS_RE.match(claim["claim"]) for claim in claims
+                  if claim["control"] in DEMOS_CLAIM_CONTROLS]
+    payers = {match.group(1) for match in controlled if match}
+    if not payers:
+        return "indeterminate", "payer bundle controls no Demos key claim"
     payee = _party_demos_key(trusted, expected.get("payee"))
-    if amount is None or None in matches or payee is None:
+    if amount is None or payee is None:
         return "error", "phase lacks a DEM amount or Demos party keys"
     amount_os = _demos_os_spelling(amount)
     if (

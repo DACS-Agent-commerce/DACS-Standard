@@ -785,6 +785,12 @@ def dem_spelling(amount_os: str) -> str:
     return f"{whole}.{fraction_digits}" if fraction_digits else str(whole)
 
 
+def claim(key: str, control: str = "presentation-signature") -> dict[str, str]:
+    """A payer bundle claim and how its control was proved (DACS-1 §6.3.2
+    step 6): `none` for a claim the bundle only lists."""
+    return {"claim": key, "control": control}
+
+
 def phase(**changes: Any) -> dict[str, Any]:
     """Authenticated agreement and phase context."""
     return _apply(
@@ -2097,6 +2103,43 @@ def build_vectors() -> list[dict[str, Any]]:
             "An unauthenticated read from another payer does not satisfy DEM-7.",
             read=found(record("confirmed", send_content(sender=OTHER_KEY)), authenticated=False),
         ),
+        # DEM-7: the sender binds a controlled Demos key claim of the payer's
+        # party bundle; a key the bundle only lists binds nothing, so another
+        # buyer's transfer never binds for the payer.
+        admit(
+            "consumer-sender-another-controlled-claim", "pass", "DEM-7", ["consumer-admits-confirmed"],
+            "A bundle may control several Demos key claims; the record's sender is any of them.",
+            read=found(record("confirmed", send_content(sender=OTHER_KEY))),
+            phase_context=phase(payerKeyClaims=[claim(PAYER_KEY), claim(OTHER_KEY, "sr1-linkage")]),
+        ),
+        admit(
+            "consumer-sender-listed-not-controlled", "fail", "DEM-7/FV-5",
+            ["consumer-authenticated-contradiction-fails", "consumer-binds-controlled-claims-only", "consumer-binds-payer",
+             "consumer-requires-confirmed-record"],
+            "Another buyer's key that the payer's bundle lists without proof of control does not bind: that buyer's authenticated payment contradicts this phase.",
+            read=found(record("confirmed", send_content(sender=OTHER_KEY)), authenticated=True),
+            phase_context=phase(payerKeyClaims=[claim(PAYER_KEY), claim(OTHER_KEY, "none")]),
+        ),
+        admit(
+            "consumer-no-controlled-claim", "indeterminate", "DEM-7", ["consumer-binds-controlled-claims-only", "consumer-requires-confirmed-record"],
+            "A bundle that proves control of no Demos key claim authenticates no sender, even one it lists.",
+            read=found(record("confirmed", send_content(sender=OTHER_KEY)), authenticated=True),
+            phase_context=phase(payerKeyClaims=[claim(OTHER_KEY, "none")]),
+        ),
+        admit(
+            "consumer-non-demos-claim-skipped", "pass", "DEM-7", ["consumer-admits-confirmed"],
+            "A bundle claim that is no Demos key (a 20-byte address) is skipped, never an error.",
+            read=found(record("confirmed")),
+            phase_context=phase(payerKeyClaims=[claim("0x" + PAYER_KEY[:40]), claim(PAYER_KEY)]),
+        ),
+        deliver(
+            "delivery-sender-listed-not-controlled", "fail", "DEM-7/FV-5",
+            ["consumer-authenticated-contradiction-fails", "consumer-binds-controlled-claims-only", "consumer-binds-payer",
+             "consumer-requires-confirmed-record", "delivery-requires-dem7"],
+            "The payee never delivers on another buyer's payment that the payer's bundle only lists.",
+            read=found(record("confirmed", send_content(sender=OTHER_KEY)), authenticated=True),
+            phase_context=phase(payerKeyClaims=[claim(PAYER_KEY), claim(OTHER_KEY, "none")]), dem7_passed=False,
+        ),
         admit(
             "consumer-wrong-amount-authenticated", "fail", "DEM-7/FV-5", ["consumer-authenticated-contradiction-fails", "consumer-binds-amount", "consumer-requires-confirmed-record"],
             "Under FV-5 an authenticated record for another amount is fail.",
@@ -3073,7 +3116,8 @@ def document() -> dict[str, Any]:
             "broadcastState": "never-broadcast (nothing has left the handler), confirm-returned (this uninterrupted submission's confirm just returned), confirm-sent-interrupted (a confirm was sent, then a timeout, error or restart) or maybe-broadcast; any other value is refused",
             "confirmResponse": "the demosdk 4.0.16 confirm() result (RPCResponseWithValidityData) that the current submission's confirm returned to the handler, even late, or null; null for a confirm request",
             "validityResponse": "what the demosdk broadcast(validationData) call carries, or null for a confirm request; the pinned node executes its response.data.transaction, so it must be exactly confirmResponse, with result 200, valid true and an embedded transaction whose content, hash and signature serialize as signedTransaction",
-            "payeeAddress": "phase member: payee.payeeAddress (and payerPayingKey: for the handler, the key payer.payingKey names; for a consumer, the Demos key claim of the payer's party bundle that the Agreement pins, payer.bundleHash, which the record's sender must project to; this corpus's payer bundle claims one Demos key, the handler's payingKey), a DEMOS-MAPPING §A.2 pay-dem party address: a Demos key with optional 0x or a did:demos:agent: DID over 64 lower-case hex digits; DEM-1, DEM-7 and FV-5 compare the 64 digits it projects to, and any other value is error",
+            "payerKeyClaims": "optional phase member for a consumer: the claims of the payer's party bundle that the Agreement pins (payer.bundleHash), each {claim, control}; control is presentation-signature or sr1-linkage when the payer proved control of that exact claim (DACS-1 section 6.3.2 step 6), none for a claim the bundle only lists. DEM-7 binds the record's sender only to the pay-dem party address projection of a controlled claim; a claim that projects to nothing is skipped, a bundle with no controlled Demos key claim is indeterminate, and members that are not {claim, control} with a known control are error. Absent, the bundle controls one claim, payerPayingKey",
+            "payeeAddress": "phase member: payee.payeeAddress (and payerPayingKey: for the handler, the key payer.payingKey names; for a consumer, a controlled Demos key claim of the payer's party bundle that the Agreement pins, payer.bundleHash, which the record's sender must project to; without payerKeyClaims this corpus's payer bundle controls one Demos key, the handler's payingKey), a DEMOS-MAPPING §A.2 pay-dem party address: a Demos key with optional 0x or a did:demos:agent: DID over 64 lower-case hex digits; DEM-1, DEM-7 and FV-5 compare the 64 digits it projects to, and any other value is error",
             "availability": "rail-preflight: the pinned pay-dem RailDefinition's availability for a new production session; disabled, failed and mocked are not selectable, any other unknown value is error, and every other value still needs every DEM-1 member of the payer binding for railNetwork, checked against finalityProfile (RAV-R3, whatever the availability)",
             "railSelectable": "rail-preflight want member: whether the orchestrator may select the rail, before Agreement signature and the PIPE-6 commitment",
             "fv5Policy": "the FV-5 independent execution-result policy the verifier trusts, from its own configuration: the settlement-finality corpus's fixture-independent-results-v1 kind, authorityKeys (base64url Ed25519) and threshold; a missing or malformed policy authenticates nothing",

@@ -170,7 +170,9 @@ class FixtureFactory:
                     for name in ("execution-a", "execution-b", "execution-c")
                 },
             },
-            "demosPhasePayingKeys": {},
+            # The Demos key claims of each payer's party bundle that the
+            # Agreement pins (payer.bundleHash), as PB-1 authenticates it.
+            "demosPayerKeyClaims": {},
         }
         self.controls = {}
 
@@ -786,9 +788,7 @@ class FixtureFactory:
         session = self.session(model, agreement, phase, rail_id, rail_version)
         self.trusted["sessionAuthorityByJob"][job_id] = copy.deepcopy(session)
         if model == "bft-final":
-            self.trusted["demosPhasePayingKeys"][job_id + ":0"] = {
-                "payer": session["payer"], "payingKey": self.demos_key("buyer"),
-            }
+            self.trusted["demosPayerKeyClaims"][session["payer"]] = [self.demos_key("buyer")]
         rail = self.rail(model, phase, rail_id, rail_version)
         profile = rail["consumerFinalityProfile"]
 
@@ -1616,6 +1616,10 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
 
     vectors.extend([
         case("fv-bft-final-included-execution-failed", "fail", "BFT-final inclusion of a Demos transfer whose authenticated record failed is not settlement", demos_record(status="failed", state=rolled_back)),
+        # A signed failed record whose own committed balances show the payment
+        # contradicts itself: no proven failure, so it refutes nothing and is
+        # never closed-cannot-settle evidence (DEM-4, DEM-7).
+        case("fv-bft-final-included-execution-failed-shows-payment", "indeterminate", "a signed failed record whose applied transfer shows the payment authenticates nothing", demos_record(status="failed")),
         case("fv-bft-final-execution-pending", "indeterminate", "an authenticated Demos record that is neither confirmed nor failed is not an execution result", demos_record(status="pending")),
         case("fv-bft-final-execution-included-alias", "indeterminate", "the status-index label included is not a Demos execution result", demos_record(status="included")),
         case("fv-bft-final-execution-success-alias", "indeterminate", "only the exact Demos record status confirmed is an executed send", demos_record(status="success")),
@@ -1647,16 +1651,21 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     zero_debit = dict(applied, payerAfterOs=factory._os(lambda a, b: a - b, applied["payerBeforeOs"], applied["feeOs"]))
     undecodable = {"extra-member", "numeric-debit", "noncanonical-credit",
                    "committed-balances-missing", "committed-balances-numeric"}
+    # The applied transfer is part of the signed result (FV-5, DEMOS-MAPPING
+    # §A.2): one that does not move the confirmed record's amount between its
+    # own parties in its own transaction and block contradicts the record it
+    # was signed with, so the result authenticates nothing either way.
+    contradicts = {"zero-credit", "zero-debit", "wrong-hash", "wrong-block", "wrong-sender", "wrong-recipient"}
     for suffix, replacement, expected in (
         ("missing", None, "indeterminate"),
         ("zero-credit", dict(zip(("payerDebitOs", "payeeCreditOs"), factory.committed_change(zero_credit)),
-                             committedBalances=zero_credit), "fail"),
+                             committedBalances=zero_credit), "indeterminate"),
         ("zero-debit", dict(zip(("payerDebitOs", "payeeCreditOs"), factory.committed_change(zero_debit)),
-                            committedBalances=zero_debit), "fail"),
-        ("wrong-hash", {"txHash": "ee" * 32}, "fail"),
-        ("wrong-block", {"blockNumber": 101}, "fail"),
-        ("wrong-sender", {"sender": other_key}, "fail"),
-        ("wrong-recipient", {"recipient": other_key}, "fail"),
+                            committedBalances=zero_debit), "indeterminate"),
+        ("wrong-hash", {"txHash": "ee" * 32}, "indeterminate"),
+        ("wrong-block", {"blockNumber": 101}, "indeterminate"),
+        ("wrong-sender", {"sender": other_key}, "indeterminate"),
+        ("wrong-recipient", {"recipient": other_key}, "indeterminate"),
         # Figures that are not the change of the committed balances the
         # authority authenticates prove nothing either way.
         ("not-committed-change", {"committedBalances": rolled_back}, "indeterminate"),
@@ -1681,14 +1690,16 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
                             if suffix in undecodable else
                             "an applied debit and credit are evidence only as the change of the committed balances the authority authenticates"
                             if suffix == "not-committed-change" else
+                            "a signed result whose applied transfer contradicts its own record authenticates nothing"
+                            if suffix in contradicts else
                             "confirmed and the send's edits cannot substitute for an authenticated applied debit and payee credit", value))
 
     # A confirmed send whose transaction carries no edits is a successful
     # no-op at the pinned node: its committed balances do not change, and an
     # authority that reports a payment for it is not believed.
     for name, edits in (("missing-edits", None), ("empty-edits", [])):
-        vectors.append(case("fv-bft-final-confirmed-no-op-" + name, "fail",
-                            "the authenticated committed balances of an edit-less confirmed send show no debit or credit",
+        vectors.append(case("fv-bft-final-confirmed-no-op-" + name, "indeterminate",
+                            "a signed confirmed result whose committed balances show no debit or credit contradicts itself and authenticates nothing",
                             demos_record(gcr_edits=edits, state=no_op)))
     vectors.append(case("fv-bft-final-confirmed-no-op-copied-authority", "indeterminate",
                         "an authority that reports payment for a confirmed send without its edits establishes nothing",
@@ -1715,15 +1726,15 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     vectors.append(case("fv-bft-final-confirmed-fee-separated-edits", "indeterminate",
                         "a confirmed send carrying gasFeeSeparation fee edits before its four is outside the record profile",
                         demos_record(gcr_edits=fee_edits + full)))
-    # DEM-7 decides an authenticated contradiction before the edits: the same
-    # fee-separated record over committed balances that did not move is `fail`.
-    vectors.append(case("fv-bft-final-confirmed-fee-separated-edits-uncommitted-payment", "fail",
-                        "authenticated committed balances unchanged by a fee-separated confirmed send refute the payment",
+    # A signed confirmed result over committed balances that did not move
+    # contradicts itself: it authenticates nothing, so it refutes nothing.
+    vectors.append(case("fv-bft-final-confirmed-fee-separated-edits-uncommitted-payment", "indeterminate",
+                        "a signed confirmed result whose committed balances did not move authenticates nothing",
                         demos_record(gcr_edits=fee_edits + full, state=rolled_back)))
     # A confirmed send that carries all four edits while the authenticated
     # committed balances did not move: the edits are the claim, not the payment.
-    vectors.append(case("fv-bft-final-confirmed-four-edits-uncommitted-payment", "fail",
-                        "authenticated committed balances unchanged by a confirmed send with all four edits refute the payment",
+    vectors.append(case("fv-bft-final-confirmed-four-edits-uncommitted-payment", "indeterminate",
+                        "a signed confirmed result whose committed balances did not move authenticates nothing, whatever its edits",
                         demos_record(state=rolled_back)))
     # DEMOS-MAPPING §A.2 spellings that project to the same values each bind
     # on the record path, up to a JSON number of 2^53 - 1 (JCS cannot carry a
@@ -1803,10 +1814,11 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     # compared by spelling, so each returns its decision instead of raising.
     oversized = "9" * 4301
     vectors.append(case("fv-bft-final-record-oversized-amount", "fail", "an authentic native send of an oversized OS amount contradicts the phase amount",
-                        demos_record(amount=oversized, data=send(payee_key, oversized))))
+                        demos_record(amount=oversized, data=send(payee_key, oversized),
+                                     state=factory.committed(amount_os=oversized, payer_before="1" + "0" * 4320))))
     vectors.append(case("fv-bft-final-record-oversized-send-argument", "indeterminate", "an oversized send argument differs from content.amount, so the record does not decode",
                         demos_record(data=send(payee_key, oversized))))
-    vectors.append(case("fv-bft-final-applied-transfer-oversized-debit", "fail", "an authenticated oversized applied debit contradicts the phase amount",
+    vectors.append(case("fv-bft-final-applied-transfer-oversized-debit", "indeterminate", "a signed oversized applied debit contradicts its own record, so the result authenticates nothing",
                         demos_record(state=factory.committed(amount_os=oversized, payer_before="1" + "0" * 4320))))
     for name, mutate, expected in (
         ("record-not-object", lambda o: o["executionResult"].__setitem__("record", []), "indeterminate"),
@@ -1895,22 +1907,32 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         if resign:
             factory.sign_execution_result(observation)
         vectors.append(case("fv-bft-final-" + name, "error", "a malformed execution result is not evidence", value))
-    selected_key = factory.demos_key("orchestrator")
-    resolution = {"FV-392-bft-final:0": {"payer": CLAIMS["buyer"], "payingKey": selected_key}}
-    vectors.append(case("fv-bft-final-selected-paying-key-distinct", "pass", "the selected authorized paying key may differ from the party signer",
-                        demos_record(**{"from": "0x" + selected_key, "from_ed25519_address": "0x" + selected_key}),
-                        trusted_overrides={"demosPhasePayingKeys": resolution}))
-    vectors.append(case("fv-bft-final-selected-paying-key-wrong", "fail", "the primary party signer cannot replace the selected paying key",
-                        factory.model_input("bft-final"), trusted_overrides={"demosPhasePayingKeys": resolution}))
-    vectors.append(case("fv-bft-final-selected-paying-key-unavailable", "indeterminate", "no selected paying key may be inferred",
-                        factory.model_input("bft-final"), trusted_overrides={"demosPhasePayingKeys": None}))
-    for name, resolutions, expected in (
-        ("other-payer", {"FV-392-bft-final:0": {"payer": CLAIMS["seller"], "payingKey": factory.demos_key("buyer")}}, "indeterminate"),
-        ("phase-missing", {"FV-392-bft-final:0": None}, "indeterminate"),
-        ("resolutions-malformed", [], "error"),
+    # DEM-7/FV-5: the sender binds a Demos key claim of the payer's pinned,
+    # authenticated party bundle; nothing a consumer receives names the
+    # payer's per-phase selection, and the payer's own word is no source.
+    claimed_key = factory.demos_key("orchestrator")
+    only_claimed = {CLAIMS["buyer"]: [claimed_key]}
+    vectors.append(case("fv-bft-final-payer-key-claim-distinct", "pass", "a Demos key claim of the payer's bundle may differ from the party signer",
+                        demos_record(**{"from": "0x" + claimed_key, "from_ed25519_address": "0x" + claimed_key}),
+                        trusted_overrides={"demosPayerKeyClaims": only_claimed}))
+    vectors.append(case("fv-bft-final-payer-key-claim-any-of-bundle", "pass", "any Demos key claim of the payer's bundle binds the sender",
+                        demos_record(**{"from": "0x" + claimed_key, "from_ed25519_address": "0x" + claimed_key}),
+                        trusted_overrides={"demosPayerKeyClaims": {
+                            CLAIMS["buyer"]: [factory.demos_key("buyer"), "did:demos:agent:" + claimed_key]}}))
+    vectors.append(case("fv-bft-final-payer-key-claim-wrong", "fail", "a sender that is no Demos key claim of the payer's bundle, the primary party signer included, contradicts the phase",
+                        factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": only_claimed}))
+    vectors.append(case("fv-bft-final-payer-key-claim-unavailable", "indeterminate", "no payer key may be inferred without the payer's authenticated bundle",
+                        factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": None}))
+    for name, bundles, expected in (
+        # Override members merge: the payer's own entry is cleared, so only
+        # another payer's bundle claims the sender's key.
+        ("other-payer", {CLAIMS["buyer"]: None, CLAIMS["seller"]: [factory.demos_key("buyer")]}, "indeterminate"),
+        ("payer-missing", {CLAIMS["buyer"]: None}, "indeterminate"),
+        ("claims-empty", {CLAIMS["buyer"]: []}, "error"),
+        ("claims-malformed", [], "error"),
     ):
-        vectors.append(case("fv-bft-final-selected-paying-key-" + name, expected, "the selected paying key resolves for this phase's payer",
-                            factory.model_input("bft-final"), trusted_overrides={"demosPhasePayingKeys": resolutions}))
+        vectors.append(case("fv-bft-final-payer-key-claim-" + name, expected, "the sender binds the Demos key claims of this phase's payer's bundle",
+                            factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": bundles}))
 
     provider_not_captured, provider_override = factory.provider_variant(status="declined")
     vectors.extend([

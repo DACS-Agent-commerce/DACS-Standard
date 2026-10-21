@@ -170,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(201, self.data["count"])
+        self.assertEqual(204, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -428,16 +428,22 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual("indeterminate", verify_finality(control["input"], below)["decision"])
 
     def test_confirmed_record_requires_authenticated_committed_payment(self):
-        for suffix, expected in (("missing", "indeterminate"), ("zero-credit", "fail"),
-                                 ("zero-debit", "fail"), ("wrong-hash", "fail"), ("wrong-block", "fail"),
-                                 ("wrong-sender", "fail"), ("wrong-recipient", "fail")):
+        # A carried applied transfer is part of the signed result: one that
+        # contradicts the record it was signed with authenticates nothing.
+        for suffix, expected in (("missing", "indeterminate"), ("zero-credit", "indeterminate"),
+                                 ("zero-debit", "indeterminate"), ("wrong-hash", "indeterminate"),
+                                 ("wrong-block", "indeterminate"), ("wrong-sender", "indeterminate"),
+                                 ("wrong-recipient", "indeterminate")):
             with self.subTest(suffix=suffix):
                 case = self.cases["fv-bft-final-applied-transfer-" + suffix]
                 record = case["input"]["context"]["observation"]["executionResult"]["record"]
                 self.assertEqual("confirmed", record["status"])
                 # The send's own edits are present: only the authority varies.
                 self.assertTrue(_demos_send_edits_match(record["content"]))
-                self.assertEqual(expected, self.evaluate_case(case)["decision"])
+                outcome = self.evaluate_case(case)
+                self.assertEqual(expected, outcome["decision"])
+                if suffix != "missing":
+                    self.assertIn("applied transfer contradicts its own record, so the signed result authenticates nothing", outcome["reason"])
         # An authenticated applied transfer that does not decode is indeterminate, not a contradiction.
         for suffix in ("extra-member", "numeric-debit", "noncanonical-credit",
                        "committed-balances-missing", "committed-balances-numeric"):
@@ -457,8 +463,9 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         """Every Demos authority (except the deliberately inconsistent one) is
         the change of the committed balances it authenticates; on a passing
         case those balances actually moved by the phase amount. A confirmed
-        record with all four edits whose committed balances did not move is
-        `fail`, and figures copied over unchanged balances are `indeterminate`."""
+        record with all four edits signed with committed balances that did not
+        move contradicts itself, and figures copied over unchanged balances
+        prove nothing: both are `indeterminate`."""
         checked = 0
         for name, case in self.cases.items():
             result = case["input"].get("context", {}).get("observation", {}).get("executionResult")
@@ -481,7 +488,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 checked += 1
         self.assertGreater(checked, 20)
         for suffix, expected, reason in (
-            ("confirmed-four-edits-uncommitted-payment", "fail", "applied transfer contradicts the native send"),
+            ("confirmed-four-edits-uncommitted-payment", "indeterminate", "applied transfer contradicts its own record"),
             ("applied-transfer-not-committed-change", "indeterminate", "not the change of its committed balances"),
         ):
             with self.subTest(suffix=suffix):
@@ -525,15 +532,16 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
 
     def test_confirmed_no_op_send_never_settles(self):
         """The pinned node applies an edit-less send as a successful no-op. The
-        passing record carries its send's four edits; the no-op's unchanged
-        committed balances are `fail`, and an authority reporting a payment
-        for it is `indeterminate`."""
+        passing record carries its send's four edits; a confirmed result
+        signed with the no-op's unchanged committed balances contradicts
+        itself, and an authority reporting a payment for it proves nothing:
+        both are `indeterminate`."""
         control = self.cases["fv-bft-final-canonical-success"]
         result = control["input"]["context"]["observation"]["executionResult"]
         self.assertTrue(_demos_send_edits_match(result["record"]["content"]))
         for suffix, expected, reason in (
-            ("missing-edits", "fail", "applied transfer contradicts the native send"),
-            ("empty-edits", "fail", "applied transfer contradicts the native send"),
+            ("missing-edits", "indeterminate", "applied transfer contradicts its own record, so the signed result authenticates nothing"),
+            ("empty-edits", "indeterminate", "applied transfer contradicts its own record, so the signed result authenticates nothing"),
             ("copied-authority", "indeterminate", "does not carry exactly its send's four edits"),
         ):
             with self.subTest(suffix=suffix):
@@ -559,15 +567,15 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 self.assertFalse(_demos_send_edits_match(changed))
 
     def test_fee_separated_record_follows_the_dem7_order(self):
-        """A fee-separated record establishes no payment. DEM-7 decides an
-        authenticated contradicting authority `fail` whatever the edits, as
-        the pay-dem consumer gate does; one that reports the payment leaves
-        the record `indeterminate`."""
+        """A fee-separated record establishes no payment. A confirmed result
+        signed with committed balances that did not move contradicts itself
+        and authenticates nothing, as the pay-dem oracle reads it; one that
+        reports the payment leaves the record `indeterminate` too."""
         for name, expected, reason in (
             ("fv-bft-final-confirmed-fee-separated-edits", "indeterminate",
              "does not carry exactly its send's four edits"),
-            ("fv-bft-final-confirmed-fee-separated-edits-uncommitted-payment", "fail",
-             "applied transfer contradicts the native send"),
+            ("fv-bft-final-confirmed-fee-separated-edits-uncommitted-payment", "indeterminate",
+             "applied transfer contradicts its own record, so the signed result authenticates nothing"),
         ):
             with self.subTest(case=name):
                 case = self.cases[name]
@@ -667,7 +675,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         for name, expected, reason in (
             ("fv-bft-final-record-oversized-amount", "fail", "contradicts the signed reference or phase"),
             ("fv-bft-final-record-oversized-send-argument", "indeterminate", "does not decode as a native send"),
-            ("fv-bft-final-applied-transfer-oversized-debit", "fail", "applied transfer contradicts the native send"),
+            ("fv-bft-final-applied-transfer-oversized-debit", "indeterminate", "applied transfer contradicts its own record, so the signed result authenticates nothing"),
         ):
             with self.subTest(name=name):
                 result = self.evaluate_case(self.cases[name])
@@ -706,34 +714,39 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         all_of_n = self.cases["fv-bft-final-result-policy-all-of-n"]
         self.assertEqual(3, len(all_of_n["input"]["context"]["observation"]["executionResult"]["attestations"]))
 
-    def test_demos_sender_uses_selected_phase_paying_key(self):
-        for suffix, expected in (("distinct", "pass"), ("wrong", "fail"), ("unavailable", "indeterminate"),
-                                 ("other-payer", "indeterminate"), ("phase-missing", "indeterminate"),
-                                 ("resolutions-malformed", "error")):
+    def test_demos_sender_binds_the_payer_bundle_key_claims(self):
+        """The sender binds a Demos key claim of the payer's pinned bundle,
+        the authenticated source a consumer holds: any of them binds, the
+        primary party signer binds only as such a claim, and another payer's
+        claims, or none, resolve nothing."""
+        for suffix, expected in (("distinct", "pass"), ("any-of-bundle", "pass"), ("wrong", "fail"),
+                                 ("unavailable", "indeterminate"), ("other-payer", "indeterminate"),
+                                 ("payer-missing", "indeterminate"), ("claims-empty", "error"),
+                                 ("claims-malformed", "error")):
             with self.subTest(case=suffix):
-                result = self.evaluate_case(self.cases["fv-bft-final-selected-paying-key-" + suffix])
+                result = self.evaluate_case(self.cases["fv-bft-final-payer-key-claim-" + suffix])
                 self.assertEqual(expected, result["decision"])
-                if suffix in {"other-payer", "phase-missing"}:
-                    self.assertIn("payingKey resolution unavailable", result["reason"])
-                if suffix == "resolutions-malformed":
-                    self.assertIn("malformed authenticated phase payingKey resolutions", result["reason"])
-        # Another payer's resolution keeps the sender's key: only the payer binding rejects it.
-        other = self.cases["fv-bft-final-selected-paying-key-other-payer"]
-        merged = merge(self.trust, other["trustedOverrides"])["demosPhasePayingKeys"]["FV-392-bft-final:0"]
-        self.assertEqual(self.trust["demosPhasePayingKeys"]["FV-392-bft-final:0"]["payingKey"], merged["payingKey"])
-        self.assertNotEqual(self.trust["demosPhasePayingKeys"]["FV-392-bft-final:0"]["payer"], merged["payer"])
-        # FV-5 projects the resolved paying key as a DEMOS-MAPPING §A.2 pay-dem
-        # party address, as DEM-1 and DEM-7 do: bare, 0x and DID bind alike,
-        # and any other spelling binds no payer.
-        distinct = self.cases["fv-bft-final-selected-paying-key-distinct"]
+                if suffix in {"unavailable", "other-payer", "payer-missing"}:
+                    self.assertIn("payer bundle Demos key claims unavailable", result["reason"])
+                if suffix in {"claims-empty", "claims-malformed"}:
+                    self.assertIn("malformed payer bundle Demos key claims", result["reason"])
+        CLAIMS = finality_fixtures.CLAIMS
+        # Another payer's claims hold the sender's key: only the payer binding rejects it.
+        other = self.cases["fv-bft-final-payer-key-claim-other-payer"]
+        merged = merge(self.trust, other["trustedOverrides"])["demosPayerKeyClaims"]
+        self.assertIsNone(merged[CLAIMS["buyer"]])
+        self.assertIn(self.trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0], merged[CLAIMS["seller"]])
+        # FV-5 projects each claim as a DEMOS-MAPPING §A.2 pay-dem party
+        # address, as DEM-1 and DEM-7 do: bare, 0x and DID bind alike, and
+        # any other spelling is malformed configuration.
+        distinct = self.cases["fv-bft-final-payer-key-claim-distinct"]
         trust = merge(self.trust, distinct.get("trustedOverrides") or {})
-        resolution = trust["demosPhasePayingKeys"]["FV-392-bft-final:0"]
-        key = resolution["payingKey"].removeprefix("0x")
+        key = trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0].removeprefix("0x")
         for spelling, expected in ((key, "pass"), ("0x" + key, "pass"), ("did:demos:agent:" + key, "pass"),
                                    ("0x" + key.upper(), "error"), ("did:demos:agent:0x" + key, "error")):
-            with self.subTest(payingKey=spelling):
+            with self.subTest(claim=spelling):
                 spelled = copy.deepcopy(trust)
-                spelled["demosPhasePayingKeys"]["FV-392-bft-final:0"]["payingKey"] = spelling
+                spelled["demosPayerKeyClaims"][CLAIMS["buyer"]] = [spelling]
                 self.assertEqual(expected, verify_finality(distinct["input"], spelled)["decision"])
 
     def test_trusted_overrides_do_not_depend_on_merge_semantics(self):

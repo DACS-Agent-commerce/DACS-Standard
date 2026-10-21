@@ -785,11 +785,9 @@ class Payee:
         if index is None and self.mutant == "empty-index-when-missing":
             # The wrong payee treats a lost index as an empty history.
             return {"revision": 0, "admissions": []}
-        if not (isinstance(index, dict) and set(index) == {"revision", "admissions"}
-                and isinstance(index["revision"], int) and not isinstance(index["revision"], bool)
-                and isinstance(index["admissions"], list) and all(
-                    isinstance(admission, dict) and isinstance(admission.get("txRef"), dict)
-                    for admission in index["admissions"])):
+        # The oracle's own check, every admission's reference, job and phase
+        # index included: a malformed entry is no history, never a KeyError.
+        if not oracle.admission_index(index, NO_GUARD_REMOVED):
             return None
         indexed = {delivery_key({"txHash": admission["txRef"].get("txHash"), **admission})
                    for admission in index["admissions"]}

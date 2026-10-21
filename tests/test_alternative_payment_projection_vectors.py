@@ -468,9 +468,16 @@ def project_and_bind(vector, resolved, alternative_index):
         return "fail", "selected-availability", None
     if availability == "mocked":
         return "fail", "selected-availability", None
-    if availability in {"operator_gated", "closed_data", "bilateral"} and not vector["runtime"].get("operatorPreflightOk"):
+    # RAV-R3's runtime preflights gate selection, before the Agreement is
+    # signed. An APR-6 retry reconciles the selected rail and an APR-7 audit
+    # reruns APR-1..4 without the payer's private configuration: neither
+    # re-runs them (a missing pay-dem binding at settle is DEM-1's RAV-R4).
+    preflighted = vector["operation"] not in {"retry", "verify-bundle"}
+    if (preflighted and availability in {"operator_gated", "closed_data", "bilateral"}
+            and not vector["runtime"].get("operatorPreflightOk")):
         return "fail", "selected-availability", None
-    if definition.get("phaseHandler") == "pay-dem" and not pay_dem_preflight(definition, vector["runtime"]):
+    if (preflighted and definition.get("phaseHandler") == "pay-dem"
+            and not pay_dem_preflight(definition, vector["runtime"])):
         return "fail", "selected-availability", None
 
     effective = copy.deepcopy(listing["pipeline"])
@@ -663,6 +670,31 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
                         stripped["runtime"]["payDemBinding"] = []
                     self.assertFalse(pay_dem_preflight(stripped["registry"]["resolutions"][0]["definition"],
                                                        stripped["runtime"]), strip)
+
+    def test_retry_and_audit_never_rerun_runtime_preflights(self):
+        """RAV-R3's runtime preflights gate selection before the Agreement is
+        signed, by the payer side that holds the configuration. An APR-6 retry
+        reconciles the selected rail and an APR-7 audit reruns APR-1..4
+        without the payer's private Demos binding or the operator's
+        configuration: removing them changes neither result. Selection still
+        refuses without them."""
+        checked = 0
+        for vector in self.vectors:
+            if vector["operation"] not in {"retry", "verify-bundle"}:
+                continue
+            with self.subTest(name=vector["name"]):
+                stripped = copy.deepcopy(vector)
+                stripped["runtime"]["payDemBinding"] = []
+                stripped["runtime"]["operatorPreflightOk"] = False
+                self.assertEqual(evaluate(vector), evaluate(stripped))
+                checked += 1
+        self.assertGreaterEqual(checked, 8)
+        retry = copy.deepcopy(self.by_name["same-rail-retry-reconciles-without-authorization"])
+        retry["runtime"]["payDemBinding"] = []
+        self.assertEqual("pass", evaluate(retry)[0])
+        selection = copy.deepcopy(self.by_name["select-dem-projects-pay-dem"])
+        selection["runtime"]["payDemBinding"] = []
+        self.assertEqual(("fail", "selected-availability"), evaluate(selection))
 
     def test_all_failure_and_indeterminate_paths_are_pre_authorization(self):
         for vector in self.vectors:

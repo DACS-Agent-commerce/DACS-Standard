@@ -985,15 +985,17 @@ def pre_sign(
     applied_authority: Any = True,
     fee_separation_unscheduled: Any = True,
     binding: list[dict[str, Any]] | None = None,
+    phase_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """DEM-1 before `pay()`/`sign()`: the input holds no signed transaction,
     and a refusal is the PC-4 result itself. `_OMIT` drops a binding member:
-    the binding attests nothing for it."""
+    the binding attests nothing for it. A binding refusal is RAV-R4
+    `substrate`; an unprojectable party address (`error`) is `permanent`."""
     refused = expected != "pass"
     return _vector(
         name, "pre-sign-gate",
         _apply({
-            "phase": phase(),
+            "phase": phase() if phase_context is None else phase_context,
             "railNetwork": NETWORK,
             "finalityProfile": FINALITY_PROFILE,
             "demosBinding": (demos_binding(pinned_node, applied_authority, fee_separation_unscheduled)
@@ -1003,9 +1005,9 @@ def pre_sign(
         {
             "signPermitted": not refused,
             "ok": False if refused else None,
-            "errorClass": "substrate" if refused else None,
+            "errorClass": ("permanent" if expected == "error" else "substrate") if refused else None,
         },
-        "DEM-1/RAV-R4", guards, note,
+        "DEM-1" if expected == "error" else "DEM-1/RAV-R4", guards, note,
     )
 
 
@@ -2025,9 +2027,10 @@ def build_vectors() -> list[dict[str, Any]]:
             read=found(record("confirmed", hash=OTHER_TX_HASH), authenticated=False),
         ),
         admit(
-            "consumer-wrong-hash-authenticated", "fail", "DEM-7/FV-5",
-            ["consumer-authenticated-contradiction-fails", "consumer-binds-hash", "consumer-requires-confirmed-record"],
-            "Under FV-5 an authenticated record for another hash contradicts the signed txHash.",
+            "consumer-wrong-hash-authenticated", "indeterminate", "DEM-7/FV-5",
+            ["consumer-binds-hash", "consumer-requires-confirmed-record", "fv5-result-binds-signed-reference"],
+            "A signed result authenticates only the transaction it names: one for another hash is no result for "
+            "the signed txHash, so it refutes nothing, as the settlement-finality reference decides.",
             read=found(record("confirmed", hash=OTHER_TX_HASH), authenticated=True),
         ),
         admit(
@@ -2237,6 +2240,32 @@ def build_vectors() -> list[dict[str, Any]]:
             index={"revision": "0", "admissions": []},
         ),
     ]
+    # Every admission in the index is validated before any collision group is
+    # formed: one without its (jobId, phaseIndex), or with a malformed one,
+    # is no history, even when it names another hash, and never a crash.
+    other_ref = {"kind": "demos", "txHash": OTHER_TX_HASH, "blockNumber": BLOCK}
+    for suffix, admission, guards in (
+        ("missing-job-id", {"phaseIndex": PHASE_INDEX, "txRef": other_ref},
+         ["delivery-admission-entries-validated"]),
+        ("empty-job-id", {"jobId": "", "phaseIndex": PHASE_INDEX, "txRef": other_ref},
+         ["delivery-admission-entries-validated"]),
+        ("phase-index-string", {"jobId": OTHER_JOB_ID, "phaseIndex": str(PHASE_INDEX), "txRef": other_ref},
+         ["delivery-admission-entries-validated"]),
+        ("legacy-not-boolean", {"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX, "txRef": other_ref,
+                                "legacy": "yes"}, ["delivery-admission-entries-validated"]),
+        ("extra-member", {"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX, "txRef": other_ref, "note": ""},
+         ["delivery-admission-entries-validated"]),
+        ("missing-tx-ref", {"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX}, []),
+    ):
+        vector = deliver(
+            "delivery-admission-" + suffix, "error", "DEM-7/SB-2",
+            ["consumer-admits-confirmed", *guards] + (["delivery-requires-admission-index"] if guards else []),
+            "An admission index entry that is not a well-formed admission is no history: error, never "
+            "skipped, read as another phase's or a crash.",
+        )
+        vector["protocolInput"]["consumerAdmissions"] = [copy.deepcopy(admission)]
+        vector["protocolInput"]["admissionIndex"] = {"revision": 1, "admissions": [copy.deepcopy(admission)]}
+        vectors.append(vector)
     # DEM-5/DEM-6 once the handler's own call returns: after the first egress
     # a node may hold the signed bytes, so a refusal, an error, a timeout or an
     # accepted broadcast leaves execution unresolved; only a refusal found
@@ -2713,6 +2742,20 @@ def build_vectors() -> list[dict[str, Any]]:
                 "A 0x-prefixed payer.payingKey key binds the same sender.",
                 phase_context=phase(payerPayingKey="0x" + PAYER_KEY)),
     ]
+    # DEM-1 checks the party-address projection before pay()/sign(): a phase
+    # that can never be paid is PC-4 permanent with nothing signed or
+    # retained, so no retention pins the phase.
+    vectors += [
+        pre_sign("sign-" + name, "error", ["phase-party-address-projects", "pre-sign-party-address-projects"],
+                 "A phase whose " + label + " is in no pay-dem form can never be paid: ok false, errorClass "
+                 "permanent, before anything is signed or retained.", phase_context=phase(**changes))
+        for name, label, changes in (
+            ("payee-address-upper-case", "payee.payeeAddress", {"payeeAddress": "0x" + PAYEE_KEY.upper()}),
+            ("payee-address-did-with-0x", "payee.payeeAddress", {"payeeAddress": did + "0x" + PAYEE_KEY}),
+            ("payee-address-evm-length", "payee.payeeAddress", {"payeeAddress": "0x" + PAYEE_KEY[:40]}),
+            ("paying-key-upper-case", "payer.payingKey", {"payerPayingKey": PAYER_KEY.upper()}),
+        )
+    ]
 
     ref = {"kind": "demos", "txHash": TX_HASH, "blockNumber": BLOCK}
     for name, value, legacy, expected in (
@@ -2948,8 +2991,42 @@ def build_vectors() -> list[dict[str, Any]]:
     return vectors
 
 
+# Members whose meaning depends on member order: the signed content's hash is
+# over JSON.stringify(content), confirm's validity data is signed the same way,
+# and a record's gcr_edits compare member for member. JSON object members are
+# unordered for a generic reader and JCS sorts them, so the corpus carries each
+# as its exact JSON text, which the corpus hash then covers byte for byte.
+EXACT_JSON_MEMBERS = frozenset({"signedTransaction", "confirmResponse", "validityResponse", "record"})
+
+
+def encode_exact_members(value: Any) -> Any:
+    """Each EXACT_JSON_MEMBERS value, at any depth, as its exact JSON text."""
+    if isinstance(value, list):
+        return [encode_exact_members(item) for item in value]
+    if isinstance(value, dict):
+        return {key: json.dumps(item, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+                if key in EXACT_JSON_MEMBERS else encode_exact_members(item) for key, item in value.items()}
+    return value
+
+
+def decode_exact_members(value: Any) -> Any:
+    """The inverse: parse each EXACT_JSON_MEMBERS text, keeping member order."""
+    if isinstance(value, list):
+        return [decode_exact_members(item) for item in value]
+    if isinstance(value, dict):
+        return {key: json.loads(item) if key in EXACT_JSON_MEMBERS else decode_exact_members(item)
+                for key, item in value.items()}
+    return value
+
+
+def load_vectors(text: str) -> dict[str, Any]:
+    """The corpus as its runner evaluates it: every exact-JSON member parsed."""
+    data = json.loads(text)
+    return dict(data, vectors=decode_exact_members(data["vectors"]))
+
+
 def document() -> dict[str, Any]:
-    vectors = build_vectors()
+    vectors = encode_exact_members(build_vectors())
     return {
         "set": "pay-dem-execution-v0.1",
         "spec": "DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5",
@@ -2982,7 +3059,8 @@ def document() -> dict[str, Any]:
             "liveObservations": "node2-* vectors copy read-only node2.demos.sh getTxByHash responses of 2026-10-17; the node reported 61b8e75 with a dirty tree, so they are observations, not the source pin",
         },
         "fixtureVocabulary": {
-            "statusIndex": "getTransactionStatus state for the retained hash (included, pending or unknown); never decisive",
+            "exactJsonMembers": "every signedTransaction, confirmResponse, validityResponse and record member, at any depth, is carried as a string holding its exact JSON text, because member order is part of its meaning (a signed content hash, a signed validity response, gcr_edits member order); a runner parses each string, keeping member order and number spellings, before it evaluates the vector, and the corpus hash covers those bytes, so a JCS or other member-sorting round trip of the corpus changes no result. Every other object compares by value, member order not significant",
+            "statusIndex":"getTransactionStatus state for the retained hash (included, pending or unknown); never decisive",
             "railNetwork": "the rail's Demos network (networkId, genesisHash): the pinned RailDefinition's consumerFinalityProfile.settlement network, never one a Demos binding supplies (a Demos NetworkSpec is the bare kind demos). Applied-payment authority must name the same network; the pre-sign, broadcast and preflight gates find the payer's binding entry by it; a missing or malformed one binds nothing",
             "demosBinding": "the payer's Demos binding configuration: one entry per network (networkId, genesisHash) holding pinnedNodes and appliedPaymentAuthority, each naming the network and genesis it was configured for; gasFeeSeparation, the sealed genesis's forks.gasFeeSeparation attestation (networkId, genesisHash, activationHeight); bftFinalTrust (networkId, genesisHash, validatorSets, observationAuthorityKeys), the bft-final trust DEM-3, DEM-4 and DEM-7 verify inclusion under; and executionResultPolicy (networkId, genesisHash, kind, threshold, authorityKeys), the FV-5 policy DEM-4 authenticates a failure under. The gates use the entry whose network is railNetwork, wherever it stands; a member is held only when it names exactly railNetwork, the attestation only with activationHeight null, the trust only when the settlement-finality reference's own trust check (bft_final_trust) passes it for finalityProfile: the set under validatorSetRef.contentHash hashes to it with well-formed members, and keys that decode for at least its observation threshold of its authorityRefs are distinct, and the policy only when the settlement-finality reference applies it. A missing entry or member, a member for another network or genesis, a scheduled height, trust that cannot verify the rail's profile, an unknown or malformed policy and any other form are refused. The reference handler verifies its re-reads under that entry's bftFinalTrust (with its own clock) and executionResultPolicy, never separate configuration",
             "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity. It is a plain read: no DEM-7 fail rests on it, and a contradiction that is only its block ID refutes nothing",
@@ -2995,7 +3073,7 @@ def document() -> dict[str, Any]:
             "broadcastState": "never-broadcast (nothing has left the handler), confirm-returned (this uninterrupted submission's confirm just returned), confirm-sent-interrupted (a confirm was sent, then a timeout, error or restart) or maybe-broadcast; any other value is refused",
             "confirmResponse": "the demosdk 4.0.16 confirm() result (RPCResponseWithValidityData) that the current submission's confirm returned to the handler, even late, or null; null for a confirm request",
             "validityResponse": "what the demosdk broadcast(validationData) call carries, or null for a confirm request; the pinned node executes its response.data.transaction, so it must be exactly confirmResponse, with result 200, valid true and an embedded transaction whose content, hash and signature serialize as signedTransaction",
-            "payeeAddress": "phase member: payee.payeeAddress (and payerPayingKey the key payer.payingKey names), a DEMOS-MAPPING §A.2 pay-dem party address: a Demos key with optional 0x or a did:demos:agent: DID over 64 lower-case hex digits; DEM-1, DEM-7 and FV-5 compare the 64 digits it projects to, and any other value is error",
+            "payeeAddress": "phase member: payee.payeeAddress (and payerPayingKey: for the handler, the key payer.payingKey names; for a consumer, the Demos key claim of the payer's party bundle that the Agreement pins, payer.bundleHash, which the record's sender must project to; this corpus's payer bundle claims one Demos key, the handler's payingKey), a DEMOS-MAPPING §A.2 pay-dem party address: a Demos key with optional 0x or a did:demos:agent: DID over 64 lower-case hex digits; DEM-1, DEM-7 and FV-5 compare the 64 digits it projects to, and any other value is error",
             "availability": "rail-preflight: the pinned pay-dem RailDefinition's availability for a new production session; disabled, failed and mocked are not selectable, any other unknown value is error, and every other value still needs every DEM-1 member of the payer binding for railNetwork, checked against finalityProfile (RAV-R3, whatever the availability)",
             "railSelectable": "rail-preflight want member: whether the orchestrator may select the rail, before Agreement signature and the PIPE-6 commitment",
             "fv5Policy": "the FV-5 independent execution-result policy the verifier trusts, from its own configuration: the settlement-finality corpus's fixture-independent-results-v1 kind, authorityKeys (base64url Ed25519) and threshold; a missing or malformed policy authenticates nothing",

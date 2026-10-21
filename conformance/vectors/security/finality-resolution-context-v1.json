@@ -10,7 +10,7 @@
       "kind": "fixture-independent-results-v1",
       "threshold": 2
     },
-    "demosPhasePayingKeys": {},
+    "demosPayerKeyClaims": {},
     "demosRecordProfile": "kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f45578",
     "observationAuthorityKeys": {
       "rpc-a": "wFDFY3pE-oYp__PMzOIwDLNipj2Z2V_FQUUmb0MyRFo",

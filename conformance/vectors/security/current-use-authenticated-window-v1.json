@@ -4,7 +4,7 @@
   "status": "candidate-unallocated-stage-minor",
   "fixturePolicy": "Synthetic signed native outcome observations are fixture-only; no production Demos outcome event, proof codec, or completeness oracle is claimed.",
   "count": 15,
-  "hash": "8de8385d662bb33cbfb270b5edf4903f1f5c942b1fdd44b77d4608a771cbc66d",
+  "hash": "8b7dc72a40b0823345f055714925ca30c1707c03e2e04f1ea97132e0df574aca",
   "vectors": [
     {
       "name": "combined-block-depth",
@@ -1138,11 +1138,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -2371,11 +2370,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -3723,11 +3721,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -5007,11 +5004,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -6688,11 +6684,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -8241,11 +8236,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -9238,11 +9232,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -10004,11 +9997,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -11287,11 +11279,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -12567,11 +12558,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -19877,11 +19867,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -27506,11 +27495,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -29122,11 +29110,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -30440,11 +30427,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {
@@ -31758,11 +31744,10 @@
                 "execution-c": "iN9VZBNTiwAgFelhmwG9tcxIxyFWRXklY_VGD3MHp2M"
               }
             },
-            "demosPhasePayingKeys": {
-              "01ARZ3NDEKTSV4RRFFQ69G5FAZ:0": {
-                "payer": "did:demos:buyer",
-                "payingKey": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
-              }
+            "demosPayerKeyClaims": {
+              "did:demos:buyer": [
+                "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              ]
             }
           },
           "partyRolesByJob": {

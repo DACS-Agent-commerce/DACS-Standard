@@ -871,14 +871,35 @@ class PayDemCrashRestartTests(unittest.TestCase):
                                bindings=[generator.binding_entry(), generator.binding_entry(generator.OTHER_NETWORK)])
         self.assertEqual(generator.OTHER_NETWORK, both._applied_authority().network)
 
+    def test_payee_refuses_a_malformed_admission_index_entry(self):
+        """An index entry without its (jobId, phaseIndex), or with a malformed
+        one, is no history: the genuine payment is `error` and delivers
+        nothing, before and after a restart, never a KeyError and never a
+        pass because the entry names another hash."""
+        other = {"kind": "demos", "txHash": generator.OTHER_TX_HASH, "blockNumber": generator.BLOCK}
+        for name, admission in (("missing-job-id", {"phaseIndex": generator.PHASE_INDEX, "txRef": other}),
+                                ("phase-index-string", {"jobId": generator.OTHER_JOB_ID, "phaseIndex": "1",
+                                                        "txRef": other}),
+                                ("missing-tx-ref", {"jobId": generator.OTHER_JOB_ID,
+                                                    "phaseIndex": generator.PHASE_INDEX})):
+            with self.subTest(entry=name):
+                work = self.root / ("malformed-admission-" + name)
+                first = reference.payee(work, "boot-1")
+                first.provision()
+                first.store.write(reference.INDEX, {"revision": 1, "admissions": [admission]})
+                self.assertEqual("error", first.deliver(generator.JOB_ID, read=GENUINE_READ))
+                restarted = reference.payee(work, "boot-2")
+                self.assertEqual("error", restarted.deliver(generator.JOB_ID, read=GENUINE_READ))
+                self.assertEqual(set(), restarted.delivered())
+
     def test_payee_delivers_nothing_against_evidence_that_does_not_pay(self):
         """The payee's entry point decides on the evidence it is given, not
         on a passing proof it builds. Failed,
         no-op, unbound, unpinned, unauthenticated and forged-finality
         evidence each deliver nothing and admit nothing; the genuine payment
         delivers once."""
-        corpus = json.loads((HERE.parent / "conformance/vectors/security/pay-dem-execution-v0.1.json")
-                            .read_text(encoding="utf-8"))
+        corpus = generator.load_vectors((HERE.parent / "conformance/vectors/security/pay-dem-execution-v0.1.json")
+                                        .read_text(encoding="utf-8"))
         reads = {vector["name"]: vector["protocolInput"]["recordRead"] for vector in corpus["vectors"]
                  if "recordRead" in vector["protocolInput"]}
         for name in ("consumer-failed-fails", "consumer-confirmed-no-op-apply", "consumer-wrong-hash-authenticated",

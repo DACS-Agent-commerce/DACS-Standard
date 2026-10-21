@@ -1056,11 +1056,62 @@ def _demos_committed_change(balances: dict) -> tuple[str, str] | None:
     return None if debit is None or credit is None else (debit, credit)
 
 
+# DEMOS-MAPPING §A.2: the applied transfer a signed FV-5 execution result MAY carry.
+DEMOS_APPLIED_TRANSFER = {"txHash", "blockNumber", "sender", "recipient", "payerDebitOs", "payeeCreditOs",
+                          "committedBalances"}
+
+
+def demos_applied_transfer_binds_record(applied: Any, record: Any) -> bool:
+    """FV-5 and DEMOS-MAPPING §A.2: a signed execution result MAY carry the
+    applied transfer its authorities observed. Carried, it is part of what
+    they sign, never a separate authority: it must decode, be the change of
+    its committed balances, name the record's own transaction, block, sender
+    and recipient, and move the record's OS amount when the record is
+    `confirmed` and nothing when it is `failed`. A result that contradicts
+    its own record authenticates nothing: it is neither payment nor a proven
+    failure (`indeterminate`). The pay-dem oracle calls this same check."""
+    return _demos_applied_transfer_problem(applied, record) is None
+
+
+def _demos_applied_transfer_problem(applied: Any, record: Any) -> str | None:
+    """Why a carried applied transfer does not bind its record, or None."""
+    projection = _demos_native_send(record)
+    if projection is None:
+        return "is carried with a record that does not decode"
+    if not (_exact_object(applied, DEMOS_APPLIED_TRANSFER)
+            and all(isinstance(applied[k], str) and POSITION_RE.fullmatch(applied[k])
+                    for k in ("payerDebitOs", "payeeCreditOs"))
+            and _exact_object(applied["committedBalances"], DEMOS_COMMITTED_BALANCES)
+            and all(isinstance(value, str) and POSITION_RE.fullmatch(value)
+                    for value in applied["committedBalances"].values())
+            and _safe_integer(applied["blockNumber"])):
+        return "does not decode"
+    if _demos_committed_change(applied["committedBalances"]) != (applied["payerDebitOs"], applied["payeeCreditOs"]):
+        return "debit and credit are not the change of its committed balances"
+    moved = {"confirmed": projection["amountOs"], "failed": "0"}.get(projection["status"])
+    if (moved is None or any(applied[k] != projection[k] for k in ("txHash", "blockNumber", "sender", "recipient"))
+            or not applied["payerDebitOs"] == moved == applied["payeeCreditOs"]):
+        return "contradicts its own record, so the signed result authenticates nothing"
+    return None
+
+
+def _json_value(value: Any) -> tuple[str, Any]:
+    """A JSON value as `JSON.stringify` spells it: a number compares by value
+    (`1` and `1.0` are both `1`), never equal to a boolean or a string."""
+    if isinstance(value, bool):
+        return "boolean", value
+    if isinstance(value, (int, float)):
+        return "number", value
+    return type(value).__name__, value
+
+
 def _demos_send_edits_match(content: dict) -> bool:
     """DEMOS-MAPPING §A.2: a `confirmed` record shows payment only when its
     `gcr_edits`, each `txhash` blanked, are the four edits of its send in
     member order. The pinned node applies a missing or empty list as a
-    successful no-op. Necessary, never sufficient."""
+    successful no-op. Necessary, never sufficient. The node compares the
+    serialized lists, so a number compares by value, as JSON.stringify
+    spells it."""
     edits, data, sender = content.get("gcr_edits"), content.get("data"), content.get("from_ed25519_address")
     if not (isinstance(edits, list) and len(edits) == 4 and all(isinstance(edit, dict) for edit in edits)
             and isinstance(data, list) and len(data) == 2 and isinstance(data[1], dict)
@@ -1076,8 +1127,9 @@ def _demos_send_edits_match(content: dict) -> bool:
         [("type", "nonce"), ("operation", "add"), ("account", sender), ("amount", 1), ("txhash", ""), ("isRollback", False)],
     ]
     actual = [[(k, "" if k == "txhash" else v) for k, v in edit.items()] for edit in edits]
-    # bool is an int in Python: compare types too, so `1` is not `True`.
-    return [[(k, type(v), v) for k, v in edit] for edit in actual] == [[(k, type(v), v) for k, v in edit] for edit in expected]
+    # bool is an int in Python: compare JSON kinds too, so `1` is not `True`.
+    return ([[(k, _json_value(v)) for k, v in edit] for edit in actual]
+            == [[(k, _json_value(v)) for k, v in edit] for edit in expected])
 
 
 def _party_demos_key(trusted: dict, claim: Any) -> str | None:
@@ -1158,26 +1210,40 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
     projection = _demos_native_send(record)
     if projection is None:
         return "indeterminate", "authenticated Demos record does not decode as a native send (DEM-7)"
+    # A carried applied transfer is part of the signed result: one that does
+    # not bind its record leaves the result neither payment nor a proven
+    # failure (FV-5, DEMOS-MAPPING §A.2), before any contradiction decides.
+    problem = None if applied_transfer is None else _demos_applied_transfer_problem(applied_transfer, record)
+    if problem is not None and projection["status"] not in ("confirmed", "failed"):
+        return "indeterminate", "authenticated Demos record status is not an execution result (DEM-7)"
+    if problem is not None:
+        return "indeterminate", "Demos applied transfer " + problem + " (DEM-7)"
     amount = DEM_AMOUNT_RE.match(expected.get("amount") or "") if expected.get("currency") == "DEM" else None
-    resolutions = trusted.get("demosPhasePayingKeys")
-    if resolutions is None:
-        return "indeterminate", "authenticated phase payingKey resolution unavailable"
-    if not isinstance(resolutions, dict):
-        return "error", "malformed authenticated phase payingKey resolutions"
-    resolution = resolutions.get(expected["jobId"] + ":" + str(expected["phaseIndex"]))
-    if not isinstance(resolution, dict) or resolution.get("payer") != expected["payer"]:
-        return "indeterminate", "authenticated phase payingKey resolution unavailable"
-    paying_key = resolution.get("payingKey")
-    match = DEMOS_PARTY_ADDRESS_RE.match(paying_key) if isinstance(paying_key, str) else None
-    payer = match.group(1) if match else None
+    # The sender binds the Demos key claims of the payer's party bundle that
+    # the Agreement pins (payer.bundleHash), as PB-1 authenticates it; the
+    # handler's payer.payingKey is one of them (§9.5.1). Nothing a consumer
+    # receives names the payer's per-phase selection, and a key the payer's
+    # message names is unauthenticated.
+    bundles = trusted.get("demosPayerKeyClaims")
+    if bundles is None:
+        return "indeterminate", "payer bundle Demos key claims unavailable"
+    if not isinstance(bundles, dict):
+        return "error", "malformed payer bundle Demos key claims"
+    claims = bundles.get(expected["payer"])
+    if claims is None:
+        return "indeterminate", "payer bundle Demos key claims unavailable"
+    if not (isinstance(claims, list) and claims and all(isinstance(claim, str) for claim in claims)):
+        return "error", "malformed payer bundle Demos key claims"
+    matches = [DEMOS_PARTY_ADDRESS_RE.match(claim) for claim in claims]
+    payers = {match.group(1) for match in matches if match}
     payee = _party_demos_key(trusted, expected.get("payee"))
-    if amount is None or payer is None or payee is None:
+    if amount is None or None in matches or payee is None:
         return "error", "phase lacks a DEM amount or Demos party keys"
     amount_os = _demos_os_spelling(amount)
     if (
         projection["txHash"] != reference.get("txHash")
         or projection["blockNumber"] != reference.get("blockNumber")
-        or projection["sender"] != payer
+        or projection["sender"] not in payers
         or projection["recipient"] != payee
         or projection["amountOs"] != amount_os
     ):
@@ -1186,24 +1252,10 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
         return "fail", "authenticated Demos transaction record failed execution (DEM-7)"
     if projection["status"] != "confirmed":
         return "indeterminate", "authenticated Demos record status is not an execution result (DEM-7)"
+    # The caller has checked that a carried applied transfer binds this
+    # record (demos_applied_transfer_binds_record), so it moved the phase amount.
     if applied_transfer is None:
         return "indeterminate", "independently authenticated Demos applied transfer unavailable (DEM-7)"
-    if not (_exact_object(applied_transfer, {"txHash", "blockNumber", "sender", "recipient", "payerDebitOs",
-                                             "payeeCreditOs", "committedBalances"})
-            and all(isinstance(applied_transfer[k], str) and POSITION_RE.fullmatch(applied_transfer[k])
-                    for k in ("payerDebitOs", "payeeCreditOs"))
-            and _exact_object(applied_transfer["committedBalances"], DEMOS_COMMITTED_BALANCES)
-            and all(isinstance(value, str) and POSITION_RE.fullmatch(value)
-                    for value in applied_transfer["committedBalances"].values())):
-        return "indeterminate", "Demos applied transfer does not decode (DEM-7)"
-    if _demos_committed_change(applied_transfer["committedBalances"]) != (
-            applied_transfer["payerDebitOs"], applied_transfer["payeeCreditOs"]):
-        return "indeterminate", "Demos applied debit and credit are not the change of its committed balances (DEM-7)"
-    if (any(applied_transfer[k] != projection[k] for k in ("txHash", "blockNumber", "sender", "recipient"))
-            or not _safe_integer(applied_transfer["blockNumber"])
-            or applied_transfer["payerDebitOs"] != amount_os
-            or applied_transfer["payeeCreditOs"] != amount_os):
-        return "fail", "authenticated Demos applied transfer contradicts the native send (DEM-7)"
     if not _demos_send_edits_match(record["content"]):
         return "indeterminate", "confirmed Demos record does not carry exactly its send's four edits (DEM-7)"
     return "pass", "authenticated Demos record binds a confirmed native send"

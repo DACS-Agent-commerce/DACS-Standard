@@ -848,14 +848,76 @@ class PayDemCrashRestartTests(unittest.TestCase):
     def test_binding_is_looked_up_by_the_rail_network(self):
         self.assertEqual([], rail_network_violations(self.root / "reference"))
         self.assertTrue(rail_network_violations(self.root / "circular", "network-from-binding"))
-        # The gate input is the rail's network and the stored binding, not a flag.
+        # The gate input is the rail's network, its signed profile and the
+        # stored binding, not a flag.
         handler = reference.payer(self.root / "inputs", "boot-1", rail_network=generator.OTHER_NETWORK)
-        self.assertEqual({"railNetwork": generator.OTHER_NETWORK, "demosBinding": [generator.binding_entry()]},
+        self.assertEqual({"railNetwork": generator.OTHER_NETWORK, "finalityProfile": generator.FINALITY_PROFILE,
+                          "demosBinding": [generator.binding_entry()]},
                          handler._binding_input())
         # With an entry for each network, the rail's is the one used.
         both = reference.payer(self.root / "both", "boot-1", rail_network=generator.OTHER_NETWORK,
                                bindings=[generator.binding_entry(), generator.binding_entry(generator.OTHER_NETWORK)])
         self.assertEqual(generator.OTHER_NETWORK, both._applied_authority().network)
+
+    def test_payee_delivers_nothing_against_evidence_that_does_not_pay(self):
+        """The payee's entry point decides on the evidence it is given, not
+        on a passing proof it builds. Failed,
+        no-op, unbound, unpinned, unauthenticated and forged-finality
+        evidence each deliver nothing and admit nothing; the genuine payment
+        delivers once."""
+        corpus = json.loads((HERE.parent / "conformance/vectors/security/pay-dem-execution-v0.1.json")
+                            .read_text(encoding="utf-8"))
+        reads = {vector["name"]: vector["protocolInput"]["recordRead"] for vector in corpus["vectors"]
+                 if "recordRead" in vector["protocolInput"]}
+        for name in ("consumer-failed-fails", "consumer-confirmed-no-op-apply", "consumer-wrong-hash-authenticated",
+                     "consumer-unpinned-node-refused", "delivery-record-unauthenticated",
+                     "delivery-bft-final-certificate-forged", "delivery-record-fv5-forged-result"):
+            with self.subTest(evidence=name):
+                work = self.root / ("evidence-" + name)
+                payee = reference.payee(work, "boot-1")
+                payee.provision()
+                self.assertNotEqual("pass", payee.deliver(generator.JOB_ID, read=reads[name]))
+                self.assertEqual(set(), payee.delivered())
+                self.assertEqual([], payee.snapshot()["admissions"])
+        work = self.root / "evidence-genuine"
+        payee = reference.payee(work, "boot-1")
+        payee.provision()
+        self.assertEqual("pass", payee.deliver(generator.JOB_ID, read=reads["delivery-after-all-gates"]))
+        self.assertEqual(1, len(payee.delivered()))
+
+    def test_nothing_is_sent_without_every_input_a_final_verdict_needs(self):
+        """DEM-3 success needs bft-final trust covering the rail's profile,
+        and DEM-4 an FV-5 policy. A binding with the other three members but
+        without either, or with one that can never verify, used to pass the
+        gate (f2148e4): the payer was debited and every re-read stayed
+        substrate. Now nothing is retained or sent."""
+        trust, policy = generator.BINDING_TRUST, generator.BINDING_POLICY
+        refused = {
+            "no-bft-final-trust": generator.binding_entry(bftFinalTrust=generator._OMIT),
+            "no-execution-policy": generator.binding_entry(executionResultPolicy=generator._OMIT),
+            "trust-without-rail-validator-set": generator.binding_entry(bftFinalTrust=dict(trust, validatorSets={})),
+            "trust-for-another-network": generator.binding_entry(bftFinalTrust=dict(trust, **generator.OTHER_NETWORK)),
+            "malformed-policy": generator.binding_entry(executionResultPolicy=dict(policy, threshold=0)),
+            "policy-for-another-network": generator.binding_entry(
+                executionResultPolicy=dict(policy, **generator.OTHER_NETWORK)),
+        }
+        for name, binding in refused.items():
+            with self.subTest(binding=name):
+                work = self.root / name
+                result = reference.payer(work, "boot-1", bindings=[binding]).pay(generator.signed())
+                self.assertEqual((False, "substrate", False),
+                                 (result.get("ok"), result.get("errorClass"), result.get("signPermitted")))
+                egress = work / "egress.jsonl"
+                self.assertEqual([], reference.read_lines(egress) if egress.exists() else [])
+                self.assertFalse((work / "store" / JOURNAL).exists())
+        # The control sends, and its re-read verifies under the trust and
+        # policy of the binding entry the gate checked.
+        control = self.root / "control"
+        handler = reference.payer(control, "boot-1")
+        handler.pay(generator.signed())
+        self.assertEqual(["confirm", "broadcast"],
+                         [entry["call"] for entry in reference.read_lines(control / "egress.jsonl")])
+        self.assertEqual((dict(generator.FINALITY_TRUST), generator.FV5_POLICY), handler._trust())
 
     def test_journal_is_on_stable_storage_before_the_first_egress(self):
         self.assertEqual([], fsync_violations(self.root / "reference"))

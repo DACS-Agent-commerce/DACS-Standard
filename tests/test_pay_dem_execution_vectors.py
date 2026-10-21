@@ -25,7 +25,7 @@ from jcs import canonicalize  # noqa: E402
 from demos_json import stringify  # noqa: E402
 from settlement_finality_reference import (  # noqa: E402
     DEMOS_RECORD_PROFILE, _demos_committed_change, _demos_native_send, _verify_demos_execution,
-    verify_transaction_inclusion,
+    demos_execution_policy, verify_transaction_inclusion,
 )
 
 
@@ -44,12 +44,17 @@ GUARDS = frozenset({
     "sign-requires-pinned-node",
     "sign-requires-applied-payment-authority",
     "sign-requires-gas-fee-separation-unscheduled",
+    # DEM-1: every input DEM-3 and DEM-4 consume, before anything is signed
+    "sign-requires-bft-final-trust",
+    "sign-requires-execution-result-policy",
     "binding-refusal-is-rail-unavailable",
     # DEM-1/RAV-R3 "for the phase's network": the rail's pinned network
     "binding-network-is-rail-network",
     "pinned-nodes-bind-rail-network",
     "applied-authority-binds-rail-network",
     "fork-attestation-binds-rail-genesis",
+    "bft-final-trust-binds-rail-network",
+    "execution-policy-binds-rail-network",
     # RAV-R3 for pay-dem, before rail selection
     "preflight-requires-binding",
     "preflight-selects-configured-rail",
@@ -62,6 +67,8 @@ GUARDS = frozenset({
     "broadcast-requires-pinned-node",
     "broadcast-requires-applied-payment-authority",
     "broadcast-requires-gas-fee-separation-unscheduled",
+    "broadcast-requires-bft-final-trust",
+    "broadcast-requires-execution-result-policy",
     "broadcast-requires-durable-retention",
     "broadcast-requires-complete-retention",
     "retention-bound-to-phase",
@@ -138,6 +145,10 @@ GUARDS = frozenset({
     "consumer-refutation-requires-bft-final-inclusion",
     "consumer-contradiction-requires-bft-final-inclusion",
     "delivery-requires-bft-final-inclusion",
+    # A consumer verdict takes FV's own verdict on the presented reference's
+    # bft-final inclusion when it is fail or error, as the
+    # settlement-finality corpus scores the same input
+    "consumer-takes-fv-inclusion-verdict",
     # DEM-5
     "unresolved-authorizes-nothing",
     # DEM-5/DEM-6 once the handler's own check or call returns (PC-4 pay-dem rows)
@@ -166,7 +177,6 @@ GUARDS = frozenset({
     # DEM-7 composed with FV-5, SB-1, SB-2 and PB before delivery
     "delivery-requires-dem7",
     "delivery-requires-authenticated-record",
-    "delivery-requires-fv",
     "delivery-requires-sb1",
     "delivery-requires-pb",
     "delivery-sb2-own-admissions",
@@ -797,6 +807,30 @@ def fv5_authenticated(read, protocol_input: dict, off) -> bool:
     return fv5_result(read.get("executionResult"), read.get("record"), protocol_input, block, off)
 
 
+def inclusion_verdict(observation, reference, protocol_input: dict, off) -> str:
+    """FV's own four-valued verdict on one transaction's `bft-final`
+    inclusion: the settlement-finality reference's
+    `verify_transaction_inclusion` under the rail's signed profile and the
+    verifier's own trust. Without an observation, or without a `bft-final`
+    profile for the rail's network or trust to check it, nothing is shown
+    (`indeterminate`). A forged certificate, a transaction proven absent or
+    a block off the authenticated head is FV's `fail`."""
+    if "bft-final-inclusion-verified" in off:
+        # The wrong implementation takes the inclusion on trust.
+        return "pass"
+    if not (isinstance(observation, dict) and isinstance(reference, dict)):
+        return "indeterminate"
+    profile, trust = protocol_input.get("finalityProfile"), protocol_input.get("finalityTrust")
+    network = _network(protocol_input.get("railNetwork"))
+    if not (isinstance(profile, dict) and profile.get("kind") == "bft-final" and network is not None
+            and {k: profile.get(k) for k in NETWORK} == network and isinstance(trust, dict)):
+        return "indeterminate"
+    try:
+        return verify_transaction_inclusion(observation, profile, reference, trust)[0]
+    except (ValueError, TypeError, UnicodeError):
+        return "error"
+
+
 def bft_final(observation, reference, block_id, protocol_input: dict, off) -> bool:
     """The FV `bft-final` verification of one transaction's inclusion (the
     settlement-finality reference's own `verify_transaction_inclusion`:
@@ -809,17 +843,8 @@ def bft_final(observation, reference, block_id, protocol_input: dict, off) -> bo
     shows that it is."""
     if not (isinstance(observation, dict) and isinstance(reference, dict)):
         return False
-    if "bft-final-inclusion-verified" not in off:
-        profile, trust = protocol_input.get("finalityProfile"), protocol_input.get("finalityTrust")
-        network = _network(protocol_input.get("railNetwork"))
-        if not (isinstance(profile, dict) and profile.get("kind") == "bft-final" and network is not None
-                and {k: profile.get(k) for k in NETWORK} == network and isinstance(trust, dict)):
-            return False
-        try:
-            if verify_transaction_inclusion(observation, profile, reference, trust)[0] != "pass":
-                return False
-        except (ValueError, TypeError, UnicodeError):
-            return False
+    if inclusion_verdict(observation, reference, protocol_input, off) != "pass":
+        return False
     if "bft-final-inclusion-binds-result-block" not in off:
         block = observation.get("inclusionBlock")
         if not (isinstance(block, dict) and isinstance(block_id, str) and block.get("id") == block_id):
@@ -960,7 +985,13 @@ def party_address(value, off):
     return match[1] if match else None
 
 
-BINDING = ("pinnedNodes", "appliedPaymentAuthority", "gasFeeSeparation")
+# Every input a final pay-dem verdict consumes, as one network's binding
+# members: DEM-2's pinned nodes, DEM-3's applied-payment authority, the
+# profile's fork scope, the bft-final trust DEM-3, DEM-4 and DEM-7 verify
+# inclusion under, and the FV-5 policy DEM-4 authenticates a failure under.
+BINDING = ("pinnedNodes", "appliedPaymentAuthority", "gasFeeSeparation", "bftFinalTrust", "executionResultPolicy")
+BFT_FINAL_TRUST = frozenset({"validatorSets", "observationAuthorityKeys"})
+EXECUTION_POLICY = frozenset({"kind", "threshold", "authorityKeys"})
 # Each binding that is not the rail network's, and the guard that refuses it.
 NETWORK_VARIANTS = {
     "binding-for-another-network": "binding-network-is-rail-network",
@@ -968,6 +999,8 @@ NETWORK_VARIANTS = {
     "pinned-nodes-for-another-network": "pinned-nodes-bind-rail-network",
     "applied-authority-for-another-network": "applied-authority-binds-rail-network",
     "fork-attestation-of-another-genesis": "fork-attestation-binds-rail-genesis",
+    "bft-final-trust-for-another-network": "bft-final-trust-binds-rail-network",
+    "execution-policy-for-another-network": "execution-policy-binds-rail-network",
 }
 UNSELECTABLE = frozenset({"disabled", "failed", "mocked"})
 RAV_R3_GATED = frozenset({"operator_gated", "closed_data", "bilateral"})
@@ -981,12 +1014,38 @@ def _network(value):
     return None
 
 
+def covers_profile(trust: dict, protocol_input: dict) -> bool:
+    """The bft-final trust can verify the rail's inclusion: the rail's signed
+    `bft-final` profile (`finalityProfile`) names `railNetwork`, and the trust
+    holds the validator set that profile pins and at least its threshold of
+    the observation authorities it names."""
+    profile, rail = protocol_input.get("finalityProfile"), _network(protocol_input.get("railNetwork"))
+    if not (isinstance(profile, dict) and profile.get("kind") == "bft-final" and rail is not None
+            and {k: profile.get(k) for k in NETWORK} == rail):
+        return False
+    pinned_set, observation = profile.get("validatorSetRef"), profile.get("observation")
+    sets, keys = trust["validatorSets"], trust["observationAuthorityKeys"]
+    if not (isinstance(pinned_set, dict) and isinstance(observation, dict)
+            and isinstance(sets, dict) and isinstance(keys, dict)):
+        return False
+    content_hash, names, threshold = (pinned_set.get("contentHash"), observation.get("authorityRefs"),
+                                      observation.get("threshold"))
+    if not (isinstance(content_hash, str) and isinstance(names, list)
+            and isinstance(threshold, int) and _safe_integer(threshold) and threshold >= 1):
+        return False
+    held = {name for name in names if isinstance(name, str) and isinstance(keys.get(name), str)}
+    return isinstance(sets.get(content_hash), dict) and len(held) >= threshold
+
+
 def binding_members(protocol_input: dict, off) -> dict[str, bool]:
-    """DEM-1/RAV-R3: which of the three members the payer's Demos binding
-    holds for the rail's network. That network is the pinned RailDefinition's
+    """DEM-1/RAV-R3: which `BINDING` members the payer's Demos binding holds
+    for the rail's network. That network is the pinned RailDefinition's
     `consumerFinalityProfile.settlement` (`railNetwork`), never one the
     binding supplies; the binding entry is the one for that network, and a
-    member counts only when it names exactly that network and genesis."""
+    member counts only when it names exactly that network and genesis. The
+    bft-final trust must also cover the rail's signed profile, and the FV-5
+    policy must be one the FV verifier applies: a member that can never
+    verify is no member."""
     held = dict.fromkeys(BINDING, False)
     entries = protocol_input.get("demosBinding")
     if not (isinstance(entries, list) and all(isinstance(entry, dict) for entry in entries)):
@@ -1007,13 +1066,20 @@ def binding_members(protocol_input: dict, off) -> dict[str, bool]:
         ("appliedPaymentAuthority", "applied-authority-binds-rail-network", set()),
         # The sealed genesis's forks.gasFeeSeparation: only a null height is unscheduled.
         ("gasFeeSeparation", "fork-attestation-binds-rail-genesis", {"activationHeight"}),
+        ("bftFinalTrust", "bft-final-trust-binds-rail-network", BFT_FINAL_TRUST),
+        ("executionResultPolicy", "execution-policy-binds-rail-network", EXECUTION_POLICY),
     ):
         value = entry.get(member)
         if not (isinstance(value, dict) and set(value) == NETWORK | extra):
             continue
         if guard not in off and {k: value[k] for k in NETWORK} != network:
             continue
-        if extra and value["activationHeight"] is not None:
+        if member == "gasFeeSeparation" and value["activationHeight"] is not None:
+            continue
+        if member == "bftFinalTrust" and not covers_profile(value, protocol_input):
+            continue
+        if (member == "executionResultPolicy"
+                and demos_execution_policy({k: value[k] for k in EXECUTION_POLICY})[0] != "pass"):
             continue
         held[member] = True
     return held
@@ -1022,8 +1088,8 @@ def binding_members(protocol_input: dict, off) -> dict[str, bool]:
 def rail_preflight(protocol_input: dict, off) -> tuple[str, dict]:
     """RAV-R3 for a new production session, before rail selection and so
     before Agreement signature and the PIPE-6 commitment: a `pay-dem` rail is
-    selectable only when the payer's Demos binding holds DEM-1's three
-    members for the rail's network, whatever availability the rail shows."""
+    selectable only when the payer's Demos binding holds every DEM-1 member
+    for the rail's network, whatever availability the rail shows."""
     availability = protocol_input["availability"]
     if availability not in UNSELECTABLE | RAV_R3_GATED | {"live"}:
         return "error", {"railSelectable": False}
@@ -1039,15 +1105,19 @@ def rail_preflight(protocol_input: dict, off) -> tuple[str, dict]:
 
 def pre_sign_gate(protocol_input: dict, off) -> tuple[str, dict]:
     """DEM-1 before signing: a Demos binding without pinned nodes, an
-    applied-payment authority or a genesis attestation that `gasFeeSeparation`
-    is unscheduled cannot reach DEM-3 success. The RAV-R3 preflight checked
-    the binding before the rail was selected, so at settle the rail is
-    non-operational for this payer: RAV-R4 substrate, and nothing is signed."""
+    applied-payment authority, a genesis attestation that `gasFeeSeparation`
+    is unscheduled, bft-final trust covering the rail's profile or an FV-5
+    execution-result policy cannot reach DEM-3 success or a DEM-4 proof, so a
+    transfer sent under it could only end unresolved. The RAV-R3 preflight
+    checked the binding before the rail was selected, so at settle the rail
+    is non-operational for this payer: RAV-R4 substrate, and nothing is signed."""
     held = binding_members(protocol_input, off)
     for guard, member in (
         ("sign-requires-pinned-node", "pinnedNodes"),
         ("sign-requires-applied-payment-authority", "appliedPaymentAuthority"),
         ("sign-requires-gas-fee-separation-unscheduled", "gasFeeSeparation"),
+        ("sign-requires-bft-final-trust", "bftFinalTrust"),
+        ("sign-requires-execution-result-policy", "executionResultPolicy"),
     ):
         if not held[member] and guard not in off:
             # The wrong implementation blames the payer for a rail that is not
@@ -1115,6 +1185,8 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
         ("broadcast-requires-pinned-node", "pinnedNodes"),
         ("broadcast-requires-applied-payment-authority", "appliedPaymentAuthority"),
         ("broadcast-requires-gas-fee-separation-unscheduled", "gasFeeSeparation"),
+        ("broadcast-requires-bft-final-trust", "bftFinalTrust"),
+        ("broadcast-requires-execution-result-policy", "executionResultPolicy"),
     ):
         if not held[member] and guard not in off:
             return refused
@@ -1233,6 +1305,16 @@ def dem7(protocol_input: dict, off) -> str:
     if payer is None or payee is None:
         return "error"
     read = protocol_input["recordRead"]
+    # FV-10: FV's own error or fail on the presented reference's bft-final
+    # inclusion (a forged certificate, a transaction proven absent, a block
+    # off the authenticated head) is the evidence's verdict before any
+    # uncertainty, the verdict the settlement-finality corpus gives the same
+    # input. FV's indeterminate refutes nothing and decides nothing here.
+    if "consumer-takes-fv-inclusion-verdict" not in off and "inclusionProof" in read:
+        verdict = inclusion_verdict(read["inclusionProof"], protocol_input["signedEvidence"]["txRef"],
+                                    protocol_input, off)
+        if verdict in ("fail", "error"):
+            return verdict
     record = read.get("record") if read.get("state") == "found" else None
     projection = decode(record, off) if record is not None else None
     if projection is None or not pinned(read, off):
@@ -1322,7 +1404,9 @@ def admit_for_delivery(protocol_input: dict, off) -> tuple[str, dict]:
     if not presented_final(protocol_input["recordRead"], protocol_input,
                            "delivery-requires-bft-final-inclusion", off):
         return result("indeterminate")
-    for name in ("fv", "sb1", "pb"):
+    # The FV gate is the FV-5 result and bft-final inclusion verified above,
+    # never a caller's verdict; SB-1 and PB compose as given.
+    for name in ("sb1", "pb"):
         verdict = protocol_input["otherGates"][name]
         if verdict != "pass" and f"delivery-requires-{name}" not in off:
             return result(verdict)
@@ -1570,7 +1654,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         for name in delivered:
             protocol_input = self.cases[name]["protocolInput"]
             self.assertTrue(fv5_authenticated(protocol_input["recordRead"], protocol_input, frozenset()))
-            self.assertEqual({"fv": "pass", "sb1": "pass", "pb": "pass"}, protocol_input["otherGates"])
+            # The FV gate is verified from the evidence, never a caller verdict.
+            self.assertEqual({"sb1": "pass", "pb": "pass"}, protocol_input["otherGates"])
 
     def test_raw_demos_references_group_before_any_member_counts(self):
         collision = self.cases["sb2-demos-two-job-collision"]
@@ -1928,8 +2013,11 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         # DEM-3 success needs both, so DEM-1 refuses to sign or send without them.
         spec = SPEC.read_text(encoding="utf-8")
         self.assertIn("The handler MUST NOT sign or broadcast a transfer unless its Demos binding configures", spec)
-        self.assertIn("Demos binding without pinned nodes, an applied-payment authority or a genesis attestation that "
-                      "`gasFeeSeparation` is unscheduled, found at settle → `substrate`", spec)
+        self.assertIn("Demos binding without pinned nodes, an applied-payment authority, a genesis attestation that "
+                      "`gasFeeSeparation` is unscheduled, `bft-final` trust that covers the rail's profile or an FV-5 "
+                      "execution-result policy, found at settle → `substrate`", spec)
+        self.assertIn("every input a final verdict on the transfer consumes", spec)
+        self.assertIn("The handler's re-reads verify under those same members", spec)
         # Balance is permanent only before the first egress; a confirm refusal
         # after it leaves the signed bytes at a node, so it is DEM-5 substrate.
         self.assertIn("payer DEM balance insufficient before the first egress (no `confirm` or broadcast has carried "
@@ -1988,11 +2076,17 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertEqual({"sign-with-pinned-node-and-applied-payment-authority", "sign-without-pinned-node",
                           "sign-without-applied-payment-authority", "sign-with-gas-fee-separation-scheduled",
                           "sign-without-fork-attestation", "sign-without-binding",
+                          "sign-without-bft-final-trust", "sign-with-bft-final-trust-without-rail-validator-set",
+                          "sign-with-bft-final-trust-below-observation-threshold",
+                          "sign-without-execution-result-policy", "sign-with-malformed-execution-result-policy",
+                          "sign-with-unknown-execution-result-policy-kind",
                           "sign-with-rail-network-entry-among-several"}
                          | {"sign-with-" + suffix for suffix in NETWORK_VARIANTS}, set(presign))
         for name, vector in presign.items():
             with self.subTest(name=name):
-                self.assertEqual({"phase", "railNetwork", "demosBinding"}, set(vector["protocolInput"]))
+                self.assertEqual({"phase", "railNetwork", "finalityProfile", "demosBinding"},
+                                 set(vector["protocolInput"]))
+                self.assertEqual(generator.FINALITY_PROFILE, vector["protocolInput"]["finalityProfile"])
                 self.assertEqual(generator.NETWORK, vector["protocolInput"]["railNetwork"])
                 if vector["expected"] == "pass":
                     self.assertEqual(("pass", {"signPermitted": True, "ok": None, "errorClass": None}), evaluate(vector))
@@ -2378,6 +2472,61 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 self.assertEqual("indeterminate", evaluate(case)[0])
                 self.assertNotEqual("indeterminate", evaluate(case, {"fv5-result-applied-transfer-binds-record"})[0])
 
+    def test_consumer_verdicts_agree_with_the_settlement_finality_reference(self):
+        """One consumer input, one verdict class in both corpora (they split
+        at f2148e4). Every pay-dem consumer vector's presented inclusion
+        and FV-5 result go through the settlement-finality reference itself:
+        FV's fail or error on the inclusion is the consumer's verdict, an
+        FV-5 result FV does not pass is never a consumer pass, and FV-5 gives
+        no fail for a result (unauthenticated or for another network, block
+        or transaction) that the pay-dem oracle reads as authenticating
+        nothing. No delivery passes unless both FV halves pass."""
+        checked = 0
+        for vector in self.data["vectors"]:
+            if vector["operation"] not in {"admit-evidence", "admit-for-delivery"}:
+                continue
+            value = vector["protocolInput"]
+            read, reference = value["recordRead"], value["signedEvidence"]["txRef"]
+            result, proof = read.get("executionResult"), read.get("inclusionProof")
+            observed = value.get("inclusionObservation") or {}
+            with self.subTest(name=vector["name"]):
+                self.assertNotIn("fv", value.get("otherGates", {}))
+                inclusion = "indeterminate"
+                if isinstance(proof, dict):
+                    inclusion = verify_transaction_inclusion(proof, value["finalityProfile"], reference,
+                                                             value["finalityTrust"])[0]
+                    checked += 1
+                if inclusion in ("fail", "error"):
+                    self.assertEqual(inclusion, vector["expected"])
+                execution = None
+                if result is not None:
+                    execution = _verify_demos_execution(
+                        {**value["railNetwork"], "inclusionBlock": {"id": observed.get("blockId")},
+                         "executionResult": result},
+                        reference, {"demosExecutionPolicy": value.get("fv5Policy")})[0]
+                    self.assertNotEqual("fail", execution)
+                    if execution == "error":
+                        self.assertEqual("error", vector["expected"])
+                if vector["operation"] == "admit-for-delivery" and vector["expected"] == "pass":
+                    self.assertEqual(("pass", "pass"), (inclusion, execution))
+        self.assertGreaterEqual(checked, 40)
+        for name, expected in (("delivery-bft-final-certificate-forged", "fail"),
+                               ("delivery-bft-final-transaction-absent", "fail"),
+                               ("delivery-bft-final-block-off-authenticated-head", "fail"),
+                               ("delivery-record-fv5-forged-result", "indeterminate")):
+            with self.subTest(cold=name):
+                self.assertEqual(expected, self.cases[name]["expected"])
+                self.assertEqual(expected, evaluate(self.cases[name])[0])
+                self.assertFalse(evaluate(self.cases[name])[1]["deliveryAuthorized"])
+        # The FV corpus scores the same results the same way.
+        fv = json.loads((ROOT / "conformance/vectors/security/settlement-finality-verification.json")
+                        .read_text(encoding="utf-8"))
+        verdicts = {vector["name"]: vector["expected"] for vector in fv["vectors"]}
+        for suffix in ("status-tampered", "forged-confirmed", "duplicate-signer", "other-network", "other-genesis",
+                       "other-block", "other-transaction", "quorum-missing", "unsigned"):
+            with self.subTest(fv=suffix):
+                self.assertEqual("indeterminate", verdicts["fv-bft-final-result-" + suffix])
+
     def test_a_proven_failure_needs_its_bft_final_inclusion(self):
         """DEM-4 and APR-6: a terminal failure, its reuse on resume and APR
         replacement evidence each need FV's bft-final verification of the
@@ -2468,9 +2617,28 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                    if {"success-requires-bft-final-inclusion", "consumer-refutation-requires-bft-final-inclusion",
                        "consumer-contradiction-requires-bft-final-inclusion",
                        "delivery-requires-bft-final-inclusion"} & set(vector["guards"])]
-        self.assertEqual({"classify-execution": 7, "resume-phase": 1, "admit-evidence": 25, "admit-for-delivery": 7},
+        self.assertEqual({"classify-execution": 7, "resume-phase": 1, "admit-evidence": 19, "admit-for-delivery": 4},
                          {op: sum(v["operation"] == op for v in refused) for op in
                           ("classify-execution", "resume-phase", "admit-evidence", "admit-for-delivery")})
+        # The inclusions FV itself scores fail (a forged certificate, a
+        # transaction proven absent, a block off the authenticated head) are
+        # the consumer's fail, as in the settlement-finality corpus, and
+        # authorize nothing; the payer's DEM-3/DEM-4 stay unresolved on them.
+        forged = [vector for vector in self.data["vectors"]
+                  if "consumer-takes-fv-inclusion-verdict" in vector["guards"]]
+        self.assertEqual({"admit-evidence": 6, "admit-for-delivery": 3},
+                         {op: sum(v["operation"] == op for v in forged) for op in ("admit-evidence", "admit-for-delivery")})
+        for vector in forged:
+            with self.subTest(forged=vector["name"]):
+                expected, want = evaluate(vector)
+                self.assertEqual("fail", expected)
+                self.assertFalse(want.get("deliveryAuthorized"))
+                self.assertFalse(want.get("settlementAccounting", False))
+        for vector in self.data["vectors"]:
+            if vector["operation"] in {"classify-execution", "resume-phase"} and any(
+                    vector["name"].endswith(suffix) for suffix in generator.FV_INCLUSION_FAILS):
+                with self.subTest(handler=vector["name"]):
+                    self.assertEqual("indeterminate", evaluate(vector)[0])
         for vector in refused:
             with self.subTest(name=vector["name"]):
                 expected, want = evaluate(vector)
@@ -2509,7 +2677,16 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 with self.subTest(name=vector["name"], strip=member):
                     stripped = json.loads(json.dumps(vector))
                     strip(stripped["protocolInput"], member)
-                    self.assertEqual("indeterminate", evaluate(stripped)[0])
+                    want = "indeterminate"
+                    if member == "finalityCertificate" and "consumer-takes-fv-inclusion-verdict" in vector["guards"]:
+                        # The verdict is FV's own on the presented proof, which
+                        # can still show the transaction absent or off the
+                        # authenticated head without a certificate (FV-10).
+                        held = stripped["protocolInput"]
+                        fv = inclusion_verdict(held["recordRead"]["inclusionProof"], held["signedEvidence"]["txRef"],
+                                               held, frozenset())
+                        want = fv if fv in ("fail", "error") else want
+                    self.assertEqual(want, evaluate(stripped)[0])
         self.assertGreaterEqual(checked, 30)
 
     def test_a_plain_observation_never_decides_a_final_verdict(self):
@@ -3202,7 +3379,10 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("authenticate the committed native-send state transition independently", demos)
         self.assertIn("`network_fee`, `rpc_fee`, `additional_fee` and `rpc_address`, in that order", demos)
         self.assertIn("`timestamp` MUST be a positive JSON integer", demos)
-        self.assertIn("refuses a native transaction whose edits differ", demos)
+        # The node normalises amounts before it compares edits; this profile
+        # compares them exactly, which is stricter and fails closed.
+        self.assertIn("refuses a native transaction whose edits still differ after it normalises their amounts", demos)
+        self.assertIn("This profile is stricter: it compares the edits exactly as listed.", demos)
         self.assertIn("A bound `failed` record from an ordinary RPC read is `indeterminate`.", spec)
         self.assertIn("collapsing a verified legacy spelling", spec)
 
@@ -3275,8 +3455,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertEqual("fail", evaluate(replaced)[0])
 
     def test_party_addresses_compare_by_their_pay_dem_projection(self):
-        """Cold review P1-1: a genuine payment to the payee's key passes every
-        path whichever pay-dem spelling the Agreement used (the PB corpus's
+        """A genuine payment to the payee's key passes every path whichever
+        pay-dem spelling the Agreement used (the PB corpus's
         0x key, the APR corpus's DACS-1 DID, the bare key), and a spelling in
         no pay-dem form is error, never a comparison of spellings."""
         demos = DEMOS.read_text(encoding="utf-8")
@@ -3311,8 +3491,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 self.assertIsNotNone(party_address(json.loads(binding), frozenset()))
 
     def test_pay_dem_rail_is_preflighted_before_selection_and_refused_as_substrate_at_settle(self):
-        """Cold review P1-2: no session commits to a pay-dem rail whose payer
-        binding cannot execute it, whatever availability the rail shows, and
+        """No session commits to a pay-dem rail whose payer binding cannot
+        execute it, whatever availability the rail shows, and
         a binding found missing at settle is RAV-R4 substrate, not a payer
         fault after the payee may already have delivered."""
         spec = SPEC.read_text(encoding="utf-8")
@@ -3324,6 +3504,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         preflights = {name: case for name, case in self.cases.items() if case["operation"] == "rail-preflight"}
         self.assertEqual({"preflight-live-rail-with-binding", "preflight-live-rail-without-applied-payment-authority",
                           "preflight-live-rail-without-fork-attestation",
+                          "preflight-live-rail-without-bft-final-trust",
+                          "preflight-live-rail-without-execution-result-policy",
                           "preflight-operator-gated-rail-without-pinned-node",
                           "preflight-operator-gated-rail-with-binding",
                           "preflight-live-rail-with-rail-network-entry-among-several"}

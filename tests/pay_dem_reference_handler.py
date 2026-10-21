@@ -414,10 +414,11 @@ class PayerHandler:
     entry for the rail's network themselves, and the re-read takes the
     applied-payment authority that entry configures and the FV-5 result and
     bft-final inclusion from their own sources, never from the node's reply.
-    `fv5_policy` is the FV-5 execution-result policy the payer trusts
-    (authority keys and threshold), and `finality_trust` its validator set,
-    observation authorities and clock, from its configuration, never from a
-    source or a node; `finality_profile` is the rail's signed settlement
+    The re-read verifies them under that same entry's `bftFinalTrust`
+    (validator sets and observation authorities, with the handler's own
+    clock `clock_ms`) and `executionResultPolicy`: the members DEM-1's gate
+    checked before anything was signed, never separate configuration, a
+    source or a node. `finality_profile` is the rail's signed settlement
     profile."""
 
     def __init__(self, store: Store, node: Node, boot: str, *, crash_at: str | None = None,
@@ -425,9 +426,8 @@ class PayerHandler:
                  job_id: str = generator.JOB_ID, phase_index: int = generator.PHASE_INDEX,
                  rail_network: dict[str, str] = generator.NETWORK,
                  bindings: list[dict[str, Any]] | None = None, fv5: Fv5Authority | None = None,
-                 fv5_policy: dict[str, Any] = generator.FV5_POLICY,
                  finality_profile: dict[str, Any] = generator.FINALITY_PROFILE,
-                 finality_trust: dict[str, Any] = generator.FINALITY_TRUST):
+                 clock_ms: int = generator.FINALITY_TRUST["verificationTimeMs"]):
         self.store, self.node, self.boot = store, node, boot
         self.crash_at, self.mutant, self.exit_on_crash = crash_at, mutant, exit_on_crash
         # DEM-6: an identifier no earlier start used, whatever happened to the
@@ -449,8 +449,7 @@ class PayerHandler:
             # network from it, whatever network the rail settles on.
             self.rail_network = binding_network(self.bindings[0])
         self.fv5 = Fv5Authority() if fv5 is None else fv5
-        self.fv5_policy = fv5_policy
-        self.finality = {"finalityProfile": finality_profile, "finalityTrust": finality_trust}
+        self.finality_profile, self.clock_ms = finality_profile, clock_ms
         # The wrong handlers take a result's signatures on trust, take the
         # signed result alone for DEM-4 without its bft-final inclusion,
         # (the earlier draft) take a flag for FV-5 and store a label as its
@@ -462,7 +461,24 @@ class PayerHandler:
                     }.get(mutant, NO_GUARD_REMOVED)
 
     def _binding_input(self) -> dict[str, Any]:
-        return {"railNetwork": self.rail_network, "demosBinding": self.bindings}
+        return {"railNetwork": self.rail_network, "finalityProfile": self.finality_profile,
+                "demosBinding": self.bindings}
+
+    def _trust(self) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        """The bft-final trust, with this handler's clock, and the FV-5
+        policy of the binding entry for the rail's network; None for a member
+        the entry lacks, which verifies nothing."""
+        for entry in self.bindings:
+            if binding_network(entry) != self.rail_network:
+                continue
+            trust, policy = entry.get("bftFinalTrust"), entry.get("executionResultPolicy")
+            return (
+                dict({key: trust[key] for key in oracle.BFT_FINAL_TRUST}, verificationTimeMs=self.clock_ms)
+                if isinstance(trust, dict) and oracle.BFT_FINAL_TRUST <= set(trust) else None,
+                {key: policy[key] for key in oracle.EXECUTION_POLICY}
+                if isinstance(policy, dict) and oracle.EXECUTION_POLICY <= set(policy) else None,
+            )
+        return None, None
 
     def _applied_authority(self) -> AppliedAuthority | None:
         """The authority the binding entry for the rail's network configures;
@@ -573,10 +589,12 @@ class PayerHandler:
 
     def _classify_input(self, entry: dict[str, Any], read: dict[str, Any]) -> dict[str, Any]:
         seen = read["state"] == "found"
+        trust, policy = self._trust()
         return {
             "railNetwork": self.rail_network,
-            **self.finality,
-            "fv5Policy": self.fv5_policy,
+            "finalityProfile": self.finality_profile,
+            "finalityTrust": trust,
+            "fv5Policy": policy,
             "retainedTransfer": entry["retainedTransfer"],
             "statusIndex": "included" if seen else "unknown",
             "inclusionObservation": generator.INCLUDED_AT_BLOCK if seen else None,
@@ -780,8 +798,12 @@ class Payee:
             return None
         return index
 
-    def check(self, job_id: str, phase_index: int, snapshot: dict[str, Any] | None) -> str:
-        protocol_input = generator.deliver("delivery", "pass", "DEM-7", [], "")["protocolInput"]
+    def check(self, job_id: str, phase_index: int, snapshot: dict[str, Any] | None,
+              read: dict[str, Any] | None = None) -> str:
+        """The composed delivery check over the presented evidence `read`
+        (by default a genuine, final, authenticated payment), with this
+        payee's admission index snapshot as its history."""
+        protocol_input = generator.deliver("delivery", "pass", "DEM-7", [], "", read=read)["protocolInput"]
         protocol_input["phase"] = generator.phase(jobId=job_id, phaseIndex=phase_index)
         protocol_input["consumerAdmissions"] = [] if snapshot is None else snapshot["admissions"]
         protocol_input["admissionIndex"] = snapshot
@@ -814,10 +836,10 @@ class Payee:
                         crash=lambda step: self._crash(f"before-delivery-{step}"))
 
     def deliver(self, job_id: str, phase_index: int = generator.PHASE_INDEX, *,
-                between: Callable[[], None] | None = None) -> str:
+                between: Callable[[], None] | None = None, read: dict[str, Any] | None = None) -> str:
         while True:
             snapshot = self.snapshot()
-            verdict = self.check(job_id, phase_index, snapshot)
+            verdict = self.check(job_id, phase_index, snapshot, read)
             if verdict != "pass":
                 return verdict
             admission = generator._admission({"jobId": job_id, "phaseIndex": phase_index})

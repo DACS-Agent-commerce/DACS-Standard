@@ -169,7 +169,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(194, self.data["count"])
+        self.assertEqual(196, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -330,18 +330,23 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual("indeterminate", self.evaluate_case(control)["decision"])
 
     def test_execution_result_needs_independent_authentication(self):
+        # A result below its policy's threshold of verifying distinct keys,
+        # and a threshold-signed result for another block, network or
+        # transaction, authenticate nothing for this reference: indeterminate,
+        # the verdict the pay-dem corpus gives the same results.
         for suffix, expected in (("result-policy-unavailable", "indeterminate"), ("result-unsigned", "indeterminate"),
-                                 ("result-quorum-missing", "indeterminate"), ("result-status-tampered", "fail"),
-                                 ("result-other-block", "fail"), ("result-other-transaction", "fail"),
-                                 ("result-other-network", "fail"), ("result-other-genesis", "fail"),
-                                 ("result-forged-confirmed", "fail"), ("result-duplicate-signer", "fail")):
+                                 ("result-quorum-missing", "indeterminate"), ("result-status-tampered", "indeterminate"),
+                                 ("result-other-block", "indeterminate"), ("result-other-transaction", "indeterminate"),
+                                 ("result-other-network", "indeterminate"), ("result-other-genesis", "indeterminate"),
+                                 ("result-forged-confirmed", "indeterminate"),
+                                 ("result-duplicate-signer", "indeterminate")):
             with self.subTest(case=suffix):
                 self.assertEqual(expected, self.evaluate_case(self.cases["fv-bft-final-" + suffix])["decision"])
         # Reusing the valid BFT block while substituting the entire result cannot authenticate it.
         control = copy.deepcopy(self.cases["fv-bft-final-canonical-success"])
         observation = control["input"]["context"]["observation"]
         observation["executionResult"]["record"]["content"]["amount"] = 1
-        self.assertEqual("fail", self.evaluate_case(control)["decision"])
+        self.assertEqual("indeterminate", self.evaluate_case(control)["decision"])
         for suffix, reason in (("result-member-missing", "malformed Demos execution result"),
                                ("result-kind-mismatch", "malformed Demos execution result attestations"),
                                ("result-attestations-not-array", "malformed Demos execution result attestations"),
@@ -351,6 +356,33 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 result = self.evaluate_case(self.cases["fv-bft-final-" + suffix])
                 self.assertEqual("error", result["decision"])
                 self.assertIn(reason, result["reason"])
+
+    def test_execution_result_attestations_are_counted_never_a_veto(self):
+        # Appending an attestation outside the signed payload, under an
+        # unknown name or a spare policy key, changes nothing: a relayer or
+        # one faulty authority cannot turn an executed payment into fail.
+        for suffix in ("result-extra-unknown-attestation", "result-spare-key-bad-signature"):
+            with self.subTest(case=suffix):
+                self.assertEqual("pass", self.evaluate_case(self.cases["fv-bft-final-" + suffix])["decision"])
+        canonical = self.cases["fv-bft-final-canonical-success"]
+        attestations = canonical["input"]["context"]["observation"]["executionResult"]["attestations"]
+        for extra in ({"authorityRef": "execution-c", "algorithm": "ed25519", "value": "AAAA"},
+                      {"authorityRef": "execution-a", "algorithm": "ed25519", "value": attestations[1]["value"]},
+                      {"authorityRef": "execution-c", "algorithm": "rsa", "value": attestations[0]["value"]}):
+            with self.subTest(extra=extra):
+                case = copy.deepcopy(canonical)
+                case["input"]["context"]["observation"]["executionResult"]["attestations"].append(extra)
+                self.assertEqual("pass", self.evaluate_case(case)["decision"])
+        # Only verifying distinct policy keys count toward the threshold.
+        case = copy.deepcopy(canonical)
+        observation = case["input"]["context"]["observation"]["executionResult"]
+        observation["attestations"] = [observation["attestations"][0],
+                                       dict(observation["attestations"][0], authorityRef="execution-b")]
+        self.assertEqual("indeterminate", self.evaluate_case(case)["decision"])
+        # A malformed attestation object is still error.
+        case = copy.deepcopy(canonical)
+        case["input"]["context"]["observation"]["executionResult"]["attestations"].append({"authorityRef": 7})
+        self.assertEqual("error", self.evaluate_case(case)["decision"])
 
     def test_confirmed_record_requires_authenticated_committed_payment(self):
         for suffix, expected in (("missing", "indeterminate"), ("zero-credit", "fail"),
@@ -372,9 +404,11 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 self.assertIn("Demos applied transfer does not decode", result["reason"])
         control = copy.deepcopy(self.cases["fv-bft-final-canonical-success"])
         control["input"]["context"]["observation"]["executionResult"]["appliedTransfer"]["payeeCreditOs"] = "0"
+        # An edited applied transfer is outside its signatures: no key verifies
+        # it, so it authenticates nothing and refutes nothing.
         result = self.evaluate_case(control)
-        self.assertEqual("fail", result["decision"])
-        self.assertIn("signature does not verify", result["reason"])
+        self.assertEqual("indeterminate", result["decision"])
+        self.assertIn("quorum unavailable", result["reason"])
 
     def test_applied_transfer_is_the_change_of_committed_balances(self):
         """Every Demos authority (except the deliberately inconsistent one) is
@@ -620,7 +654,9 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual(attestations[0]["value"], attestations[1]["value"])
         keys = merge(self.trust, aliased["trustedOverrides"])["demosExecutionPolicy"]["authorityKeys"]
         self.assertEqual(keys["execution-a"], keys["execution-b"])
-        self.assertEqual("fail", verify_finality(aliased["input"], self.trust)["decision"])
+        # Under the default policy the copied signature does not verify for
+        # execution-b, so one key counts: below the threshold, not a veto.
+        self.assertEqual("indeterminate", verify_finality(aliased["input"], self.trust)["decision"])
         for suffix, expected in (("all-of-n", "pass"), ("other-kind", "indeterminate")):
             with self.subTest(case=suffix):
                 self.assertEqual(expected, self.evaluate_case(self.cases["fv-bft-final-result-policy-" + suffix])["decision"])

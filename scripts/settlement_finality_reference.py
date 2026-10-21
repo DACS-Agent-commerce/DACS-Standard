@@ -1036,17 +1036,31 @@ def _party_demos_key(trusted: dict, claim: Any) -> str | None:
     return raw.hex() if len(raw) == 32 else None
 
 
-def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -> tuple[str, str, Any]:
-    """Independent result attestation, never inferred from BFT inclusion."""
-    policy = trusted.get("demosExecutionPolicy")
+def demos_execution_policy(policy: Any) -> tuple[str, str]:
+    """The FV-5 independent execution-result policy check: `pass` for a
+    policy this verifier can apply, `indeterminate` for none it knows, and
+    `error` for a malformed one. DEM-1's gate applies the same check."""
     if not isinstance(policy, dict) or policy.get("kind") != "fixture-independent-results-v1":
-        return "indeterminate", "independent Demos execution-result policy unavailable", None
+        return "indeterminate", "independent Demos execution-result policy unavailable"
     keys, threshold = policy.get("authorityKeys"), policy.get("threshold")
     # The threshold counts distinct keys: an alias of one key is not a second authority.
     decoded = [_public_key(keys, signer) for signer in keys] if isinstance(keys, dict) else [None]
     if (None in decoded or len(set(decoded)) != len(decoded)
             or not _safe_integer(threshold, positive=True) or threshold > len(keys)):
-        return "error", "malformed Demos execution-result policy", None
+        return "error", "malformed Demos execution-result policy"
+    return "pass", "independent Demos execution-result policy"
+
+
+def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -> tuple[str, str, Any]:
+    """Independent result attestation, never inferred from BFT inclusion.
+    Attestations are counted, never a veto: one that names no policy key,
+    repeats a counted key or does not verify is not counted, so a relayer or
+    one faulty authority cannot turn an authenticated result into `fail`."""
+    policy = trusted.get("demosExecutionPolicy")
+    decision, reason = demos_execution_policy(policy)
+    if decision != "pass":
+        return decision, reason, None
+    keys, threshold = policy["authorityKeys"], policy["threshold"]
     proof = observation.get("executionResult")
     if proof is None:
         return "indeterminate", "independent Demos execution result unavailable", None
@@ -1056,25 +1070,27 @@ def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -
         return "error", "malformed Demos execution result attestations", None
     payload = {key: value for key, value in proof.items() if key != "attestations"}
     digest = hash_value(payload)
-    seen = set()
+    counted = set()
     for attestation in proof["attestations"]:
-        if not _exact_object(attestation, {"authorityRef", "algorithm", "value"}):
+        if not (_exact_object(attestation, {"authorityRef", "algorithm", "value"})
+                and isinstance(attestation["authorityRef"], str)):
             return "error", "malformed Demos result signature", None
         signer = attestation["authorityRef"]
-        if not isinstance(signer, str) or signer in seen or attestation["algorithm"] != "ed25519" or not _verify_ed25519(
-            keys, signer, DEMOS_EXECUTION_DOMAIN, digest, attestation["value"]
-        ):
-            return "fail", "Demos execution result signature does not verify", None
-        seen.add(signer)
-    if len(seen) < threshold:
+        if (signer not in counted and signer in keys and attestation["algorithm"] == "ed25519"
+                and _verify_ed25519(keys, signer, DEMOS_EXECUTION_DOMAIN, digest, attestation["value"])):
+            counted.add(signer)
+    if len(counted) < threshold:
         return "indeterminate", "independent Demos execution result quorum unavailable", None
     inclusion = observation.get("inclusionBlock")
     if not isinstance(inclusion, dict):
         return "error", "malformed inclusion block for Demos execution result", None
+    # A result authenticates only the network, block and transaction it
+    # names. One about another is no result for this reference, and one
+    # about another block is about a fork or a block that is not final.
     if (proof["networkId"] != observation["networkId"] or proof["genesisHash"] != observation["genesisHash"]
             or proof["blockId"] != inclusion.get("id")
             or canonical_bytes(proof["transactionRef"]) != canonical_bytes(reference)):
-        return "fail", "authenticated Demos execution result binds another block, network or transaction", None
+        return "indeterminate", "authenticated Demos execution result is for another block, network or transaction", None
     return "pass", "independent execution result authenticated", proof
 
 

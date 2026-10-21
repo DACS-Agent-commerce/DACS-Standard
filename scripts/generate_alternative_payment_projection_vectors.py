@@ -665,6 +665,14 @@ def build_cases() -> list[dict]:
              "a binding for the rail's network without an applied-payment authority fails the preflight",
              lambda v: v["runtime"]["payDemBinding"][0].pop("appliedPaymentAuthority"),
              reason="selected-availability")
+    add_case(cases, "selected-dem-binding-without-bft-final-trust-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "without bft-final trust for the rail's network no pay-dem verdict can become final",
+             lambda v: v["runtime"]["payDemBinding"][0].pop("bftFinalTrust"),
+             reason="selected-availability")
+    add_case(cases, "selected-dem-binding-without-execution-result-policy-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "without an FV-5 execution-result policy no pay-dem failure can be proven",
+             lambda v: v["runtime"]["payDemBinding"][0].pop("executionResultPolicy"),
+             reason="selected-availability")
     add_case(cases, "nonselected-disabled-does-not-select-or-fallback", "pass", "APR-2/APR-3",
              "a valid but disabled nonselected definition does not replace DEM",
              lambda v: v["registry"]["resolutions"][1]["definition"].update({

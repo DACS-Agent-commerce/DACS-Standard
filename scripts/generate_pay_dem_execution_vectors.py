@@ -315,17 +315,28 @@ def binding_entry(network: dict[str, str] = NETWORK, **members: Any) -> dict[str
     """One network's entry in the payer's Demos binding configuration. Each
     member names the network and genesis it was configured or attested for:
     nodes pinned under the native-send record profile, an applied-payment
-    authority, and the sealed genesis's `forks.gasFeeSeparation` activation
-    height. `_OMIT` drops a member: the binding holds none."""
+    authority, the sealed genesis's `forks.gasFeeSeparation` activation
+    height, the bft-final trust (validator sets by content hash and
+    observation-authority keys) the handler verifies inclusion under, and the
+    FV-5 execution-result policy it authenticates a failure under. `_OMIT`
+    drops a member: the binding holds none."""
     return _apply(
         {
             **network,
             "pinnedNodes": dict(network),
             "appliedPaymentAuthority": dict(network),
             "gasFeeSeparation": dict(network, activationHeight=None),
+            "bftFinalTrust": dict(network, **copy.deepcopy({
+                key: FINALITY_TRUST[key] for key in ("validatorSets", "observationAuthorityKeys")})),
+            "executionResultPolicy": dict(network, **copy.deepcopy(FV5_POLICY)),
         },
         members,
     )
+
+
+# The rail network entry's bft-final trust and FV-5 policy, for variants.
+BINDING_TRUST = binding_entry()["bftFinalTrust"]
+BINDING_POLICY = binding_entry()["executionResultPolicy"]
 
 
 def demos_binding(pinned_node: Any = True, applied_authority: Any = True,
@@ -626,6 +637,18 @@ def bft_final_variants() -> list[tuple[str, list[str], Any, str]]:
          inclusion_proof(branch="fork"),
          "A final block of another branch at the same height includes the transaction, but the signed result names the observed block."),
     ]
+
+
+# The bft_final_variants the FV verifier itself scores `fail`: a forged
+# certificate, a transaction proven absent and a block off the
+# authenticated head. A consumer verdict (DEM-7, delivery) takes that
+# verdict, as the settlement-finality corpus scores the same input; the
+# other variants show nothing, so they refute nothing (indeterminate). The
+# payer's DEM-3 and DEM-4 results stay unresolved for all of them.
+FV_INCLUSION_FAILS = frozenset({
+    "bft-final-certificate-forged", "bft-final-transaction-absent", "bft-final-block-off-authenticated-head",
+})
+CONSUMER_FV_FAIL_GUARDS = ["consumer-requires-confirmed-record", "consumer-takes-fv-inclusion-verdict"]
 
 
 def handler_want(expected: str) -> dict[str, Any]:
@@ -935,6 +958,7 @@ def gate(
         _apply({
             "phase": phase() if phase_context is None else phase_context,
             "railNetwork": NETWORK,
+            "finalityProfile": FINALITY_PROFILE,
             "demosBinding": (demos_binding(pinned_node, applied_authority, fee_separation_unscheduled)
                              if binding is None else binding),
             "signedTransaction": transaction,
@@ -971,6 +995,7 @@ def pre_sign(
         _apply({
             "phase": phase(),
             "railNetwork": NETWORK,
+            "finalityProfile": FINALITY_PROFILE,
             "demosBinding": (demos_binding(pinned_node, applied_authority, fee_separation_unscheduled)
                              if binding is None else binding),
         }, {}),
@@ -1004,6 +1029,7 @@ def preflight(name: str, expected: str, guards: list[str], note: str, *, availab
         _apply({
             "availability": availability,
             "railNetwork": NETWORK,
+            "finalityProfile": FINALITY_PROFILE,
             "demosBinding": (demos_binding(pinned_node, applied_authority, fee_separation_unscheduled)
                              if binding is None else binding),
         }, {}),
@@ -1071,7 +1097,9 @@ def admit(
     )
 
 
-ALL_GATES_PASS = {"fv": "pass", "sb1": "pass", "pb": "pass"}
+# SB-1 and PB compose with DEM-7 as given; the FV gate is never a caller
+# verdict: the oracle verifies the FV-5 result and bft-final inclusion itself.
+ALL_GATES_PASS = {"sb1": "pass", "pb": "pass"}
 
 
 def _admission(admission: dict[str, Any]) -> dict[str, Any]:
@@ -1854,7 +1882,8 @@ def build_vectors() -> list[dict[str, Any]]:
         admit(
             "consumer-node2-confirmed-refused", "indeterminate", "DEM-7", ["success-requires-applied-transfer", "consumer-requires-confirmed-record"],
             "The live confirmed record cannot replace independently authenticated applied payment authority.",
-            read=found(copy.deepcopy(NODE2_CONFIRMED), applied=False),
+            read=found(copy.deepcopy(NODE2_CONFIRMED), applied=False,
+                       inclusion=inclusion_proof(NODE2_CONFIRMED["hash"], NODE2_CONFIRMED["blockNumber"])),
             signed_evidence={
                 "outcome": "success",
                 "txRef": {"kind": "demos", "txHash": NODE2_CONFIRMED["hash"], "blockNumber": NODE2_CONFIRMED["blockNumber"]},
@@ -1959,7 +1988,9 @@ def build_vectors() -> list[dict[str, Any]]:
         # the block that authority names, as every final verdict does.
         *(
             admit(
-                "consumer-four-edits-uncommitted-payment-" + suffix, "indeterminate", "DEM-7/FV-5",
+                "consumer-four-edits-uncommitted-payment-" + suffix,
+                "fail" if suffix in FV_INCLUSION_FAILS else "indeterminate", "DEM-7/FV-5",
+                CONSUMER_FV_FAIL_GUARDS if suffix in FV_INCLUSION_FAILS else
                 ["consumer-contradiction-requires-bft-final-inclusion", "consumer-requires-confirmed-record",
                  "success-requires-applied-transfer",
                  *(guard for guard in guards if guard != "failure-requires-bft-final-inclusion")],
@@ -2016,7 +2047,8 @@ def build_vectors() -> list[dict[str, Any]]:
         # settlement-finality reference verifies the path first.
         *(
             admit(
-                "consumer-failed-" + suffix, "indeterminate", "DEM-7/FV-5",
+                "consumer-failed-" + suffix, "fail" if suffix in FV_INCLUSION_FAILS else "indeterminate", "DEM-7/FV-5",
+                CONSUMER_FV_FAIL_GUARDS if suffix in FV_INCLUSION_FAILS else
                 ["consumer-failed-requires-authentication", "consumer-refutation-requires-bft-final-inclusion",
                  "consumer-requires-confirmed-record",
                  *(guard for guard in guards if guard != "failure-requires-bft-final-inclusion")],
@@ -2081,11 +2113,14 @@ def build_vectors() -> list[dict[str, Any]]:
         # The FV gate's bft-final half is verified, never taken from a verdict.
         *(
             deliver(
-                "delivery-" + suffix, "indeterminate", "DEM-7/FV-5",
+                "delivery-" + suffix, "fail" if suffix in FV_INCLUSION_FAILS else "indeterminate", "DEM-7/FV-5",
+                ["bft-final-inclusion-verified", *CONSUMER_FV_FAIL_GUARDS, "delivery-requires-dem7"]
+                if suffix in FV_INCLUSION_FAILS else
                 ["consumer-admits-confirmed", "delivery-requires-bft-final-inclusion",
                  *(guard for guard in guards if guard != "failure-requires-bft-final-inclusion")],
                 note.replace("A verifying signed result", "A bound confirmed record with its verifying signed result"),
                 read=found(record("confirmed"), authenticated=True, inclusion=inclusion),
+                dem7_passed=suffix not in FV_INCLUSION_FAILS,
             )
             for suffix, guards, inclusion, note in bft_final_variants()
         ),
@@ -2136,11 +2171,6 @@ def build_vectors() -> list[dict[str, Any]]:
             "delivery-dem7-pending", "indeterminate", "DEM-7", ["consumer-requires-confirmed-record", "delivery-requires-dem7"],
             "FV, SB and PB passing do not replace an executed record.",
             read=found(record("pending"), authenticated=True), dem7_passed=False,
-        ),
-        deliver(
-            "delivery-fv-indeterminate", "indeterminate", "DEM-7/FV-5", ["consumer-admits-confirmed", "delivery-requires-fv"],
-            "Without verified BFT finality the confirmed record authorizes nothing.",
-            gates={"fv": "indeterminate"},
         ),
         deliver(
             "delivery-sb1-fails", "fail", "DEM-7/SB-1", ["consumer-admits-confirmed", "delivery-requires-sb1"],
@@ -2472,6 +2502,37 @@ def build_vectors() -> list[dict[str, Any]]:
                  ["binding-refusal-is-rail-unavailable", "sign-requires-gas-fee-separation-unscheduled"],
                  "RPC does not report gasFeeSeparation; a binding that attests nothing from genesis cannot sign.",
                  fee_separation_unscheduled=_OMIT),
+        # DEM-3 success and a DEM-4 proof each need the bft-final inclusion
+        # verified under the handler's own trust, and DEM-4 an FV-5 policy:
+        # a binding without either signs a transfer that debits the payer and
+        # can only end unresolved, failed-substrate with no replacement.
+        pre_sign("sign-without-bft-final-trust", "fail",
+                 ["binding-refusal-is-rail-unavailable", "sign-requires-bft-final-trust"],
+                 "Without bft-final trust for the rail's network no inclusion verifies: DEM-3 success and a DEM-4 "
+                 "proof are unreachable, so nothing is signed.",
+                 binding=[binding_entry(bftFinalTrust=_OMIT)]),
+        pre_sign("sign-with-bft-final-trust-without-rail-validator-set", "fail",
+                 ["binding-refusal-is-rail-unavailable", "sign-requires-bft-final-trust"],
+                 "Trust that does not hold the validator set the rail's signed profile pins can never verify its "
+                 "certificate.",
+                 binding=[binding_entry(bftFinalTrust=dict(BINDING_TRUST, validatorSets={}))]),
+        pre_sign("sign-with-bft-final-trust-below-observation-threshold", "fail",
+                 ["binding-refusal-is-rail-unavailable", "sign-requires-bft-final-trust"],
+                 "One of the profile's observation authorities cannot meet its threshold of two: no head authenticates.",
+                 binding=[binding_entry(bftFinalTrust=dict(BINDING_TRUST, observationAuthorityKeys={
+                     "rpc-a": BINDING_TRUST["observationAuthorityKeys"]["rpc-a"]}))]),
+        pre_sign("sign-without-execution-result-policy", "fail",
+                 ["binding-refusal-is-rail-unavailable", "sign-requires-execution-result-policy"],
+                 "Without an FV-5 execution-result policy no failure is ever proven (DEM-4), so nothing is signed.",
+                 binding=[binding_entry(executionResultPolicy=_OMIT)]),
+        pre_sign("sign-with-malformed-execution-result-policy", "fail",
+                 ["binding-refusal-is-rail-unavailable", "sign-requires-execution-result-policy"],
+                 "A policy whose threshold exceeds its keys is malformed FV-5 configuration and authenticates nothing.",
+                 binding=[binding_entry(executionResultPolicy=dict(BINDING_POLICY, threshold=4))]),
+        pre_sign("sign-with-unknown-execution-result-policy-kind", "fail",
+                 ["binding-refusal-is-rail-unavailable", "sign-requires-execution-result-policy"],
+                 "A policy kind the FV verifier does not apply authenticates nothing.",
+                 binding=[binding_entry(executionResultPolicy=dict(BINDING_POLICY, kind="unregistered-results"))]),
         pre_sign("sign-without-binding", "fail", ["binding-refusal-is-rail-unavailable"],
                  "At settle, after the preflight passed, a missing binding is a rail that is not operational: "
                  "substrate (RAV-R4), never permanent, so the payer is not blamed after the payee delivered.",
@@ -2479,7 +2540,16 @@ def build_vectors() -> list[dict[str, Any]]:
         # RAV-R3 for pay-dem: the binding is checked before the rail is
         # selected, whatever availability the RailDefinition shows.
         preflight("preflight-live-rail-with-binding", "pass", ["preflight-selects-configured-rail"],
-                  "A live pay-dem rail whose payer binding holds all three DEM-1 members is selectable."),
+                  "A live pay-dem rail whose payer binding holds every DEM-1 member is selectable."),
+        preflight("preflight-live-rail-without-bft-final-trust", "fail",
+                  ["pay-dem-preflight-whatever-availability", "preflight-requires-binding"],
+                  "Without bft-final trust for the rail's network no pay-dem verdict can become final: the rail is "
+                  "not selected.",
+                  binding=[binding_entry(bftFinalTrust=_OMIT)]),
+        preflight("preflight-live-rail-without-execution-result-policy", "fail",
+                  ["pay-dem-preflight-whatever-availability", "preflight-requires-binding"],
+                  "Without an FV-5 execution-result policy the rail is not selected.",
+                  binding=[binding_entry(executionResultPolicy=_OMIT)]),
         preflight("preflight-live-rail-without-applied-payment-authority", "fail",
                   ["pay-dem-preflight-whatever-availability", "preflight-requires-binding"],
                   "A live pay-dem RailDefinition does not show the binding: without an applied-payment authority the "
@@ -2518,8 +2588,19 @@ def build_vectors() -> list[dict[str, Any]]:
         ("fork-attestation-of-another-genesis", "An unscheduled gasFeeSeparation attested from another genesis says "
          "nothing about the rail's; if its genesis schedules the fork the payer is debited and nothing settles.",
          ["fork-attestation-binds-rail-genesis"], {"fee_separation_unscheduled": dict(OTHER_GENESIS, activationHeight=None)}),
+        ("bft-final-trust-for-another-network", "Validator sets and observation authorities trusted for another "
+         "network say nothing about the rail's finality.",
+         ["bft-final-trust-binds-rail-network"],
+         {"binding": [binding_entry(bftFinalTrust=dict(BINDING_TRUST, **OTHER_NETWORK))]}),
+        ("execution-policy-for-another-network", "Result authorities trusted for another network are not trusted "
+         "for the rail's.",
+         ["execution-policy-binds-rail-network"],
+         {"binding": [binding_entry(executionResultPolicy=dict(BINDING_POLICY, **OTHER_NETWORK))]}),
     )
     member_guard = {
+        "bft-final-trust-binds-rail-network": ("sign-requires-bft-final-trust", "broadcast-requires-bft-final-trust"),
+        "execution-policy-binds-rail-network": ("sign-requires-execution-result-policy",
+                                                "broadcast-requires-execution-result-policy"),
         "pinned-nodes-bind-rail-network": ("sign-requires-pinned-node", "broadcast-requires-pinned-node"),
         "applied-authority-binds-rail-network": ("sign-requires-applied-payment-authority",
                                                  "broadcast-requires-applied-payment-authority"),
@@ -2705,6 +2786,13 @@ def build_vectors() -> list[dict[str, Any]]:
         gate("broadcast-without-pinned-node", "fail", "DEM-1", ["broadcast-requires-pinned-node"],
              "Without a pinned node no record binds, so nothing is signed or sent.",
              pinned_node=False),
+        gate("broadcast-without-bft-final-trust", "fail", "DEM-1", ["broadcast-requires-bft-final-trust"],
+             "Without bft-final trust no inclusion verifies, so nothing is sent.",
+             binding=[binding_entry(bftFinalTrust=_OMIT)]),
+        gate("confirm-without-execution-result-policy", "fail", "DEM-1",
+             ["broadcast-requires-execution-result-policy", "retention-before-first-egress"],
+             "The binding precondition holds at the confirm request: without an FV-5 policy nothing leaves.",
+             binding=[binding_entry(executionResultPolicy=_OMIT)], request="confirm-retained"),
         gate("broadcast-with-gas-fee-separation-scheduled", "fail", "DEM-1",
              ["broadcast-requires-gas-fee-separation-unscheduled"],
              "On a network whose genesis schedules gasFeeSeparation the transfer would execute but never settle.",
@@ -2846,7 +2934,9 @@ def document() -> dict[str, Any]:
             "verification of the transaction's inclusion (recordRead.inclusionProof, "
             "retainedFailureProof.inclusionProof) in the block that result names, which they verify "
             "with that reference's verify_transaction_inclusion against finalityProfile and finalityTrust. "
-            "appliedTransferAuthenticated, nodeBuild.source and otherGates are abstract inputs that "
+            "Consumer verdicts take FV's own verdict on the presented inclusion when it is fail or error, "
+            "as the settlement-finality corpus scores the same input. "
+            "appliedTransferAuthenticated, nodeBuild.source and otherGates (sb1, pb) are abstract inputs that "
             "state an authentication result: this corpus pins the decisions over them, not the "
             "authentication itself."
         ),
@@ -2860,23 +2950,23 @@ def document() -> dict[str, Any]:
         "fixtureVocabulary": {
             "statusIndex": "getTransactionStatus state for the retained hash (included, pending or unknown); never decisive",
             "railNetwork": "the rail's Demos network (networkId, genesisHash): the pinned RailDefinition's consumerFinalityProfile.settlement network, never one a Demos binding supplies (a Demos NetworkSpec is the bare kind demos). Applied-payment authority must name the same network; the pre-sign, broadcast and preflight gates find the payer's binding entry by it; a missing or malformed one binds nothing",
-            "demosBinding": "the payer's Demos binding configuration: one entry per network (networkId, genesisHash) holding pinnedNodes and appliedPaymentAuthority, each naming the network and genesis it was configured for, and gasFeeSeparation, the sealed genesis's forks.gasFeeSeparation attestation (networkId, genesisHash, activationHeight). The gates use the entry whose network is railNetwork, wherever it stands; a member is held only when it names exactly railNetwork, and the attestation only with activationHeight null. A missing entry or member, a member for another network or genesis, a scheduled height and any other form are refused",
+            "demosBinding": "the payer's Demos binding configuration: one entry per network (networkId, genesisHash) holding pinnedNodes and appliedPaymentAuthority, each naming the network and genesis it was configured for; gasFeeSeparation, the sealed genesis's forks.gasFeeSeparation attestation (networkId, genesisHash, activationHeight); bftFinalTrust (networkId, genesisHash, validatorSets, observationAuthorityKeys), the bft-final trust DEM-3, DEM-4 and DEM-7 verify inclusion under; and executionResultPolicy (networkId, genesisHash, kind, threshold, authorityKeys), the FV-5 policy DEM-4 authenticates a failure under. The gates use the entry whose network is railNetwork, wherever it stands; a member is held only when it names exactly railNetwork, the attestation only with activationHeight null, the trust only when it holds finalityProfile's validatorSetRef.contentHash and at least its observation threshold of its authorityRefs, and the policy only when the settlement-finality reference applies it. A missing entry or member, a member for another network or genesis, a scheduled height, trust that cannot verify the rail's profile, an unknown or malformed policy and any other form are refused. The reference handler verifies its re-reads under that entry's bftFinalTrust (with its own clock) and executionResultPolicy, never separate configuration",
             "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity. It is a plain read: no DEM-7 fail rests on it, and a contradiction that is only its block ID refutes nothing",
             "recordRead": "getTxByHash read: found (record and nodeBuild), not-found or unavailable; appliedTransfer (networkId, genesisHash, blockId, txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs, committedBalances: payerBeforeOs, payerAfterOs, payeeBeforeOs, payeeAfterOs, feeOs) and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived from the record's status, amount or edits; payerDebitOs must be payerBeforeOs - payerAfterOs - feeOs and payeeCreditOs must be payeeAfterOs - payeeBeforeOs, or the authority establishes nothing; the fixtures take the committed balances from the scenario's own pre-state and outcome (applied, rolled-back or no-op)",
             "nodeBuild": "the build attestation the Demos binding configuration holds for the node that served the read (source binding-attestation, commit, tree); only binding-attestation of commit 61b8e75aa8db5e408c49e1c3a89db4d673f45578 with a clean tree is pinned, and a self-reported build, another commit or a dirty tree is not",
             "gcr_edits": "a confirmed record establishes success only when its gcr_edits, each txhash blanked, are the four edits of its send; the pinned node applies a missing or empty list as a successful no-op",
-            "otherGates": "verdicts of the FV, SB-1 and PB checks that compose with DEM-7 before delivery",
+            "otherGates": "verdicts of the SB-1 and PB checks that compose with DEM-7 before delivery; the FV gate is never a caller verdict: the oracle verifies the FV-5 result and the bft-final inclusion from the evidence itself",
             "request": "the call about to carry the signed transaction out of the handler: confirm-retained (demosdk confirm/confirmTx, which carries signedTransaction), broadcast-retained or broadcast-replacement (demosdk broadcast, which carries validityResponse); these are the profile's only submission route, and any other value is refused, including sr3-proxy-submission and wallet-direct-submission",
             "signPermitted": "pre-sign-gate result, DEM-1 before demosdk pay()/sign(): the input holds no signed transaction; false with ok false and errorClass substrate (RAV-R4: the preflight passed, so the rail is not operational for this payer) is the handler's PC-4 result, and nothing is signed or sent",
             "broadcastState": "never-broadcast (nothing has left the handler), confirm-returned (this uninterrupted submission's confirm just returned), confirm-sent-interrupted (a confirm was sent, then a timeout, error or restart) or maybe-broadcast; any other value is refused",
             "confirmResponse": "the demosdk 4.0.16 confirm() result (RPCResponseWithValidityData) that the current submission's confirm returned to the handler, even late, or null; null for a confirm request",
             "validityResponse": "what the demosdk broadcast(validationData) call carries, or null for a confirm request; the pinned node executes its response.data.transaction, so it must be exactly confirmResponse, with result 200, valid true and an embedded transaction whose content, hash and signature serialize as signedTransaction",
             "payeeAddress": "phase member: payee.payeeAddress (and payerPayingKey the key payer.payingKey names), a DEMOS-MAPPING §A.2 pay-dem party address: a Demos key with optional 0x or a did:demos:agent: DID over 64 lower-case hex digits; DEM-1, DEM-7 and FV-5 compare the 64 digits it projects to, and any other value is error",
-            "availability": "rail-preflight: the pinned pay-dem RailDefinition's availability for a new production session; disabled, failed and mocked are not selectable, any other unknown value is error, and every other value still needs the payer binding's three DEM-1 members for railNetwork (RAV-R3, whatever the availability)",
+            "availability": "rail-preflight: the pinned pay-dem RailDefinition's availability for a new production session; disabled, failed and mocked are not selectable, any other unknown value is error, and every other value still needs every DEM-1 member of the payer binding for railNetwork, checked against finalityProfile (RAV-R3, whatever the availability)",
             "railSelectable": "rail-preflight want member: whether the orchestrator may select the rail, before Agreement signature and the PIPE-6 commitment",
             "fv5Policy": "the FV-5 independent execution-result policy the verifier trusts, from its own configuration: the settlement-finality corpus's fixture-independent-results-v1 kind, authorityKeys (base64url Ed25519) and threshold; a missing or malformed policy authenticates nothing",
             "executionResult": "recordRead member: FV-5's signed execution result for the record (kind, networkId, genesisHash, blockId, transactionRef, record, attestations, and the optional appliedTransfer: txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs, committedBalances), as the settlement-finality corpus signs it over the FV domain. It authenticates the record only when at least the policy's threshold of distinct policy keys verify it, it names railNetwork and the inclusion observation's blockId, its transactionRef is the record's own (kind demos, hash, blockNumber), its record serializes exactly as the record read, and a carried appliedTransfer is the change of its committedBalances, names the record's transaction, block and parties, and moves the record's OS amount when confirmed and nothing when failed. A handler's DEM-4 failure, a consumer's DEM-7 failed refutation or contradiction, and delivery need it; a plain RPC read has none",
-            "inclusionProof": "recordRead and retainedFailureProof member: FV's bft-final inclusion observation of the record's transaction (networkId, genesisHash, transactionRef, transactionInclusionProof, inclusionBlock, authenticatedHead, ancestryProof, authorityEvidence, finalityCertificate) in the settlement-finality corpus's fixture codecs, whose raw transaction body is the native-send form (networkId, genesisHash, transactionRef, txHash, optional eventsRoot). every final verdict needs it to verify under finalityProfile and finalityTrust: DEM-4's other half (for the failed record's own reference, its inclusionBlock.id the blockId the verifying signed result names), DEM-3 success (for the retained txHash at the observed block, its inclusionBlock.id the observation's blockId), and DEM-7's fail and delivery (for the signed txRef, in the block the signed result names, or the observed block without one; for an applied-payment authority's contradiction, in the block that authority names, which the contradiction is then checked against instead of the observation). Missing, unfinalized, under a forged certificate, absent from the block, off the authenticated head or of another block, it proves nothing and the verdict is indeterminate",
+            "inclusionProof": "recordRead and retainedFailureProof member: FV's bft-final inclusion observation of the record's transaction (networkId, genesisHash, transactionRef, transactionInclusionProof, inclusionBlock, authenticatedHead, ancestryProof, authorityEvidence, finalityCertificate) in the settlement-finality corpus's fixture codecs, whose raw transaction body is the native-send form (networkId, genesisHash, transactionRef, txHash, optional eventsRoot). every final verdict needs it to verify under finalityProfile and finalityTrust: DEM-4's other half (for the failed record's own reference, its inclusionBlock.id the blockId the verifying signed result names), DEM-3 success (for the retained txHash at the observed block, its inclusionBlock.id the observation's blockId), and DEM-7's fail and delivery (for the signed txRef, in the block the signed result names, or the observed block without one; for an applied-payment authority's contradiction, in the block that authority names, which the contradiction is then checked against instead of the observation). Missing, unfinalized or of another block, it proves nothing and the verdict is indeterminate. Under a forged certificate, absent from the block or off the authenticated head, FV itself scores it fail: the payer's DEM-3 and DEM-4 results stay indeterminate, and a consumer's DEM-7 and delivery verdict is that fail, as the settlement-finality corpus scores the same input",
             "finalityProfile": "the rail's signed consumerFinalityProfile.settlement ChainFinalityProfile (kind bft-final, networkId and genesisHash of railNetwork, observation, validatorSetRef, quorumNumerator, quorumDenominator); one of another kind or network verifies nothing",
             "finalityTrust": "the verifier's own trust for that profile: validatorSets (by content hash), observationAuthorityKeys (base64url Ed25519) and verificationTimeMs, its local clock",
             "authenticated": "recordRead member of an earlier draft: a read that says it is FV-5-authenticated. It decides nothing, whoever sets it; the *-fv5-flag-only vectors pin that",

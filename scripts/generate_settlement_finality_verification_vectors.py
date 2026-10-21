@@ -1805,10 +1805,12 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     for name, mutate, expected in (
         ("record-not-object", lambda o: o["executionResult"].__setitem__("record", []), "indeterminate"),
         ("record-content-not-object", lambda o: o["executionResult"]["record"].__setitem__("content", []), "indeterminate"),
-        ("result-other-block", lambda o: o["executionResult"].__setitem__("blockId", "00" * 32), "fail"),
-        ("result-other-transaction", lambda o: o["executionResult"]["transactionRef"].__setitem__("txHash", "00" * 32), "fail"),
-        ("result-other-network", lambda o: o["executionResult"].__setitem__("networkId", "demos:other"), "fail"),
-        ("result-other-genesis", lambda o: o["executionResult"].__setitem__("genesisHash", "00" * 32), "fail"),
+        # A result signed by the policy for another block, network or
+        # transaction is no result for this reference: it refutes nothing.
+        ("result-other-block", lambda o: o["executionResult"].__setitem__("blockId", "00" * 32), "indeterminate"),
+        ("result-other-transaction", lambda o: o["executionResult"]["transactionRef"].__setitem__("txHash", "00" * 32), "indeterminate"),
+        ("result-other-network", lambda o: o["executionResult"].__setitem__("networkId", "demos:other"), "indeterminate"),
+        ("result-other-genesis", lambda o: o["executionResult"].__setitem__("genesisHash", "00" * 32), "indeterminate"),
     ):
         value = factory.model_input("bft-final")
         observation = value["context"]["observation"]
@@ -1816,17 +1818,28 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         factory.sign_execution_result(observation)
         vectors.append(case("fv-bft-final-" + name, expected, "independent execution-result binding", value))
     for name, mutate, expected in (
+        # Attestations are counted, never a veto: one that does not verify,
+        # names no policy key or repeats a counted key adds nothing, so a
+        # result below the threshold is unauthenticated, not refuted.
         ("result-unsigned", lambda o: o["executionResult"].__setitem__("attestations", []), "indeterminate"),
-        ("result-status-tampered", lambda o: o["executionResult"]["record"].__setitem__("status", "failed"), "fail"),
+        ("result-status-tampered", lambda o: o["executionResult"]["record"].__setitem__("status", "failed"), "indeterminate"),
         ("result-quorum-missing", lambda o: o["executionResult"].__setitem__("attestations", o["executionResult"]["attestations"][:1]), "indeterminate"),
-        ("result-duplicate-signer", lambda o: o["executionResult"]["attestations"].__setitem__(1, copy.deepcopy(o["executionResult"]["attestations"][0])), "fail"),
+        ("result-duplicate-signer", lambda o: o["executionResult"]["attestations"].__setitem__(1, copy.deepcopy(o["executionResult"]["attestations"][0])), "indeterminate"),
+        # Neither a relayer's appended attestation nor one faulty authority
+        # turns a threshold-authenticated result into anything else.
+        ("result-extra-unknown-attestation",
+         lambda o: o["executionResult"]["attestations"].append(
+             dict(o["executionResult"]["attestations"][0], authorityRef="execution-unknown")), "pass"),
+        ("result-spare-key-bad-signature",
+         lambda o: o["executionResult"]["attestations"].append(
+             dict(o["executionResult"]["attestations"][0], authorityRef="execution-c")), "pass"),
     ):
         value = factory.model_input("bft-final")
         mutate(value["context"]["observation"])
         vectors.append(case("fv-bft-final-" + name, expected, "only independently authenticated results count", value))
     forged_success = demos_record(status="failed")
     forged_success["context"]["observation"]["executionResult"]["record"]["status"] = "confirmed"
-    vectors.append(case("fv-bft-final-result-forged-confirmed", "fail", "a valid BFT block cannot authenticate an altered execution outcome", forged_success))
+    vectors.append(case("fv-bft-final-result-forged-confirmed", "indeterminate", "a valid BFT block cannot authenticate an altered execution outcome", forged_success))
     vectors.append(case("fv-bft-final-result-policy-unavailable", "indeterminate", "BFT does not authenticate execution status",
                         factory.model_input("bft-final"), trusted_overrides={"demosExecutionPolicy": None}))
     # Each policy override is a whole replacement, so its decision does not

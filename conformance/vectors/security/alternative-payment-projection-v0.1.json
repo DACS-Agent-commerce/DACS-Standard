@@ -309,6 +309,47 @@
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
               "activationHeight": null
+            },
+            "bftFinalTrust": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "validatorSets": {
+                "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+                  "validators": [
+                    {
+                      "validatorId": "validator-a",
+                      "weight": 40,
+                      "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                    },
+                    {
+                      "validatorId": "validator-b",
+                      "weight": 35,
+                      "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                    },
+                    {
+                      "validatorId": "validator-c",
+                      "weight": 25,
+                      "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                    }
+                  ]
+                }
+              },
+              "observationAuthorityKeys": {
+                "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+                "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+                "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+              }
+            },
+            "executionResultPolicy": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "kind": "fixture-independent-results-v1",
+              "threshold": 2,
+              "authorityKeys": {
+                "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+                "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+                "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+              }
             }
           }
         ],
@@ -693,6 +734,47 @@
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
               "activationHeight": null
+            },
+            "bftFinalTrust": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "validatorSets": {
+                "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+                  "validators": [
+                    {
+                      "validatorId": "validator-a",
+                      "weight": 40,
+                      "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                    },
+                    {
+                      "validatorId": "validator-b",
+                      "weight": 35,
+                      "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                    },
+                    {
+                      "validatorId": "validator-c",
+                      "weight": 25,
+                      "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                    }
+                  ]
+                }
+              },
+              "observationAuthorityKeys": {
+                "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+                "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+                "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+              }
+            },
+            "executionResultPolicy": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "kind": "fixture-independent-results-v1",
+              "threshold": 2,
+              "authorityKeys": {
+                "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+                "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+                "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+              }
             }
           }
         ],
@@ -1077,6 +1159,47 @@
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
               "activationHeight": null
+            },
+            "bftFinalTrust": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "validatorSets": {
+                "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+                  "validators": [
+                    {
+                      "validatorId": "validator-a",
+                      "weight": 40,
+                      "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                    },
+                    {
+                      "validatorId": "validator-b",
+                      "weight": 35,
+                      "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                    },
+                    {
+                      "validatorId": "validator-c",
+                      "weight": 25,
+                      "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                    }
+                  ]
+                }
+              },
+              "observationAuthorityKeys": {
+                "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+                "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+                "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+              }
+            },
+            "executionResultPolicy": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "kind": "fixture-independent-results-v1",
+              "threshold": 2,
+              "authorityKeys": {
+                "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+                "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+                "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+              }
             }
           }
         ],
@@ -1353,6 +1476,47 @@
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
               "activationHeight": null
+            },
+            "bftFinalTrust": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "validatorSets": {
+                "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+                  "validators": [
+                    {
+                      "validatorId": "validator-a",
+                      "weight": 40,
+                      "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                    },
+                    {
+                      "validatorId": "validator-b",
+                      "weight": 35,
+                      "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                    },
+                    {
+                      "validatorId": "validator-c",
+                      "weight": 25,
+                      "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                    }
+                  ]
+                }
+              },
+              "observationAuthorityKeys": {
+                "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+                "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+                "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+              }
+            },
+            "executionResultPolicy": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "kind": "fixture-independent-results-v1",
+              "threshold": 2,
+              "authorityKeys": {
+                "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+                "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+                "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+              }
             }
           }
         ],
@@ -1442,8 +1606,8 @@
       }
     }
   },
-  "count": 49,
-  "hash": "ba471cc47b719b7e147c781c5b92634932b06c80a2794b3f337412418279916d",
+  "count": 51,
+  "hash": "0a6ae9ba842ca9e2dee60cb0657da17e931e59200977462d4ea6936fb9ae48ad",
   "vectors": [
     {
       "name": "select-dem-projects-pay-dem",
@@ -3122,6 +3286,50 @@
             "runtime",
             "payDemBinding",
             0,
+            "bftFinalTrust",
+            "genesisHash"
+          ],
+          "value": "810343e2f007d36ec9d02b488c9571c5adca6fd0af994f5392e34aa9021d0836"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "bftFinalTrust",
+            "networkId"
+          ],
+          "value": "demos:testnet"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "executionResultPolicy",
+            "genesisHash"
+          ],
+          "value": "810343e2f007d36ec9d02b488c9571c5adca6fd0af994f5392e34aa9021d0836"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "executionResultPolicy",
+            "networkId"
+          ],
+          "value": "demos:testnet"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
             "gasFeeSeparation",
             "genesisHash"
           ],
@@ -3198,6 +3406,46 @@
             "payDemBinding",
             0,
             "appliedPaymentAuthority"
+          ]
+        }
+      ],
+      "expectedReason": "selected-availability"
+    },
+    {
+      "name": "selected-dem-binding-without-bft-final-trust-rejected",
+      "expected": "fail",
+      "rule": "APR-3/RAV-R3/DEM-1",
+      "operation": "execute",
+      "note": "without bft-final trust for the rail's network no pay-dem verdict can become final",
+      "base": "dem",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "bftFinalTrust"
+          ]
+        }
+      ],
+      "expectedReason": "selected-availability"
+    },
+    {
+      "name": "selected-dem-binding-without-execution-result-policy-rejected",
+      "expected": "fail",
+      "rule": "APR-3/RAV-R3/DEM-1",
+      "operation": "execute",
+      "note": "without an FV-5 execution-result policy no pay-dem failure can be proven",
+      "base": "dem",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "executionResultPolicy"
           ]
         }
       ],

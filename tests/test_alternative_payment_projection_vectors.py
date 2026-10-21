@@ -429,14 +429,19 @@ def pay_dem_preflight(definition, runtime):
     """DACS-4 RAV-R3 for a `pay-dem` rail, whatever its availability: the
     rail's network is its signed `consumerFinalityProfile.settlement`
     (`bft-final`), and the payer's Demos binding for that network must hold
-    DEM-1's three members. The pay-dem corpus's own preflight decides."""
+    every DEM-1 member, its bft-final trust covering that signed profile.
+    The pay-dem corpus's own preflight decides."""
     profile = definition.get("consumerFinalityProfile")
     settlement = profile.get("settlement") if isinstance(profile, dict) else None
-    if not (isinstance(settlement, dict) and settlement.get("kind") == "bft-final"):
+    # The ConsumerFinalityProfile's version and model are signed too: model
+    # MUST equal the settlement profile's kind.
+    if not (isinstance(settlement, dict) and settlement.get("kind") == "bft-final"
+            and profile.get("finalityProfileVersion") == "1" and profile.get("model") == settlement.get("kind")):
         return False
     verdict, _ = pay_dem.rail_preflight({
         "availability": definition.get("availability"),
         "railNetwork": {key: settlement.get(key) for key in ("networkId", "genesisHash")},
+        "finalityProfile": settlement,
         "demosBinding": runtime.get("payDemBinding"),
     }, frozenset())
     return verdict == "pass"
@@ -626,7 +631,9 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
         answer for one input."""
         refused = {"selected-dem-without-finality-profile-rejected", "selected-dem-without-payer-binding-rejected",
                    "selected-dem-binding-for-another-network-rejected",
-                   "selected-dem-binding-without-applied-authority-rejected"}
+                   "selected-dem-binding-without-applied-authority-rejected",
+                   "selected-dem-binding-without-bft-final-trust-rejected",
+                   "selected-dem-binding-without-execution-result-policy-rejected"}
         for name in refused:
             with self.subTest(name=name):
                 vector = self.by_name[name]
@@ -639,6 +646,13 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
                 definition = vector["registry"]["resolutions"][0]["definition"]
                 self.assertEqual("pay-dem", definition["phaseHandler"])
                 self.assertTrue(pay_dem_preflight(definition, vector["runtime"]))
+                # A profile of another version, or whose model is not its
+                # settlement kind, names no network the preflight trusts.
+                for change in ({"finalityProfileVersion": "2"}, {"finalityProfileVersion": 1},
+                               {"model": "block-depth"}):
+                    changed = copy.deepcopy(definition)
+                    changed["consumerFinalityProfile"].update(change)
+                    self.assertFalse(pay_dem_preflight(changed, vector["runtime"]), change)
                 # The same selection without the profile or the binding refuses.
                 for strip in ("profile", "binding"):
                     stripped = copy.deepcopy(vector)

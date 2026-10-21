@@ -13,6 +13,51 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — pay-dem: one FV-5 record decision across corpora; the payer key from the pinned bundle; ordered members as exact text
+
+- FV-5, DEM-4, DEM-7 and DEMOS-MAPPING §A.2: an applied transfer that a
+  signed execution result carries is part of that result, not a separate
+  authority. One that does not name the record's own transaction, block,
+  sender and recipient, or that does not move the record's OS amount for
+  `confirmed` and nothing for `failed`, authenticates nothing: neither
+  payment nor a proven failure. The settlement-finality reference
+  implements the check once and the pay-dem oracle calls it. Twelve
+  `fv-bft-final-*` applied-transfer, no-op and uncommitted-payment cases
+  give `indeterminate` instead of `fail`, and
+  `fv-bft-final-included-execution-failed-shows-payment` pins a signed
+  `failed` record whose own balances show the payment as `indeterminate`.
+- FV-5 and DEM-7: a consumer's signed result must name the presented
+  `txRef`. A self-consistent result for another transaction refutes
+  nothing: `consumer-wrong-hash-authenticated` is `indeterminate`.
+- DEM-7 and FV-5: the record's sender binds a Demos key claim of the
+  payer's party bundle that the Agreement pins (`payer.bundleHash`), the
+  source a consumer can authenticate; the handler's `payer.payingKey` is
+  one of them. The FV reference's trusted `demosPhasePayingKeys` is
+  replaced by `demosPayerKeyClaims` (keyed by payer), and the
+  `fv-bft-final-selected-paying-key-*` cases by `fv-bft-final-payer-key-claim-*`.
+- DEMOS-MAPPING §A.2: `gcr_edits` compare as `JSON.stringify` serializes
+  them, so a JSON number compares by value (`1` and `1.0`) and never
+  equals a boolean or string; the FV reference compared Python types.
+- DEM-1 and PC-4: a paying key or payee address that does not project is
+  refused before signing with `ok: false`, `errorClass: "permanent"`,
+  so no retention pins a phase that can never be paid (four
+  `sign-*-address` / `sign-paying-key-*` vectors).
+- DEM-7: every admission in the payee's index is validated (reference,
+  job, phase index, `legacy`) before any collision group forms; a
+  malformed entry is `error`, never a crash or a pass (six
+  `delivery-admission-*` vectors; the reference payee shares the check).
+- RAV-R3: the pay-dem preflight is the payer side's check before the
+  Agreement is signed; another orchestrator, an APR-6 retry and an APR-7
+  audit do not run it. The APR runner applies runtime preflights only
+  outside `retry` and `verify-bundle`; no APR verdict changes.
+- Corpus encoding: `pay-dem-execution-v0.1` carries `signedTransaction`,
+  `confirmResponse`, `validityResponse` and `record` as exact JSON text,
+  which its JCS `hash` covers; a runner parses each before evaluating. A
+  member-sorting round trip of the file changed 58 results before and
+  changes none now. A runner of this set MUST parse those members.
+- Corpora: pay-dem has 440 vectors (36 `pass`, 162 `fail`, 215
+  `indeterminate`, 27 `error`) and 132 guards. FV has 204 cases.
+
 ### Fixed — pay-dem: trust counts at the gate only when FV can verify under it; no default payee evidence; no unsigned attestation decides
 
 - DEM-1 and RAV-R3: the gates counted `bft-final` trust as present, not as
@@ -1740,7 +1785,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 383-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 440-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope
@@ -1753,7 +1798,7 @@ The format used per release:
   (draft hash `da86e204…`), has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
   set is identified by its `hash`, not by its name alone. In
-  `settlement-finality-verification` (201 cases), transaction inclusion and
+  `settlement-finality-verification` (204 cases), transaction inclusion and
   execution-result authentication are verified separately. The fixture uses
   independently pinned threshold result signatures over the full Demos record,
   network, block identity, transaction reference and committed payment debit

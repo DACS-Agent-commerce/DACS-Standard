@@ -13,6 +13,74 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — pay-dem: gate on every input a final verdict needs; one verdict per input across the pay-dem and FV corpora
+
+- DEM-1 and RAV-R3: the pre-sign gate, the broadcast gate and the RAV-R3
+  preflight checked three binding members: pinned nodes, an applied-payment
+  authority and the `gasFeeSeparation` attestation. DEM-3 success also needs
+  the `bft-final` inclusion verified under the handler's own validator set and
+  observation authorities, and a DEM-4 failure needs an FV-5
+  execution-result policy. A binding without either passed every gate. The
+  payer was debited, and every re-read stayed `substrate` until
+  `failed-substrate`, with no replacement.
+  - The binding entry for the rail's network now also holds `bftFinalTrust`
+    (validator sets and observation-authority keys) and
+    `executionResultPolicy` (an FV-5 policy). Each names the rail's network
+    and genesis.
+  - The trust must cover the rail's signed `bft-final` profile: its pinned
+    validator set, and at least its threshold of the observation authorities
+    it names. The FV verifier must be able to apply the policy.
+  - The gates take the rail's `finalityProfile`. The reference handler
+    verifies its re-reads under those same members, never under separate
+    configuration.
+  - New guards: `sign-requires-bft-final-trust`,
+    `sign-requires-execution-result-policy`,
+    `broadcast-requires-bft-final-trust`,
+    `broadcast-requires-execution-result-policy`,
+    `bft-final-trust-binds-rail-network` and
+    `execution-policy-binds-rail-network`.
+  - 18 new gate and preflight vectors. Two new APR refusals,
+    `selected-dem-binding-without-{bft-final-trust,execution-result-policy}-rejected`,
+    bring APR to 51 vectors.
+- FV-5: one attestation outside the signed payload, appended by a relayer or
+  made by one faulty authority, turned an authenticated result into `fail`.
+  - Attestations are now counted, never a veto. One that names no policy key,
+    repeats a counted key, uses another algorithm or does not verify adds
+    nothing. Below the threshold the result is `indeterminate`. A malformed
+    attestation object is `error`.
+  - A threshold-signed result for another network, genesis, block or
+    transaction is no result for this reference: `indeterminate`, as FV-5
+    already said of a result about a fork.
+  - Seven `fv-bft-final-result-*` cases change from `fail` to `indeterminate`:
+    `status-tampered`, `forged-confirmed`, `duplicate-signer`,
+    `other-network`, `other-genesis`, `other-block` and `other-transaction`.
+  - New cases `fv-bft-final-result-extra-unknown-attestation` and
+    `fv-bft-final-result-spare-key-bad-signature` pass. The FV corpus now has
+    196 cases.
+- DEM-7 and delivery: the two corpora gave different verdicts for the same
+  consumer input. The pay-dem oracle read FV's `bft-final` inclusion as a
+  boolean, so a forged certificate, a transaction proven absent or a block off
+  the authenticated head was `indeterminate`, where FV scores it `fail`. Four
+  delivery cases also declared a caller `otherGates.fv: "pass"` on evidence
+  FV does not pass.
+  - A consumer verdict now takes FV's own verdict on the presented inclusion
+    when it is `fail` or `error` (guard
+    `consumer-takes-fv-inclusion-verdict`). Nine `consumer-*-bft-final-*` and
+    `delivery-bft-final-*` cases change from `indeterminate` to `fail`. The
+    payer's DEM-3 and DEM-4 results stay `substrate`.
+  - `otherGates` carries only `sb1` and `pb`. The FV gate is verified from the
+    evidence. `delivery-fv-indeterminate` and guard `delivery-requires-fv` are
+    removed.
+  - `consumer-node2-confirmed-refused` now carries the node2 transaction's own
+    inclusion proof instead of one for another transaction.
+  - A test runs the settlement-finality reference over every pay-dem consumer
+    case and requires the same verdict class.
+- Pay-dem corpus: 418 vectors (36 `pass`, 151 `fail`, 214 `indeterminate`,
+  17 `error`) and 128 guards. A runner must:
+  - pass `finalityProfile` to the pre-sign, broadcast and preflight gates;
+  - require `bftFinalTrust` and `executionResultPolicy` in the binding entry;
+  - stop reading `otherGates.fv`.
+
 ### Fixed — pay-dem: a DEM-7 applied-authority contradiction needs its bft-final inclusion; a plain observation refutes nothing
 
 - DEM-7 and DEMOS-MAPPING §A.2: a consumer returned `fail` when an
@@ -326,8 +394,8 @@ The format used per release:
   vectors in both corpora cover each spelling the §A.2 profile projects alike:
   a `0x`-prefixed or bare `send` recipient argument (whose credit edit names it
   with a single `0x`), bare or prefixed party keys, a string or integer nonce,
-  and a string or number amount up to 2^53 − 1. The corpora contain 383 pay-dem
-  and 194 settlement-finality cases.
+  and a string or number amount up to 2^53 − 1. The corpora contain 418 pay-dem
+  and 196 settlement-finality cases.
 - The DEMOS-MAPPING §A.2 profile covers only a network whose sealed genesis
   leaves the `gasFeeSeparation` fork unscheduled (`activationHeight: null`).
   With that fork active the pinned node stores fee-distribution edits before
@@ -1635,7 +1703,7 @@ The format used per release:
   (draft hash `da86e204…`), has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
   set is identified by its `hash`, not by its name alone. In
-  `settlement-finality-verification` (194 cases), transaction inclusion and
+  `settlement-finality-verification` (196 cases), transaction inclusion and
   execution-result authentication are verified separately. The fixture uses
   independently pinned threshold result signatures over the full Demos record,
   network, block identity, transaction reference and committed payment debit

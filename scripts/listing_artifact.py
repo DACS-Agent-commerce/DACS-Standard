@@ -7,8 +7,10 @@ semantics. Unknown extension members are retained in the signed/hash input.
 
 from __future__ import annotations
 
+import ipaddress
 import math
 import re
+import unicodedata
 
 if __package__:
     from .jcs import canonicalize as jcs_canonicalize
@@ -69,8 +71,45 @@ COMPLETE_SEALED_NEGOTIATIONS = frozenset({
 _LISTING_ID = re.compile(r"[A-Za-z0-9._~-]{1,128}\Z")
 _HASH = re.compile(r"[0-9a-f]{64}\Z")
 _AMOUNT = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
+# RFC 3986 URI-reference components. Relative storage identifiers are allowed;
+# percent escapes are checked without decoding or normalizing the signed value.
+_URI_UNRESERVED = r"A-Za-z0-9._~\-"
+_URI_SUB_DELIMS = r"!$&'()*+,;="
+_URI_PCT = r"%[0-9A-Fa-f]{2}"
+_URI_PCHAR = rf"(?:[{_URI_UNRESERVED}{_URI_SUB_DELIMS}:@]|{_URI_PCT})"
+_URI_PATH = re.compile(rf"(?:{_URI_PCHAR}|/)*\Z")
+_URI_QUERY_FRAGMENT = re.compile(rf"(?:{_URI_PCHAR}|[/?])*\Z")
+_URI_REFERENCE = re.compile(
+    r"(?:(?P<scheme>[A-Za-z][A-Za-z0-9+.-]*):)?"
+    r"(?://(?P<authority>[^/?#]*))?"
+    r"(?P<path>[^?#]*)(?:\?(?P<query>[^#]*))?(?:#(?P<fragment>[^#]*))?\Z"
+)
+_URI_AUTHORITY = re.compile(
+    rf"(?:(?:[{_URI_UNRESERVED}{_URI_SUB_DELIMS}:]|{_URI_PCT})*@)?"
+    rf"(?:(?:[{_URI_UNRESERVED}{_URI_SUB_DELIMS}]|{_URI_PCT})*|"
+    r"\[(?P<literal>[^\[\]]+)\])(?::[0-9]*)?\Z"
+)
+_URI_IP_FUTURE = re.compile(rf"[vV][0-9A-Fa-f]+\.[{_URI_UNRESERVED}{_URI_SUB_DELIMS}:]+\Z")
 _SELECTION_RULES = frozenset({"lowest-price", "highest-price", "first-acceptable"})
 _CAPABILITIES = frozenset({"SR-1", "SR-2", "SR-3", "SR-4", "SR-5"})
+_SIGNATURE_ALGORITHMS = frozenset({"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
+_ACCESS_MODELS = frozenset({"public", "buyer-only", "encrypt-to-buyer"})
+# Closed ListingTerms unions (DACS-1 §6.3.4); conflictOfLawsRule also admits rule-ref:<uri>.
+_TERMS_ENUMS = {
+    "conflictOfLawsRule": frozenset({"buyer-jurisdiction", "seller-jurisdiction"}),
+    "acceptanceModel": frozenset({"auto-accept"}),
+    "cancellationPolicy": frozenset({"none", "pre-commit", "with-fee"}),
+    "transcriptDisclosurePolicy": frozenset({
+        "none", "encrypted-anchored-recommended", "encrypted-anchored-required",
+    }),
+}
+# DACS-1 §6.3.4 "max N chars" bounds, counted in code points of the CF-1 (NFC)
+# form that is hashed and signed.
+_MAX_DISPLAY_NAME = 200
+_MAX_TITLE = 200
+_MAX_DESCRIPTION = 2000
+_MAX_TAGS = 16
+_MAX_TAG = 32
 _SAFE_INTEGER_MAX = 2**53 - 1
 
 
@@ -85,7 +124,10 @@ def classify_listing_artifact(listing, supported=None):
     if listing.get("dacsVersion") != "1":
         raise ValueError("listing type version is unsupported")
     artifact_type = LEGACY_LISTING
-    if supported is not None and artifact_type not in supported:
+    if supported is not None and (
+        not isinstance(supported, (set, frozenset, list, tuple))
+        or artifact_type not in supported
+    ):
         raise ValueError("listing type is unsupported by this consumer")
     return artifact_type, LISTING_DOMAINS[artifact_type]
 
@@ -110,15 +152,23 @@ def _valid_hash_bound_json(listing):
 
 
 def validate_sealed_session_deadline(listing, session_start):
-    """Apply SE-1 only when admitting a new session, not historical reads."""
+    """Apply SE-1 only when admitting a new session, not historical reads.
+
+    A step whose kind is not a closed ``PhaseType`` member fails as an invalid
+    pipeline rather than being skipped as a non-sealed step.
+    """
     try:
         pipeline = listing.get("pipeline") if isinstance(listing, dict) else None
-        if not isinstance(pipeline, list):
+        if not isinstance(pipeline, list) or not pipeline:
             return False, "invalid pipeline"
         for step in pipeline:
-            if not isinstance(step, dict):
+            if (
+                not isinstance(step, dict)
+                or not isinstance(step.get("kind"), str)
+                or step["kind"] not in KNOWN_PHASES
+            ):
                 return False, "invalid pipeline"
-            if step.get("kind") not in {
+            if step["kind"] not in {
                 "negotiate-sealed-envelope",
                 "negotiate-sealed-envelope-procurement",
                 *COMPLETE_SEALED_NEGOTIATIONS,
@@ -165,6 +215,19 @@ def _is_nonempty_string(value):
     return isinstance(value, str) and bool(value)
 
 
+def _chars(value):
+    """Length of a string value in its CF-1 (NFC) signed form."""
+    return len(unicodedata.normalize("NFC", value))
+
+
+def _optional(value, field, check):
+    return field not in value or check(value[field])
+
+
+def _is_string_list(value):
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
 def _valid_attestation_ref(value):
     if not isinstance(value, dict) or not {"anchor", "contentHash"} <= set(value):
         return False
@@ -194,6 +257,68 @@ def _valid_price(value):
     )
 
 
+def _is_positive_safe_integer(value):
+    return _is_number(value) and value >= 1 and value == int(value)
+
+
+def _valid_payment_rail_ref(value):
+    """PaymentRailRef (DACS-4 §9.3), in acceptedRails and pay-alternative.
+
+    ``railVersion`` must name a resolvable RailDefinition, whose version is a
+    positive JSON safe integer (RD-3).
+    """
+    return (
+        isinstance(value, dict)
+        and _is_nonempty_string(value.get("railId"))
+        and _optional(value, "railVersion", _is_positive_safe_integer)
+        and _optional(value, "parameters", lambda parameters: isinstance(parameters, dict))
+    )
+
+
+def _valid_rule_uri(value):
+    """A nonempty RFC 3986 URI-reference, including relative storage names."""
+    if not isinstance(value, str) or not value:
+        return False
+    match = _URI_REFERENCE.fullmatch(value)
+    if match is None or _URI_PATH.fullmatch(match["path"]) is None:
+        return False
+    if any(
+        part is not None and _URI_QUERY_FRAGMENT.fullmatch(part) is None
+        for part in (match["query"], match["fragment"])
+    ):
+        return False
+    if match["authority"] is None:
+        # A relative path's first segment cannot contain a colon (path-noscheme).
+        return bool(match["scheme"]) or ":" not in match["path"].split("/", 1)[0]
+    authority = _URI_AUTHORITY.fullmatch(match["authority"])
+    if authority is None:
+        return False
+    literal = authority["literal"]
+    if literal is not None and _URI_IP_FUTURE.fullmatch(literal) is None:
+        if re.fullmatch(r"[0-9A-Fa-f:.]+", literal) is None:
+            return False
+        try:
+            ipaddress.IPv6Address(literal)
+        except ValueError:
+            return False
+    return True
+
+
+def _valid_rule_ref(value):
+    return (
+        isinstance(value, str) and value.startswith("rule-ref:")
+        and _valid_rule_uri(value[len("rule-ref:"):])
+    )
+
+
+def _valid_auction_rule_ref(value):
+    """DACS-3 §8.4.3: the hash, rather than the location, binds the rule."""
+    if not isinstance(value, str) or not value.startswith("rule-ref:"):
+        return False
+    digest, separator, location = value[len("rule-ref:"):].partition(":")
+    return bool(separator) and _HASH.fullmatch(digest) is not None and _valid_rule_uri(location)
+
+
 def _valid_pricing(value):
     if not isinstance(value, dict):
         return False
@@ -212,7 +337,7 @@ def _valid_pricing(value):
         selection = value.get("selectionRule")
         return (
             _is_nonempty_string(selection)
-            and (selection in _SELECTION_RULES or selection.startswith("rule-ref:"))
+            and (selection in _SELECTION_RULES or _valid_auction_rule_ref(selection))
             and ("reservePrice" not in value or _valid_price(value["reservePrice"]))
         )
     if kind == "metered":
@@ -229,14 +354,53 @@ def _valid_deliverable(value):
         return False
     kind = value.get("kind")
     if kind == "storage-program":
-        return True
+        return (
+            _optional(value, "schemaUrl", lambda url: isinstance(url, str))
+            and _optional(value, "expectedSizeBytes", _is_number)
+            and _optional(
+                value, "accessModel",
+                lambda model: isinstance(model, str) and model in _ACCESS_MODELS,
+            )
+        )
     if kind == "entitlement":
         return _is_number(value.get("durationSec")) and isinstance(value.get("renewable"), bool)
     if kind == "attested-payload":
-        return _is_nonempty_string(value.get("payloadFormat"))
+        return (
+            _is_nonempty_string(value.get("payloadFormat"))
+            and _optional(value, "verificationMethod", lambda method: isinstance(method, dict))
+            and _optional(value, "expectedSizeBytes", _is_number)
+        )
     if kind == "external":
-        return _is_nonempty_string(value.get("description"))
+        return (
+            _is_nonempty_string(value.get("description"))
+            and _optional(value, "verificationMethod", lambda method: isinstance(method, dict))
+        )
     return False
+
+
+def _valid_terms(value):
+    """ListingTerms (DACS-1 §6.3.4): each present member has its declared type."""
+    if not isinstance(value, dict):
+        return False
+    if any(
+        field in value
+        and not (
+            isinstance(value[field], str)
+            and (
+                value[field] in allowed
+                or field == "conflictOfLawsRule" and _valid_rule_ref(value[field])
+            )
+        )
+        for field, allowed in _TERMS_ENUMS.items()
+    ):
+        return False
+    return (
+        _optional(value, "termsOfServiceUrl", lambda url: isinstance(url, str))
+        and _optional(value, "termsOfServiceHash", lambda digest: isinstance(digest, str))
+        and _optional(value, "jurisdictions", _is_string_list)
+        and _optional(value, "deadlineSecAfterCommit", _is_number)
+        and _optional(value, "retentionYears", _is_number)
+    )
 
 
 def _valid_claim_requirement(value):
@@ -286,7 +450,8 @@ def _valid_pipeline(pipeline, pricing, deliverable):
         or not pipeline
         or any(
             not isinstance(step, dict)
-            or step.get("kind") not in KNOWN_PHASES
+            or not isinstance(step.get("kind"), str)
+            or step["kind"] not in KNOWN_PHASES
             or ("parameters" in step and not isinstance(step["parameters"], dict))
             for step in pipeline
         )
@@ -368,7 +533,7 @@ def _valid_pipeline(pipeline, pricing, deliverable):
             or concrete
             or not isinstance(refs, list)
             or len(refs) < 2
-            or any(not isinstance(ref, dict) or not _is_nonempty_string(ref.get("railId")) for ref in refs)
+            or any(not _valid_payment_rail_ref(ref) for ref in refs)
         ):
             return False
     if any(
@@ -387,6 +552,12 @@ def _valid_pipeline(pipeline, pricing, deliverable):
 
 def validate_listing_shape(listing, *, now=None, supported=None):
     """Validate the complete required outer shape and closed executable unions.
+
+    This also enforces the §6.3.4 length bounds, the declared types of the
+    optional ListingTerms, offering and DeliverableSpec members, and the closed
+    ListingTerms, ListingSignature.algorithm and storage-program accessModel
+    unions. It does not check ``revocationState``: RSC-1 maps a malformed
+    reference to indeterminate admission, not to a schema rejection.
 
     Optional fields stay optional. Unknown members are not projected away: the
     caller must hash and verify the original object, including those members.
@@ -408,10 +579,11 @@ def validate_listing_shape(listing, *, now=None, supported=None):
         or _LISTING_ID.fullmatch(listing["listingId"]) is None
     ):
         return False, "invalid listing identity", artifact_type, domain
+    # An explicit null is a present member of the wrong type, not an absent one.
     capabilities = listing.get("requiredCapabilities")
-    if capabilities is not None and (
+    if "requiredCapabilities" in listing and (
         not isinstance(capabilities, list)
-        or any(item not in _CAPABILITIES for item in capabilities)
+        or any(not isinstance(item, str) or item not in _CAPABILITIES for item in capabilities)
     ):
         return False, "invalid requiredCapabilities", artifact_type, domain
 
@@ -420,6 +592,7 @@ def validate_listing_shape(listing, *, now=None, supported=None):
         not isinstance(seller, dict)
         or not isinstance(seller.get("identity"), dict)
         or not _is_nonempty_string(seller.get("displayName"))
+        or _chars(seller["displayName"]) > _MAX_DISPLAY_NAME
         or ("publicEndpoint" in seller and not _is_nonempty_string(seller["publicEndpoint"]))
     ):
         return False, "invalid seller", artifact_type, domain
@@ -428,17 +601,22 @@ def validate_listing_shape(listing, *, now=None, supported=None):
     if (
         not isinstance(offering, dict)
         or not _is_nonempty_string(offering.get("title"))
+        or _chars(offering["title"]) > _MAX_TITLE
         or not isinstance(offering.get("description"), str)
+        or _chars(offering["description"]) > _MAX_DESCRIPTION
         or not _is_nonempty_string(offering.get("category"))
         or not isinstance(offering.get("tags"), list)
-        or any(not isinstance(tag, str) for tag in offering["tags"])
+        or len(offering["tags"]) > _MAX_TAGS
+        or any(not isinstance(tag, str) or _chars(tag) > _MAX_TAG for tag in offering["tags"])
         or not _valid_deliverable(offering.get("deliverable"))
+        or not _optional(offering, "extendedDescriptionUrl", lambda url: isinstance(url, str))
+        or not _optional(offering, "extendedDescriptionHash", lambda digest: isinstance(digest, str))
     ):
         return False, "invalid offering", artifact_type, domain
 
     if not _valid_bundle_requirement(listing.get("buyerRequirement")):
         return False, "invalid buyerRequirement", artifact_type, domain
-    if not isinstance(listing.get("terms"), dict):
+    if not _valid_terms(listing.get("terms")):
         return False, "invalid terms", artifact_type, domain
     if not _valid_pricing(listing.get("pricing")):
         return False, "invalid pricing", artifact_type, domain
@@ -461,9 +639,9 @@ def validate_listing_shape(listing, *, now=None, supported=None):
         return False, "invalid or unsupported pipeline", artifact_type, domain
 
     accepted = listing.get("acceptedRails")
-    if accepted is not None and (
+    if "acceptedRails" in listing and (
         not isinstance(accepted, list)
-        or any(not isinstance(ref, dict) or not _is_nonempty_string(ref.get("railId")) for ref in accepted)
+        or any(not _valid_payment_rail_ref(ref) for ref in accepted)
     ):
         return False, "invalid acceptedRails", artifact_type, domain
     if any(step["kind"] in CONCRETE_PAYMENT_PHASES or step["kind"] == "pay-alternative" for step in pipeline):
@@ -473,7 +651,8 @@ def validate_listing_shape(listing, *, now=None, supported=None):
     signature = listing.get("signature")
     if (
         not isinstance(signature, dict)
-        or not _is_nonempty_string(signature.get("algorithm"))
+        or not isinstance(signature.get("algorithm"), str)
+        or signature["algorithm"] not in _SIGNATURE_ALGORITHMS
         or not _is_nonempty_string(signature.get("signer"))
         or not _is_nonempty_string(signature.get("value"))
     ):

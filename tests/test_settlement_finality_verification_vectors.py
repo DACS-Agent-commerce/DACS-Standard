@@ -170,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(212, self.data["count"])
+        self.assertEqual(227, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -723,13 +723,16 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                                  ("unavailable", "indeterminate"), ("other-payer", "indeterminate"),
                                  ("payer-missing", "indeterminate"), ("claims-empty", "error"),
                                  ("claims-malformed", "error"), ("claim-not-an-object", "error"),
+                                 ("claim-not-a-string", "error"), ("claim-control-array", "error"),
+                                 ("claim-control-object", "error"),
                                  ("claim-control-unknown", "error"), ("claim-extra-member", "error")):
             with self.subTest(case=suffix):
                 result = self.evaluate_case(self.cases["fv-bft-final-payer-key-claim-" + suffix])
                 self.assertEqual(expected, result["decision"])
                 if suffix in {"unavailable", "other-payer", "payer-missing"}:
                     self.assertIn("payer bundle Demos key claims unavailable", result["reason"])
-                if suffix in {"claims-empty", "claims-malformed", "claim-not-an-object",
+                if suffix in {"claims-empty", "claims-malformed", "claim-not-an-object", "claim-not-a-string",
+                              "claim-control-array", "claim-control-object",
                               "claim-control-unknown", "claim-extra-member"}:
                     self.assertIn("malformed payer bundle Demos key claims", result["reason"])
         CLAIMS = finality_fixtures.CLAIMS
@@ -738,19 +741,76 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         merged = merge(self.trust, other["trustedOverrides"])["demosPayerKeyClaims"]
         self.assertIsNone(merged[CLAIMS["buyer"]])
         self.assertIn(self.trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0], merged[CLAIMS["seller"]])
-        # FV-5 projects each claim as a DEMOS-MAPPING §A.2 pay-dem party
-        # address, as DEM-1 and DEM-7 do: bare, 0x and DID bind alike. Any
-        # other spelling is no Demos key claim: skipped, so a bundle with no
-        # other controlled claim authenticates no sender.
+        # A Demos key claim is a DACS-1 ClaimReference (DEMOS-MAPPING §A.2):
+        # `key:<hex>` binds, and so does nothing else. A bare or 0x spelling is
+        # an address, not a claim; a DID is a Demos key claim that DACS-1
+        # step (6) cannot control; any other spelling is no Demos key claim,
+        # so a bundle with no other controlled claim authenticates no sender.
         distinct = self.cases["fv-bft-final-payer-key-claim-distinct"]
         trust = merge(self.trust, distinct.get("trustedOverrides") or {})
-        key = trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0]["claim"].removeprefix("0x")
-        for spelling, expected in ((key, "pass"), ("0x" + key, "pass"), ("did:demos:agent:" + key, "pass"),
-                                   ("0x" + key.upper(), "indeterminate"), ("did:demos:agent:0x" + key, "indeterminate")):
+        claim = trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0]["claim"]
+        self.assertTrue(claim.startswith("key:"))
+        key = claim.removeprefix("key:")
+        for spelling, expected in (("key:" + key, "pass"), (key, "indeterminate"), ("0x" + key, "indeterminate"),
+                                   ("did:demos:agent:" + key, "indeterminate"),
+                                   ("key:" + key.upper(), "indeterminate"), ("key:0x" + key, "indeterminate"),
+                                   ("DID:demos:agent:" + key, "indeterminate"), ("KEY:" + key, "indeterminate")):
             with self.subTest(claim=spelling):
                 spelled = copy.deepcopy(trust)
                 spelled["demosPayerKeyClaims"][CLAIMS["buyer"]][0]["claim"] = spelling
                 self.assertEqual(expected, verify_finality(distinct["input"], spelled)["decision"])
+
+    def test_control_is_the_mechanism_dacs1_defines_for_the_claims_scheme(self):
+        """DACS-1 §6.3.2 step (6) gives each scheme its own control mechanism:
+        the exact `key:` claim's own presentation signature, SR-1 linkage for
+        `cci-xm:`, holder-binding for a credential, a GCR binding for `domain:`.
+        A Demos key claim is controlled only by the one that applies to its
+        scheme. `did:demos:agent:` has none, so every label on it controls
+        nothing, whichever verifier runs the corpus."""
+        CLAIMS = finality_fixtures.CLAIMS
+        sender = self.cases["fv-bft-final-payer-key-claim-distinct"]
+        trust = merge(self.trust, sender.get("trustedOverrides") or {})
+        key = trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0]["claim"].removeprefix("key:")
+        controls = ("presentation-signature", "sr1-linkage", "holder-binding", "demos-gcr-domain", "none")
+        decided = {}
+        for scheme, reference in (("key", "key:" + key), ("did", "did:demos:agent:" + key),
+                                  ("cci-xm", "cci-xm:demos:mainnet:0x" + key), ("bare", key), ("0x", "0x" + key)):
+            for control in controls:
+                spelled = copy.deepcopy(trust)
+                spelled["demosPayerKeyClaims"][CLAIMS["buyer"]] = [{"claim": reference, "control": control}]
+                decided[scheme, control] = verify_finality(sender["input"], spelled)["decision"]
+        # Exactly one pair is control, and it is the exact key: claim's signature.
+        self.assertEqual({("key", "presentation-signature")},
+                         {pair for pair, decision in decided.items() if decision == "pass"})
+        self.assertEqual({"pass", "indeterminate"}, set(decided.values()))
+        # The corpus pins every pair that matters for a Demos key, and a spec
+        # that names the mechanism for the scheme (DACS-1 step (6)).
+        for name in ("did-presentation-signature", "did-holder-binding", "key-sr1-linkage", "key-holder-binding",
+                     "cci-xm-sr1-linkage", "bare-hex-signature", "0x-hex-signature"):
+            with self.subTest(case=name):
+                self.assertEqual("indeterminate", self.cases["fv-bft-final-payer-key-claim-" + name]["expected"])
+        mapping = (ROOT / "spec" / "DEMOS-MAPPING.md").read_text(encoding="utf-8")
+        dacs1 = (ROOT / "spec" / "DACS-1-IDENTIFY.md").read_text(encoding="utf-8")
+        self.assertIn("the exact `key:` claim's own **bundle presentation signature**", dacs1)
+        self.assertIn("only the exact `key:` claim's own bundle presentation signature", mapping)
+        self.assertIn("`did:demos:agent:` claim has no step (6) mechanism", mapping)
+
+    def test_a_claim_or_control_of_the_wrong_type_is_error_not_a_crash(self):
+        """A trusted claim whose `claim` or `control` is not a string (a JSON
+        array or object is not hashable) is malformed input: `error`, from the
+        reference itself and not from a wrapper around an exception."""
+        CLAIMS = finality_fixtures.CLAIMS
+        value = self.cases["fv-bft-final-payer-key-claim-distinct"]
+        trust = merge(self.trust, value.get("trustedOverrides") or {})
+        for field, bad in (("control", []), ("control", {}), ("control", 1), ("control", None),
+                           ("claim", []), ("claim", {}), ("claim", 1)):
+            with self.subTest(field=field, bad=bad):
+                broken = copy.deepcopy(trust)
+                broken["demosPayerKeyClaims"][CLAIMS["buyer"]][0][field] = bad
+                result = verify_finality(value["input"], broken)
+                self.assertEqual("error", result["decision"])
+                # The reference's own malformed-claims decision, not a wrapper's generic one.
+                self.assertIn("malformed payer bundle Demos key claims", result["reason"])
 
     def test_a_listed_demos_key_binds_only_with_a_control_proof(self):
         """A payer's bundle can list another party's Demos key (DACS-1 §6.3.2
@@ -765,19 +825,23 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual(1, len(foreign))
         self.assertEqual("fail", verify_finality(listed["input"], trust)["decision"])
         key = foreign[0]["claim"]
-        for spelling in (key, "0x" + key, "did:demos:agent:" + key):
+        key = key.removeprefix("key:")
+        for spelling in ("key:" + key, "did:demos:agent:" + key):
             with self.subTest(listed=spelling):
                 spelled = copy.deepcopy(trust)
                 spelled["demosPayerKeyClaims"][CLAIMS["buyer"]] = [
                     claim if claim["control"] != "none" else dict(claim, claim=spelling) for claim in claims]
                 self.assertEqual("fail", verify_finality(listed["input"], spelled)["decision"])
-        # Control proved (either mechanism): the same listing now binds.
-        for control in ("presentation-signature", "sr1-linkage"):
+        # Control proved by the key: claim's own presentation signature: the
+        # same listing now binds. A mechanism DACS-1 defines for another
+        # scheme proves nothing for a key: claim.
+        for control, expected in (("presentation-signature", "pass"), ("sr1-linkage", "indeterminate"),
+                                  ("holder-binding", "indeterminate")):
             with self.subTest(control=control):
                 proved = copy.deepcopy(trust)
                 for claim in proved["demosPayerKeyClaims"][CLAIMS["buyer"]]:
                     claim["control"] = control
-                self.assertEqual("pass", verify_finality(listed["input"], proved)["decision"])
+                self.assertEqual(expected, verify_finality(listed["input"], proved)["decision"])
         # Only the uncontrolled claim: nothing binds, so no sender is authenticated.
         alone = self.cases["fv-bft-final-payer-key-claim-none-controlled"]
         self.assertEqual("indeterminate", self.evaluate_case(alone)["decision"])
@@ -787,8 +851,26 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         for name in ("listed-beside-controlled", "non-demos-skipped"):
             with self.subTest(case=name):
                 self.assertEqual("pass", self.evaluate_case(self.cases["fv-bft-final-payer-key-claim-" + name])["decision"])
+        # A bundle presented by a session key has no key: signature of its own.
         self.assertEqual("indeterminate", self.evaluate_case(
-            self.cases["fv-bft-final-payer-key-claim-malformed-spelling-uncounted"])["decision"])
+            self.cases["fv-bft-final-payer-key-claim-session-key-presentation"])["decision"])
+        # A listed DID names a key and proves nothing about it.
+        self.assertEqual("fail", self.evaluate_case(
+            self.cases["fv-bft-final-payer-key-claim-did-listed-sender"])["decision"])
+
+    def test_phase_errors_and_fv10_come_before_the_bundle_claims_verdict(self):
+        """DEM-7 orders its decisions: malformed input (`error`), then FV-10's
+        `fail`/`error` on the presented inclusion, then a bundle that controls
+        no Demos key claim (`indeterminate`), then the record. A bundle with no
+        controlled claim therefore turns neither into `indeterminate`."""
+        for name, expected in (("none-controlled-amount-not-dem", "error"),
+                               ("none-controlled-inclusion-body-mismatch", "fail")):
+            with self.subTest(case=name):
+                result = self.evaluate_case(self.cases["fv-bft-final-payer-key-claim-" + name])
+                self.assertEqual(expected, result["decision"])
+        # The same two inputs under the usual claims decide the same.
+        for name, expected in (("amount-not-dem", "error"), ("transaction-body-txHash", "fail")):
+            self.assertEqual(expected, self.evaluate_case(self.cases["fv-bft-final-" + name])["decision"])
 
     def test_trusted_overrides_do_not_depend_on_merge_semantics(self):
         # A runner may replace or deep-merge an overridden member; the decision is the same.

@@ -785,10 +785,11 @@ def dem_spelling(amount_os: str) -> str:
     return f"{whole}.{fraction_digits}" if fraction_digits else str(whole)
 
 
-def claim(key: str, control: str = "presentation-signature") -> dict[str, str]:
-    """A payer bundle claim and how its control was proved (DACS-1 §6.3.2
-    step 6): `none` for a claim the bundle only lists."""
-    return {"claim": key, "control": control}
+def claim(reference: str, control: str = "presentation-signature") -> dict[str, Any]:
+    """A payer bundle claim (a DACS-1 ClaimReference) and the §6.3.2 step (6)
+    mechanism by which the verifier's own check of the pinned bundle found its
+    control: `none` for a claim the bundle only lists."""
+    return {"claim": reference, "control": control}
 
 
 def phase(**changes: Any) -> dict[str, Any]:
@@ -1024,6 +1025,16 @@ PARTY_GUARDS = {
     "admit": ["consumer-admits-confirmed", "phase-party-address-projects"],
     "malformed-admit": ["consumer-requires-confirmed-record", "phase-party-address-projects"],
 }
+
+
+# The guards of the shared controlled-claim predicate (DEMOS-MAPPING §A.2),
+# which DEM-1 and DEM-7 both apply: a wrong implementation counts a listed
+# claim, counts a mechanism of another scheme as control, or takes an address
+# spelling for a ClaimReference.
+LISTED_GUARDS = ["consumer-binds-controlled-claims-only"]
+SCHEME_CONTROL_GUARDS = ["claims-are-claim-references", "consumer-binds-controlled-claims-only",
+                         "control-is-the-schemes-mechanism"]
+REFERENCE_GUARDS = ["claims-are-claim-references"]
 
 
 def preflight(name: str, expected: str, guards: list[str], note: str, *, availability: str = "live",
@@ -2110,7 +2121,7 @@ def build_vectors() -> list[dict[str, Any]]:
             "consumer-sender-another-controlled-claim", "pass", "DEM-7", ["consumer-admits-confirmed"],
             "A bundle may control several Demos key claims; the record's sender is any of them.",
             read=found(record("confirmed", send_content(sender=OTHER_KEY))),
-            phase_context=phase(payerKeyClaims=[claim(PAYER_KEY), claim(OTHER_KEY, "sr1-linkage")]),
+            phase_context=phase(payerKeyClaims=[claim("key:" + PAYER_KEY), claim("key:" + OTHER_KEY)]),
         ),
         admit(
             "consumer-sender-listed-not-controlled", "fail", "DEM-7/FV-5",
@@ -2118,19 +2129,20 @@ def build_vectors() -> list[dict[str, Any]]:
              "consumer-requires-confirmed-record"],
             "Another buyer's key that the payer's bundle lists without proof of control does not bind: that buyer's authenticated payment contradicts this phase.",
             read=found(record("confirmed", send_content(sender=OTHER_KEY)), authenticated=True),
-            phase_context=phase(payerKeyClaims=[claim(PAYER_KEY), claim(OTHER_KEY, "none")]),
+            phase_context=phase(payerKeyClaims=[claim("key:" + PAYER_KEY), claim("key:" + OTHER_KEY, "none")]),
         ),
         admit(
             "consumer-no-controlled-claim", "indeterminate", "DEM-7", ["consumer-binds-controlled-claims-only", "consumer-requires-confirmed-record"],
             "A bundle that proves control of no Demos key claim authenticates no sender, even one it lists.",
             read=found(record("confirmed", send_content(sender=OTHER_KEY)), authenticated=True),
-            phase_context=phase(payerKeyClaims=[claim(OTHER_KEY, "none")]),
+            phase_context=phase(payerKeyClaims=[claim("key:" + OTHER_KEY, "none")]),
         ),
         admit(
             "consumer-non-demos-claim-skipped", "pass", "DEM-7", ["consumer-admits-confirmed"],
-            "A bundle claim that is no Demos key (a 20-byte address) is skipped, never an error.",
+            "A bundle claim that is no Demos key claim (a cci-xm: EVM address, a LEI) is skipped, never an error.",
             read=found(record("confirmed")),
-            phase_context=phase(payerKeyClaims=[claim("0x" + PAYER_KEY[:40]), claim(PAYER_KEY)]),
+            phase_context=phase(payerKeyClaims=[claim("cci-xm:evm:8453:0x" + PAYER_KEY[:40], "sr1-linkage"),
+                                                claim("key:" + PAYER_KEY), claim("lei:529900T8BM49AURSDO55", "holder-binding")]),
         ),
         deliver(
             "delivery-sender-listed-not-controlled", "fail", "DEM-7/FV-5",
@@ -2138,7 +2150,70 @@ def build_vectors() -> list[dict[str, Any]]:
              "consumer-requires-confirmed-record", "delivery-requires-dem7"],
             "The payee never delivers on another buyer's payment that the payer's bundle only lists.",
             read=found(record("confirmed", send_content(sender=OTHER_KEY)), authenticated=True),
-            phase_context=phase(payerKeyClaims=[claim(PAYER_KEY), claim(OTHER_KEY, "none")]), dem7_passed=False,
+            phase_context=phase(payerKeyClaims=[claim("key:" + PAYER_KEY), claim("key:" + OTHER_KEY, "none")]), dem7_passed=False,
+        ),
+        # DACS-1 §6.3.2 step (6) gives each scheme its own control mechanism.
+        # For a Demos key claim only the exact `key:` claim's own bundle
+        # presentation signature counts: a did:demos:agent: claim has none, SR-1
+        # linkage is a cci-xm: mechanism, and bare or 0x hex is no ClaimReference.
+        *(
+            admit(
+                "consumer-claim-" + name, "indeterminate", "DEM-7", [*guards, "consumer-requires-confirmed-record"],
+                note, read=found(record("confirmed")), phase_context=phase(payerKeyClaims=claims),
+            )
+            for name, claims, guards, note in (
+                ("did-signature-controls-nothing", [claim("did:demos:agent:" + PAYER_KEY)], SCHEME_CONTROL_GUARDS,
+                 "DACS-1 step (6) defines no control mechanism for a did:demos:agent: claim, so a signature label on it controls nothing."),
+                ("key-sr1-linkage-controls-nothing", [claim("key:" + PAYER_KEY, "sr1-linkage")], SCHEME_CONTROL_GUARDS,
+                 "SR-1 linkage controls a cci-xm: claim, not a key: claim."),
+                ("key-holder-binding-controls-nothing", [claim("key:" + PAYER_KEY, "holder-binding")], SCHEME_CONTROL_GUARDS,
+                 "Holder-binding controls a credential claim, not a key: claim."),
+                ("cci-xm-is-no-demos-key", [claim("cci-xm:demos:mainnet:0x" + PAYER_KEY, "sr1-linkage")], REFERENCE_GUARDS,
+                 "No registered mapping takes a cci-xm: identifier to a Demos account key, so it is no Demos key claim."),
+                ("bare-hex-is-no-claim", [claim(PAYER_KEY)], REFERENCE_GUARDS,
+                 "Bare hex is an address spelling, not a ClaimReference; a bundle claim cannot be it."),
+                ("0x-hex-is-no-claim", [claim("0x" + PAYER_KEY)], REFERENCE_GUARDS,
+                 "0x hex is an address spelling, not a ClaimReference."),
+                ("session-key-presentation-controls-nothing", [claim("key:" + PAYER_KEY, "none")], LISTED_GUARDS,
+                 "A bundle presented by a session key has no presentation signature of its own key: claim, so the payer's own key is listed only and its transfer is not admitted."),
+            )
+        ),
+        admit(
+            "consumer-did-claim-names-another-sender", "fail", "DEM-7/FV-5",
+            ["consumer-authenticated-contradiction-fails", *SCHEME_CONTROL_GUARDS, "consumer-binds-payer",
+             "consumer-requires-confirmed-record"],
+            "A did:demos:agent: claim names a key and proves nothing about it, so a sender it names contradicts the phase beside the payer's own controlled key: claim.",
+            read=found(record("confirmed", send_content(sender=OTHER_KEY)), authenticated=True),
+            phase_context=phase(payerKeyClaims=[claim("key:" + PAYER_KEY), claim("did:demos:agent:" + OTHER_KEY)]),
+        ),
+        *(
+            admit(
+                "consumer-claim-control-" + name, "error", "DEM-7", ["consumer-requires-confirmed-record"],
+                "A claim or control that is not a string is a malformed bundle claim: error, never a crash.",
+                read=found(record("confirmed")), phase_context=phase(payerKeyClaims=[claims]),
+            )
+            for name, claims in (
+                ("array", {"claim": "key:" + PAYER_KEY, "control": ["presentation-signature"]}),
+                ("object", {"claim": "key:" + PAYER_KEY, "control": {}}),
+                ("number", {"claim": "key:" + PAYER_KEY, "control": 1}),
+                ("unknown", {"claim": "key:" + PAYER_KEY, "control": "self-declared"}),
+                ("claim-not-a-string", {"claim": 7, "control": "none"}),
+            )
+        ),
+        # FV-10 first: an inclusion the FV verifier scores fail or error is the
+        # evidence's verdict before the bundle's claims are read, as FV scores it.
+        *(
+            admit(
+                "consumer-" + label + "-" + suffix, "fail", "DEM-7/FV-5",
+                ["bft-final-inclusion-verified", "consumer-claims-before-fv-inclusion-verdict", *CONSUMER_FV_FAIL_GUARDS],
+                "FV-10: " + note.rstrip(".").lower() + ", so the verdict is FV's fail whatever the phase's claims are.",
+                read=found(record("confirmed"), authenticated=True, inclusion=inclusion),
+                phase_context=phase(payerKeyClaims=claims),
+            )
+            for label, claims in (("no-controlled-claim", [claim("key:" + PAYER_KEY, "none")]),
+                                  ("malformed-claims", [{"claim": "key:" + PAYER_KEY, "control": []}]))
+            for suffix, guards, inclusion, note in bft_final_variants()
+            if suffix == "bft-final-certificate-forged"
         ),
         admit(
             "consumer-wrong-amount-authenticated", "fail", "DEM-7/FV-5", ["consumer-authenticated-contradiction-fails", "consumer-binds-amount", "consumer-requires-confirmed-record"],
@@ -2789,7 +2864,8 @@ def build_vectors() -> list[dict[str, Any]]:
     # that can never be paid is PC-4 permanent with nothing signed or
     # retained, so no retention pins the phase.
     vectors += [
-        pre_sign("sign-" + name, "error", ["phase-party-address-projects", "pre-sign-party-address-projects"],
+        pre_sign("sign-" + name, "error", ["phase-party-address-projects"]
+                 + ([] if label == "payer.payingKey" else ["pre-sign-party-address-projects"]),
                  "A phase whose " + label + " is in no pay-dem form can never be paid: ok false, errorClass "
                  "permanent, before anything is signed or retained.", phase_context=phase(**changes))
         for name, label, changes in (
@@ -2799,6 +2875,52 @@ def build_vectors() -> list[dict[str, Any]]:
             ("paying-key-upper-case", "payer.payingKey", {"payerPayingKey": PAYER_KEY.upper()}),
         )
     ]
+
+    # DEM-1: the paying key is the key of a controlled Demos key claim of the
+    # retained payer bundle, the claim DEM-7 binds a sender to. A key it cannot
+    # bind pays and is never admitted, with no replacement: refused before
+    # signing and at every egress (PC-4 permanent, nothing signed or sent).
+    uncontrolled = (
+        ("paying-key-listed-not-controlled", [claim("key:" + PAYER_KEY, "none")], LISTED_GUARDS,
+         "The payer's bundle lists its paying key without a proof of control: DEM-7 would not bind the transfer."),
+        ("paying-key-session-key-presentation", [claim("key:" + PAYER_KEY, "none"), claim("key:" + OTHER_KEY)], LISTED_GUARDS,
+         "A bundle presented by a session key proves control of no key: claim of the paying key; another controlled claim lends none."),
+        ("paying-key-did-claim-only", [claim("did:demos:agent:" + PAYER_KEY)], SCHEME_CONTROL_GUARDS,
+         "DACS-1 step (6) defines no control of a did:demos:agent: claim, so a DID-only paying key is never controlled."),
+        ("paying-key-wrong-mechanism", [claim("key:" + PAYER_KEY, "sr1-linkage")], SCHEME_CONTROL_GUARDS,
+         "SR-1 linkage is a cci-xm: mechanism and proves nothing for a key: claim."),
+        ("paying-key-not-in-bundle", [claim("key:" + OTHER_KEY)], [],
+         "The paying key is no claim of the retained bundle; a controlled claim of another key lends it none."),
+        ("paying-key-claims-malformed", [{"claim": "key:" + PAYER_KEY, "control": []}], [],
+         "A bundle whose claims cannot be read controls nothing: refused, not guessed."),
+    )
+    vectors += [
+        pre_sign("sign-" + name, "error", sorted(["pre-sign-paying-key-controlled", *guards]),
+                 note + " ok false, errorClass permanent, before anything is signed or retained.",
+                 phase_context=phase(payerKeyClaims=claims))
+        for name, claims, guards, note in uncontrolled
+    ] + [
+        pre_sign("sign-with-key-claim-paying-key", "pass", ["phase-party-address-projects", "sign-allowed-when-configured"],
+                 "A paying key spelled as the controlled key: claim of the retained bundle may be signed for.",
+                 phase_context=phase(payerPayingKey="key:" + PAYER_KEY, payerKeyClaims=[claim("key:" + PAYER_KEY)])),
+        pre_sign("sign-with-foreign-key-claim-listed", "pass", ["sign-allowed-when-configured"],
+                 "Another key the bundle merely lists does not disturb the controlled paying key.",
+                 phase_context=phase(payerKeyClaims=[claim("key:" + PAYER_KEY), claim("key:" + OTHER_KEY, "none")])),
+    ]
+    for request, prefix in (("confirm-retained", "confirm-"), ("broadcast-retained", "broadcast-")):
+        vectors += [
+            gate(prefix + name, "error", "DEM-1",
+                 sorted(["broadcast-paying-key-controlled", *guards,
+                         "retention-before-first-egress" if request == "confirm-retained" else "submission-completes-own-confirm"]),
+                 note, request=request, phase_context=phase(payerKeyClaims=claims))
+            for name, claims, guards, note in uncontrolled
+        ] + [
+            gate(prefix + "from-key-claim-paying-key", "pass", "DEM-1",
+                 ["first-broadcast-allowed", "phase-party-address-projects"] if request == "confirm-retained"
+                 else ["first-broadcast-allowed", "phase-party-address-projects", "submission-completes-own-confirm"],
+                 "A paying key spelled as the controlled key: claim passes the gate.", request=request,
+                 phase_context=phase(payerPayingKey="key:" + PAYER_KEY, payerKeyClaims=[claim("key:" + PAYER_KEY)])),
+        ]
 
     ref = {"kind": "demos", "txHash": TX_HASH, "blockNumber": BLOCK}
     for name, value, legacy, expected in (
@@ -3116,8 +3238,8 @@ def document() -> dict[str, Any]:
             "broadcastState": "never-broadcast (nothing has left the handler), confirm-returned (this uninterrupted submission's confirm just returned), confirm-sent-interrupted (a confirm was sent, then a timeout, error or restart) or maybe-broadcast; any other value is refused",
             "confirmResponse": "the demosdk 4.0.16 confirm() result (RPCResponseWithValidityData) that the current submission's confirm returned to the handler, even late, or null; null for a confirm request",
             "validityResponse": "what the demosdk broadcast(validationData) call carries, or null for a confirm request; the pinned node executes its response.data.transaction, so it must be exactly confirmResponse, with result 200, valid true and an embedded transaction whose content, hash and signature serialize as signedTransaction",
-            "payerKeyClaims": "optional phase member for a consumer: the claims of the payer's party bundle that the Agreement pins (payer.bundleHash), each {claim, control}; control is presentation-signature or sr1-linkage when the payer proved control of that exact claim (DACS-1 section 6.3.2 step 6), none for a claim the bundle only lists. DEM-7 binds the record's sender only to the pay-dem party address projection of a controlled claim; a claim that projects to nothing is skipped, a bundle with no controlled Demos key claim is indeterminate, and members that are not {claim, control} with a known control are error. Absent, the bundle controls one claim, payerPayingKey",
-            "payeeAddress": "phase member: payee.payeeAddress (and payerPayingKey: for the handler, the key payer.payingKey names; for a consumer, a controlled Demos key claim of the payer's party bundle that the Agreement pins, payer.bundleHash, which the record's sender must project to; without payerKeyClaims this corpus's payer bundle controls one Demos key, the handler's payingKey), a DEMOS-MAPPING §A.2 pay-dem party address: a Demos key with optional 0x or a did:demos:agent: DID over 64 lower-case hex digits; DEM-1, DEM-7 and FV-5 compare the 64 digits it projects to, and any other value is error",
+            "payerKeyClaims": "optional phase member: the claims of the payer's party bundle that the Agreement pins (payer.bundleHash), each {claim, control}. claim is a DACS-1 ClaimReference; control is the DACS-1 section 6.3.2 step (6) mechanism (presentation-signature, sr1-linkage, holder-binding or demos-gcr-domain) that the verifier's own check of the bundle found for that exact claim, none for a claim the bundle only lists. The corpus models that check's result; a consumer derives control itself from the bundle's bytes and proofs, never from a label. A Demos key claim is exactly key:<64 lower-case hex> or did:demos:agent:<64 lower-case hex>, and it is controlled only by the mechanism DACS-1 defines for its scheme: the key: claim's own presentation-signature. A did:demos:agent: claim has no mechanism, so it is never controlled; sr1-linkage controls a cci-xm: claim, and bare or 0x hex is no ClaimReference. Any other claim is skipped. DEM-1 refuses to sign (error, permanent) and at every egress (error) unless payerPayingKey is the key of a controlled Demos key claim; DEM-7 binds the record's sender only to the key of one, an FV-10 fail or error of a presented inclusion is decided first, then members that are not {claim: string, control: string} with a known control are error, then a bundle with no controlled Demos key claim is indeterminate. Absent, the corpus's bundle holds one key: claim for payerPayingKey, controlled by its presentation-signature",
+            "payeeAddress": "phase member: payee.payeeAddress (and payerPayingKey: for the handler, the key payer.payingKey names; for a consumer, a controlled Demos key claim of the payer's party bundle that the Agreement pins, payer.bundleHash, which the record's sender must project to; without payerKeyClaims this corpus's payer bundle controls one Demos key, the handler's payingKey), a DEMOS-MAPPING §A.2 pay-dem party address: a Demos key with optional 0x, a key: ClaimReference or a did:demos:agent: DID over 64 lower-case hex digits; DEM-1, DEM-7 and FV-5 compare the 64 digits it projects to, and any other value is error",
             "availability": "rail-preflight: the pinned pay-dem RailDefinition's availability for a new production session; disabled, failed and mocked are not selectable, any other unknown value is error, and every other value still needs every DEM-1 member of the payer binding for railNetwork, checked against finalityProfile (RAV-R3, whatever the availability)",
             "railSelectable": "rail-preflight want member: whether the orchestrator may select the rail, before Agreement signature and the PIPE-6 commitment",
             "fv5Policy": "the FV-5 independent execution-result policy the verifier trusts, from its own configuration: the settlement-finality corpus's fixture-independent-results-v1 kind, authorityKeys (base64url Ed25519) and threshold; a missing or malformed policy authenticates nothing",

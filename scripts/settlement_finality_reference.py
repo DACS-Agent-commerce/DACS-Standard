@@ -44,13 +44,22 @@ DEMOS_RECORD_PROFILE = "kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f4557
 POSITION_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 DEMOS_KEY_RE = re.compile(r"(?:0x)?([0-9a-f]{64})\Z")
-# DEMOS-MAPPING §A.2 pay-dem party address: the authority side only, never a record member.
-DEMOS_PARTY_ADDRESS_RE = re.compile(r"(?:0x|did:demos:agent:)?([0-9a-f]{64})\Z")
-# How a payer bundle claim's control was established (DACS-1 §6.3.2 step 6):
-# the claim's own bundle presentation signature, or an SR-1 linkage. A listed
-# claim with no such proof is carried as "none" and binds nothing.
-DEMOS_CLAIM_CONTROLS = frozenset({"presentation-signature", "sr1-linkage"})
+# DEMOS-MAPPING §A.2 Demos key claim: a payer-bundle claim whose DACS-1
+# ClaimReference is exactly `key:<64 lower-case hex>` or
+# `did:demos:agent:<64 lower-case hex>` (DACS-1 §6.3.1); it projects to the 64
+# digits. Bare and `0x` hex are address spellings, not ClaimReferences, and a
+# `cci-xm:` reference has no registered mapping to a Demos account key: none of
+# them is a Demos key claim.
+DEMOS_KEY_CLAIM_RE = re.compile(r"(key|did):(?:demos:agent:)?([0-9a-f]{64})\Z")
+# How a payer bundle claim's control was established: the DACS-1 §6.3.2
+# step (6) mechanisms, as the verifier's own check of the bundle that
+# `payer.bundleHash` pins reports them, or "none" for a claim the bundle only
+# lists. Only a mechanism DACS-1 defines for the claim's scheme is control:
+# for a Demos key claim that is the exact `key:` claim's own bundle
+# presentation signature. `did:demos:agent:` has no step (6) mechanism.
+DEMOS_CLAIM_CONTROLS = frozenset({"presentation-signature", "sr1-linkage", "holder-binding", "demos-gcr-domain"})
 DEMOS_CLAIM_UNCONTROLLED = "none"
+DEMOS_KEY_CLAIM_CONTROL = {"key": "presentation-signature"}
 DEM_AMOUNT_RE =re.compile(r"(0|[1-9][0-9]*)(?:\.([0-9]{1,9}))?\Z")
 DECIMAL_RE = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
 SIG_RE = re.compile(r"[A-Za-z0-9_-]+\Z")
@@ -1241,19 +1250,23 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
         return "indeterminate", "payer bundle Demos key claims unavailable"
     if not (isinstance(claims, list) and claims and all(
             isinstance(claim, dict) and set(claim) == {"claim", "control"}
-            and isinstance(claim["claim"], str) and claim["control"] in DEMOS_CLAIM_CONTROLS | {DEMOS_CLAIM_UNCONTROLLED}
+            and isinstance(claim["claim"], str) and isinstance(claim["control"], str)
+            and claim["control"] in DEMOS_CLAIM_CONTROLS | {DEMOS_CLAIM_UNCONTROLLED}
             for claim in claims)):
         return "error", "malformed payer bundle Demos key claims"
-    # A claim that is no Demos key (an EVM address, a LEI) is not a Demos key
-    # claim: it is skipped, never an error.
-    controlled = [DEMOS_PARTY_ADDRESS_RE.match(claim["claim"]) for claim in claims
-                  if claim["control"] in DEMOS_CLAIM_CONTROLS]
-    payers = {match.group(1) for match in controlled if match}
-    if not payers:
-        return "indeterminate", "payer bundle controls no Demos key claim"
+    # A claim that is no Demos key claim (an EVM address, a LEI, a bare hex
+    # string) is skipped, never an error. A Demos key claim is controlled only
+    # by the step (6) mechanism DACS-1 defines for its scheme.
+    matches = [DEMOS_KEY_CLAIM_RE.match(claim["claim"]) for claim in claims]
+    payers = {match.group(2) for match, claim in zip(matches, claims)
+              if match and DEMOS_KEY_CLAIM_CONTROL.get(match.group(1)) == claim["control"]}
+    # Malformed phase values are decided before the claims' verdict, as DEM-7
+    # orders them: error, then (FV-10 aside) no controlled claim, then the record.
     payee = _party_demos_key(trusted, expected.get("payee"))
     if amount is None or payee is None:
         return "error", "phase lacks a DEM amount or Demos party keys"
+    if not payers:
+        return "indeterminate", "payer bundle controls no Demos key claim"
     amount_os = _demos_os_spelling(amount)
     if (
         projection["txHash"] != reference.get("txHash")

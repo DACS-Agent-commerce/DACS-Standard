@@ -101,8 +101,9 @@ MODEL_PHASE = {
 
 
 def controlled_claim(claim: str, control: str = "presentation-signature") -> dict:
-    """A payer bundle claim with how its control was proved (DACS-1 §6.3.2
-    step 6), or "none" for a claim the bundle only lists."""
+    """A payer bundle claim (a DACS-1 ClaimReference) with the DACS-1 §6.3.2
+    step (6) mechanism the verifier's own check of the pinned bundle found, or
+    "none" for a claim the bundle only lists."""
     return {"claim": claim, "control": control}
 
 
@@ -796,7 +797,7 @@ class FixtureFactory:
         self.trusted["sessionAuthorityByJob"][job_id] = copy.deepcopy(session)
         if model == "bft-final":
             self.trusted["demosPayerKeyClaims"][session["payer"]] = [
-                controlled_claim(self.demos_key("buyer"))]
+                controlled_claim("key:" + self.demos_key("buyer"))]
         rail = self.rail(model, phase, rail_id, rail_version)
         profile = rail["consumerFinalityProfile"]
 
@@ -1918,36 +1919,78 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     # DEM-7/FV-5: the sender binds a controlled Demos key claim of the payer's
     # pinned party bundle; nothing a consumer receives names the payer's
     # per-phase selection, the payer's own word is no source, and a claim the
-    # bundle only lists (another party's key) binds nothing.
+    # bundle only lists (another party's key) binds nothing. A Demos key claim
+    # is a DACS-1 ClaimReference (`key:<hex>` or `did:demos:agent:<hex>`) and is
+    # controlled only by the step (6) mechanism DACS-1 defines for its scheme:
+    # the exact `key:` claim's own bundle presentation signature.
     claimed_key = factory.demos_key("orchestrator")
-    only_claimed = {CLAIMS["buyer"]: [controlled_claim(claimed_key, "sr1-linkage")]}
+    buyer_key = factory.demos_key("buyer")
+    only_claimed = {CLAIMS["buyer"]: [controlled_claim("key:" + claimed_key)]}
     claimed_sender = demos_record(**{"from": "0x" + claimed_key, "from_ed25519_address": "0x" + claimed_key})
-    buyer_claim = controlled_claim(factory.demos_key("buyer"))
+    buyer_claim = controlled_claim("key:" + buyer_key)
+    def claims_of(*claims):
+        return {"demosPayerKeyClaims": {CLAIMS["buyer"]: list(claims)}}
     vectors.append(case("fv-bft-final-payer-key-claim-distinct", "pass", "a controlled Demos key claim of the payer's bundle may differ from the party signer",
                         claimed_sender, trusted_overrides={"demosPayerKeyClaims": only_claimed}))
     vectors.append(case("fv-bft-final-payer-key-claim-any-of-bundle", "pass", "any controlled Demos key claim of the payer's bundle binds the sender",
                         claimed_sender,
-                        trusted_overrides={"demosPayerKeyClaims": {
-                            CLAIMS["buyer"]: [buyer_claim, controlled_claim("did:demos:agent:" + claimed_key, "sr1-linkage")]}}))
+                        trusted_overrides=claims_of(buyer_claim, controlled_claim("key:" + claimed_key),
+                                                    controlled_claim("did:demos:agent:" + claimed_key, "none"))))
     vectors.append(case("fv-bft-final-payer-key-claim-wrong", "fail", "a sender that is no controlled Demos key claim of the payer's bundle, the primary party signer included, contradicts the phase",
                         factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": only_claimed}))
     # Another party's key that the payer's bundle lists with no control proof:
     # its transfer binds nothing, and the payer's own claim still does.
-    listed_only = {CLAIMS["buyer"]: [buyer_claim, controlled_claim(claimed_key, "none")]}
+    listed_only = {CLAIMS["buyer"]: [buyer_claim, controlled_claim("key:" + claimed_key, "none")]}
     vectors.append(case("fv-bft-final-payer-key-claim-listed-not-controlled", "fail", "a Demos key the payer's bundle lists without a control proof is another party's key, so its transfer contradicts the phase",
                         claimed_sender, trusted_overrides={"demosPayerKeyClaims": listed_only}))
     vectors.append(case("fv-bft-final-payer-key-claim-listed-beside-controlled", "pass", "listing another party's key beside the payer's own controlled claim does not disturb the payer's own transfer",
                         factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": listed_only}))
     vectors.append(case("fv-bft-final-payer-key-claim-none-controlled", "indeterminate", "a bundle that proves control of no Demos key claim authenticates no sender, even one it lists",
-                        claimed_sender, trusted_overrides={"demosPayerKeyClaims": {CLAIMS["buyer"]: [controlled_claim(claimed_key, "none")]}}))
-    vectors.append(case("fv-bft-final-payer-key-claim-non-demos-skipped", "pass", "a claim that is no Demos key is skipped, never an error",
+                        claimed_sender, trusted_overrides=claims_of(controlled_claim("key:" + claimed_key, "none"))))
+    vectors.append(case("fv-bft-final-payer-key-claim-session-key-presentation", "indeterminate", "a bundle presented by a session key has no presentation signature of its own key: claim, so its key claim is listed only and its owner's own transfer is not admitted",
+                        factory.model_input("bft-final"), trusted_overrides=claims_of(controlled_claim("key:" + buyer_key, "none"))))
+    vectors.append(case("fv-bft-final-payer-key-claim-non-demos-skipped", "pass", "a claim that is no Demos key claim is skipped, never an error",
                         factory.model_input("bft-final"),
-                        trusted_overrides={"demosPayerKeyClaims": {CLAIMS["buyer"]: [
-                            controlled_claim("0x" + "ab" * 20), buyer_claim, controlled_claim("lei:529900T8BM49AURSDO55")]}}))
-    vectors.append(case("fv-bft-final-payer-key-claim-malformed-spelling-uncounted", "indeterminate", "a controlled claim that does not project to a Demos key is not a Demos key claim",
-                        factory.model_input("bft-final"),
-                        trusted_overrides={"demosPayerKeyClaims": {CLAIMS["buyer"]: [
-                            controlled_claim("0x" + factory.demos_key("buyer").upper())]}}))
+                        trusted_overrides=claims_of(
+                            controlled_claim("cci-xm:evm:8453:0x" + "ab" * 20, "sr1-linkage"), buyer_claim,
+                            controlled_claim("lei:529900T8BM49AURSDO55", "holder-binding"))))
+    # One vector per scheme and mechanism over the claim's ClaimReference. A
+    # Demos key is bound only through the mechanism DACS-1 step (6) defines
+    # for the claim's scheme; nothing else, and no other spelling, is control.
+    for name, claim, control, why in (
+        ("did-presentation-signature", "did:demos:agent:" + buyer_key, "presentation-signature",
+         "DACS-1 step (6) defines no control mechanism for a did:demos:agent: claim, so a signature label on it controls nothing"),
+        ("did-holder-binding", "did:demos:agent:" + buyer_key, "holder-binding",
+         "holder-binding is a credential mechanism, not control of a Demos agent DID"),
+        ("key-sr1-linkage", "key:" + buyer_key, "sr1-linkage",
+         "SR-1 linkage controls a cci-xm: claim, not a key: claim"),
+        ("key-holder-binding", "key:" + buyer_key, "holder-binding",
+         "holder-binding controls a credential claim, not a key: claim"),
+        ("cci-xm-sr1-linkage", "cci-xm:demos:mainnet:0x" + buyer_key, "sr1-linkage",
+         "no registered mapping takes a cci-xm: identifier to a Demos account key, so it is no Demos key claim"),
+        ("bare-hex-signature", buyer_key, "presentation-signature",
+         "bare hex is an address spelling, not a ClaimReference, so a bundle claim cannot be it"),
+        ("0x-hex-signature", "0x" + buyer_key, "presentation-signature",
+         "0x hex is an address spelling, not a ClaimReference"),
+        ("key-upper-case-signature", "key:" + buyer_key.upper(), "presentation-signature",
+         "a key: identifier is lower-case hex; upper case is not the canonical claim"),
+        ("key-0x-signature", "key:0x" + buyer_key, "presentation-signature",
+         "a key: identifier is hex with no 0x prefix"),
+    ):
+        vectors.append(case("fv-bft-final-payer-key-claim-" + name, "indeterminate", why,
+                            factory.model_input("bft-final"), trusted_overrides=claims_of(controlled_claim(claim, control))))
+    # A listed DID claim names the sender's key but proves nothing: the payer's
+    # own controlled key: claim is the only source, and the sender is not it.
+    vectors.append(case("fv-bft-final-payer-key-claim-did-listed-sender", "fail", "a did:demos:agent: claim names a key but DACS-1 defines no control of it, so a sender it names contradicts the phase beside the payer's own controlled claim",
+                        claimed_sender, trusted_overrides=claims_of(buyer_claim, controlled_claim("did:demos:agent:" + claimed_key))))
+    # A malformed phase value is `error` before the claims' verdict, as DEM-7
+    # orders them.
+    vectors.append(case("fv-bft-final-payer-key-claim-none-controlled-amount-not-dem", "error", "a phase without a DEM amount is error whatever the bundle controls",
+                        demos_record(phase_amount="5", phase_currency="USDC"),
+                        trusted_overrides=claims_of(controlled_claim("key:" + buyer_key, "none"))))
+    forged = BodyVariant("txHash", "00" * 32).model_input("bft-final")
+    vectors.append(case("fv-bft-final-payer-key-claim-none-controlled-inclusion-body-mismatch", "fail", "FV-10: an inclusion the bft-final verification decides fail is that verdict before the bundle's claims",
+                        forged, trusted_overrides=claims_of(controlled_claim("key:" + buyer_key, "none"))))
     vectors.append(case("fv-bft-final-payer-key-claim-unavailable", "indeterminate", "no payer key may be inferred without the payer's authenticated bundle",
                         factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": None}))
     for name, bundles, expected in (
@@ -1957,8 +2000,11 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         ("payer-missing", {CLAIMS["buyer"]: None}, "indeterminate"),
         ("claims-empty", {CLAIMS["buyer"]: []}, "error"),
         ("claims-malformed", [], "error"),
-        ("claim-not-an-object", {CLAIMS["buyer"]: [factory.demos_key("buyer")]}, "error"),
-        ("claim-control-unknown", {CLAIMS["buyer"]: [controlled_claim(factory.demos_key("buyer"), "self-declared")]}, "error"),
+        ("claim-not-an-object", {CLAIMS["buyer"]: [buyer_key]}, "error"),
+        ("claim-not-a-string", {CLAIMS["buyer"]: [controlled_claim(7)]}, "error"),
+        ("claim-control-unknown", {CLAIMS["buyer"]: [controlled_claim("key:" + buyer_key, "self-declared")]}, "error"),
+        ("claim-control-array", {CLAIMS["buyer"]: [controlled_claim("key:" + buyer_key, ["presentation-signature"])]}, "error"),
+        ("claim-control-object", {CLAIMS["buyer"]: [controlled_claim("key:" + buyer_key, {})]}, "error"),
         ("claim-extra-member", {CLAIMS["buyer"]: [dict(buyer_claim, verified=True)]}, "error"),
     ):
         vectors.append(case("fv-bft-final-payer-key-claim-" + name, expected, "the sender binds the controlled Demos key claims of this phase's payer's bundle",

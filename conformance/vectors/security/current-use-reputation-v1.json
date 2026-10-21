@@ -5,7 +5,7 @@
   "fixturePolicy": "Synthetic signed native proofs for offline conformance only; no production Demos native cryptographic codec is claimed. Trust roots are verifier configuration.",
   "replayPolicy": "Every vector embeds the complete executable replay input: the exact request, its full authenticated dependency closure, the verifier configuration with public keys, the trusted query context, and the expected outcome. The set hash is computed over these complete replay inputs; mutating any authority, receipt, finality, or historical-evidence member of the bound payload yields a non-pass.",
   "count": 13,
-  "hash": "fb33709076f18916d55b8fabee38b5aa03385398ade7de5c08d3781a11bb5d3b",
+  "hash": "a2cd748856ab02cd5caad1eb90b3bd8dd67be6a87a1036b8347c8ac97b8a50e3",
   "vectors": [
     {
       "name": "current-use-block-depth",
@@ -1074,7 +1074,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -2221,7 +2221,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -3487,7 +3487,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -4685,7 +4685,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -6280,7 +6280,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -7747,7 +7747,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -8655,7 +8655,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -9332,7 +9332,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -10015,7 +10015,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -10719,7 +10719,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -11652,7 +11652,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -12564,7 +12564,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]
@@ -13319,7 +13319,7 @@
             "demosPayerKeyClaims": {
               "did:demos:buyer": [
                 {
-                  "claim": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "claim": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
                   "control": "presentation-signature"
                 }
               ]

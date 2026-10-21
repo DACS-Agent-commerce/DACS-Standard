@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 445 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 482 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -92,7 +92,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 212 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 227 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1254,7 +1254,7 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-445 candidate vectors pin native-DEM settlement on execution, not inclusion.
+482 candidate vectors pin native-DEM settlement on execution, not inclusion.
 Every `signedTransaction`, `confirmResponse`, `validityResponse` and `record`
 member is carried as its exact JSON text (a string the runner parses,
 keeping member order), because member order is part of its meaning; the
@@ -1279,15 +1279,43 @@ handler and the consumer path. Records carry the members the node stores
 with a send (`timestamp`, fees and the send's four `gcr_edits`).
 
 A consumer binds the record's sender to a controlled Demos key claim of the
-payer's pinned party bundle. A phase's optional `payerKeyClaims` lists that
-bundle's claims as `{claim, control}` (`control` is `presentation-signature`
-or `sr1-linkage` when the payer proved control of that exact claim, `none` for
-a claim the bundle only lists); without it the bundle controls one claim, the
-handler's `payerPayingKey`. A key the bundle only lists does not bind
-(`consumer-sender-listed-not-controlled`, `delivery-sender-listed-not-controlled`
-are `fail`, `consumer-no-controlled-claim` is `indeterminate`), another
-controlled claim does (`consumer-sender-another-controlled-claim`), and a claim
-that is no Demos key is skipped (`consumer-non-demos-claim-skipped`).
+payer's pinned party bundle, and the payer's DEM-1 gates sign and send only for
+a paying key that is one (DEMOS-MAPPING §A.2): one predicate on both sides. A
+Demos key claim is a DACS-1 ClaimReference, exactly `key:<64 lower-case hex>` or
+`did:demos:agent:<64 lower-case hex>`; bare and `0x` hex are address spellings,
+not claims, and a `cci-xm:` identifier is no Demos key claim. It is controlled
+only by the DACS-1 §6.3.2 step (6) mechanism defined for its scheme: the exact
+`key:` claim's own bundle presentation signature. A `did:demos:agent:` claim has
+no mechanism, so it never counts as controlled, and a bundle presented by a
+session key has no signature of its own `key:` claim.
+
+A phase's optional `payerKeyClaims` is the corpus's model of the verifier's own
+check of that bundle (which the corpus does not carry): the bundle's claims as
+`{claim, control}`, where `claim` is a ClaimReference and `control` the step (6)
+mechanism the check found for that exact claim (`presentation-signature`,
+`sr1-linkage`, `holder-binding`, `demos-gcr-domain`) or `none` for a claim the
+bundle only lists. A label is not proof: a mechanism DACS-1 defines for another
+scheme controls nothing. Without `payerKeyClaims` the corpus's bundle holds one
+`key:` claim for `payerPayingKey`, controlled by its presentation signature;
+that default is a fixture convention, not a rule. A key the bundle only lists
+does not bind (`consumer-sender-listed-not-controlled`,
+`delivery-sender-listed-not-controlled`, `consumer-did-claim-names-another-sender`
+are `fail`; `consumer-no-controlled-claim` and the `consumer-claim-*` cases for
+a DID, a wrong mechanism, bare or `0x` hex, a `cci-xm:` claim and a
+session-key presentation are `indeterminate`), another controlled claim does
+(`consumer-sender-another-controlled-claim`), and a claim that is no Demos key
+claim is skipped (`consumer-non-demos-claim-skipped`). A claim or control that
+is not a string is `error` (`consumer-claim-control-*`). Decisions are made in
+order: FV-10's `fail`/`error` on a presented inclusion first
+(`consumer-*-bft-final-certificate-forged` with a bundle that controls nothing
+or is malformed), then an `error` for a malformed phase value or claim, then
+`indeterminate` for a bundle with no controlled claim, then the record. The
+payer's gates use the same predicate: `sign-paying-key-*`, `confirm-paying-key-*`
+and `broadcast-paying-key-*` are `error` (`permanent` before signing) for a
+paying key that is listed only, a DID claim only, controlled by a wrong
+mechanism, absent from the bundle or in a malformed bundle, and
+`sign-with-key-claim-paying-key`, `confirm-from-key-claim-paying-key` and
+`broadcast-from-key-claim-paying-key` pass a `key:` paying key.
 
 A `classify-execution` case passes only for a record from a pinned node that
 decodes and whose projected hash, nonce, sender, recipient and OS amount
@@ -1551,8 +1579,9 @@ delivery on every check, a new delivery record whose directory entry is not
 fsynced and an index entry or delivery record trusted before it is flushed.
 
 `phase.payeeAddress` and `phase.payerPayingKey` are DEMOS-MAPPING §A.2 pay-dem
-party addresses: a bare or `0x` Demos key or a `did:demos:agent:` DID over 64
-lower-case hex digits, compared by the key they project to. The
+party addresses: a bare or `0x` Demos key, a `key:` ClaimReference or a
+`did:demos:agent:` DID over 64 lower-case hex digits, compared by the key they
+project to. The
 `broadcast-to-*`, `consumer-*-payee-address-*` and `delivery-*-payee-address`
 / `delivery-from-0x-paying-key` cases pass a genuine payment under each
 spelling the PB and APR corpora use, and upper-case, `did:demos:agent:0x`
@@ -2259,7 +2288,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
 
-212 candidate cases execute consumer-verifiable settlement finality for
+227 candidate cases execute consumer-verifiable settlement finality for
 block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
 liquidity-tank profiles. The consumer derives the model and strength from the
 exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
@@ -2303,16 +2332,27 @@ pinned one are `error`, and missing keys are `indeterminate`, never `fail`
 (`fv-trust-*`). DACS-4 DEM-1's gate applies the same check
 (`bft_final_trust`). Only after result authentication does DEM-7 decode and
 bind hash, block, recipient, amount and the sender to a controlled Demos key
-claim of the payer's pinned party bundle (trusted `demosPayerKeyClaims`, keyed
-by payer, each claim `{claim, control}`: `presentation-signature` or
-`sr1-linkage` when the payer proved control of it under DACS-1 §6.3.2 step 6,
-`none` for a claim the bundle only lists; claims for another payer are
-unavailable, claims that are no Demos key are skipped, and a bundle with no
-controlled Demos key claim is `indeterminate`).
+claim of the payer's pinned party bundle. Trusted `demosPayerKeyClaims`, keyed
+by payer, is verifier configuration that models the verifier's own check of
+that bundle (DEMOS-MAPPING §A.2): each claim is `{claim, control}`, `claim` a
+DACS-1 ClaimReference and `control` the step (6) mechanism that check found
+for it (`presentation-signature`, `sr1-linkage`, `holder-binding`,
+`demos-gcr-domain`) or `none` for a claim the bundle only lists. Only a `key:`
+claim's `presentation-signature` is control of a Demos key claim; a
+`did:demos:agent:` claim has none, SR-1 linkage controls a `cci-xm:` claim, and
+bare or `0x` hex is no ClaimReference. Claims for another payer are
+unavailable, claims that are no Demos key claim are skipped, a claim or
+control that is not a string is `error`, and a bundle with no controlled Demos
+key claim is `indeterminate` (after FV-10's `fail`/`error` and a phase's own
+`error`).
 Cases cover a controlled claim distinct from the party signer, any controlled
 claim of the bundle, another party's key that the bundle lists without proof
-of control (its transfer is `fail`), a sender the bundle does not claim, claims
-for another payer or none, malformed claim entries,
+of control (its transfer is `fail`), a sender the bundle does not claim, one
+case per scheme and mechanism (`fv-bft-final-payer-key-claim-did-*`,
+`-key-sr1-linkage`, `-cci-xm-*`, `-bare-hex-*`, `-0x-hex-*`,
+`-session-key-presentation`), claims
+for another payer or none, malformed claim entries, FV-10 and a malformed phase
+before the claims' verdict,
 result-policy thresholds and aliased keys, malformed results,
 exact fractional DEM-to-OS conversion,
 record spellings that project alike (a `0x`-prefixed `send` argument, bare

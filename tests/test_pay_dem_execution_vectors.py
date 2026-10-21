@@ -44,6 +44,9 @@ GUARDS = frozenset({
     "sign-allowed-when-configured",
     # DEM-1: an unprojectable party address is refused before signing
     "pre-sign-party-address-projects",
+    # DEM-1: a paying key that is no controlled Demos key claim is refused before signing and at every egress
+    "pre-sign-paying-key-controlled",
+    "broadcast-paying-key-controlled",
     "sign-requires-pinned-node",
     "sign-requires-applied-payment-authority",
     "sign-requires-gas-fee-separation-unscheduled",
@@ -177,6 +180,9 @@ GUARDS = frozenset({
     "consumer-binds-block",
     "consumer-binds-payer",
     "consumer-binds-controlled-claims-only",
+    "claims-are-claim-references",
+    "control-is-the-schemes-mechanism",
+    "consumer-claims-before-fv-inclusion-verdict",
     "consumer-binds-payee",
     "consumer-binds-amount",
     "consumer-failed-refutes",
@@ -246,7 +252,10 @@ HASH = re.compile(r"[0-9a-f]{64}")
 ADDRESS = re.compile(r"(?:0x)?([0-9a-f]{64})")
 # DEMOS-MAPPING §A.2 pay-dem party address: a Demos key, or a DACS-1
 # `did:demos:agent:` DID whose key component is 64 lower-case hex digits.
-PARTY_ADDRESS = re.compile(r"(?:0x|did:demos:agent:)?([0-9a-f]{64})")
+PARTY_ADDRESS = re.compile(r"(?:0x|did:demos:agent:|key:)?([0-9a-f]{64})")
+# A Demos key claim of a party's bundle is a DACS-1 ClaimReference: bare and
+# 0x hex are address spellings, not claims (DEMOS-MAPPING §A.2).
+DEMOS_KEY_CLAIM = re.compile(r"(key|did):(?:demos:agent:)?([0-9a-f]{64})")
 DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)")
 SIGNATURE = re.compile(r"0x[0-9a-f]{128}")
 RETAINED = {"jobId", "phaseIndex", "txHash", "nonce", "sender", "recipient", "amountOs"}
@@ -1000,27 +1009,57 @@ def party_address(value, off):
     return match[1] if match else None
 
 
-CLAIM_CONTROLS = frozenset({"presentation-signature", "sr1-linkage"})
+# DACS-1 §6.3.2 step (6) mechanisms as a verifier's own check of the pinned
+# bundle reports them (the corpus models that result), or "none".
+CLAIM_CONTROLS = frozenset({"presentation-signature", "sr1-linkage", "holder-binding", "demos-gcr-domain"})
+# The one mechanism DACS-1 defines for a Demos key claim's scheme: the exact
+# `key:` claim's own bundle presentation signature. `did:demos:agent:` has none.
+KEY_CLAIM_CONTROL = {"key": "presentation-signature"}
 
 
 def payer_claims(phase, off):
     """The 64-hex keys of the controlled Demos key claims of the payer's party
-    bundle (DEMOS-MAPPING §A.2) that DEM-7 binds a record's sender to, or None
+    bundle (DEMOS-MAPPING §A.2) that DEM-1 and DEM-7 bind a sender to, or None
     when the phase's claims are malformed. A bundle that lists a key with no
-    proof of control, or claims that are no Demos key, adds nothing. Without
-    `payerKeyClaims` the bundle claims one controlled key, the handler's
-    `payer.payingKey` (§9.5.1)."""
+    proof of control, a claim of a scheme that is no Demos key, or a control
+    that DACS-1 does not define for the claim's scheme adds nothing. Without
+    `payerKeyClaims` this corpus's bundle holds one `key:` claim for the
+    handler's `payer.payingKey`, controlled by its presentation signature."""
     claims = phase.get("payerKeyClaims")
     if claims is None:
         key = party_address(phase.get("payerPayingKey"), off)
         return None if key is None else {key}
     if not (isinstance(claims, list) and claims and all(
             isinstance(claim, dict) and set(claim) == {"claim", "control"} and isinstance(claim["claim"], str)
-            and (claim["control"] in CLAIM_CONTROLS or claim["control"] == "none") for claim in claims)):
+            and isinstance(claim["control"], str) and (claim["control"] in CLAIM_CONTROLS or claim["control"] == "none")
+            for claim in claims)):
         return None
     listed = "consumer-binds-controlled-claims-only" in off
-    return {key for key in (party_address(claim["claim"], off) for claim in claims
-                            if listed or claim["control"] in CLAIM_CONTROLS) if key is not None}
+    keys = set()
+    for claim in claims:
+        if "claims-are-claim-references" in off:
+            # The wrong implementation projects a claim as it projects an
+            # address: bare and 0x hex and a cci-xm: address become claims.
+            match = re.fullmatch(r"(?:0x|did:demos:agent:|key:|cci-xm:demos:[a-z]+:0x)?([0-9a-f]{64})", claim["claim"])
+            if match and (listed or claim["control"] in CLAIM_CONTROLS):
+                keys.add(match[1])
+            continue
+        match = DEMOS_KEY_CLAIM.fullmatch(claim["claim"])
+        if not match:
+            continue
+        # The wrong implementation takes any step (6) mechanism as control of any scheme.
+        controlled = (claim["control"] in CLAIM_CONTROLS if "control-is-the-schemes-mechanism" in off
+                      else KEY_CLAIM_CONTROL.get(match[1]) == claim["control"])
+        if listed or controlled:
+            keys.add(match[2])
+    return keys
+
+
+def paying_key_controlled(phase, off):
+    """DEM-1: the sender, the key of `payer.payingKey`, is the key of a
+    controlled Demos key claim of the retained payer bundle."""
+    payers, key = payer_claims(phase, off), party_address(phase.get("payerPayingKey"), off)
+    return payers is not None and key in payers
 
 
 # Every input a final pay-dem verdict consumes, as one network's binding
@@ -1161,6 +1200,10 @@ def pre_sign_gate(protocol_input: dict, off) -> tuple[str, dict]:
     if "pre-sign-party-address-projects" not in off and any(
             party_address(phase.get(field), off) is None for field in ("payerPayingKey", "payeeAddress")):
         return "error", {"signPermitted": False, "ok": False, "errorClass": "permanent"}
+    # A paying key DEM-7 will not bind could pay, never be admitted, and
+    # allow no replacement: refused as a phase that can never be paid.
+    if "pre-sign-paying-key-controlled" not in off and not paying_key_controlled(phase, off):
+        return "error", {"signPermitted": False, "ok": False, "errorClass": "permanent"}
     held = binding_members(protocol_input, off)
     for guard, member in (
         ("sign-requires-pinned-node", "pinnedNodes"),
@@ -1253,6 +1296,8 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
     phase_os = (match[1] + (match[2] or "").ljust(9, "0")).lstrip("0") or "0"
     parties = {field: party_address(phase.get(field), off) for field in ("payerPayingKey", "payeeAddress")}
     if None in parties.values():
+        return "error", {"broadcastPermitted": False}
+    if "broadcast-paying-key-controlled" not in off and not paying_key_controlled(phase, off):
         return "error", {"broadcastPermitted": False}
     for guard, field, authority in (
         ("retained-sender-is-payer", "sender", "payerPayingKey"),
@@ -1352,11 +1397,14 @@ def dem7(protocol_input: dict, off) -> str:
         return "pass"
     phase = protocol_input["phase"]
     payers, payee = payer_claims(phase, off), party_address(phase.get("payeeAddress"), off)
-    if payers is None or payee is None:
-        return "error"
-    if not payers:
-        return "indeterminate"  # the payer's bundle controls no Demos key claim
     read = protocol_input["recordRead"]
+    if "consumer-claims-before-fv-inclusion-verdict" in off:
+        # The wrong implementation decides the phase's own claims first, so a
+        # bundle that controls nothing turns FV-10's fail into indeterminate.
+        if payers is None or payee is None:
+            return "error"
+        if not payers:
+            return "indeterminate"
     # FV-10: FV's own error or fail on the presented reference's bft-final
     # inclusion (a forged certificate, a transaction proven absent, a block
     # off the authenticated head) is the evidence's verdict before any
@@ -1367,6 +1415,12 @@ def dem7(protocol_input: dict, off) -> str:
                                     protocol_input, off)
         if verdict in ("fail", "error"):
             return verdict
+    # After FV-10: a malformed phase value or claim is error, and a bundle
+    # that controls no Demos key claim authenticates no sender.
+    if payers is None or payee is None:
+        return "error"
+    if not payers:
+        return "indeterminate"
     record = read.get("record") if read.get("state") == "found" else None
     projection = decode(record, off) if record is not None else None
     if projection is None or not pinned(read, off):
@@ -1857,7 +1911,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertEqual(["first-broadcast-after-durable-retention", "broadcast-prefixed-send-argument",
                           "broadcast-with-rail-network-entry-among-several",
                           "broadcast-to-0x-payee-address", "broadcast-to-did-payee-address",
-                          "broadcast-from-did-paying-key", "confirm-after-durable-retention",
+                          "broadcast-from-did-paying-key", "confirm-from-key-claim-paying-key",
+                          "broadcast-from-key-claim-paying-key", "confirm-after-durable-retention",
                           "broadcast-completes-own-confirm"], permitted)
         for name in permitted:
             with self.subTest(name=name):
@@ -2188,19 +2243,29 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                           "sign-with-bft-final-trust-below-observation-threshold",
                           "sign-without-execution-result-policy", "sign-with-malformed-execution-result-policy",
                           "sign-with-unknown-execution-result-policy-kind",
-                          "sign-with-rail-network-entry-among-several"}
+                          "sign-with-rail-network-entry-among-several",
+                          "sign-with-key-claim-paying-key", "sign-with-foreign-key-claim-listed"}
                          | {"sign-with-" + suffix for suffix in (*NETWORK_VARIANTS, *UNUSABLE_TRUST)},
                          {name for name in presign if presign[name]["expected"] != "error"})
         # A party address that does not project is refused before signing,
         # PC-4 permanent, so no retention pins a phase that can never be paid.
-        addresses = {name for name in presign if presign[name]["expected"] == "error"}
-        self.assertEqual({"sign-payee-address-upper-case", "sign-payee-address-did-with-0x",
-                          "sign-payee-address-evm-length", "sign-paying-key-upper-case"}, addresses)
-        for name in addresses:
+        unpayable = {name for name in presign if presign[name]["expected"] == "error"}
+        addresses = {"sign-payee-address-upper-case", "sign-payee-address-did-with-0x", "sign-payee-address-evm-length"}
+        # A paying key that is no controlled Demos key claim of the retained
+        # payer bundle is refused the same way (DEM-1): DEM-7 would not bind
+        # its transfer, so the payment would execute and never be admitted.
+        uncontrolled = {"sign-paying-key-" + suffix for suffix in (
+            "listed-not-controlled", "session-key-presentation", "did-claim-only", "wrong-mechanism",
+            "not-in-bundle", "claims-malformed")}
+        self.assertEqual(addresses | uncontrolled | {"sign-paying-key-upper-case"}, unpayable)
+        for name in unpayable:
             with self.subTest(name=name):
                 self.assertEqual(("error", {"signPermitted": False, "ok": False, "errorClass": "permanent"}),
                                  evaluate(presign[name]))
-                self.assertEqual("pass", evaluate(presign[name], {"pre-sign-party-address-projects"})[0])
+                self.assertEqual(name in addresses,
+                                 evaluate(presign[name], {"pre-sign-party-address-projects"})[0] == "pass")
+                self.assertEqual(name in uncontrolled,
+                                 evaluate(presign[name], {"pre-sign-paying-key-controlled"})[0] == "pass")
         for name, vector in presign.items():
             with self.subTest(name=name):
                 self.assertEqual({"phase", "railNetwork", "finalityProfile", "demosBinding"},
@@ -2670,7 +2735,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 "demosExecutionPolicy": value.get("fv5Policy"),
                 "demosRecordProfile": DEMOS_RECORD_PROFILE,
                 "demosPayerKeyClaims": {"payer": phase.get("payerKeyClaims") or [{
-                    "claim": phase.get("payerPayingKey", transfer.get("sender")), "control": "presentation-signature"}]},
+                    "claim": "key:" + str(party_address(phase.get("payerPayingKey", transfer.get("sender")),
+                                                        frozenset())), "control": "presentation-signature"}]},
                 "partyKeys": {"payee": base64.urlsafe_b64encode(bytes.fromhex(payee)).decode().rstrip("=")},
             }
             expected = {"jobId": job, "phaseIndex": index, "payer": "payer", "payee": "payee",
@@ -2710,8 +2776,11 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     checked["consumer"] += 1
                     authenticated = fv5_authenticated(read, value, frozenset(), reference)
                     if (authenticated and vector["expected"] == "fail"
+                            and "consumer-authenticated-contradiction-fails" in vector["guards"]
                             and inclusion_verdict(read.get("inclusionProof"), reference, value, frozenset())
-                            not in ("fail", "error") and "appliedTransfer" not in read):
+                            not in ("fail", "error")):
+                        # Including a read that carries its appliedTransfer: the
+                        # authority's own debit and credit are what FV scores.
                         self.assertEqual("fail", decision)
                     if vector["operation"] == "admit-for-delivery" and vector["expected"] == "pass":
                         self.assertEqual("pass", decision)
@@ -2874,7 +2943,10 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         # authorize nothing; the payer's DEM-3/DEM-4 stay unresolved on them.
         forged = [vector for vector in self.data["vectors"]
                   if "consumer-takes-fv-inclusion-verdict" in vector["guards"]]
-        self.assertEqual({"admit-evidence": 6, "admit-for-delivery": 3},
+        # Six forged-inclusion variants, and two that pair the forged
+        # certificate with a bundle that controls nothing or is malformed: FV-10
+        # is decided before the claims (DEM-7).
+        self.assertEqual({"admit-evidence": 8, "admit-for-delivery": 3},
                          {op: sum(v["operation"] == op for v in forged) for op in ("admit-evidence", "admit-for-delivery")})
         for vector in forged:
             with self.subTest(forged=vector["name"]):
@@ -2926,6 +2998,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     stripped = json.loads(json.dumps(vector))
                     strip(stripped["protocolInput"], member)
                     want = "indeterminate"
+                    phase = stripped["protocolInput"].get("phase") or {}
+                    if "payerKeyClaims" in phase and payer_claims(phase, frozenset()) is None:
+                        want = "error"  # a malformed bundle claim is decided once FV-10 decides nothing
                     if member == "finalityCertificate" and "consumer-takes-fv-inclusion-verdict" in vector["guards"]:
                         # The verdict is FV's own on the presented proof, which
                         # can still show the transaction absent or off the
@@ -3706,6 +3781,53 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         replaced["protocolInput"]["recordRead"]["appliedTransfer"]["genesisHash"] = "f" * 64
         self.assertEqual("fail", evaluate(replaced)[0])
 
+    def test_the_payer_signs_only_what_dem7_will_bind(self):
+        """The payer side and the consumer side apply one predicate (DEMOS-MAPPING
+        §A.2): over every scheme and mechanism of a payer-bundle claim for the
+        paying key, the DEM-1 gates (before signing, at the `confirm` and at the
+        `broadcast`) permit exactly when DEM-7 binds the handler's own transfer.
+        A gate that permits what DEM-7 refuses pays into a refusal: the transfer
+        executes, the payee never delivers, and DEM-5 permits no replacement."""
+        key = generator.PAYER_KEY
+        sign = self.cases["sign-with-pinned-node-and-applied-payment-authority"]
+        confirm = self.cases["confirm-after-durable-retention"]
+        broadcast = self.cases["first-broadcast-after-durable-retention"]
+        admit = self.cases["consumer-confirmed-gate-passes"]
+        controls = ("presentation-signature", "sr1-linkage", "holder-binding", "demos-gcr-domain", "none")
+        references = ("key:" + key, "did:demos:agent:" + key, "cci-xm:demos:mainnet:0x" + key, key, "0x" + key,
+                      "key:" + key.upper(), "key:0x" + key, "key:" + generator.OTHER_KEY, "lei:529900T8BM49AURSDO55")
+        permitted = set()
+        for reference in references:
+            for control in controls:
+                claims = [{"claim": reference, "control": control}]
+                with self.subTest(claim=reference, control=control):
+                    verdicts = {}
+                    for label, vector in (("sign", sign), ("confirm", confirm), ("broadcast", broadcast)):
+                        changed = json.loads(json.dumps(vector))
+                        changed["protocolInput"]["phase"]["payerKeyClaims"] = claims
+                        verdicts[label] = evaluate(changed)[0] == "pass"
+                    changed = json.loads(json.dumps(admit))
+                    changed["protocolInput"]["phase"]["payerKeyClaims"] = claims
+                    verdicts["dem7"] = evaluate(changed)[0] == "pass"
+                    self.assertEqual(1, len(set(verdicts.values())), verdicts)
+                    if verdicts["dem7"]:
+                        permitted.add((reference, control))
+        # Exactly one pair is a controlled Demos key claim of the paying key.
+        self.assertEqual({("key:" + key, "presentation-signature")}, permitted)
+        # Without the gates' own check, each signs for a key DEM-7 refuses.
+        for vector, guard in ((sign, "pre-sign-paying-key-controlled"), (confirm, "broadcast-paying-key-controlled"),
+                              (broadcast, "broadcast-paying-key-controlled")):
+            changed = json.loads(json.dumps(vector))
+            changed["protocolInput"]["phase"]["payerKeyClaims"] = [{"claim": "key:" + key, "control": "none"}]
+            self.assertNotEqual("pass", evaluate(changed)[0])
+            self.assertEqual("pass", evaluate(changed, {guard})[0])
+        self.assertEqual("indeterminate", evaluate(admit | {"protocolInput": dict(
+            admit["protocolInput"], phase=dict(admit["protocolInput"]["phase"],
+                                               payerKeyClaims=[{"claim": "key:" + key, "control": "none"}]))})[0])
+        spec = SPEC.read_text(encoding="utf-8")
+        self.assertIn("MUST check that the sender is the key of a *controlled Demos key claim* of the retained payer "
+                      "bundle that `payer.bundleHash` pins", spec)
+
     def test_party_addresses_compare_by_their_pay_dem_projection(self):
         """A genuine payment to the payee's key passes every path whichever
         pay-dem spelling the Agreement used (the PB corpus's
@@ -3717,7 +3839,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("each as the DEMOS-MAPPING §A.2 *pay-dem party address* projects it", spec)
         self.assertIn("projection of a *controlled Demos key claim* of the payer's party bundle that the Agreement pins", spec)
         self.assertNotIn("authenticated as PB-1 authenticates that bundle", spec)
-        self.assertIn("A Demos key claim is *controlled* when the party proved control of that exact claim under DACS-1 §6.3.2 step (6)", demos)
+        self.assertIn("A Demos key claim is *controlled* only by the DACS-1 §6.3.2 step (6) mechanism that "
+                      "DACS-1 defines for its scheme", demos)
         self.assertNotIn("selected `payer.payingKey`", spec)
         self.assertIn("and `payee.payeeAddress`, each as the DEMOS-MAPPING §A.2 *pay-dem party address*", spec)
         key = generator.PAYEE_KEY

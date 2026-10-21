@@ -26,23 +26,42 @@ The format used per release:
   move from `fail` to `indeterminate`, and the new case
   `fv-bft-final-included-execution-failed-shows-payment` pins a signed
   `failed` record whose own balances show the payment as `indeterminate`.
-- DEM-7 and FV-5: the record's sender binds only a *controlled* Demos
-  key claim of the payer's pinned party bundle, a claim whose control the
-  payer proved under DACS-1 §6.3.2 step (6) (its own presentation
-  signature, or an SR-1 linkage). A bundle can list another buyer's key,
-  and listing is not control, so that buyer's payment bound for the payer
-  and was admitted first. DEMOS-MAPPING §A.2 defines *Demos key claim* and
-  *controlled*; claims that are no Demos key are skipped, not an `error`,
-  and a bundle with no controlled Demos key claim is `indeterminate`. The
-  FV reference's trusted `demosPayerKeyClaims` carries `{claim, control}`
-  entries (`control`: `presentation-signature`, `sr1-linkage` or `none`).
-  Eight FV cases (`fv-bft-final-payer-key-claim-listed-*`, `-none-controlled`,
-  `-non-demos-skipped`, `-malformed-spelling-uncounted`, `-claim-*`) and
-  five pay-dem cases (`consumer-sender-*`, `consumer-no-controlled-claim`,
-  `consumer-non-demos-claim-skipped`, `delivery-sender-listed-not-controlled`)
-  pin it; the pay-dem consumer corpus takes an optional `payerKeyClaims`
-  phase member, and the `distinct` and `any-of-bundle` FV cases now list
-  controlled claims.
+- DEM-1, DEM-7 and FV-5: the record's sender binds only a *controlled*
+  Demos key claim of the payer's pinned party bundle, and the payer's
+  gates sign only for one. A bundle can list another buyer's key, and
+  listing is not control, so that buyer's payment bound for the payer and
+  was admitted first. DEMOS-MAPPING §A.2 now takes its terms from DACS-1:
+  a *Demos key claim* is a ClaimReference, exactly `key:<64 hex>` or
+  `did:demos:agent:<64 hex>` (bare and `0x` hex are address spellings,
+  and a `cci-xm:` identifier is no Demos key claim), and it is
+  *controlled* only by the DACS-1 §6.3.2 step (6) mechanism defined for
+  its scheme: the exact `key:` claim's own bundle presentation signature.
+  A `did:demos:agent:` claim has no step (6) mechanism, so it is never
+  controlled by this profile, and a bundle presented by a session key
+  controls none. The `key:` spelling is also a pay-dem party address, so
+  `payer.payingKey` can be the claim the bundle holds. DEM-1 refuses
+  before signing (`ok: false`, `permanent`) and at every egress a paying
+  key that is no controlled Demos key claim of the retained bundle:
+  DEM-7 would not bind the transfer, so it would execute, never be
+  admitted and permit no replacement. DEM-7 and FV-5 decide in one order:
+  FV-10's `fail`/`error`, then `error` for a malformed phase value or
+  claim (a claim or control that is not a string included), then
+  `indeterminate` for a bundle with no controlled claim, then the record.
+  Claims that are no Demos key claim are skipped, not an `error`. The FV
+  reference's trusted `demosPayerKeyClaims` carries `{claim, control}`
+  entries (`control`: a step (6) mechanism or `none`). Fifteen FV cases
+  net (`fv-bft-final-payer-key-claim-*`: one per scheme and mechanism,
+  a session-key presentation, a listed DID, FV-10 and a malformed phase
+  before the claims) and 37 pay-dem cases (`consumer-claim-*`,
+  `consumer-did-claim-names-another-sender`, `consumer-*-bft-final-certificate-forged`,
+  `sign-/confirm-/broadcast-paying-key-*`, `*-key-claim-paying-key`) pin
+  it, with guards `pre-sign-paying-key-controlled`,
+  `broadcast-paying-key-controlled`, `claims-are-claim-references`,
+  `control-is-the-schemes-mechanism` and
+  `consumer-claims-before-fv-inclusion-verdict`. The pay-dem consumer
+  corpus takes an optional `payerKeyClaims` phase member. The current-use
+  (CUAW, CUR) corpora's `demosPayerKeyClaims` are now `key:` claims; none
+  of their decisions changed.
 - FV-5 and DEM-7: a consumer's signed result must name the presented
   `txRef`. A self-consistent result for another transaction refutes
   nothing: `consumer-wrong-hash-authenticated` is `indeterminate`.
@@ -72,8 +91,8 @@ The format used per release:
   which its JCS `hash` covers; a runner parses each before evaluating. A
   member-sorting round trip of the file changed 58 results before and
   changes none now. A runner of this set MUST parse those members.
-- Corpora: pay-dem has 445 vectors (38 `pass`, 164 `fail`, 216
-  `indeterminate`, 27 `error`) and 133 guards. FV has 212 cases.
+- Corpora: pay-dem has 482 vectors (42 `pass`, 167 `fail`, 223
+  `indeterminate`, 50 `error`) and 138 guards. FV has 227 cases.
 
 ### Fixed — pay-dem: trust counts at the gate only when FV can verify under it; no default payee evidence; no unsigned attestation decides
 

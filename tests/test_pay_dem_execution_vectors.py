@@ -25,7 +25,7 @@ from jcs import canonicalize  # noqa: E402
 from demos_json import stringify  # noqa: E402
 from settlement_finality_reference import (  # noqa: E402
     DEMOS_RECORD_PROFILE, _demos_committed_change, _demos_native_send, _verify_demos_execution,
-    demos_execution_policy, verify_transaction_inclusion,
+    bft_final_trust, demos_execution_policy, verify_transaction_inclusion,
 )
 
 
@@ -48,6 +48,8 @@ GUARDS = frozenset({
     "sign-requires-bft-final-trust",
     "sign-requires-execution-result-policy",
     "binding-refusal-is-rail-unavailable",
+    # DEM-1: trust counts only when the FV verifier's own check passes it
+    "bft-final-trust-verifies-profile",
     # DEM-1/RAV-R3 "for the phase's network": the rail's pinned network
     "binding-network-is-rail-network",
     "pinned-nodes-bind-rail-network",
@@ -1002,6 +1004,10 @@ NETWORK_VARIANTS = {
     "bft-final-trust-for-another-network": "bft-final-trust-binds-rail-network",
     "execution-policy-for-another-network": "execution-policy-binds-rail-network",
 }
+# bft-final trust for the rail's network that is present but that the FV
+# verifier's own check rejects, so it can never verify an inclusion.
+UNUSABLE_TRUST = ("bft-final-trust-validator-set-not-pinned", "bft-final-trust-undecodable-observation-keys",
+                  "bft-final-trust-aliased-observation-keys")
 UNSELECTABLE = frozenset({"disabled", "failed", "mocked"})
 RAV_R3_GATED = frozenset({"operator_gated", "closed_data", "bilateral"})
 
@@ -1014,27 +1020,28 @@ def _network(value):
     return None
 
 
-def covers_profile(trust: dict, protocol_input: dict) -> bool:
+def covers_profile(trust: dict, protocol_input: dict, off) -> bool:
     """The bft-final trust can verify the rail's inclusion: the rail's signed
-    `bft-final` profile (`finalityProfile`) names `railNetwork`, and the trust
-    holds the validator set that profile pins and at least its threshold of
-    the observation authorities it names."""
+    `bft-final` profile (`finalityProfile`) names `railNetwork`, and the FV
+    verifier's own trust check passes it for that profile: the validator set
+    the profile pins, hashing to its content hash with well-formed members,
+    and at least the profile's threshold of its observation authorities with
+    distinct keys that decode."""
     profile, rail = protocol_input.get("finalityProfile"), _network(protocol_input.get("railNetwork"))
     if not (isinstance(profile, dict) and profile.get("kind") == "bft-final" and rail is not None
             and {k: profile.get(k) for k in NETWORK} == rail):
         return False
-    pinned_set, observation = profile.get("validatorSetRef"), profile.get("observation")
-    sets, keys = trust["validatorSets"], trust["observationAuthorityKeys"]
-    if not (isinstance(pinned_set, dict) and isinstance(observation, dict)
-            and isinstance(sets, dict) and isinstance(keys, dict)):
-        return False
-    content_hash, names, threshold = (pinned_set.get("contentHash"), observation.get("authorityRefs"),
-                                      observation.get("threshold"))
-    if not (isinstance(content_hash, str) and isinstance(names, list)
-            and isinstance(threshold, int) and _safe_integer(threshold) and threshold >= 1):
-        return False
-    held = {name for name in names if isinstance(name, str) and isinstance(keys.get(name), str)}
-    return isinstance(sets.get(content_hash), dict) and len(held) >= threshold
+    trusted = {key: trust[key] for key in BFT_FINAL_TRUST}
+    if "bft-final-trust-verifies-profile" in off:
+        # The wrong implementation counts trust that is present as trust that
+        # verifies: some set under the pinned hash, some string per authority.
+        sets, keys = trusted["validatorSets"], trusted["observationAuthorityKeys"]
+        observation = profile.get("observation") or {}
+        held = [name for name in observation.get("authorityRefs") or [] if isinstance(keys, dict)
+                and isinstance(keys.get(name), str)]
+        return (isinstance(sets, dict) and isinstance(sets.get((profile.get("validatorSetRef") or {}).get("contentHash")), dict)
+                and len(held) >= (observation.get("threshold") or 1))
+    return bft_final_trust(profile, trusted)[0] == "pass"
 
 
 def binding_members(protocol_input: dict, off) -> dict[str, bool]:
@@ -1076,7 +1083,7 @@ def binding_members(protocol_input: dict, off) -> dict[str, bool]:
             continue
         if member == "gasFeeSeparation" and value["activationHeight"] is not None:
             continue
-        if member == "bftFinalTrust" and not covers_profile(value, protocol_input):
+        if member == "bftFinalTrust" and not covers_profile(value, protocol_input, off):
             continue
         if (member == "executionResultPolicy"
                 and demos_execution_policy({k: value[k] for k in EXECUTION_POLICY})[0] != "pass"):
@@ -2081,7 +2088,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                           "sign-without-execution-result-policy", "sign-with-malformed-execution-result-policy",
                           "sign-with-unknown-execution-result-policy-kind",
                           "sign-with-rail-network-entry-among-several"}
-                         | {"sign-with-" + suffix for suffix in NETWORK_VARIANTS}, set(presign))
+                         | {"sign-with-" + suffix for suffix in (*NETWORK_VARIANTS, *UNUSABLE_TRUST)}, set(presign))
         for name, vector in presign.items():
             with self.subTest(name=name):
                 self.assertEqual({"phase", "railNetwork", "finalityProfile", "demosBinding"},
@@ -2473,14 +2480,15 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 self.assertNotEqual("indeterminate", evaluate(case, {"fv5-result-applied-transfer-binds-record"})[0])
 
     def test_consumer_verdicts_agree_with_the_settlement_finality_reference(self):
-        """One consumer input, one verdict class in both corpora (they split
-        at f2148e4). Every pay-dem consumer vector's presented inclusion
-        and FV-5 result go through the settlement-finality reference itself:
-        FV's fail or error on the inclusion is the consumer's verdict, an
-        FV-5 result FV does not pass is never a consumer pass, and FV-5 gives
-        no fail for a result (unauthenticated or for another network, block
-        or transaction) that the pay-dem oracle reads as authenticating
-        nothing. No delivery passes unless both FV halves pass."""
+        """The two corpora split on consumer inputs at f2148e4. Every pay-dem
+        consumer vector's presented inclusion and FV-5 result go through the
+        settlement-finality reference itself, in four directions: FV's fail
+        or error on the inclusion is the consumer's verdict; FV-5 gives no
+        fail for any result here (unauthenticated, or for another network,
+        block or transaction), which the pay-dem oracle reads as
+        authenticating nothing; FV-5's error is the consumer's error; and no
+        delivery passes unless both FV halves pass. It does not compare
+        pass and indeterminate classes beyond those directions."""
         checked = 0
         for vector in self.data["vectors"]:
             if vector["operation"] not in {"admit-evidence", "admit-for-delivery"}:
@@ -3509,7 +3517,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                           "preflight-operator-gated-rail-without-pinned-node",
                           "preflight-operator-gated-rail-with-binding",
                           "preflight-live-rail-with-rail-network-entry-among-several"}
-                         | {"preflight-live-rail-with-" + suffix for suffix in NETWORK_VARIANTS}, set(preflights))
+                         | {"preflight-live-rail-with-" + suffix for suffix in (*NETWORK_VARIANTS, *UNUSABLE_TRUST)},
+                         set(preflights))
         for availability in ("disabled", "failed", "mocked"):
             with self.subTest(availability=availability):
                 case = json.loads(json.dumps(preflights["preflight-live-rail-with-binding"]))
@@ -3526,6 +3535,42 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             if case["operation"] == "pre-sign-gate" and case["expected"] != "pass":
                 with self.subTest(name=name):
                     self.assertEqual("substrate", case["want"]["errorClass"])
+
+    def test_bft_final_trust_is_a_member_exactly_when_fv_verifies_under_it(self):
+        """DEM-1 and RAV-R3 count the rail network's bft-final trust only when
+        the FV verifier can verify the rail's inclusion under it: for every
+        binding in the gate vectors, the gate's answer is FV's verdict on a
+        genuine transfer's inclusion under that trust. Present trust that FV
+        rejects (a set that is not the pinned one, keys that do not decode or
+        alias one key) is refused, and a presence check would have sent it."""
+        proof = generator.inclusion_proof()
+        reference = proof["transactionRef"]
+        checked = set()
+        for name, vector in self.cases.items():
+            protocol_input = vector["protocolInput"]
+            if vector["operation"] not in {"pre-sign-gate", "broadcast-gate", "rail-preflight"}:
+                continue
+            rail = protocol_input["railNetwork"]
+            trust = next((entry.get("bftFinalTrust") for entry in protocol_input["demosBinding"]
+                          if {k: entry.get(k) for k in NETWORK} == rail), None)
+            if not (isinstance(trust, dict) and set(trust) == NETWORK | BFT_FINAL_TRUST
+                    and {k: trust[k] for k in NETWORK} == rail):
+                continue
+            with self.subTest(name=name):
+                fv_trust = dict({k: trust[k] for k in BFT_FINAL_TRUST},
+                                verificationTimeMs=generator.FINALITY_TRUST["verificationTimeMs"])
+                verified = verify_transaction_inclusion(
+                    proof, protocol_input["finalityProfile"], reference, fv_trust)[0] == "pass"
+                self.assertEqual(verified, binding_members(protocol_input, frozenset())["bftFinalTrust"])
+                checked.add(verified)
+        self.assertEqual({True, False}, checked)
+        for suffix in UNUSABLE_TRUST:
+            for prefix in ("sign-with-", "confirm-with-", "broadcast-with-", "preflight-live-rail-with-"):
+                with self.subTest(name=prefix + suffix):
+                    vector = self.cases[prefix + suffix]
+                    self.assertEqual("fail", vector["expected"])
+                    self.assertTrue(binding_members(vector["protocolInput"],
+                                                    {"bft-final-trust-verifies-profile"})["bftFinalTrust"])
 
 
 if __name__ == "__main__":

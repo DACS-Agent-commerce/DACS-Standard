@@ -33,7 +33,8 @@ from frozen_dacs5_v05_reader import (  # noqa: E402
 )
 from scripts.jcs import canonicalize  # noqa: E402
 from scripts.settlement_finality_reference import (  # noqa: E402
-    DEM_AMOUNT_RE, verify_finality, _demos_committed_change, _demos_native_send, _demos_os_spelling, _demos_send_edits_match,
+    DEM_AMOUNT_RE, bft_final_trust, verify_finality, _demos_committed_change, _demos_native_send, _demos_os_spelling,
+    _demos_send_edits_match,
 )
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 import dacs5_reference as D5  # noqa: E402
@@ -169,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(196, self.data["count"])
+        self.assertEqual(201, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -339,7 +340,8 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                                  ("result-other-block", "indeterminate"), ("result-other-transaction", "indeterminate"),
                                  ("result-other-network", "indeterminate"), ("result-other-genesis", "indeterminate"),
                                  ("result-forged-confirmed", "indeterminate"),
-                                 ("result-duplicate-signer", "indeterminate")):
+                                 ("result-duplicate-signer", "indeterminate"),
+                                 ("result-attestation-malformed", "indeterminate")):
             with self.subTest(case=suffix):
                 self.assertEqual(expected, self.evaluate_case(self.cases["fv-bft-final-" + suffix])["decision"])
         # Reusing the valid BFT block while substituting the entire result cannot authenticate it.
@@ -350,7 +352,6 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         for suffix, reason in (("result-member-missing", "malformed Demos execution result"),
                                ("result-kind-mismatch", "malformed Demos execution result attestations"),
                                ("result-attestations-not-array", "malformed Demos execution result attestations"),
-                               ("result-attestation-malformed", "malformed Demos result signature"),
                                ("result-inclusion-block-not-object", "malformed inclusion block for Demos execution result")):
             with self.subTest(case=suffix):
                 result = self.evaluate_case(self.cases["fv-bft-final-" + suffix])
@@ -359,9 +360,11 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
 
     def test_execution_result_attestations_are_counted_never_a_veto(self):
         # Appending an attestation outside the signed payload, under an
-        # unknown name or a spare policy key, changes nothing: a relayer or
-        # one faulty authority cannot turn an executed payment into fail.
-        for suffix in ("result-extra-unknown-attestation", "result-spare-key-bad-signature"):
+        # unknown name or a spare policy key, or one that is no signature
+        # object, changes nothing: a relayer or one faulty authority cannot
+        # turn an executed payment into fail or error.
+        for suffix in ("result-extra-unknown-attestation", "result-spare-key-bad-signature",
+                       "result-extra-malformed-attestation"):
             with self.subTest(case=suffix):
                 self.assertEqual("pass", self.evaluate_case(self.cases["fv-bft-final-" + suffix])["decision"])
         canonical = self.cases["fv-bft-final-canonical-success"]
@@ -379,10 +382,50 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         observation["attestations"] = [observation["attestations"][0],
                                        dict(observation["attestations"][0], authorityRef="execution-b")]
         self.assertEqual("indeterminate", self.evaluate_case(case)["decision"])
-        # A malformed attestation object is still error.
+        # A malformed entry is not counted, like one that does not verify
+        # (b981129 returned error for any of these): with the threshold met
+        # it changes nothing, and alone it authenticates nothing.
+        for extra in ({"authorityRef": 7}, {}, [], "execution-c", None,
+                      {"authorityRef": "execution-c", "algorithm": "ed25519"}):
+            with self.subTest(malformed=extra):
+                case = copy.deepcopy(canonical)
+                case["input"]["context"]["observation"]["executionResult"]["attestations"].append(extra)
+                self.assertEqual("pass", self.evaluate_case(case)["decision"])
+                case["input"]["context"]["observation"]["executionResult"]["attestations"] = [extra]
+                self.assertEqual("indeterminate", self.evaluate_case(case)["decision"])
+        # Attestations that are not an array are a malformed result: error.
         case = copy.deepcopy(canonical)
-        case["input"]["context"]["observation"]["executionResult"]["attestations"].append({"authorityRef": 7})
+        case["input"]["context"]["observation"]["executionResult"]["attestations"] = {"authorityRef": "execution-a"}
         self.assertEqual("error", self.evaluate_case(case)["decision"])
+
+    def test_trust_that_cannot_verify_the_profile_refutes_nothing(self):
+        # The verifier checks its own trust before judging evidence, with the
+        # check DACS-4 DEM-1's gate shares (bft_final_trust): keys that do not
+        # decode or alias one key and a set that is not the pinned one are
+        # error, too few authorities indeterminate, and never fail (b981129
+        # failed the evidence on undecodable keys).
+        for name, expected in (("fv-trust-observation-keys-undecodable", "error"),
+                               ("fv-trust-observation-keys-aliased", "error"),
+                               ("fv-trust-observation-keys-unavailable", "indeterminate"),
+                               ("fv-trust-validator-set-not-pinned", "error")):
+            with self.subTest(case=name):
+                case = self.cases[name]
+                self.assertEqual(expected, case["expected"])
+                self.assertEqual(expected, self.evaluate_case(case)["decision"])
+                bft = copy.deepcopy(self.cases["fv-bft-final-canonical-success"])
+                profile = bft["input"]["rail"]["consumerFinalityProfile"]["settlement"]
+                trusted = merge(self.trust, case["trustedOverrides"])
+                self.assertEqual(expected, bft_final_trust(profile, trusted)[0])
+                self.assertEqual(expected, self.evaluate_case(dict(bft, trustedOverrides=case["trustedOverrides"]))
+                                 ["decision"])
+        control = self.cases["fv-bft-final-canonical-success"]
+        profile = control["input"]["rail"]["consumerFinalityProfile"]["settlement"]
+        self.assertEqual("pass", bft_final_trust(profile, self.trust)[0])
+        # Keys for fewer than the profile's threshold of its authorities.
+        keys = self.trust["observationAuthorityKeys"]
+        below = dict(self.trust, observationAuthorityKeys={"rpc-a": keys["rpc-a"]})
+        self.assertEqual("indeterminate", bft_final_trust(profile, below)[0])
+        self.assertEqual("indeterminate", verify_finality(control["input"], below)["decision"])
 
     def test_confirmed_record_requires_authenticated_committed_payment(self):
         for suffix, expected in (("missing", "indeterminate"), ("zero-credit", "fail"),

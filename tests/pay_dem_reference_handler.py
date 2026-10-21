@@ -798,11 +798,13 @@ class Payee:
             return None
         return index
 
-    def check(self, job_id: str, phase_index: int, snapshot: dict[str, Any] | None,
-              read: dict[str, Any] | None = None) -> str:
-        """The composed delivery check over the presented evidence `read`
-        (by default a genuine, final, authenticated payment), with this
-        payee's admission index snapshot as its history."""
+    def check(self, job_id: str, phase_index: int, snapshot: dict[str, Any] | None, read: Any) -> str:
+        """The composed delivery check over the presented evidence `read`,
+        with this payee's admission index snapshot as its history. The payee
+        decides only on what it is shown: no evidence, or evidence that is
+        not a read, is `error` and never stands in for a payment."""
+        if not isinstance(read, dict):
+            return "error"
         protocol_input = generator.deliver("delivery", "pass", "DEM-7", [], "", read=read)["protocolInput"]
         protocol_input["phase"] = generator.phase(jobId=job_id, phaseIndex=phase_index)
         protocol_input["consumerAdmissions"] = [] if snapshot is None else snapshot["admissions"]
@@ -836,7 +838,7 @@ class Payee:
                         crash=lambda step: self._crash(f"before-delivery-{step}"))
 
     def deliver(self, job_id: str, phase_index: int = generator.PHASE_INDEX, *,
-                between: Callable[[], None] | None = None, read: dict[str, Any] | None = None) -> str:
+                read: Any, between: Callable[[], None] | None = None) -> str:
         while True:
             snapshot = self.snapshot()
             verdict = self.check(job_id, phase_index, snapshot, read)
@@ -914,6 +916,9 @@ def main() -> int:
     # node serves. By default the node serves the truth at this start.
     parser.add_argument("--executed", choices=RECORD_STATUSES)
     parser.add_argument("--rail-network", choices=tuple(RAIL_NETWORKS), default="mainnet")
+    # The payment evidence presented to the payee: a JSON record read. A
+    # payee shown none has nothing to decide on and delivers nothing.
+    parser.add_argument("--evidence", type=Path)
     args = parser.parse_args()
     durable_directories(args.work)
     if args.command == "pay":
@@ -927,8 +932,9 @@ def main() -> int:
         payee(args.work, args.boot).provision()
         result = {"provisioned": True}
     else:
+        presented = json.loads(args.evidence.read_text(encoding="utf-8")) if args.evidence else None
         result = {"verdict": payee(args.work, args.boot, crash_at=args.crash, mutant=args.mutant,
-                                   exit_on_crash=True).deliver(args.job)}
+                                   exit_on_crash=True).deliver(args.job, read=presented)}
     print(json.dumps(result))
     return 0
 

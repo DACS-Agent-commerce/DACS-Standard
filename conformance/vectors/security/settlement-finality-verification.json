@@ -358,8 +358,8 @@
       }
     }
   },
-  "count": 196,
-  "hash": "c914cf74974f3356a07084dc37f74568bb9ec642389c8d2acd6876f791eb92a3",
+  "count": 201,
+  "hash": "d50636aaa2ae6cd0b0840503954cd17011ccf46c7bba9d0688ef993b07891b54",
   "vectors": [
     {
       "name": "fv-block-depth-canonical-success",
@@ -8593,6 +8593,1354 @@
       },
       "trustedOverrides": {
         "verificationTimeMs": 1899999999999
+      }
+    },
+    {
+      "name": "fv-trust-observation-keys-undecodable",
+      "expected": "error",
+      "note": "observation-authority keys the verifier holds must decode",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-block-depth",
+          "phase": "pay-evm-erc20",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "evm-event",
+              "chainId": 1,
+              "txHash": "750ee59e75b9da8cc36304a9076df3f5e7350e67fa3ee8221a203c6e29534d0c",
+              "logIndex": 0
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USDC"
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityObservedAt": 1900000000000,
+            "finalityBlocks": 12
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-41b5184ca9bffa197b716dc449d59346356b2991d8a09c68eb1aea02ffb1992b"
+            },
+            "contentHash": "50034d2b5dc7554b2929a8b42741d0e1b646e2a76112d96a8d926aa50a84ce39",
+            "railId": "fixture:block-depth",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "WHqdufisXbC_AxtjTAjvvLMfSXnwAUAKQaOKtMj8FOTQOba6elO1A7rkL0UPCKp2_2pTYDR-f9NIOsuI8O0SCQ"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:block-depth",
+          "railType": "evm-erc20",
+          "asset": {
+            "kind": "erc20",
+            "chainId": 1,
+            "contract": "0x00000000000000000000000000000000000000cc",
+            "symbol": "USDC",
+            "decimals": 6
+          },
+          "network": {
+            "kind": "evm",
+            "chainId": 1,
+            "rpcAttestation": "evm-rpc"
+          },
+          "phaseHandler": "pay-evm-erc20",
+          "parameters": {
+            "assetId": "USDC"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "ff4f561baddb493ac1e70c452522c760a821ae83759165129dad85511f27704a",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "8LGyP8p2pxsAYusnsXFoKP341XHThozUv4ZBca-hUv6EUPOcLfoF48O-TFBol2VxIxbGtJhoz868TwaxZjjYDQ"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-block-depth",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USDC"
+            },
+            "rail": {
+              "railId": "fixture:block-depth",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "GTnEpSEQ-ZoiKEK1JWu-WUP_Ytifjny8dvsyaS7czEUmtu13fe2JjM9hQMn8qHIiDO2nTPp0WBgrvJ-4Bk7MBA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "4iHMhAjSfDw36_FGYkdL7eWCdO-P_MEGjV_LbHnhuBBTXkq9VPC8ie_K-Y_oItlBk7dlBbFawWl-oBturUKcBA"
+            }
+          ]
+        },
+        "context": {
+          "kind": "chain",
+          "observation": {
+            "networkId": "eip155:1",
+            "genesisHash": "ff4f561baddb493ac1e70c452522c760a821ae83759165129dad85511f27704a",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": 1,
+              "txHash": "750ee59e75b9da8cc36304a9076df3f5e7350e67fa3ee8221a203c6e29534d0c",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOTNkMjZmNTc4ODEyODQ0YjVjZTk3OTdmZTVlYmEwYTVhODRhNWFkODMyMTA3NzlmNzFjNGRhMWY0N2ZiNDE0YyIsImdlbmVzaXNIYXNoIjoiZmY0ZjU2MWJhZGRiNDkzYWMxZTcwYzQ1MjUyMmM3NjBhODIxYWU4Mzc1OTE2NTEyOWRhZDg1NTExZjI3NzA0YSIsIm5ldHdvcmtJZCI6ImVpcDE1NToxIiwic3RhdHVzIjoic3VjY2VzcyIsInRyYW5zYWN0aW9uUmVmIjp7ImNoYWluSWQiOjEsImtpbmQiOiJldm0tZXZlbnQiLCJsb2dJbmRleCI6MCwidHhIYXNoIjoiNzUwZWU1OWU3NWI5ZGE4Y2MzNjMwNGE5MDc2ZGYzZjVlNzM1MGU2N2ZhM2VlODIyMWEyMDNjNmUyOTUzNGQwYyJ9fQ",
+              "leafHash": "cc86007ca0776934820e50b420dba1c0caebd53c4b352e965c75bd54858cf950",
+              "siblingHash": "fec46af9a5842e1195efff8624ec06dc54beb6074be212382f9a4236cae97b79",
+              "leafIndex": 0,
+              "root": "ecc1063cd1a01d0f4a8cca1da2191efd3f12a20705236019ed48fa5b9d5f9a75"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJhbW91bnQiOiI1IiwiYXNzZXQiOiJVU0RDIiwiY3VycmVuY3kiOiJVU0RDIiwiZXZlbnRJbmRleCI6MCwiZXZlbnRUeXBlIjoidHJhbnNmZXIiLCJqb2JJZCI6IkZWLTM5Mi1ibG9jay1kZXB0aCIsInBheWVlIjoiZGlkOmRlbW9zOnNlbGxlciIsInBheWVyIjoiZGlkOmRlbW9zOmJ1eWVyIiwicGhhc2VJbmRleCI6MCwic3RhdHVzIjoic3VjY2VzcyIsInRyYW5zYWN0aW9uSWQiOiI3NTBlZTU5ZTc1YjlkYThjYzM2MzA0YTkwNzZkZjNmNWU3MzUwZTY3ZmEzZWU4MjIxYTIwM2M2ZTI5NTM0ZDBjIiwidHJhbnNhY3Rpb25SZWYiOnsiY2hhaW5JZCI6MSwia2luZCI6ImV2bS1ldmVudCIsImxvZ0luZGV4IjowLCJ0eEhhc2giOiI3NTBlZTU5ZTc1YjlkYThjYzM2MzA0YTkwNzZkZjNmNWU3MzUwZTY3ZmEzZWU4MjIxYTIwM2M2ZTI5NTM0ZDBjIn19",
+              "leafHash": "d6d087ba5227926b78c836e7d056a0a8553b268a976876e871ca927b88370fa7",
+              "siblingHash": "43cea0d176ae27feb27f72b0f2c1d6e3352609f76a768e67c6874dd6d6fb3ee5",
+              "leafIndex": 0,
+              "root": "93d26f578812844b5ce9797fe5eba0a5a84a5ad83210779f71c4da1f47fb414c"
+            },
+            "inclusionBlock": {
+              "id": "5690ba4a6c5a479b1d14fee7b9a7f58a0cec401bc28d907c1d8cd0eb84cc1d51",
+              "parentId": "bec912909c018e0e05cf87f1691781bab4134608fe5d2d538ed250a049cd7e1a",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYmVjOTEyOTA5YzAxOGUwZTA1Y2Y4N2YxNjkxNzgxYmFiNDEzNDYwOGZlNWQyZDUzOGVkMjUwYTA0OWNkN2UxYSIsInBvc2l0aW9uIjoiMTAwIiwidHJhbnNhY3Rpb25zUm9vdCI6ImVjYzEwNjNjZDFhMDFkMGY0YThjY2ExZGEyMTkxZWZkM2YxMmEyMDcwNTIzNjAxOWVkNDhmYTViOWQ1ZjlhNzUifQ"
+            },
+            "authenticatedHead": {
+              "id": "4899170b85fb1eefb418d1e414e912d00806abb0e2e9535edfe8bb7e5cdbe0f4",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYjBkOTRmMjRhYjlkZjM2MGFhNjhlOWJhZTg0MGNjYjA0NjQxZGJjMmU4MTBlNzc0OTM3MDRjOTdkMGFmZTQwMiIsInBvc2l0aW9uIjoiMTExIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+            },
+            "ancestryProof": [
+              {
+                "childId": "2c9bb1e2f923849dae39e0d8b0f684d3ba9b4dd2d7e374849b77274c0173ff7a",
+                "parentId": "5690ba4a6c5a479b1d14fee7b9a7f58a0cec401bc28d907c1d8cd0eb84cc1d51",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiNTY5MGJhNGE2YzVhNDc5YjFkMTRmZWU3YjlhN2Y1OGEwY2VjNDAxYmMyOGQ5MDdjMWQ4Y2QwZWI4NGNjMWQ1MSIsInBvc2l0aW9uIjoiMTAxIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "0094694a143cde3cc7bba25a9461f0792db16b365f4ead6c5711b418bb5c8119",
+                "parentId": "2c9bb1e2f923849dae39e0d8b0f684d3ba9b4dd2d7e374849b77274c0173ff7a",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiMmM5YmIxZTJmOTIzODQ5ZGFlMzllMGQ4YjBmNjg0ZDNiYTliNGRkMmQ3ZTM3NDg0OWI3NzI3NGMwMTczZmY3YSIsInBvc2l0aW9uIjoiMTAyIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "c90e859b72f909c8bfb875c76b823378d6bc44b2a40edfec7e96cce688c4803f",
+                "parentId": "0094694a143cde3cc7bba25a9461f0792db16b365f4ead6c5711b418bb5c8119",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiMDA5NDY5NGExNDNjZGUzY2M3YmJhMjVhOTQ2MWYwNzkyZGIxNmIzNjVmNGVhZDZjNTcxMWI0MThiYjVjODExOSIsInBvc2l0aW9uIjoiMTAzIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "a554aa85802d1da64751719d99f80b46f80f3389fa196fa0b371ef4b65cf420a",
+                "parentId": "c90e859b72f909c8bfb875c76b823378d6bc44b2a40edfec7e96cce688c4803f",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYzkwZTg1OWI3MmY5MDljOGJmYjg3NWM3NmI4MjMzNzhkNmJjNDRiMmE0MGVkZmVjN2U5NmNjZTY4OGM0ODAzZiIsInBvc2l0aW9uIjoiMTA0IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "e2020780a068c1cc7c97ab59d704fa3b89804afc9d3ef96cf5c25ba30154adfc",
+                "parentId": "a554aa85802d1da64751719d99f80b46f80f3389fa196fa0b371ef4b65cf420a",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYTU1NGFhODU4MDJkMWRhNjQ3NTE3MTlkOTlmODBiNDZmODBmMzM4OWZhMTk2ZmEwYjM3MWVmNGI2NWNmNDIwYSIsInBvc2l0aW9uIjoiMTA1IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "3653872cec9f74b0bf1a936e70c67ff94dcf4e88c998e573310f241cba6dca9c",
+                "parentId": "e2020780a068c1cc7c97ab59d704fa3b89804afc9d3ef96cf5c25ba30154adfc",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiZTIwMjA3ODBhMDY4YzFjYzdjOTdhYjU5ZDcwNGZhM2I4OTgwNGFmYzlkM2VmOTZjZjVjMjViYTMwMTU0YWRmYyIsInBvc2l0aW9uIjoiMTA2IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "9f569062af69a8a02ee807b8a8ba8ff0f71be425092fbe6995093402b7f5b0eb",
+                "parentId": "3653872cec9f74b0bf1a936e70c67ff94dcf4e88c998e573310f241cba6dca9c",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiMzY1Mzg3MmNlYzlmNzRiMGJmMWE5MzZlNzBjNjdmZjk0ZGNmNGU4OGM5OThlNTczMzEwZjI0MWNiYTZkY2E5YyIsInBvc2l0aW9uIjoiMTA3IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "e36a00077bfcd1b6393891a2a2992510f254d14505f49408c4ecc7ba9772f323",
+                "parentId": "9f569062af69a8a02ee807b8a8ba8ff0f71be425092fbe6995093402b7f5b0eb",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiOWY1NjkwNjJhZjY5YThhMDJlZTgwN2I4YThiYThmZjBmNzFiZTQyNTA5MmZiZTY5OTUwOTM0MDJiN2Y1YjBlYiIsInBvc2l0aW9uIjoiMTA4IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "4836c768b14b4ea2a445814f26b241029f9e072f645169a9d698eeea50c045dc",
+                "parentId": "e36a00077bfcd1b6393891a2a2992510f254d14505f49408c4ecc7ba9772f323",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiZTM2YTAwMDc3YmZjZDFiNjM5Mzg5MWEyYTI5OTI1MTBmMjU0ZDE0NTA1ZjQ5NDA4YzRlY2M3YmE5NzcyZjMyMyIsInBvc2l0aW9uIjoiMTA5IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "b0d94f24ab9df360aa68e9bae840ccb04641dbc2e810e77493704c97d0afe402",
+                "parentId": "4836c768b14b4ea2a445814f26b241029f9e072f645169a9d698eeea50c045dc",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiNDgzNmM3NjhiMTRiNGVhMmE0NDU4MTRmMjZiMjQxMDI5ZjllMDcyZjY0NTE2OWE5ZDY5OGVlZWE1MGMwNDVkYyIsInBvc2l0aW9uIjoiMTEwIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "4899170b85fb1eefb418d1e414e912d00806abb0e2e9535edfe8bb7e5cdbe0f4",
+                "parentId": "b0d94f24ab9df360aa68e9bae840ccb04641dbc2e810e77493704c97d0afe402",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYjBkOTRmMjRhYjlkZjM2MGFhNjhlOWJhZTg0MGNjYjA0NjQxZGJjMmU4MTBlNzc0OTM3MDRjOTdkMGFmZTQwMiIsInBvc2l0aW9uIjoiMTExIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "MTN6t4JqUpxNfLpxSHnpz08BpkixiwFMryMp3gChnHelMbUJbw1ya3bv3BFzfQBnSFtyGL1hdEjt0LjcqkNoBg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "BqUXp6WQRmVKIvvWSPJDYo7kZyR2MIaTlkFEnHzmcGJi7Pos8wcKNBoQgmIEIlh74aAw0RZJqQexKZwrspBpCQ"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "_ttyinVEocWxZRg5anHB_ENI4TYASCLUgucFVVQ6CrID9dF56qa6Dsvh9CExvGwdn3sXiRlUQF6MzFhi8QgvCw"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "error"
+      },
+      "trustedOverrides": {
+        "observationAuthorityKeys": {
+          "rpc-a": "AAAA",
+          "rpc-b": "AAAA",
+          "rpc-c": "AAAA"
+        }
+      }
+    },
+    {
+      "name": "fv-trust-observation-keys-aliased",
+      "expected": "error",
+      "note": "two authority names under one key are one authority",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-block-depth",
+          "phase": "pay-evm-erc20",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "evm-event",
+              "chainId": 1,
+              "txHash": "750ee59e75b9da8cc36304a9076df3f5e7350e67fa3ee8221a203c6e29534d0c",
+              "logIndex": 0
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USDC"
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityObservedAt": 1900000000000,
+            "finalityBlocks": 12
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-41b5184ca9bffa197b716dc449d59346356b2991d8a09c68eb1aea02ffb1992b"
+            },
+            "contentHash": "50034d2b5dc7554b2929a8b42741d0e1b646e2a76112d96a8d926aa50a84ce39",
+            "railId": "fixture:block-depth",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "WHqdufisXbC_AxtjTAjvvLMfSXnwAUAKQaOKtMj8FOTQOba6elO1A7rkL0UPCKp2_2pTYDR-f9NIOsuI8O0SCQ"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:block-depth",
+          "railType": "evm-erc20",
+          "asset": {
+            "kind": "erc20",
+            "chainId": 1,
+            "contract": "0x00000000000000000000000000000000000000cc",
+            "symbol": "USDC",
+            "decimals": 6
+          },
+          "network": {
+            "kind": "evm",
+            "chainId": 1,
+            "rpcAttestation": "evm-rpc"
+          },
+          "phaseHandler": "pay-evm-erc20",
+          "parameters": {
+            "assetId": "USDC"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "ff4f561baddb493ac1e70c452522c760a821ae83759165129dad85511f27704a",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "8LGyP8p2pxsAYusnsXFoKP341XHThozUv4ZBca-hUv6EUPOcLfoF48O-TFBol2VxIxbGtJhoz868TwaxZjjYDQ"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-block-depth",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USDC"
+            },
+            "rail": {
+              "railId": "fixture:block-depth",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "GTnEpSEQ-ZoiKEK1JWu-WUP_Ytifjny8dvsyaS7czEUmtu13fe2JjM9hQMn8qHIiDO2nTPp0WBgrvJ-4Bk7MBA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "4iHMhAjSfDw36_FGYkdL7eWCdO-P_MEGjV_LbHnhuBBTXkq9VPC8ie_K-Y_oItlBk7dlBbFawWl-oBturUKcBA"
+            }
+          ]
+        },
+        "context": {
+          "kind": "chain",
+          "observation": {
+            "networkId": "eip155:1",
+            "genesisHash": "ff4f561baddb493ac1e70c452522c760a821ae83759165129dad85511f27704a",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": 1,
+              "txHash": "750ee59e75b9da8cc36304a9076df3f5e7350e67fa3ee8221a203c6e29534d0c",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOTNkMjZmNTc4ODEyODQ0YjVjZTk3OTdmZTVlYmEwYTVhODRhNWFkODMyMTA3NzlmNzFjNGRhMWY0N2ZiNDE0YyIsImdlbmVzaXNIYXNoIjoiZmY0ZjU2MWJhZGRiNDkzYWMxZTcwYzQ1MjUyMmM3NjBhODIxYWU4Mzc1OTE2NTEyOWRhZDg1NTExZjI3NzA0YSIsIm5ldHdvcmtJZCI6ImVpcDE1NToxIiwic3RhdHVzIjoic3VjY2VzcyIsInRyYW5zYWN0aW9uUmVmIjp7ImNoYWluSWQiOjEsImtpbmQiOiJldm0tZXZlbnQiLCJsb2dJbmRleCI6MCwidHhIYXNoIjoiNzUwZWU1OWU3NWI5ZGE4Y2MzNjMwNGE5MDc2ZGYzZjVlNzM1MGU2N2ZhM2VlODIyMWEyMDNjNmUyOTUzNGQwYyJ9fQ",
+              "leafHash": "cc86007ca0776934820e50b420dba1c0caebd53c4b352e965c75bd54858cf950",
+              "siblingHash": "fec46af9a5842e1195efff8624ec06dc54beb6074be212382f9a4236cae97b79",
+              "leafIndex": 0,
+              "root": "ecc1063cd1a01d0f4a8cca1da2191efd3f12a20705236019ed48fa5b9d5f9a75"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJhbW91bnQiOiI1IiwiYXNzZXQiOiJVU0RDIiwiY3VycmVuY3kiOiJVU0RDIiwiZXZlbnRJbmRleCI6MCwiZXZlbnRUeXBlIjoidHJhbnNmZXIiLCJqb2JJZCI6IkZWLTM5Mi1ibG9jay1kZXB0aCIsInBheWVlIjoiZGlkOmRlbW9zOnNlbGxlciIsInBheWVyIjoiZGlkOmRlbW9zOmJ1eWVyIiwicGhhc2VJbmRleCI6MCwic3RhdHVzIjoic3VjY2VzcyIsInRyYW5zYWN0aW9uSWQiOiI3NTBlZTU5ZTc1YjlkYThjYzM2MzA0YTkwNzZkZjNmNWU3MzUwZTY3ZmEzZWU4MjIxYTIwM2M2ZTI5NTM0ZDBjIiwidHJhbnNhY3Rpb25SZWYiOnsiY2hhaW5JZCI6MSwia2luZCI6ImV2bS1ldmVudCIsImxvZ0luZGV4IjowLCJ0eEhhc2giOiI3NTBlZTU5ZTc1YjlkYThjYzM2MzA0YTkwNzZkZjNmNWU3MzUwZTY3ZmEzZWU4MjIxYTIwM2M2ZTI5NTM0ZDBjIn19",
+              "leafHash": "d6d087ba5227926b78c836e7d056a0a8553b268a976876e871ca927b88370fa7",
+              "siblingHash": "43cea0d176ae27feb27f72b0f2c1d6e3352609f76a768e67c6874dd6d6fb3ee5",
+              "leafIndex": 0,
+              "root": "93d26f578812844b5ce9797fe5eba0a5a84a5ad83210779f71c4da1f47fb414c"
+            },
+            "inclusionBlock": {
+              "id": "5690ba4a6c5a479b1d14fee7b9a7f58a0cec401bc28d907c1d8cd0eb84cc1d51",
+              "parentId": "bec912909c018e0e05cf87f1691781bab4134608fe5d2d538ed250a049cd7e1a",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYmVjOTEyOTA5YzAxOGUwZTA1Y2Y4N2YxNjkxNzgxYmFiNDEzNDYwOGZlNWQyZDUzOGVkMjUwYTA0OWNkN2UxYSIsInBvc2l0aW9uIjoiMTAwIiwidHJhbnNhY3Rpb25zUm9vdCI6ImVjYzEwNjNjZDFhMDFkMGY0YThjY2ExZGEyMTkxZWZkM2YxMmEyMDcwNTIzNjAxOWVkNDhmYTViOWQ1ZjlhNzUifQ"
+            },
+            "authenticatedHead": {
+              "id": "4899170b85fb1eefb418d1e414e912d00806abb0e2e9535edfe8bb7e5cdbe0f4",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYjBkOTRmMjRhYjlkZjM2MGFhNjhlOWJhZTg0MGNjYjA0NjQxZGJjMmU4MTBlNzc0OTM3MDRjOTdkMGFmZTQwMiIsInBvc2l0aW9uIjoiMTExIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+            },
+            "ancestryProof": [
+              {
+                "childId": "2c9bb1e2f923849dae39e0d8b0f684d3ba9b4dd2d7e374849b77274c0173ff7a",
+                "parentId": "5690ba4a6c5a479b1d14fee7b9a7f58a0cec401bc28d907c1d8cd0eb84cc1d51",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiNTY5MGJhNGE2YzVhNDc5YjFkMTRmZWU3YjlhN2Y1OGEwY2VjNDAxYmMyOGQ5MDdjMWQ4Y2QwZWI4NGNjMWQ1MSIsInBvc2l0aW9uIjoiMTAxIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "0094694a143cde3cc7bba25a9461f0792db16b365f4ead6c5711b418bb5c8119",
+                "parentId": "2c9bb1e2f923849dae39e0d8b0f684d3ba9b4dd2d7e374849b77274c0173ff7a",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiMmM5YmIxZTJmOTIzODQ5ZGFlMzllMGQ4YjBmNjg0ZDNiYTliNGRkMmQ3ZTM3NDg0OWI3NzI3NGMwMTczZmY3YSIsInBvc2l0aW9uIjoiMTAyIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "c90e859b72f909c8bfb875c76b823378d6bc44b2a40edfec7e96cce688c4803f",
+                "parentId": "0094694a143cde3cc7bba25a9461f0792db16b365f4ead6c5711b418bb5c8119",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiMDA5NDY5NGExNDNjZGUzY2M3YmJhMjVhOTQ2MWYwNzkyZGIxNmIzNjVmNGVhZDZjNTcxMWI0MThiYjVjODExOSIsInBvc2l0aW9uIjoiMTAzIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "a554aa85802d1da64751719d99f80b46f80f3389fa196fa0b371ef4b65cf420a",
+                "parentId": "c90e859b72f909c8bfb875c76b823378d6bc44b2a40edfec7e96cce688c4803f",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYzkwZTg1OWI3MmY5MDljOGJmYjg3NWM3NmI4MjMzNzhkNmJjNDRiMmE0MGVkZmVjN2U5NmNjZTY4OGM0ODAzZiIsInBvc2l0aW9uIjoiMTA0IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "e2020780a068c1cc7c97ab59d704fa3b89804afc9d3ef96cf5c25ba30154adfc",
+                "parentId": "a554aa85802d1da64751719d99f80b46f80f3389fa196fa0b371ef4b65cf420a",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYTU1NGFhODU4MDJkMWRhNjQ3NTE3MTlkOTlmODBiNDZmODBmMzM4OWZhMTk2ZmEwYjM3MWVmNGI2NWNmNDIwYSIsInBvc2l0aW9uIjoiMTA1IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "3653872cec9f74b0bf1a936e70c67ff94dcf4e88c998e573310f241cba6dca9c",
+                "parentId": "e2020780a068c1cc7c97ab59d704fa3b89804afc9d3ef96cf5c25ba30154adfc",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiZTIwMjA3ODBhMDY4YzFjYzdjOTdhYjU5ZDcwNGZhM2I4OTgwNGFmYzlkM2VmOTZjZjVjMjViYTMwMTU0YWRmYyIsInBvc2l0aW9uIjoiMTA2IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "9f569062af69a8a02ee807b8a8ba8ff0f71be425092fbe6995093402b7f5b0eb",
+                "parentId": "3653872cec9f74b0bf1a936e70c67ff94dcf4e88c998e573310f241cba6dca9c",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiMzY1Mzg3MmNlYzlmNzRiMGJmMWE5MzZlNzBjNjdmZjk0ZGNmNGU4OGM5OThlNTczMzEwZjI0MWNiYTZkY2E5YyIsInBvc2l0aW9uIjoiMTA3IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "e36a00077bfcd1b6393891a2a2992510f254d14505f49408c4ecc7ba9772f323",
+                "parentId": "9f569062af69a8a02ee807b8a8ba8ff0f71be425092fbe6995093402b7f5b0eb",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiOWY1NjkwNjJhZjY5YThhMDJlZTgwN2I4YThiYThmZjBmNzFiZTQyNTA5MmZiZTY5OTUwOTM0MDJiN2Y1YjBlYiIsInBvc2l0aW9uIjoiMTA4IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "4836c768b14b4ea2a445814f26b241029f9e072f645169a9d698eeea50c045dc",
+                "parentId": "e36a00077bfcd1b6393891a2a2992510f254d14505f49408c4ecc7ba9772f323",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiZTM2YTAwMDc3YmZjZDFiNjM5Mzg5MWEyYTI5OTI1MTBmMjU0ZDE0NTA1ZjQ5NDA4YzRlY2M3YmE5NzcyZjMyMyIsInBvc2l0aW9uIjoiMTA5IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "b0d94f24ab9df360aa68e9bae840ccb04641dbc2e810e77493704c97d0afe402",
+                "parentId": "4836c768b14b4ea2a445814f26b241029f9e072f645169a9d698eeea50c045dc",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiNDgzNmM3NjhiMTRiNGVhMmE0NDU4MTRmMjZiMjQxMDI5ZjllMDcyZjY0NTE2OWE5ZDY5OGVlZWE1MGMwNDVkYyIsInBvc2l0aW9uIjoiMTEwIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "4899170b85fb1eefb418d1e414e912d00806abb0e2e9535edfe8bb7e5cdbe0f4",
+                "parentId": "b0d94f24ab9df360aa68e9bae840ccb04641dbc2e810e77493704c97d0afe402",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYjBkOTRmMjRhYjlkZjM2MGFhNjhlOWJhZTg0MGNjYjA0NjQxZGJjMmU4MTBlNzc0OTM3MDRjOTdkMGFmZTQwMiIsInBvc2l0aW9uIjoiMTExIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "MTN6t4JqUpxNfLpxSHnpz08BpkixiwFMryMp3gChnHelMbUJbw1ya3bv3BFzfQBnSFtyGL1hdEjt0LjcqkNoBg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "BqUXp6WQRmVKIvvWSPJDYo7kZyR2MIaTlkFEnHzmcGJi7Pos8wcKNBoQgmIEIlh74aAw0RZJqQexKZwrspBpCQ"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "_ttyinVEocWxZRg5anHB_ENI4TYASCLUgucFVVQ6CrID9dF56qa6Dsvh9CExvGwdn3sXiRlUQF6MzFhi8QgvCw"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "error"
+      },
+      "trustedOverrides": {
+        "observationAuthorityKeys": {
+          "rpc-a": "wFDFY3pE-oYp__PMzOIwDLNipj2Z2V_FQUUmb0MyRFo",
+          "rpc-b": "wFDFY3pE-oYp__PMzOIwDLNipj2Z2V_FQUUmb0MyRFo",
+          "rpc-c": "wFDFY3pE-oYp__PMzOIwDLNipj2Z2V_FQUUmb0MyRFo"
+        }
+      }
+    },
+    {
+      "name": "fv-trust-observation-keys-unavailable",
+      "expected": "indeterminate",
+      "note": "a verifier without observation-authority keys authenticates no head",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-block-depth",
+          "phase": "pay-evm-erc20",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "evm-event",
+              "chainId": 1,
+              "txHash": "750ee59e75b9da8cc36304a9076df3f5e7350e67fa3ee8221a203c6e29534d0c",
+              "logIndex": 0
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "USDC"
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityObservedAt": 1900000000000,
+            "finalityBlocks": 12
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-41b5184ca9bffa197b716dc449d59346356b2991d8a09c68eb1aea02ffb1992b"
+            },
+            "contentHash": "50034d2b5dc7554b2929a8b42741d0e1b646e2a76112d96a8d926aa50a84ce39",
+            "railId": "fixture:block-depth",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "WHqdufisXbC_AxtjTAjvvLMfSXnwAUAKQaOKtMj8FOTQOba6elO1A7rkL0UPCKp2_2pTYDR-f9NIOsuI8O0SCQ"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:block-depth",
+          "railType": "evm-erc20",
+          "asset": {
+            "kind": "erc20",
+            "chainId": 1,
+            "contract": "0x00000000000000000000000000000000000000cc",
+            "symbol": "USDC",
+            "decimals": 6
+          },
+          "network": {
+            "kind": "evm",
+            "chainId": 1,
+            "rpcAttestation": "evm-rpc"
+          },
+          "phaseHandler": "pay-evm-erc20",
+          "parameters": {
+            "assetId": "USDC"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "ff4f561baddb493ac1e70c452522c760a821ae83759165129dad85511f27704a",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "8LGyP8p2pxsAYusnsXFoKP341XHThozUv4ZBca-hUv6EUPOcLfoF48O-TFBol2VxIxbGtJhoz868TwaxZjjYDQ"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-block-depth",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "USDC"
+            },
+            "rail": {
+              "railId": "fixture:block-depth",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "GTnEpSEQ-ZoiKEK1JWu-WUP_Ytifjny8dvsyaS7czEUmtu13fe2JjM9hQMn8qHIiDO2nTPp0WBgrvJ-4Bk7MBA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "4iHMhAjSfDw36_FGYkdL7eWCdO-P_MEGjV_LbHnhuBBTXkq9VPC8ie_K-Y_oItlBk7dlBbFawWl-oBturUKcBA"
+            }
+          ]
+        },
+        "context": {
+          "kind": "chain",
+          "observation": {
+            "networkId": "eip155:1",
+            "genesisHash": "ff4f561baddb493ac1e70c452522c760a821ae83759165129dad85511f27704a",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": 1,
+              "txHash": "750ee59e75b9da8cc36304a9076df3f5e7350e67fa3ee8221a203c6e29534d0c",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiOTNkMjZmNTc4ODEyODQ0YjVjZTk3OTdmZTVlYmEwYTVhODRhNWFkODMyMTA3NzlmNzFjNGRhMWY0N2ZiNDE0YyIsImdlbmVzaXNIYXNoIjoiZmY0ZjU2MWJhZGRiNDkzYWMxZTcwYzQ1MjUyMmM3NjBhODIxYWU4Mzc1OTE2NTEyOWRhZDg1NTExZjI3NzA0YSIsIm5ldHdvcmtJZCI6ImVpcDE1NToxIiwic3RhdHVzIjoic3VjY2VzcyIsInRyYW5zYWN0aW9uUmVmIjp7ImNoYWluSWQiOjEsImtpbmQiOiJldm0tZXZlbnQiLCJsb2dJbmRleCI6MCwidHhIYXNoIjoiNzUwZWU1OWU3NWI5ZGE4Y2MzNjMwNGE5MDc2ZGYzZjVlNzM1MGU2N2ZhM2VlODIyMWEyMDNjNmUyOTUzNGQwYyJ9fQ",
+              "leafHash": "cc86007ca0776934820e50b420dba1c0caebd53c4b352e965c75bd54858cf950",
+              "siblingHash": "fec46af9a5842e1195efff8624ec06dc54beb6074be212382f9a4236cae97b79",
+              "leafIndex": 0,
+              "root": "ecc1063cd1a01d0f4a8cca1da2191efd3f12a20705236019ed48fa5b9d5f9a75"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJhbW91bnQiOiI1IiwiYXNzZXQiOiJVU0RDIiwiY3VycmVuY3kiOiJVU0RDIiwiZXZlbnRJbmRleCI6MCwiZXZlbnRUeXBlIjoidHJhbnNmZXIiLCJqb2JJZCI6IkZWLTM5Mi1ibG9jay1kZXB0aCIsInBheWVlIjoiZGlkOmRlbW9zOnNlbGxlciIsInBheWVyIjoiZGlkOmRlbW9zOmJ1eWVyIiwicGhhc2VJbmRleCI6MCwic3RhdHVzIjoic3VjY2VzcyIsInRyYW5zYWN0aW9uSWQiOiI3NTBlZTU5ZTc1YjlkYThjYzM2MzA0YTkwNzZkZjNmNWU3MzUwZTY3ZmEzZWU4MjIxYTIwM2M2ZTI5NTM0ZDBjIiwidHJhbnNhY3Rpb25SZWYiOnsiY2hhaW5JZCI6MSwia2luZCI6ImV2bS1ldmVudCIsImxvZ0luZGV4IjowLCJ0eEhhc2giOiI3NTBlZTU5ZTc1YjlkYThjYzM2MzA0YTkwNzZkZjNmNWU3MzUwZTY3ZmEzZWU4MjIxYTIwM2M2ZTI5NTM0ZDBjIn19",
+              "leafHash": "d6d087ba5227926b78c836e7d056a0a8553b268a976876e871ca927b88370fa7",
+              "siblingHash": "43cea0d176ae27feb27f72b0f2c1d6e3352609f76a768e67c6874dd6d6fb3ee5",
+              "leafIndex": 0,
+              "root": "93d26f578812844b5ce9797fe5eba0a5a84a5ad83210779f71c4da1f47fb414c"
+            },
+            "inclusionBlock": {
+              "id": "5690ba4a6c5a479b1d14fee7b9a7f58a0cec401bc28d907c1d8cd0eb84cc1d51",
+              "parentId": "bec912909c018e0e05cf87f1691781bab4134608fe5d2d538ed250a049cd7e1a",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYmVjOTEyOTA5YzAxOGUwZTA1Y2Y4N2YxNjkxNzgxYmFiNDEzNDYwOGZlNWQyZDUzOGVkMjUwYTA0OWNkN2UxYSIsInBvc2l0aW9uIjoiMTAwIiwidHJhbnNhY3Rpb25zUm9vdCI6ImVjYzEwNjNjZDFhMDFkMGY0YThjY2ExZGEyMTkxZWZkM2YxMmEyMDcwNTIzNjAxOWVkNDhmYTViOWQ1ZjlhNzUifQ"
+            },
+            "authenticatedHead": {
+              "id": "4899170b85fb1eefb418d1e414e912d00806abb0e2e9535edfe8bb7e5cdbe0f4",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYjBkOTRmMjRhYjlkZjM2MGFhNjhlOWJhZTg0MGNjYjA0NjQxZGJjMmU4MTBlNzc0OTM3MDRjOTdkMGFmZTQwMiIsInBvc2l0aW9uIjoiMTExIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+            },
+            "ancestryProof": [
+              {
+                "childId": "2c9bb1e2f923849dae39e0d8b0f684d3ba9b4dd2d7e374849b77274c0173ff7a",
+                "parentId": "5690ba4a6c5a479b1d14fee7b9a7f58a0cec401bc28d907c1d8cd0eb84cc1d51",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiNTY5MGJhNGE2YzVhNDc5YjFkMTRmZWU3YjlhN2Y1OGEwY2VjNDAxYmMyOGQ5MDdjMWQ4Y2QwZWI4NGNjMWQ1MSIsInBvc2l0aW9uIjoiMTAxIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "0094694a143cde3cc7bba25a9461f0792db16b365f4ead6c5711b418bb5c8119",
+                "parentId": "2c9bb1e2f923849dae39e0d8b0f684d3ba9b4dd2d7e374849b77274c0173ff7a",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiMmM5YmIxZTJmOTIzODQ5ZGFlMzllMGQ4YjBmNjg0ZDNiYTliNGRkMmQ3ZTM3NDg0OWI3NzI3NGMwMTczZmY3YSIsInBvc2l0aW9uIjoiMTAyIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "c90e859b72f909c8bfb875c76b823378d6bc44b2a40edfec7e96cce688c4803f",
+                "parentId": "0094694a143cde3cc7bba25a9461f0792db16b365f4ead6c5711b418bb5c8119",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiMDA5NDY5NGExNDNjZGUzY2M3YmJhMjVhOTQ2MWYwNzkyZGIxNmIzNjVmNGVhZDZjNTcxMWI0MThiYjVjODExOSIsInBvc2l0aW9uIjoiMTAzIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "a554aa85802d1da64751719d99f80b46f80f3389fa196fa0b371ef4b65cf420a",
+                "parentId": "c90e859b72f909c8bfb875c76b823378d6bc44b2a40edfec7e96cce688c4803f",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYzkwZTg1OWI3MmY5MDljOGJmYjg3NWM3NmI4MjMzNzhkNmJjNDRiMmE0MGVkZmVjN2U5NmNjZTY4OGM0ODAzZiIsInBvc2l0aW9uIjoiMTA0IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "e2020780a068c1cc7c97ab59d704fa3b89804afc9d3ef96cf5c25ba30154adfc",
+                "parentId": "a554aa85802d1da64751719d99f80b46f80f3389fa196fa0b371ef4b65cf420a",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYTU1NGFhODU4MDJkMWRhNjQ3NTE3MTlkOTlmODBiNDZmODBmMzM4OWZhMTk2ZmEwYjM3MWVmNGI2NWNmNDIwYSIsInBvc2l0aW9uIjoiMTA1IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "3653872cec9f74b0bf1a936e70c67ff94dcf4e88c998e573310f241cba6dca9c",
+                "parentId": "e2020780a068c1cc7c97ab59d704fa3b89804afc9d3ef96cf5c25ba30154adfc",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiZTIwMjA3ODBhMDY4YzFjYzdjOTdhYjU5ZDcwNGZhM2I4OTgwNGFmYzlkM2VmOTZjZjVjMjViYTMwMTU0YWRmYyIsInBvc2l0aW9uIjoiMTA2IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "9f569062af69a8a02ee807b8a8ba8ff0f71be425092fbe6995093402b7f5b0eb",
+                "parentId": "3653872cec9f74b0bf1a936e70c67ff94dcf4e88c998e573310f241cba6dca9c",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiMzY1Mzg3MmNlYzlmNzRiMGJmMWE5MzZlNzBjNjdmZjk0ZGNmNGU4OGM5OThlNTczMzEwZjI0MWNiYTZkY2E5YyIsInBvc2l0aW9uIjoiMTA3IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "e36a00077bfcd1b6393891a2a2992510f254d14505f49408c4ecc7ba9772f323",
+                "parentId": "9f569062af69a8a02ee807b8a8ba8ff0f71be425092fbe6995093402b7f5b0eb",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiOWY1NjkwNjJhZjY5YThhMDJlZTgwN2I4YThiYThmZjBmNzFiZTQyNTA5MmZiZTY5OTUwOTM0MDJiN2Y1YjBlYiIsInBvc2l0aW9uIjoiMTA4IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "4836c768b14b4ea2a445814f26b241029f9e072f645169a9d698eeea50c045dc",
+                "parentId": "e36a00077bfcd1b6393891a2a2992510f254d14505f49408c4ecc7ba9772f323",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiZTM2YTAwMDc3YmZjZDFiNjM5Mzg5MWEyYTI5OTI1MTBmMjU0ZDE0NTA1ZjQ5NDA4YzRlY2M3YmE5NzcyZjMyMyIsInBvc2l0aW9uIjoiMTA5IiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "b0d94f24ab9df360aa68e9bae840ccb04641dbc2e810e77493704c97d0afe402",
+                "parentId": "4836c768b14b4ea2a445814f26b241029f9e072f645169a9d698eeea50c045dc",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiNDgzNmM3NjhiMTRiNGVhMmE0NDU4MTRmMjZiMjQxMDI5ZjllMDcyZjY0NTE2OWE5ZDY5OGVlZWE1MGMwNDVkYyIsInBvc2l0aW9uIjoiMTEwIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              },
+              {
+                "childId": "4899170b85fb1eefb418d1e414e912d00806abb0e2e9535edfe8bb7e5cdbe0f4",
+                "parentId": "b0d94f24ab9df360aa68e9bae840ccb04641dbc2e810e77493704c97d0afe402",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6ImZmNGY1NjFiYWRkYjQ5M2FjMWU3MGM0NTI1MjJjNzYwYTgyMWFlODM3NTkxNjUxMjlkYWQ4NTUxMWYyNzcwNGEiLCJuZXR3b3JrSWQiOiJlaXAxNTU6MSIsInBhcmVudElkIjoiYjBkOTRmMjRhYjlkZjM2MGFhNjhlOWJhZTg0MGNjYjA0NjQxZGJjMmU4MTBlNzc0OTM3MDRjOTdkMGFmZTQwMiIsInBvc2l0aW9uIjoiMTExIiwidHJhbnNhY3Rpb25zUm9vdCI6ImJkNTQzZWRhNWE5NWYyMzMyM2NlYzFmMTk2OWVmZGFlZjE5NWRiY2UwZjdmNDhmMDA5ZGIxN2I2ZTc2MGFmNzYifQ"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "MTN6t4JqUpxNfLpxSHnpz08BpkixiwFMryMp3gChnHelMbUJbw1ya3bv3BFzfQBnSFtyGL1hdEjt0LjcqkNoBg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "BqUXp6WQRmVKIvvWSPJDYo7kZyR2MIaTlkFEnHzmcGJi7Pos8wcKNBoQgmIEIlh74aAw0RZJqQexKZwrspBpCQ"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "_ttyinVEocWxZRg5anHB_ENI4TYASCLUgucFVVQ6CrID9dF56qa6Dsvh9CExvGwdn3sXiRlUQF6MzFhi8QgvCw"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "indeterminate"
+      },
+      "trustedOverrides": {
+        "observationAuthorityKeys": null
+      }
+    },
+    {
+      "name": "fv-trust-validator-set-not-pinned",
+      "expected": "error",
+      "note": "a validator set held under the pinned hash must hash to it",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-bft-final",
+          "phase": "pay-dem",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "demos",
+              "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+              "blockNumber": 100
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "DEM"
+          },
+          "settlementFinality": {
+            "model": "bft-final",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-0309a0816a2f0b6423e40aa6e89467ec16cf22ede212b09b4c5d7405e117f480"
+            },
+            "contentHash": "303b4376ff22d7a4c62916281096281437c804040c768d5a14a847f4117be8f7",
+            "railId": "fixture:bft-final",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "f1j681pAE2X6Kaf9Z4EhEj7heh4fruLexBELQkA-zDc7oFtBFfj8Ztcw91Xytq75E65y0QgJGhIJoKt_1GqqAg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:bft-final",
+          "railType": "demos-native",
+          "asset": {
+            "kind": "native-dem",
+            "symbol": "DEM",
+            "decimals": 9
+          },
+          "network": {
+            "kind": "demos"
+          },
+          "phaseHandler": "pay-dem",
+          "parameters": {
+            "assetId": "DEM"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                },
+                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "RBfkFFArkBO6lsBNybSpNziaBESuWXdCytqcgQJjp11LLpIAtfa9sMMikWVmZ9l3R6-53zvDpQuZrSABvXuJAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-bft-final",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "DEM"
+            },
+            "rail": {
+              "railId": "fixture:bft-final",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "d3S75K0k0Mg6bUFYRgkaT19M-upCcWoxKamsJ2SPHsCtrlT72E1CpftMtrpVSJ_z1yt6F88sVys74ASKLT2qDg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "huATv1nr_QeyimVH2SqDe71fp-qJkS21GTliQQLKzK2a41H9p5VgKyxgudZUWfadBvUYlF9EqypOBRCx_oAWBg"
+            }
+          ]
+        },
+        "context": {
+          "kind": "chain",
+          "observation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+              "blockNumber": 100
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiODRjYWFhMzEwM2Y2OTliMzk2MjdhMGQ4ODA1ZjI0MDlkNGM4NTE1NTk5MTQ0ZGY3ZmFmNmQzZjIwZjZiODkxZSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJ0cmFuc2FjdGlvblJlZiI6eyJibG9ja051bWJlciI6MTAwLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiJkZWI4YTI0ZDRjN2M2YzA2ZjM2NDk5YmU0OGViYzU4MzY0OTdkNzljYTU3NDEyNTZjZTRlNWM3NmI1ODcyYjEzIn0sInR4SGFzaCI6ImRlYjhhMjRkNGM3YzZjMDZmMzY0OTliZTQ4ZWJjNTgzNjQ5N2Q3OWNhNTc0MTI1NmNlNGU1Yzc2YjU4NzJiMTMifQ",
+              "leafHash": "32cdfc547b7ee3cac1f44fc524aeb62d6cc672a5927a74e643193e1dcf6f8057",
+              "siblingHash": "4912a682f773892b510adb6ff2ceef0f11fb07e52af0da7a8f8a0e1e52a82590",
+              "leafIndex": 0,
+              "root": "c81e84042bd0bf8bc441c458e23126766621915fe8fc1fa6a39f8d6b0a9caa0c"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJhbW91bnQiOiI1IiwiYXNzZXQiOiJERU0iLCJjdXJyZW5jeSI6IkRFTSIsImV2ZW50SW5kZXgiOjAsImV2ZW50VHlwZSI6InRyYW5zZmVyIiwiam9iSWQiOiJGVi0zOTItYmZ0LWZpbmFsIiwicGF5ZWUiOiJkaWQ6ZGVtb3M6c2VsbGVyIiwicGF5ZXIiOiJkaWQ6ZGVtb3M6YnV5ZXIiLCJwaGFzZUluZGV4IjowLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25JZCI6ImRlYjhhMjRkNGM3YzZjMDZmMzY0OTliZTQ4ZWJjNTgzNjQ5N2Q3OWNhNTc0MTI1NmNlNGU1Yzc2YjU4NzJiMTMiLCJ0cmFuc2FjdGlvblJlZiI6eyJibG9ja051bWJlciI6MTAwLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiJkZWI4YTI0ZDRjN2M2YzA2ZjM2NDk5YmU0OGViYzU4MzY0OTdkNzljYTU3NDEyNTZjZTRlNWM3NmI1ODcyYjEzIn19",
+              "leafHash": "68e59398c0d2a8362c2f5b46cf9d91edd68760c8ce796aed14ae3c8a42ee69ff",
+              "siblingHash": "549fc7f51468f845e48faeb593e79d586ffadf20b29ccf3f13325d823fe47b4f",
+              "leafIndex": 0,
+              "root": "84caaa3103f699b39627a0d8805f2409d4c8515599144df7faf6d3f20f6b891e"
+            },
+            "inclusionBlock": {
+              "id": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+              "parentId": "851c43592a32c57a7d7e3807f31e9672c0dd7f1afbb5af6b55caaace9dae7ba0",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTFjNDM1OTJhMzJjNTdhN2Q3ZTM4MDdmMzFlOTY3MmMwZGQ3ZjFhZmJiNWFmNmI1NWNhYWFjZTlkYWU3YmEwIiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzgxZTg0MDQyYmQwYmY4YmM0NDFjNDU4ZTIzMTI2NzY2NjIxOTE1ZmU4ZmMxZmE2YTM5ZjhkNmIwYTljYWEwYyJ9"
+            },
+            "authenticatedHead": {
+              "id": "d6989f1b78fe865dddb04c1fb970d2063460d002b0dfc552a4e0beb63be279b6",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIzNDJkMzU4YzBiMTIzZmMxYTQ5NDkxMDYwNjgwZWY1NmVhMDk3NmVkYTRjZmY5ZmYzYTEzMzdkOGExN2U5YzFkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ba855fdfaadcead6f622ed69ae4d56970f529bad0fd4c11352b9ef586c79c64d",
+                "parentId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMTk2MjNkZDhlMGY3NTIxY2U4Mjc4ODk4NThjY2Q3ODMyZjk0NmI5ODkyM2YwYjQ2NDc0ODRiYzRjOWM2ZTgyIiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "6c2cacb9e9b0270b57551c38588c84f9dd2f7478776d99de87ce74f5cd36b0b9",
+                "parentId": "ba855fdfaadcead6f622ed69ae4d56970f529bad0fd4c11352b9ef586c79c64d",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiYTg1NWZkZmFhZGNlYWQ2ZjYyMmVkNjlhZTRkNTY5NzBmNTI5YmFkMGZkNGMxMTM1MmI5ZWY1ODZjNzljNjRkIiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "455b59a2b5f6998ce7075cb2d763689692737844a069cad55596b2828bc3a46f",
+                "parentId": "6c2cacb9e9b0270b57551c38588c84f9dd2f7478776d99de87ce74f5cd36b0b9",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI2YzJjYWNiOWU5YjAyNzBiNTc1NTFjMzg1ODhjODRmOWRkMmY3NDc4Nzc2ZDk5ZGU4N2NlNzRmNWNkMzZiMGI5IiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "19b5fc663d2acc31f19267aecbaa17e0d8b4570a0dfd13de8993fe9173173124",
+                "parentId": "455b59a2b5f6998ce7075cb2d763689692737844a069cad55596b2828bc3a46f",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI0NTViNTlhMmI1ZjY5OThjZTcwNzVjYjJkNzYzNjg5NjkyNzM3ODQ0YTA2OWNhZDU1NTk2YjI4MjhiYzNhNDZmIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "b95c93b7f46ab0da8c8edae31c2f9e15ea75db7ba99f6f5b905f23a8154b38ff",
+                "parentId": "19b5fc663d2acc31f19267aecbaa17e0d8b4570a0dfd13de8993fe9173173124",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIxOWI1ZmM2NjNkMmFjYzMxZjE5MjY3YWVjYmFhMTdlMGQ4YjQ1NzBhMGRmZDEzZGU4OTkzZmU5MTczMTczMTI0IiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "44648095bbf07651ee6e1ae7ef538865c2a01d23c949e5b2d30ddd04a5d736bc",
+                "parentId": "b95c93b7f46ab0da8c8edae31c2f9e15ea75db7ba99f6f5b905f23a8154b38ff",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiOTVjOTNiN2Y0NmFiMGRhOGM4ZWRhZTMxYzJmOWUxNWVhNzVkYjdiYTk5ZjZmNWI5MDVmMjNhODE1NGIzOGZmIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "b3ba8bb5ca0e4e775d637f1103d76f3ed76dbff7200e60470b44fa57285e2f55",
+                "parentId": "44648095bbf07651ee6e1ae7ef538865c2a01d23c949e5b2d30ddd04a5d736bc",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI0NDY0ODA5NWJiZjA3NjUxZWU2ZTFhZTdlZjUzODg2NWMyYTAxZDIzYzk0OWU1YjJkMzBkZGQwNGE1ZDczNmJjIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "8b385ab8ea627642233dd77d71b06f7bfd5d1ead97d6dc13f96ace7605e4a71f",
+                "parentId": "b3ba8bb5ca0e4e775d637f1103d76f3ed76dbff7200e60470b44fa57285e2f55",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiM2JhOGJiNWNhMGU0ZTc3NWQ2MzdmMTEwM2Q3NmYzZWQ3NmRiZmY3MjAwZTYwNDcwYjQ0ZmE1NzI4NWUyZjU1IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "7623f01f98a159be4db3618914c9fe22e446846e06ee150961b317c179e551e5",
+                "parentId": "8b385ab8ea627642233dd77d71b06f7bfd5d1ead97d6dc13f96ace7605e4a71f",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4YjM4NWFiOGVhNjI3NjQyMjMzZGQ3N2Q3MWIwNmY3YmZkNWQxZWFkOTdkNmRjMTNmOTZhY2U3NjA1ZTRhNzFmIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "342d358c0b123fc1a49491060680ef56ea0976eda4cff9ff3a1337d8a17e9c1d",
+                "parentId": "7623f01f98a159be4db3618914c9fe22e446846e06ee150961b317c179e551e5",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3NjIzZjAxZjk4YTE1OWJlNGRiMzYxODkxNGM5ZmUyMmU0NDY4NDZlMDZlZTE1MDk2MWIzMTdjMTc5ZTU1MWU1IiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "d6989f1b78fe865dddb04c1fb970d2063460d002b0dfc552a4e0beb63be279b6",
+                "parentId": "342d358c0b123fc1a49491060680ef56ea0976eda4cff9ff3a1337d8a17e9c1d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIzNDJkMzU4YzBiMTIzZmMxYTQ5NDkxMDYwNjgwZWY1NmVhMDk3NmVkYTRjZmY5ZmYzYTEzMzdkOGExN2U5YzFkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "NhyeYQqjSoaKOTFI-ylYGDMx6AMKPTgjA8ohPNCQIGrzSQ3lxvBCwLSrkD6MzLHRu_KtvFoU7B83YPICa4iHAA"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ppc3XSYCeh9k7uj1S1gIgZneoxtbIPq8nd0iU8kochVF2WN4JAO3fJXIEaTz4IRJZaFkA5JJa2397KSTiY-3AQ"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "u1Efznv_FSnfiHcItSqjLmAHNluw6m1x9yqZZCrcFd2i7uOL4-GOVlZy5Ia7WhgQ0TgAR-QDG67QjMHGmpwEDA"
+                }
+              ]
+            },
+            "executionResult": {
+              "kind": "fixture-independent-results-v1",
+              "networkId": "demos:mainnet",
+              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+              "blockId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+              "transactionRef": {
+                "kind": "demos",
+                "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                "blockNumber": 100
+              },
+              "record": {
+                "hash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                "blockNumber": 100,
+                "status": "confirmed",
+                "content": {
+                  "type": "native",
+                  "from": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "from_ed25519_address": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "to": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                  "amount": 5000000000,
+                  "nonce": "7",
+                  "timestamp": "1791649642726",
+                  "transaction_fee": {
+                    "network_fee": 1000000000,
+                    "rpc_fee": 1000000000,
+                    "additional_fee": 0,
+                    "rpc_address": null
+                  },
+                  "data": [
+                    "native",
+                    {
+                      "nativeOperation": "send",
+                      "args": [
+                        "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                        "5000000000"
+                      ]
+                    }
+                  ],
+                  "gcr_edits": [
+                    {
+                      "type": "balance",
+                      "operation": "remove",
+                      "isRollback": false,
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "amount": "5000000000"
+                    },
+                    {
+                      "type": "balance",
+                      "operation": "add",
+                      "isRollback": false,
+                      "account": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "amount": "5000000000"
+                    },
+                    {
+                      "type": "balance",
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "operation": "remove",
+                      "amount": "1000000000",
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "isRollback": false
+                    },
+                    {
+                      "type": "nonce",
+                      "operation": "add",
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "amount": 1,
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "isRollback": false
+                    }
+                  ]
+                }
+              },
+              "appliedTransfer": {
+                "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                "blockNumber": 100,
+                "sender": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                "recipient": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                "payerDebitOs": "5000000000",
+                "payeeCreditOs": "5000000000",
+                "committedBalances": {
+                  "payerBeforeOs": "1000000000000000000000000000000",
+                  "payerAfterOs": "999999999999999999994000000000",
+                  "payeeBeforeOs": "7000000000000000000000000",
+                  "payeeAfterOs": "7000000000000005000000000",
+                  "feeOs": "1000000000"
+                }
+              },
+              "attestations": [
+                {
+                  "authorityRef": "execution-a",
+                  "algorithm": "ed25519",
+                  "value": "raa9vuvviG4WLtWOPpNUKsdodlJ4QrDL156C4-6Lx6zVllQ8XEIgkPIW7K0rc78PCzz7pZumH0WP3lh-LLP3CQ"
+                },
+                {
+                  "authorityRef": "execution-b",
+                  "algorithm": "ed25519",
+                  "value": "jVaTUwIu5ISJDZIKr-7vIRFABDhP6k454p1icyPNczFelW9uC8RmyboqzHx90mJWWy5Z7oQI9KvK7SQR_71FCg"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "YC7iAkAFBW2HZu4oILUhZdvBpFyJlupYG21ABMhrcGcWgIY3sC7H25uu6BupwhvmWCEqdKHsI79hfyt2pvEoDA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "7QEbNN2gozkgz4DxohesmDMKcpJBreH6-EqNmkY2BJvd4wndMsGtoZlq10tQShsB6Gf71DjfjBzi-Iy1ufwCAg"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "error"
+      },
+      "trustedOverrides": {
+        "validatorSets": {
+          "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410": {
+            "validators": []
+          }
+        }
       }
     },
     {
@@ -50874,6 +52222,426 @@
       }
     },
     {
+      "name": "fv-bft-final-result-attestation-malformed",
+      "expected": "indeterminate",
+      "note": "only independently authenticated results count",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-bft-final",
+          "phase": "pay-dem",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "demos",
+              "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+              "blockNumber": 100
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "DEM"
+          },
+          "settlementFinality": {
+            "model": "bft-final",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-0309a0816a2f0b6423e40aa6e89467ec16cf22ede212b09b4c5d7405e117f480"
+            },
+            "contentHash": "303b4376ff22d7a4c62916281096281437c804040c768d5a14a847f4117be8f7",
+            "railId": "fixture:bft-final",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "f1j681pAE2X6Kaf9Z4EhEj7heh4fruLexBELQkA-zDc7oFtBFfj8Ztcw91Xytq75E65y0QgJGhIJoKt_1GqqAg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:bft-final",
+          "railType": "demos-native",
+          "asset": {
+            "kind": "native-dem",
+            "symbol": "DEM",
+            "decimals": 9
+          },
+          "network": {
+            "kind": "demos"
+          },
+          "phaseHandler": "pay-dem",
+          "parameters": {
+            "assetId": "DEM"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                },
+                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "RBfkFFArkBO6lsBNybSpNziaBESuWXdCytqcgQJjp11LLpIAtfa9sMMikWVmZ9l3R6-53zvDpQuZrSABvXuJAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-bft-final",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "DEM"
+            },
+            "rail": {
+              "railId": "fixture:bft-final",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "d3S75K0k0Mg6bUFYRgkaT19M-upCcWoxKamsJ2SPHsCtrlT72E1CpftMtrpVSJ_z1yt6F88sVys74ASKLT2qDg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "huATv1nr_QeyimVH2SqDe71fp-qJkS21GTliQQLKzK2a41H9p5VgKyxgudZUWfadBvUYlF9EqypOBRCx_oAWBg"
+            }
+          ]
+        },
+        "context": {
+          "kind": "chain",
+          "observation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+              "blockNumber": 100
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiODRjYWFhMzEwM2Y2OTliMzk2MjdhMGQ4ODA1ZjI0MDlkNGM4NTE1NTk5MTQ0ZGY3ZmFmNmQzZjIwZjZiODkxZSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJ0cmFuc2FjdGlvblJlZiI6eyJibG9ja051bWJlciI6MTAwLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiJkZWI4YTI0ZDRjN2M2YzA2ZjM2NDk5YmU0OGViYzU4MzY0OTdkNzljYTU3NDEyNTZjZTRlNWM3NmI1ODcyYjEzIn0sInR4SGFzaCI6ImRlYjhhMjRkNGM3YzZjMDZmMzY0OTliZTQ4ZWJjNTgzNjQ5N2Q3OWNhNTc0MTI1NmNlNGU1Yzc2YjU4NzJiMTMifQ",
+              "leafHash": "32cdfc547b7ee3cac1f44fc524aeb62d6cc672a5927a74e643193e1dcf6f8057",
+              "siblingHash": "4912a682f773892b510adb6ff2ceef0f11fb07e52af0da7a8f8a0e1e52a82590",
+              "leafIndex": 0,
+              "root": "c81e84042bd0bf8bc441c458e23126766621915fe8fc1fa6a39f8d6b0a9caa0c"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJhbW91bnQiOiI1IiwiYXNzZXQiOiJERU0iLCJjdXJyZW5jeSI6IkRFTSIsImV2ZW50SW5kZXgiOjAsImV2ZW50VHlwZSI6InRyYW5zZmVyIiwiam9iSWQiOiJGVi0zOTItYmZ0LWZpbmFsIiwicGF5ZWUiOiJkaWQ6ZGVtb3M6c2VsbGVyIiwicGF5ZXIiOiJkaWQ6ZGVtb3M6YnV5ZXIiLCJwaGFzZUluZGV4IjowLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25JZCI6ImRlYjhhMjRkNGM3YzZjMDZmMzY0OTliZTQ4ZWJjNTgzNjQ5N2Q3OWNhNTc0MTI1NmNlNGU1Yzc2YjU4NzJiMTMiLCJ0cmFuc2FjdGlvblJlZiI6eyJibG9ja051bWJlciI6MTAwLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiJkZWI4YTI0ZDRjN2M2YzA2ZjM2NDk5YmU0OGViYzU4MzY0OTdkNzljYTU3NDEyNTZjZTRlNWM3NmI1ODcyYjEzIn19",
+              "leafHash": "68e59398c0d2a8362c2f5b46cf9d91edd68760c8ce796aed14ae3c8a42ee69ff",
+              "siblingHash": "549fc7f51468f845e48faeb593e79d586ffadf20b29ccf3f13325d823fe47b4f",
+              "leafIndex": 0,
+              "root": "84caaa3103f699b39627a0d8805f2409d4c8515599144df7faf6d3f20f6b891e"
+            },
+            "inclusionBlock": {
+              "id": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+              "parentId": "851c43592a32c57a7d7e3807f31e9672c0dd7f1afbb5af6b55caaace9dae7ba0",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTFjNDM1OTJhMzJjNTdhN2Q3ZTM4MDdmMzFlOTY3MmMwZGQ3ZjFhZmJiNWFmNmI1NWNhYWFjZTlkYWU3YmEwIiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzgxZTg0MDQyYmQwYmY4YmM0NDFjNDU4ZTIzMTI2NzY2NjIxOTE1ZmU4ZmMxZmE2YTM5ZjhkNmIwYTljYWEwYyJ9"
+            },
+            "authenticatedHead": {
+              "id": "d6989f1b78fe865dddb04c1fb970d2063460d002b0dfc552a4e0beb63be279b6",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIzNDJkMzU4YzBiMTIzZmMxYTQ5NDkxMDYwNjgwZWY1NmVhMDk3NmVkYTRjZmY5ZmYzYTEzMzdkOGExN2U5YzFkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ba855fdfaadcead6f622ed69ae4d56970f529bad0fd4c11352b9ef586c79c64d",
+                "parentId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMTk2MjNkZDhlMGY3NTIxY2U4Mjc4ODk4NThjY2Q3ODMyZjk0NmI5ODkyM2YwYjQ2NDc0ODRiYzRjOWM2ZTgyIiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "6c2cacb9e9b0270b57551c38588c84f9dd2f7478776d99de87ce74f5cd36b0b9",
+                "parentId": "ba855fdfaadcead6f622ed69ae4d56970f529bad0fd4c11352b9ef586c79c64d",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiYTg1NWZkZmFhZGNlYWQ2ZjYyMmVkNjlhZTRkNTY5NzBmNTI5YmFkMGZkNGMxMTM1MmI5ZWY1ODZjNzljNjRkIiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "455b59a2b5f6998ce7075cb2d763689692737844a069cad55596b2828bc3a46f",
+                "parentId": "6c2cacb9e9b0270b57551c38588c84f9dd2f7478776d99de87ce74f5cd36b0b9",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI2YzJjYWNiOWU5YjAyNzBiNTc1NTFjMzg1ODhjODRmOWRkMmY3NDc4Nzc2ZDk5ZGU4N2NlNzRmNWNkMzZiMGI5IiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "19b5fc663d2acc31f19267aecbaa17e0d8b4570a0dfd13de8993fe9173173124",
+                "parentId": "455b59a2b5f6998ce7075cb2d763689692737844a069cad55596b2828bc3a46f",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI0NTViNTlhMmI1ZjY5OThjZTcwNzVjYjJkNzYzNjg5NjkyNzM3ODQ0YTA2OWNhZDU1NTk2YjI4MjhiYzNhNDZmIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "b95c93b7f46ab0da8c8edae31c2f9e15ea75db7ba99f6f5b905f23a8154b38ff",
+                "parentId": "19b5fc663d2acc31f19267aecbaa17e0d8b4570a0dfd13de8993fe9173173124",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIxOWI1ZmM2NjNkMmFjYzMxZjE5MjY3YWVjYmFhMTdlMGQ4YjQ1NzBhMGRmZDEzZGU4OTkzZmU5MTczMTczMTI0IiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "44648095bbf07651ee6e1ae7ef538865c2a01d23c949e5b2d30ddd04a5d736bc",
+                "parentId": "b95c93b7f46ab0da8c8edae31c2f9e15ea75db7ba99f6f5b905f23a8154b38ff",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiOTVjOTNiN2Y0NmFiMGRhOGM4ZWRhZTMxYzJmOWUxNWVhNzVkYjdiYTk5ZjZmNWI5MDVmMjNhODE1NGIzOGZmIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "b3ba8bb5ca0e4e775d637f1103d76f3ed76dbff7200e60470b44fa57285e2f55",
+                "parentId": "44648095bbf07651ee6e1ae7ef538865c2a01d23c949e5b2d30ddd04a5d736bc",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI0NDY0ODA5NWJiZjA3NjUxZWU2ZTFhZTdlZjUzODg2NWMyYTAxZDIzYzk0OWU1YjJkMzBkZGQwNGE1ZDczNmJjIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "8b385ab8ea627642233dd77d71b06f7bfd5d1ead97d6dc13f96ace7605e4a71f",
+                "parentId": "b3ba8bb5ca0e4e775d637f1103d76f3ed76dbff7200e60470b44fa57285e2f55",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiM2JhOGJiNWNhMGU0ZTc3NWQ2MzdmMTEwM2Q3NmYzZWQ3NmRiZmY3MjAwZTYwNDcwYjQ0ZmE1NzI4NWUyZjU1IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "7623f01f98a159be4db3618914c9fe22e446846e06ee150961b317c179e551e5",
+                "parentId": "8b385ab8ea627642233dd77d71b06f7bfd5d1ead97d6dc13f96ace7605e4a71f",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4YjM4NWFiOGVhNjI3NjQyMjMzZGQ3N2Q3MWIwNmY3YmZkNWQxZWFkOTdkNmRjMTNmOTZhY2U3NjA1ZTRhNzFmIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "342d358c0b123fc1a49491060680ef56ea0976eda4cff9ff3a1337d8a17e9c1d",
+                "parentId": "7623f01f98a159be4db3618914c9fe22e446846e06ee150961b317c179e551e5",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3NjIzZjAxZjk4YTE1OWJlNGRiMzYxODkxNGM5ZmUyMmU0NDY4NDZlMDZlZTE1MDk2MWIzMTdjMTc5ZTU1MWU1IiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "d6989f1b78fe865dddb04c1fb970d2063460d002b0dfc552a4e0beb63be279b6",
+                "parentId": "342d358c0b123fc1a49491060680ef56ea0976eda4cff9ff3a1337d8a17e9c1d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIzNDJkMzU4YzBiMTIzZmMxYTQ5NDkxMDYwNjgwZWY1NmVhMDk3NmVkYTRjZmY5ZmYzYTEzMzdkOGExN2U5YzFkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "NhyeYQqjSoaKOTFI-ylYGDMx6AMKPTgjA8ohPNCQIGrzSQ3lxvBCwLSrkD6MzLHRu_KtvFoU7B83YPICa4iHAA"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ppc3XSYCeh9k7uj1S1gIgZneoxtbIPq8nd0iU8kochVF2WN4JAO3fJXIEaTz4IRJZaFkA5JJa2397KSTiY-3AQ"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "u1Efznv_FSnfiHcItSqjLmAHNluw6m1x9yqZZCrcFd2i7uOL4-GOVlZy5Ia7WhgQ0TgAR-QDG67QjMHGmpwEDA"
+                }
+              ]
+            },
+            "executionResult": {
+              "kind": "fixture-independent-results-v1",
+              "networkId": "demos:mainnet",
+              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+              "blockId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+              "transactionRef": {
+                "kind": "demos",
+                "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                "blockNumber": 100
+              },
+              "record": {
+                "hash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                "blockNumber": 100,
+                "status": "confirmed",
+                "content": {
+                  "type": "native",
+                  "from": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "from_ed25519_address": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "to": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                  "amount": 5000000000,
+                  "nonce": "7",
+                  "timestamp": "1791649642726",
+                  "transaction_fee": {
+                    "network_fee": 1000000000,
+                    "rpc_fee": 1000000000,
+                    "additional_fee": 0,
+                    "rpc_address": null
+                  },
+                  "data": [
+                    "native",
+                    {
+                      "nativeOperation": "send",
+                      "args": [
+                        "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                        "5000000000"
+                      ]
+                    }
+                  ],
+                  "gcr_edits": [
+                    {
+                      "type": "balance",
+                      "operation": "remove",
+                      "isRollback": false,
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "amount": "5000000000"
+                    },
+                    {
+                      "type": "balance",
+                      "operation": "add",
+                      "isRollback": false,
+                      "account": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "amount": "5000000000"
+                    },
+                    {
+                      "type": "balance",
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "operation": "remove",
+                      "amount": "1000000000",
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "isRollback": false
+                    },
+                    {
+                      "type": "nonce",
+                      "operation": "add",
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "amount": 1,
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "isRollback": false
+                    }
+                  ]
+                }
+              },
+              "appliedTransfer": {
+                "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                "blockNumber": 100,
+                "sender": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                "recipient": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                "payerDebitOs": "5000000000",
+                "payeeCreditOs": "5000000000",
+                "committedBalances": {
+                  "payerBeforeOs": "1000000000000000000000000000000",
+                  "payerAfterOs": "999999999999999999994000000000",
+                  "payeeBeforeOs": "7000000000000000000000000",
+                  "payeeAfterOs": "7000000000000005000000000",
+                  "feeOs": "1000000000"
+                }
+              },
+              "attestations": [
+                {
+                  "authorityRef": "execution-a",
+                  "value": "raa9vuvviG4WLtWOPpNUKsdodlJ4QrDL156C4-6Lx6zVllQ8XEIgkPIW7K0rc78PCzz7pZumH0WP3lh-LLP3CQ"
+                },
+                {
+                  "authorityRef": "execution-b",
+                  "algorithm": "ed25519",
+                  "value": "jVaTUwIu5ISJDZIKr-7vIRFABDhP6k454p1icyPNczFelW9uC8RmyboqzHx90mJWWy5Z7oQI9KvK7SQR_71FCg"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "YC7iAkAFBW2HZu4oILUhZdvBpFyJlupYG21ABMhrcGcWgIY3sC7H25uu6BupwhvmWCEqdKHsI79hfyt2pvEoDA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "7QEbNN2gozkgz4DxohesmDMKcpJBreH6-EqNmkY2BJvd4wndMsGtoZlq10tQShsB6Gf71DjfjBzi-Iy1ufwCAg"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "indeterminate"
+      }
+    },
+    {
       "name": "fv-bft-final-result-extra-unknown-attestation",
       "expected": "pass",
       "note": "only independently authenticated results count",
@@ -51695,6 +53463,430 @@
                   "authorityRef": "execution-c",
                   "algorithm": "ed25519",
                   "value": "raa9vuvviG4WLtWOPpNUKsdodlJ4QrDL156C4-6Lx6zVllQ8XEIgkPIW7K0rc78PCzz7pZumH0WP3lh-LLP3CQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "YC7iAkAFBW2HZu4oILUhZdvBpFyJlupYG21ABMhrcGcWgIY3sC7H25uu6BupwhvmWCEqdKHsI79hfyt2pvEoDA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "7QEbNN2gozkgz4DxohesmDMKcpJBreH6-EqNmkY2BJvd4wndMsGtoZlq10tQShsB6Gf71DjfjBzi-Iy1ufwCAg"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": true,
+        "finalityClass": "profile-final",
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "pass"
+      }
+    },
+    {
+      "name": "fv-bft-final-result-extra-malformed-attestation",
+      "expected": "pass",
+      "note": "only independently authenticated results count",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-bft-final",
+          "phase": "pay-dem",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "demos",
+              "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+              "blockNumber": 100
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "DEM"
+          },
+          "settlementFinality": {
+            "model": "bft-final",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-0309a0816a2f0b6423e40aa6e89467ec16cf22ede212b09b4c5d7405e117f480"
+            },
+            "contentHash": "303b4376ff22d7a4c62916281096281437c804040c768d5a14a847f4117be8f7",
+            "railId": "fixture:bft-final",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "f1j681pAE2X6Kaf9Z4EhEj7heh4fruLexBELQkA-zDc7oFtBFfj8Ztcw91Xytq75E65y0QgJGhIJoKt_1GqqAg"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:bft-final",
+          "railType": "demos-native",
+          "asset": {
+            "kind": "native-dem",
+            "symbol": "DEM",
+            "decimals": 9
+          },
+          "network": {
+            "kind": "demos"
+          },
+          "phaseHandler": "pay-dem",
+          "parameters": {
+            "assetId": "DEM"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                },
+                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "RBfkFFArkBO6lsBNybSpNziaBESuWXdCytqcgQJjp11LLpIAtfa9sMMikWVmZ9l3R6-53zvDpQuZrSABvXuJAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-bft-final",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "DEM"
+            },
+            "rail": {
+              "railId": "fixture:bft-final",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "d3S75K0k0Mg6bUFYRgkaT19M-upCcWoxKamsJ2SPHsCtrlT72E1CpftMtrpVSJ_z1yt6F88sVys74ASKLT2qDg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "huATv1nr_QeyimVH2SqDe71fp-qJkS21GTliQQLKzK2a41H9p5VgKyxgudZUWfadBvUYlF9EqypOBRCx_oAWBg"
+            }
+          ]
+        },
+        "context": {
+          "kind": "chain",
+          "observation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+              "blockNumber": 100
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiODRjYWFhMzEwM2Y2OTliMzk2MjdhMGQ4ODA1ZjI0MDlkNGM4NTE1NTk5MTQ0ZGY3ZmFmNmQzZjIwZjZiODkxZSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJ0cmFuc2FjdGlvblJlZiI6eyJibG9ja051bWJlciI6MTAwLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiJkZWI4YTI0ZDRjN2M2YzA2ZjM2NDk5YmU0OGViYzU4MzY0OTdkNzljYTU3NDEyNTZjZTRlNWM3NmI1ODcyYjEzIn0sInR4SGFzaCI6ImRlYjhhMjRkNGM3YzZjMDZmMzY0OTliZTQ4ZWJjNTgzNjQ5N2Q3OWNhNTc0MTI1NmNlNGU1Yzc2YjU4NzJiMTMifQ",
+              "leafHash": "32cdfc547b7ee3cac1f44fc524aeb62d6cc672a5927a74e643193e1dcf6f8057",
+              "siblingHash": "4912a682f773892b510adb6ff2ceef0f11fb07e52af0da7a8f8a0e1e52a82590",
+              "leafIndex": 0,
+              "root": "c81e84042bd0bf8bc441c458e23126766621915fe8fc1fa6a39f8d6b0a9caa0c"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "eyJhbW91bnQiOiI1IiwiYXNzZXQiOiJERU0iLCJjdXJyZW5jeSI6IkRFTSIsImV2ZW50SW5kZXgiOjAsImV2ZW50VHlwZSI6InRyYW5zZmVyIiwiam9iSWQiOiJGVi0zOTItYmZ0LWZpbmFsIiwicGF5ZWUiOiJkaWQ6ZGVtb3M6c2VsbGVyIiwicGF5ZXIiOiJkaWQ6ZGVtb3M6YnV5ZXIiLCJwaGFzZUluZGV4IjowLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25JZCI6ImRlYjhhMjRkNGM3YzZjMDZmMzY0OTliZTQ4ZWJjNTgzNjQ5N2Q3OWNhNTc0MTI1NmNlNGU1Yzc2YjU4NzJiMTMiLCJ0cmFuc2FjdGlvblJlZiI6eyJibG9ja051bWJlciI6MTAwLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiJkZWI4YTI0ZDRjN2M2YzA2ZjM2NDk5YmU0OGViYzU4MzY0OTdkNzljYTU3NDEyNTZjZTRlNWM3NmI1ODcyYjEzIn19",
+              "leafHash": "68e59398c0d2a8362c2f5b46cf9d91edd68760c8ce796aed14ae3c8a42ee69ff",
+              "siblingHash": "549fc7f51468f845e48faeb593e79d586ffadf20b29ccf3f13325d823fe47b4f",
+              "leafIndex": 0,
+              "root": "84caaa3103f699b39627a0d8805f2409d4c8515599144df7faf6d3f20f6b891e"
+            },
+            "inclusionBlock": {
+              "id": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+              "parentId": "851c43592a32c57a7d7e3807f31e9672c0dd7f1afbb5af6b55caaace9dae7ba0",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTFjNDM1OTJhMzJjNTdhN2Q3ZTM4MDdmMzFlOTY3MmMwZGQ3ZjFhZmJiNWFmNmI1NWNhYWFjZTlkYWU3YmEwIiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzgxZTg0MDQyYmQwYmY4YmM0NDFjNDU4ZTIzMTI2NzY2NjIxOTE1ZmU4ZmMxZmE2YTM5ZjhkNmIwYTljYWEwYyJ9"
+            },
+            "authenticatedHead": {
+              "id": "d6989f1b78fe865dddb04c1fb970d2063460d002b0dfc552a4e0beb63be279b6",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIzNDJkMzU4YzBiMTIzZmMxYTQ5NDkxMDYwNjgwZWY1NmVhMDk3NmVkYTRjZmY5ZmYzYTEzMzdkOGExN2U5YzFkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "ba855fdfaadcead6f622ed69ae4d56970f529bad0fd4c11352b9ef586c79c64d",
+                "parentId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMTk2MjNkZDhlMGY3NTIxY2U4Mjc4ODk4NThjY2Q3ODMyZjk0NmI5ODkyM2YwYjQ2NDc0ODRiYzRjOWM2ZTgyIiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "6c2cacb9e9b0270b57551c38588c84f9dd2f7478776d99de87ce74f5cd36b0b9",
+                "parentId": "ba855fdfaadcead6f622ed69ae4d56970f529bad0fd4c11352b9ef586c79c64d",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiYTg1NWZkZmFhZGNlYWQ2ZjYyMmVkNjlhZTRkNTY5NzBmNTI5YmFkMGZkNGMxMTM1MmI5ZWY1ODZjNzljNjRkIiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "455b59a2b5f6998ce7075cb2d763689692737844a069cad55596b2828bc3a46f",
+                "parentId": "6c2cacb9e9b0270b57551c38588c84f9dd2f7478776d99de87ce74f5cd36b0b9",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI2YzJjYWNiOWU5YjAyNzBiNTc1NTFjMzg1ODhjODRmOWRkMmY3NDc4Nzc2ZDk5ZGU4N2NlNzRmNWNkMzZiMGI5IiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "19b5fc663d2acc31f19267aecbaa17e0d8b4570a0dfd13de8993fe9173173124",
+                "parentId": "455b59a2b5f6998ce7075cb2d763689692737844a069cad55596b2828bc3a46f",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI0NTViNTlhMmI1ZjY5OThjZTcwNzVjYjJkNzYzNjg5NjkyNzM3ODQ0YTA2OWNhZDU1NTk2YjI4MjhiYzNhNDZmIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "b95c93b7f46ab0da8c8edae31c2f9e15ea75db7ba99f6f5b905f23a8154b38ff",
+                "parentId": "19b5fc663d2acc31f19267aecbaa17e0d8b4570a0dfd13de8993fe9173173124",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIxOWI1ZmM2NjNkMmFjYzMxZjE5MjY3YWVjYmFhMTdlMGQ4YjQ1NzBhMGRmZDEzZGU4OTkzZmU5MTczMTczMTI0IiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "44648095bbf07651ee6e1ae7ef538865c2a01d23c949e5b2d30ddd04a5d736bc",
+                "parentId": "b95c93b7f46ab0da8c8edae31c2f9e15ea75db7ba99f6f5b905f23a8154b38ff",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiOTVjOTNiN2Y0NmFiMGRhOGM4ZWRhZTMxYzJmOWUxNWVhNzVkYjdiYTk5ZjZmNWI5MDVmMjNhODE1NGIzOGZmIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "b3ba8bb5ca0e4e775d637f1103d76f3ed76dbff7200e60470b44fa57285e2f55",
+                "parentId": "44648095bbf07651ee6e1ae7ef538865c2a01d23c949e5b2d30ddd04a5d736bc",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI0NDY0ODA5NWJiZjA3NjUxZWU2ZTFhZTdlZjUzODg2NWMyYTAxZDIzYzk0OWU1YjJkMzBkZGQwNGE1ZDczNmJjIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "8b385ab8ea627642233dd77d71b06f7bfd5d1ead97d6dc13f96ace7605e4a71f",
+                "parentId": "b3ba8bb5ca0e4e775d637f1103d76f3ed76dbff7200e60470b44fa57285e2f55",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiM2JhOGJiNWNhMGU0ZTc3NWQ2MzdmMTEwM2Q3NmYzZWQ3NmRiZmY3MjAwZTYwNDcwYjQ0ZmE1NzI4NWUyZjU1IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "7623f01f98a159be4db3618914c9fe22e446846e06ee150961b317c179e551e5",
+                "parentId": "8b385ab8ea627642233dd77d71b06f7bfd5d1ead97d6dc13f96ace7605e4a71f",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4YjM4NWFiOGVhNjI3NjQyMjMzZGQ3N2Q3MWIwNmY3YmZkNWQxZWFkOTdkNmRjMTNmOTZhY2U3NjA1ZTRhNzFmIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "342d358c0b123fc1a49491060680ef56ea0976eda4cff9ff3a1337d8a17e9c1d",
+                "parentId": "7623f01f98a159be4db3618914c9fe22e446846e06ee150961b317c179e551e5",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3NjIzZjAxZjk4YTE1OWJlNGRiMzYxODkxNGM5ZmUyMmU0NDY4NDZlMDZlZTE1MDk2MWIzMTdjMTc5ZTU1MWU1IiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              },
+              {
+                "childId": "d6989f1b78fe865dddb04c1fb970d2063460d002b0dfc552a4e0beb63be279b6",
+                "parentId": "342d358c0b123fc1a49491060680ef56ea0976eda4cff9ff3a1337d8a17e9c1d",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIzNDJkMzU4YzBiMTIzZmMxYTQ5NDkxMDYwNjgwZWY1NmVhMDk3NmVkYTRjZmY5ZmYzYTEzMzdkOGExN2U5YzFkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "NhyeYQqjSoaKOTFI-ylYGDMx6AMKPTgjA8ohPNCQIGrzSQ3lxvBCwLSrkD6MzLHRu_KtvFoU7B83YPICa4iHAA"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ppc3XSYCeh9k7uj1S1gIgZneoxtbIPq8nd0iU8kochVF2WN4JAO3fJXIEaTz4IRJZaFkA5JJa2397KSTiY-3AQ"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "u1Efznv_FSnfiHcItSqjLmAHNluw6m1x9yqZZCrcFd2i7uOL4-GOVlZy5Ia7WhgQ0TgAR-QDG67QjMHGmpwEDA"
+                }
+              ]
+            },
+            "executionResult": {
+              "kind": "fixture-independent-results-v1",
+              "networkId": "demos:mainnet",
+              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+              "blockId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
+              "transactionRef": {
+                "kind": "demos",
+                "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                "blockNumber": 100
+              },
+              "record": {
+                "hash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                "blockNumber": 100,
+                "status": "confirmed",
+                "content": {
+                  "type": "native",
+                  "from": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "from_ed25519_address": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "to": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                  "amount": 5000000000,
+                  "nonce": "7",
+                  "timestamp": "1791649642726",
+                  "transaction_fee": {
+                    "network_fee": 1000000000,
+                    "rpc_fee": 1000000000,
+                    "additional_fee": 0,
+                    "rpc_address": null
+                  },
+                  "data": [
+                    "native",
+                    {
+                      "nativeOperation": "send",
+                      "args": [
+                        "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                        "5000000000"
+                      ]
+                    }
+                  ],
+                  "gcr_edits": [
+                    {
+                      "type": "balance",
+                      "operation": "remove",
+                      "isRollback": false,
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "amount": "5000000000"
+                    },
+                    {
+                      "type": "balance",
+                      "operation": "add",
+                      "isRollback": false,
+                      "account": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "amount": "5000000000"
+                    },
+                    {
+                      "type": "balance",
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "operation": "remove",
+                      "amount": "1000000000",
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "isRollback": false
+                    },
+                    {
+                      "type": "nonce",
+                      "operation": "add",
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "amount": 1,
+                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                      "isRollback": false
+                    }
+                  ]
+                }
+              },
+              "appliedTransfer": {
+                "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
+                "blockNumber": 100,
+                "sender": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                "recipient": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                "payerDebitOs": "5000000000",
+                "payeeCreditOs": "5000000000",
+                "committedBalances": {
+                  "payerBeforeOs": "1000000000000000000000000000000",
+                  "payerAfterOs": "999999999999999999994000000000",
+                  "payeeBeforeOs": "7000000000000000000000000",
+                  "payeeAfterOs": "7000000000000005000000000",
+                  "feeOs": "1000000000"
+                }
+              },
+              "attestations": [
+                {
+                  "authorityRef": "execution-a",
+                  "algorithm": "ed25519",
+                  "value": "raa9vuvviG4WLtWOPpNUKsdodlJ4QrDL156C4-6Lx6zVllQ8XEIgkPIW7K0rc78PCzz7pZumH0WP3lh-LLP3CQ"
+                },
+                {
+                  "authorityRef": "execution-b",
+                  "algorithm": "ed25519",
+                  "value": "jVaTUwIu5ISJDZIKr-7vIRFABDhP6k454p1icyPNczFelW9uC8RmyboqzHx90mJWWy5Z7oQI9KvK7SQR_71FCg"
+                },
+                {
+                  "authorityRef": 7
                 }
               ]
             },
@@ -56379,426 +58571,6 @@
                 }
               },
               "attestations": {}
-            },
-            "finalityCertificate": {
-              "kind": "fixture-bft-certificate-v1",
-              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
-              "blockId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
-              "signatures": [
-                {
-                  "validatorId": "validator-a",
-                  "algorithm": "ed25519",
-                  "value": "YC7iAkAFBW2HZu4oILUhZdvBpFyJlupYG21ABMhrcGcWgIY3sC7H25uu6BupwhvmWCEqdKHsI79hfyt2pvEoDA"
-                },
-                {
-                  "validatorId": "validator-b",
-                  "algorithm": "ed25519",
-                  "value": "7QEbNN2gozkgz4DxohesmDMKcpJBreH6-EqNmkY2BJvd4wndMsGtoZlq10tQShsB6Gf71DjfjBzi-Iy1ufwCAg"
-                }
-              ]
-            }
-          }
-        }
-      },
-      "want": {
-        "acceptedAsFinal": false,
-        "finalityClass": null,
-        "producerReportTrustedAsProof": false,
-        "dacs5BundleDecision": "error"
-      }
-    },
-    {
-      "name": "fv-bft-final-result-attestation-malformed",
-      "expected": "error",
-      "note": "a malformed execution result is not evidence",
-      "input": {
-        "evidence": {
-          "finalityBoundEvidenceVersion": "1",
-          "jobId": "FV-392-bft-final",
-          "phase": "pay-dem",
-          "outcome": "success",
-          "paymentTxRefs": [
-            {
-              "kind": "demos",
-              "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
-              "blockNumber": 100
-            }
-          ],
-          "paymentAmount": {
-            "amount": "5",
-            "currency": "DEM"
-          },
-          "settlementFinality": {
-            "model": "bft-final",
-            "finalityObservedAt": 1900000000000
-          },
-          "railDefinitionRef": {
-            "anchor": {
-              "kind": "storage-program",
-              "locator": "stor-0309a0816a2f0b6423e40aa6e89467ec16cf22ede212b09b4c5d7405e117f480"
-            },
-            "contentHash": "303b4376ff22d7a4c62916281096281437c804040c768d5a14a847f4117be8f7",
-            "railId": "fixture:bft-final",
-            "railVersion": 1
-          },
-          "observedAt": 1900000000000,
-          "signature": {
-            "signer": "did:demos:orchestrator",
-            "algorithm": "ed25519",
-            "value": "f1j681pAE2X6Kaf9Z4EhEj7heh4fruLexBELQkA-zDc7oFtBFfj8Ztcw91Xytq75E65y0QgJGhIJoKt_1GqqAg"
-          }
-        },
-        "rail": {
-          "railVersion": 1,
-          "railId": "fixture:bft-final",
-          "railType": "demos-native",
-          "asset": {
-            "kind": "native-dem",
-            "symbol": "DEM",
-            "decimals": 9
-          },
-          "network": {
-            "kind": "demos"
-          },
-          "phaseHandler": "pay-dem",
-          "parameters": {
-            "assetId": "DEM"
-          },
-          "consumerFinalityProfile": {
-            "finalityProfileVersion": "1",
-            "model": "bft-final",
-            "settlement": {
-              "kind": "bft-final",
-              "networkId": "demos:mainnet",
-              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-              "observation": {
-                "method": "rpc-quorum",
-                "authorityRefs": [
-                  "rpc-a",
-                  "rpc-b",
-                  "rpc-c"
-                ],
-                "threshold": 2,
-                "maxHeadAgeSec": 60
-              },
-              "validatorSetRef": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
-                },
-                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
-              },
-              "quorumNumerator": 2,
-              "quorumDenominator": 3
-            }
-          },
-          "availability": "mocked",
-          "governance": {
-            "proposedBy": "did:demos:steward",
-            "acceptedAt": 1899000000000,
-            "anchoring": "single-signer"
-          },
-          "signature": {
-            "signer": "did:demos:steward",
-            "algorithm": "ed25519",
-            "value": "RBfkFFArkBO6lsBNybSpNziaBESuWXdCytqcgQJjp11LLpIAtfa9sMMikWVmZ9l3R6-53zvDpQuZrSABvXuJAw"
-          }
-        },
-        "agreement": {
-          "agreementVersion": "1",
-          "jobId": "FV-392-bft-final",
-          "listingRef": {
-            "listingId": "listing-finality-fixture",
-            "version": 1,
-            "contentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4"
-          },
-          "parties": [
-            {
-              "role": "buyer",
-              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
-              "primaryClaim": "did:demos:buyer",
-              "vetRecordRef": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
-                },
-                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
-              }
-            },
-            {
-              "role": "seller",
-              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
-              "primaryClaim": "did:demos:seller",
-              "vetRecordRef": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
-                },
-                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
-              }
-            }
-          ],
-          "terms": {
-            "deliverable": {
-              "deliverableType": "entitlement",
-              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
-            },
-            "price": {
-              "amount": "5",
-              "currency": "DEM"
-            },
-            "rail": {
-              "railId": "fixture:bft-final",
-              "railVersion": 1
-            },
-            "deadline": 1900100000000
-          },
-          "derivedFromPattern": "fixed-price",
-          "generatedAt": 1899000000000,
-          "signatures": [
-            {
-              "party": "did:demos:buyer",
-              "algorithm": "ed25519",
-              "value": "d3S75K0k0Mg6bUFYRgkaT19M-upCcWoxKamsJ2SPHsCtrlT72E1CpftMtrpVSJ_z1yt6F88sVys74ASKLT2qDg"
-            },
-            {
-              "party": "did:demos:seller",
-              "algorithm": "ed25519",
-              "value": "huATv1nr_QeyimVH2SqDe71fp-qJkS21GTliQQLKzK2a41H9p5VgKyxgudZUWfadBvUYlF9EqypOBRCx_oAWBg"
-            }
-          ]
-        },
-        "context": {
-          "kind": "chain",
-          "observation": {
-            "networkId": "demos:mainnet",
-            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-            "transactionRef": {
-              "kind": "demos",
-              "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
-              "blockNumber": 100
-            },
-            "transactionInclusionProof": {
-              "kind": "fixture-transaction-merkle-v1",
-              "transactionBytes": "eyJldmVudHNSb290IjoiODRjYWFhMzEwM2Y2OTliMzk2MjdhMGQ4ODA1ZjI0MDlkNGM4NTE1NTk5MTQ0ZGY3ZmFmNmQzZjIwZjZiODkxZSIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJ0cmFuc2FjdGlvblJlZiI6eyJibG9ja051bWJlciI6MTAwLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiJkZWI4YTI0ZDRjN2M2YzA2ZjM2NDk5YmU0OGViYzU4MzY0OTdkNzljYTU3NDEyNTZjZTRlNWM3NmI1ODcyYjEzIn0sInR4SGFzaCI6ImRlYjhhMjRkNGM3YzZjMDZmMzY0OTliZTQ4ZWJjNTgzNjQ5N2Q3OWNhNTc0MTI1NmNlNGU1Yzc2YjU4NzJiMTMifQ",
-              "leafHash": "32cdfc547b7ee3cac1f44fc524aeb62d6cc672a5927a74e643193e1dcf6f8057",
-              "siblingHash": "4912a682f773892b510adb6ff2ceef0f11fb07e52af0da7a8f8a0e1e52a82590",
-              "leafIndex": 0,
-              "root": "c81e84042bd0bf8bc441c458e23126766621915fe8fc1fa6a39f8d6b0a9caa0c"
-            },
-            "selectedEventProof": {
-              "kind": "fixture-event-merkle-v1",
-              "eventBytes": "eyJhbW91bnQiOiI1IiwiYXNzZXQiOiJERU0iLCJjdXJyZW5jeSI6IkRFTSIsImV2ZW50SW5kZXgiOjAsImV2ZW50VHlwZSI6InRyYW5zZmVyIiwiam9iSWQiOiJGVi0zOTItYmZ0LWZpbmFsIiwicGF5ZWUiOiJkaWQ6ZGVtb3M6c2VsbGVyIiwicGF5ZXIiOiJkaWQ6ZGVtb3M6YnV5ZXIiLCJwaGFzZUluZGV4IjowLCJzdGF0dXMiOiJzdWNjZXNzIiwidHJhbnNhY3Rpb25JZCI6ImRlYjhhMjRkNGM3YzZjMDZmMzY0OTliZTQ4ZWJjNTgzNjQ5N2Q3OWNhNTc0MTI1NmNlNGU1Yzc2YjU4NzJiMTMiLCJ0cmFuc2FjdGlvblJlZiI6eyJibG9ja051bWJlciI6MTAwLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiJkZWI4YTI0ZDRjN2M2YzA2ZjM2NDk5YmU0OGViYzU4MzY0OTdkNzljYTU3NDEyNTZjZTRlNWM3NmI1ODcyYjEzIn19",
-              "leafHash": "68e59398c0d2a8362c2f5b46cf9d91edd68760c8ce796aed14ae3c8a42ee69ff",
-              "siblingHash": "549fc7f51468f845e48faeb593e79d586ffadf20b29ccf3f13325d823fe47b4f",
-              "leafIndex": 0,
-              "root": "84caaa3103f699b39627a0d8805f2409d4c8515599144df7faf6d3f20f6b891e"
-            },
-            "inclusionBlock": {
-              "id": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
-              "parentId": "851c43592a32c57a7d7e3807f31e9672c0dd7f1afbb5af6b55caaace9dae7ba0",
-              "position": "100",
-              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTFjNDM1OTJhMzJjNTdhN2Q3ZTM4MDdmMzFlOTY3MmMwZGQ3ZjFhZmJiNWFmNmI1NWNhYWFjZTlkYWU3YmEwIiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiYzgxZTg0MDQyYmQwYmY4YmM0NDFjNDU4ZTIzMTI2NzY2NjIxOTE1ZmU4ZmMxZmE2YTM5ZjhkNmIwYTljYWEwYyJ9"
-            },
-            "authenticatedHead": {
-              "id": "d6989f1b78fe865dddb04c1fb970d2063460d002b0dfc552a4e0beb63be279b6",
-              "position": "111",
-              "observedAt": 1900000000000,
-              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIzNDJkMzU4YzBiMTIzZmMxYTQ5NDkxMDYwNjgwZWY1NmVhMDk3NmVkYTRjZmY5ZmYzYTEzMzdkOGExN2U5YzFkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-            },
-            "ancestryProof": [
-              {
-                "childId": "ba855fdfaadcead6f622ed69ae4d56970f529bad0fd4c11352b9ef586c79c64d",
-                "parentId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
-                "position": "101",
-                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyMTk2MjNkZDhlMGY3NTIxY2U4Mjc4ODk4NThjY2Q3ODMyZjk0NmI5ODkyM2YwYjQ2NDc0ODRiYzRjOWM2ZTgyIiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-              },
-              {
-                "childId": "6c2cacb9e9b0270b57551c38588c84f9dd2f7478776d99de87ce74f5cd36b0b9",
-                "parentId": "ba855fdfaadcead6f622ed69ae4d56970f529bad0fd4c11352b9ef586c79c64d",
-                "position": "102",
-                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiYTg1NWZkZmFhZGNlYWQ2ZjYyMmVkNjlhZTRkNTY5NzBmNTI5YmFkMGZkNGMxMTM1MmI5ZWY1ODZjNzljNjRkIiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-              },
-              {
-                "childId": "455b59a2b5f6998ce7075cb2d763689692737844a069cad55596b2828bc3a46f",
-                "parentId": "6c2cacb9e9b0270b57551c38588c84f9dd2f7478776d99de87ce74f5cd36b0b9",
-                "position": "103",
-                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI2YzJjYWNiOWU5YjAyNzBiNTc1NTFjMzg1ODhjODRmOWRkMmY3NDc4Nzc2ZDk5ZGU4N2NlNzRmNWNkMzZiMGI5IiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-              },
-              {
-                "childId": "19b5fc663d2acc31f19267aecbaa17e0d8b4570a0dfd13de8993fe9173173124",
-                "parentId": "455b59a2b5f6998ce7075cb2d763689692737844a069cad55596b2828bc3a46f",
-                "position": "104",
-                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI0NTViNTlhMmI1ZjY5OThjZTcwNzVjYjJkNzYzNjg5NjkyNzM3ODQ0YTA2OWNhZDU1NTk2YjI4MjhiYzNhNDZmIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-              },
-              {
-                "childId": "b95c93b7f46ab0da8c8edae31c2f9e15ea75db7ba99f6f5b905f23a8154b38ff",
-                "parentId": "19b5fc663d2acc31f19267aecbaa17e0d8b4570a0dfd13de8993fe9173173124",
-                "position": "105",
-                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIxOWI1ZmM2NjNkMmFjYzMxZjE5MjY3YWVjYmFhMTdlMGQ4YjQ1NzBhMGRmZDEzZGU4OTkzZmU5MTczMTczMTI0IiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-              },
-              {
-                "childId": "44648095bbf07651ee6e1ae7ef538865c2a01d23c949e5b2d30ddd04a5d736bc",
-                "parentId": "b95c93b7f46ab0da8c8edae31c2f9e15ea75db7ba99f6f5b905f23a8154b38ff",
-                "position": "106",
-                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiOTVjOTNiN2Y0NmFiMGRhOGM4ZWRhZTMxYzJmOWUxNWVhNzVkYjdiYTk5ZjZmNWI5MDVmMjNhODE1NGIzOGZmIiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-              },
-              {
-                "childId": "b3ba8bb5ca0e4e775d637f1103d76f3ed76dbff7200e60470b44fa57285e2f55",
-                "parentId": "44648095bbf07651ee6e1ae7ef538865c2a01d23c949e5b2d30ddd04a5d736bc",
-                "position": "107",
-                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI0NDY0ODA5NWJiZjA3NjUxZWU2ZTFhZTdlZjUzODg2NWMyYTAxZDIzYzk0OWU1YjJkMzBkZGQwNGE1ZDczNmJjIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-              },
-              {
-                "childId": "8b385ab8ea627642233dd77d71b06f7bfd5d1ead97d6dc13f96ace7605e4a71f",
-                "parentId": "b3ba8bb5ca0e4e775d637f1103d76f3ed76dbff7200e60470b44fa57285e2f55",
-                "position": "108",
-                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiM2JhOGJiNWNhMGU0ZTc3NWQ2MzdmMTEwM2Q3NmYzZWQ3NmRiZmY3MjAwZTYwNDcwYjQ0ZmE1NzI4NWUyZjU1IiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-              },
-              {
-                "childId": "7623f01f98a159be4db3618914c9fe22e446846e06ee150961b317c179e551e5",
-                "parentId": "8b385ab8ea627642233dd77d71b06f7bfd5d1ead97d6dc13f96ace7605e4a71f",
-                "position": "109",
-                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4YjM4NWFiOGVhNjI3NjQyMjMzZGQ3N2Q3MWIwNmY3YmZkNWQxZWFkOTdkNmRjMTNmOTZhY2U3NjA1ZTRhNzFmIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-              },
-              {
-                "childId": "342d358c0b123fc1a49491060680ef56ea0976eda4cff9ff3a1337d8a17e9c1d",
-                "parentId": "7623f01f98a159be4db3618914c9fe22e446846e06ee150961b317c179e551e5",
-                "position": "110",
-                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3NjIzZjAxZjk4YTE1OWJlNGRiMzYxODkxNGM5ZmUyMmU0NDY4NDZlMDZlZTE1MDk2MWIzMTdjMTc5ZTU1MWU1IiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-              },
-              {
-                "childId": "d6989f1b78fe865dddb04c1fb970d2063460d002b0dfc552a4e0beb63be279b6",
-                "parentId": "342d358c0b123fc1a49491060680ef56ea0976eda4cff9ff3a1337d8a17e9c1d",
-                "position": "111",
-                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIzNDJkMzU4YzBiMTIzZmMxYTQ5NDkxMDYwNjgwZWY1NmVhMDk3NmVkYTRjZmY5ZmYzYTEzMzdkOGExN2U5YzFkIiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiZTE2M2QzODYyZmNkZTIwZTZmY2M1NGNiNTJiNGViOWVmOTVkMjc4NTY1ODNiM2JkYzI5NmE2OTIxMjUzN2ZiNyJ9"
-              }
-            ],
-            "authorityEvidence": {
-              "kind": "fixture-threshold-signature-v1",
-              "sourceRefs": [
-                "rpc-a",
-                "rpc-b",
-                "rpc-c"
-              ],
-              "attestations": [
-                {
-                  "authorityRef": "rpc-a",
-                  "algorithm": "ed25519",
-                  "value": "NhyeYQqjSoaKOTFI-ylYGDMx6AMKPTgjA8ohPNCQIGrzSQ3lxvBCwLSrkD6MzLHRu_KtvFoU7B83YPICa4iHAA"
-                },
-                {
-                  "authorityRef": "rpc-b",
-                  "algorithm": "ed25519",
-                  "value": "ppc3XSYCeh9k7uj1S1gIgZneoxtbIPq8nd0iU8kochVF2WN4JAO3fJXIEaTz4IRJZaFkA5JJa2397KSTiY-3AQ"
-                },
-                {
-                  "authorityRef": "rpc-c",
-                  "algorithm": "ed25519",
-                  "value": "u1Efznv_FSnfiHcItSqjLmAHNluw6m1x9yqZZCrcFd2i7uOL4-GOVlZy5Ia7WhgQ0TgAR-QDG67QjMHGmpwEDA"
-                }
-              ]
-            },
-            "executionResult": {
-              "kind": "fixture-independent-results-v1",
-              "networkId": "demos:mainnet",
-              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
-              "blockId": "219623dd8e0f7521ce827889858ccd7832f946b98923f0b4647484bc4c9c6e82",
-              "transactionRef": {
-                "kind": "demos",
-                "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
-                "blockNumber": 100
-              },
-              "record": {
-                "hash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
-                "blockNumber": 100,
-                "status": "confirmed",
-                "content": {
-                  "type": "native",
-                  "from": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
-                  "from_ed25519_address": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
-                  "to": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
-                  "amount": 5000000000,
-                  "nonce": "7",
-                  "timestamp": "1791649642726",
-                  "transaction_fee": {
-                    "network_fee": 1000000000,
-                    "rpc_fee": 1000000000,
-                    "additional_fee": 0,
-                    "rpc_address": null
-                  },
-                  "data": [
-                    "native",
-                    {
-                      "nativeOperation": "send",
-                      "args": [
-                        "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
-                        "5000000000"
-                      ]
-                    }
-                  ],
-                  "gcr_edits": [
-                    {
-                      "type": "balance",
-                      "operation": "remove",
-                      "isRollback": false,
-                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
-                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
-                      "amount": "5000000000"
-                    },
-                    {
-                      "type": "balance",
-                      "operation": "add",
-                      "isRollback": false,
-                      "account": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
-                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
-                      "amount": "5000000000"
-                    },
-                    {
-                      "type": "balance",
-                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
-                      "operation": "remove",
-                      "amount": "1000000000",
-                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
-                      "isRollback": false
-                    },
-                    {
-                      "type": "nonce",
-                      "operation": "add",
-                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
-                      "amount": 1,
-                      "txhash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
-                      "isRollback": false
-                    }
-                  ]
-                }
-              },
-              "appliedTransfer": {
-                "txHash": "deb8a24d4c7c6c06f36499be48ebc5836497d79ca5741256ce4e5c76b5872b13",
-                "blockNumber": 100,
-                "sender": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
-                "recipient": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
-                "payerDebitOs": "5000000000",
-                "payeeCreditOs": "5000000000",
-                "committedBalances": {
-                  "payerBeforeOs": "1000000000000000000000000000000",
-                  "payerAfterOs": "999999999999999999994000000000",
-                  "payeeBeforeOs": "7000000000000000000000000",
-                  "payeeAfterOs": "7000000000000005000000000",
-                  "feeOs": "1000000000"
-                }
-              },
-              "attestations": [
-                {
-                  "authorityRef": "execution-a",
-                  "value": "raa9vuvviG4WLtWOPpNUKsdodlJ4QrDL156C4-6Lx6zVllQ8XEIgkPIW7K0rc78PCzz7pZumH0WP3lh-LLP3CQ"
-                },
-                {
-                  "authorityRef": "execution-b",
-                  "algorithm": "ed25519",
-                  "value": "jVaTUwIu5ISJDZIKr-7vIRFABDhP6k454p1icyPNczFelW9uC8RmyboqzHx90mJWWy5Z7oQI9KvK7SQR_71FCg"
-                }
-              ]
             },
             "finalityCertificate": {
               "kind": "fixture-bft-certificate-v1",

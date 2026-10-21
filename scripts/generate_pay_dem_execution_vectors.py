@@ -2607,6 +2607,40 @@ def build_vectors() -> list[dict[str, Any]]:
         "fork-attestation-binds-rail-genesis": ("sign-requires-gas-fee-separation-unscheduled",
                                                 "broadcast-requires-gas-fee-separation-unscheduled"),
     }
+    # DEM-1 "trust that the FV verifier can use for the profile": present
+    # trust that FV's own check rejects is no member. A set under the pinned
+    # hash that does not hash to it, and authority keys that do not decode or
+    # alias one key, pass a presence check but never verify an inclusion.
+    unusable = (
+        ("bft-final-trust-validator-set-not-pinned", "A validator set held under the profile's content hash that "
+         "does not hash to it is not the pinned set: FV rejects the checkpoint, so no certificate ever verifies.",
+         {"binding": [binding_entry(bftFinalTrust=dict(BINDING_TRUST, validatorSets={
+             FINALITY_PROFILE["validatorSetRef"]["contentHash"]: {"validators": []}}))]}),
+        ("bft-final-trust-undecodable-observation-keys", "Observation-authority keys that do not decode as Ed25519 "
+         "keys authenticate no head, whatever their number.",
+         {"binding": [binding_entry(bftFinalTrust=dict(BINDING_TRUST, observationAuthorityKeys={
+             name: "AAAA" for name in FINALITY_PROFILE["observation"]["authorityRefs"]}))]}),
+        ("bft-final-trust-aliased-observation-keys", "Two authority names under one key are one authority: the "
+         "profile's threshold of two is never met by distinct authorities.",
+         {"binding": [binding_entry(bftFinalTrust=dict(BINDING_TRUST, observationAuthorityKeys={
+             name: BINDING_TRUST["observationAuthorityKeys"]["rpc-a"]
+             for name in FINALITY_PROFILE["observation"]["authorityRefs"]}))]}),
+    )
+    verifies = ["bft-final-trust-verifies-profile"]
+    for suffix, note, changes in unusable:
+        vectors += [
+            pre_sign("sign-with-" + suffix, "fail",
+                     verifies + ["binding-refusal-is-rail-unavailable", "sign-requires-bft-final-trust"], note,
+                     **changes),
+            gate("confirm-with-" + suffix, "fail", "DEM-1",
+                 verifies + ["broadcast-requires-bft-final-trust", "retention-before-first-egress"], note,
+                 request="confirm-retained", **changes),
+            gate("broadcast-with-" + suffix, "fail", "DEM-1", verifies + ["broadcast-requires-bft-final-trust"],
+                 note, **changes),
+            preflight("preflight-live-rail-with-" + suffix, "fail",
+                      verifies + ["pay-dem-preflight-whatever-availability", "preflight-requires-binding"], note,
+                      **changes),
+        ]
     for suffix, note, guards, changes in elsewhere:
         sign_guards = guards + [g for guard in guards for g in member_guard.get(guard, ())[:1]]
         egress_guards = guards + [g for guard in guards for g in member_guard.get(guard, ())[1:]]
@@ -2950,7 +2984,7 @@ def document() -> dict[str, Any]:
         "fixtureVocabulary": {
             "statusIndex": "getTransactionStatus state for the retained hash (included, pending or unknown); never decisive",
             "railNetwork": "the rail's Demos network (networkId, genesisHash): the pinned RailDefinition's consumerFinalityProfile.settlement network, never one a Demos binding supplies (a Demos NetworkSpec is the bare kind demos). Applied-payment authority must name the same network; the pre-sign, broadcast and preflight gates find the payer's binding entry by it; a missing or malformed one binds nothing",
-            "demosBinding": "the payer's Demos binding configuration: one entry per network (networkId, genesisHash) holding pinnedNodes and appliedPaymentAuthority, each naming the network and genesis it was configured for; gasFeeSeparation, the sealed genesis's forks.gasFeeSeparation attestation (networkId, genesisHash, activationHeight); bftFinalTrust (networkId, genesisHash, validatorSets, observationAuthorityKeys), the bft-final trust DEM-3, DEM-4 and DEM-7 verify inclusion under; and executionResultPolicy (networkId, genesisHash, kind, threshold, authorityKeys), the FV-5 policy DEM-4 authenticates a failure under. The gates use the entry whose network is railNetwork, wherever it stands; a member is held only when it names exactly railNetwork, the attestation only with activationHeight null, the trust only when it holds finalityProfile's validatorSetRef.contentHash and at least its observation threshold of its authorityRefs, and the policy only when the settlement-finality reference applies it. A missing entry or member, a member for another network or genesis, a scheduled height, trust that cannot verify the rail's profile, an unknown or malformed policy and any other form are refused. The reference handler verifies its re-reads under that entry's bftFinalTrust (with its own clock) and executionResultPolicy, never separate configuration",
+            "demosBinding": "the payer's Demos binding configuration: one entry per network (networkId, genesisHash) holding pinnedNodes and appliedPaymentAuthority, each naming the network and genesis it was configured for; gasFeeSeparation, the sealed genesis's forks.gasFeeSeparation attestation (networkId, genesisHash, activationHeight); bftFinalTrust (networkId, genesisHash, validatorSets, observationAuthorityKeys), the bft-final trust DEM-3, DEM-4 and DEM-7 verify inclusion under; and executionResultPolicy (networkId, genesisHash, kind, threshold, authorityKeys), the FV-5 policy DEM-4 authenticates a failure under. The gates use the entry whose network is railNetwork, wherever it stands; a member is held only when it names exactly railNetwork, the attestation only with activationHeight null, the trust only when the settlement-finality reference's own trust check (bft_final_trust) passes it for finalityProfile: the set under validatorSetRef.contentHash hashes to it with well-formed members, and keys that decode for at least its observation threshold of its authorityRefs are distinct, and the policy only when the settlement-finality reference applies it. A missing entry or member, a member for another network or genesis, a scheduled height, trust that cannot verify the rail's profile, an unknown or malformed policy and any other form are refused. The reference handler verifies its re-reads under that entry's bftFinalTrust (with its own clock) and executionResultPolicy, never separate configuration",
             "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity. It is a plain read: no DEM-7 fail rests on it, and a contradiction that is only its block ID refutes nothing",
             "recordRead": "getTxByHash read: found (record and nodeBuild), not-found or unavailable; appliedTransfer (networkId, genesisHash, blockId, txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs, committedBalances: payerBeforeOs, payerAfterOs, payeeBeforeOs, payeeAfterOs, feeOs) and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived from the record's status, amount or edits; payerDebitOs must be payerBeforeOs - payerAfterOs - feeOs and payeeCreditOs must be payeeAfterOs - payeeBeforeOs, or the authority establishes nothing; the fixtures take the committed balances from the scenario's own pre-state and outcome (applied, rolled-back or no-op)",
             "nodeBuild": "the build attestation the Demos binding configuration holds for the node that served the read (source binding-attestation, commit, tree); only binding-attestation of commit 61b8e75aa8db5e408c49e1c3a89db4d673f45578 with a clean tree is pinned, and a self-reported build, another commit or a dirty tree is not",

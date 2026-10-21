@@ -829,6 +829,75 @@ def _authority_payload(observation: dict, path_ids: list[str]) -> dict:
     }
 
 
+def observation_trust(profile: dict, trusted: dict) -> tuple[str, str]:
+    """FV-6's trusted observation authorities for a well-formed chain
+    profile: `pass` when the verifier holds a key that decodes for at least
+    the profile's threshold of the authorities it names, each a distinct key
+    (an alias of one key is not a second authority); `indeterminate` when it
+    holds fewer, and `error` when a key it holds for a named authority is
+    malformed or aliased. The keys are the verifier's own trust anchors:
+    which key is an authority's is configuration the profile does not sign."""
+    keys = trusted.get("observationAuthorityKeys")
+    if keys is None:
+        return "indeterminate", "trusted observation authority keys unavailable"
+    if not isinstance(keys, dict):
+        return "error", "malformed trusted observation authority keys"
+    names = [name for name in profile["observation"]["authorityRefs"] if name in keys]
+    decoded = [_public_key(keys, name) for name in names]
+    if None in decoded or len(set(decoded)) != len(decoded):
+        return "error", "malformed or aliased trusted observation authority key"
+    if len(decoded) < profile["observation"]["threshold"]:
+        return "indeterminate", "trusted observation authorities below the profile threshold"
+    return "pass", "trusted observation authorities cover the profile"
+
+
+def validator_set_trust(profile: dict, trusted: dict) -> tuple[str, str, dict, int]:
+    """FV-7's trusted validator set for a well-formed `bft-final` profile:
+    the set the profile pins by content hash, its members by ID and its
+    total weight. `indeterminate` when the verifier holds no set for that
+    hash, `error` when the set it holds does not hash to it, is empty or has
+    a malformed, repeated or undecodable member."""
+    set_hash = profile["validatorSetRef"]["contentHash"]
+    validator_set = (trusted.get("validatorSets") or {}).get(set_hash)
+    if validator_set is None:
+        return "indeterminate", "trusted validator set unavailable", {}, 0
+    if not isinstance(validator_set, dict) or hash_value(validator_set) != set_hash:
+        return "error", "malformed trusted validator-set checkpoint", {}, 0
+    validators = validator_set.get("validators")
+    if not isinstance(validators, list) or not validators:
+        return "error", "trusted validator set is empty", {}, 0
+    by_id = {}
+    total = 0
+    for validator in validators:
+        if not (
+            _exact_object(validator, {"validatorId", "weight", "publicKey"})
+            and _nonempty_string(validator.get("validatorId"))
+            and _safe_integer(validator.get("weight"), positive=True)
+            and validator["validatorId"] not in by_id
+            and _public_key({validator["validatorId"]: validator.get("publicKey")}, validator["validatorId"]) is not None
+        ):
+            return "error", "malformed trusted validator set member", {}, 0
+        by_id[validator["validatorId"]] = validator
+        total += validator["weight"]
+    return "pass", "trusted validator set verified", by_id, total
+
+
+def bft_final_trust(profile: Any, trusted: Any) -> tuple[str, str]:
+    """Whether `trusted` can verify a transaction's inclusion under the
+    signed `bft-final` `profile`: the profile is well formed, and the
+    verifier's observation authorities and validator set pass the checks FV
+    applies to them before any evidence. DEM-1's gate applies this same
+    check, so it never passes trust the verifier rejects."""
+    if not _chain_profile_shape(profile, "bft-final"):
+        return "error", "malformed bft-final profile"
+    if not isinstance(trusted, dict):
+        return "error", "malformed bft-final trust"
+    decision, reason = observation_trust(profile, trusted)
+    if decision != "pass":
+        return decision, reason
+    return validator_set_trust(profile, trusted)[:2]
+
+
 def _verify_authority(observation: dict, profile: dict, path_ids: list[str], trusted: dict) -> tuple[str, str]:
     authority = observation.get("authorityEvidence")
     if authority is None:
@@ -843,6 +912,10 @@ def _verify_authority(observation: dict, profile: dict, path_ids: list[str], tru
     attestations = authority.get("attestations")
     if not isinstance(attestations, list):
         return "error", "authority attestations are not an array"
+    # Trust that cannot verify the profile refutes nothing it is shown.
+    decision, reason = observation_trust(profile, trusted)
+    if decision != "pass":
+        return decision, reason
     payload_hash = hash_value(_authority_payload(observation, path_ids))
     valid = set()
     for attestation in attestations:
@@ -877,27 +950,9 @@ def _verify_bft_certificate(observation: dict, profile: dict, trusted: dict) -> 
     set_hash = profile["validatorSetRef"]["contentHash"]
     if certificate.get("validatorSetHash") != set_hash or certificate.get("blockId") != observation["inclusionBlock"]["id"]:
         return "fail", "BFT certificate binds the wrong block or validator set"
-    validator_set = (trusted.get("validatorSets") or {}).get(set_hash)
-    if validator_set is None:
-        return "indeterminate", "trusted validator set unavailable"
-    if not isinstance(validator_set, dict) or hash_value(validator_set) != set_hash:
-        return "error", "malformed trusted validator-set checkpoint"
-    validators = validator_set.get("validators")
-    if not isinstance(validators, list) or not validators:
-        return "error", "trusted validator set is empty"
-    by_id = {}
-    total = 0
-    for validator in validators:
-        if not (
-            _exact_object(validator, {"validatorId", "weight", "publicKey"})
-            and _nonempty_string(validator.get("validatorId"))
-            and _safe_integer(validator.get("weight"), positive=True)
-            and validator["validatorId"] not in by_id
-            and _public_key({validator["validatorId"]: validator.get("publicKey")}, validator["validatorId"]) is not None
-        ):
-            return "error", "malformed trusted validator set member"
-        by_id[validator["validatorId"]] = validator
-        total += validator["weight"]
+    decision, reason, by_id, total = validator_set_trust(profile, trusted)
+    if decision != "pass":
+        return decision, reason
     signatures = certificate.get("signatures")
     if not isinstance(signatures, list):
         return "error", "BFT signatures are not an array"
@@ -1053,9 +1108,10 @@ def demos_execution_policy(policy: Any) -> tuple[str, str]:
 
 def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -> tuple[str, str, Any]:
     """Independent result attestation, never inferred from BFT inclusion.
-    Attestations are counted, never a veto: one that names no policy key,
-    repeats a counted key or does not verify is not counted, so a relayer or
-    one faulty authority cannot turn an authenticated result into `fail`."""
+    Attestations are counted, never a veto: one that is not a well-formed
+    signature object, names no policy key, repeats a counted key or does not
+    verify is not counted, so a relayer or one faulty authority cannot turn
+    an authenticated result into `fail` or `error`."""
     policy = trusted.get("demosExecutionPolicy")
     decision, reason = demos_execution_policy(policy)
     if decision != "pass":
@@ -1074,7 +1130,7 @@ def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -
     for attestation in proof["attestations"]:
         if not (_exact_object(attestation, {"authorityRef", "algorithm", "value"})
                 and isinstance(attestation["authorityRef"], str)):
-            return "error", "malformed Demos result signature", None
+            continue
         signer = attestation["authorityRef"]
         if (signer not in counted and signer in keys and attestation["algorithm"] == "ed25519"
                 and _verify_ed25519(keys, signer, DEMOS_EXECUTION_DOMAIN, digest, attestation["value"])):

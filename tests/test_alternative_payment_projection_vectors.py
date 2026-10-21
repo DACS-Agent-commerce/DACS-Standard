@@ -633,6 +633,7 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
                    "selected-dem-binding-for-another-network-rejected",
                    "selected-dem-binding-without-applied-authority-rejected",
                    "selected-dem-binding-without-bft-final-trust-rejected",
+                   "selected-dem-binding-with-unusable-bft-final-trust-rejected",
                    "selected-dem-binding-without-execution-result-policy-rejected"}
         for name in refused:
             with self.subTest(name=name):

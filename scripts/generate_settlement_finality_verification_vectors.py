@@ -1496,6 +1496,12 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-verifier-clock-missing", "error", "candidate time cannot replace a missing verifier-local clock", factory.model_input("block-depth"), trusted_overrides={"verificationTimeMs": None}),
         case("fv-head-observation-stale", "indeterminate", "freshness uses the verifier-local clock", factory.model_input("block-depth"), trusted_overrides={"verificationTimeMs": OBSERVED_AT + 61_000}),
         case("fv-head-observation-future", "fail", "future authenticated observation time is rejected", factory.model_input("block-depth"), trusted_overrides={"verificationTimeMs": OBSERVED_AT - 1}),
+        # The verifier's own trust must be able to verify the signed profile
+        # before any evidence is judged: trust it cannot use refutes nothing.
+        case("fv-trust-observation-keys-undecodable", "error", "observation-authority keys the verifier holds must decode", factory.model_input("block-depth"), trusted_overrides={"observationAuthorityKeys": {name: "AAAA" for name in ("rpc-a", "rpc-b", "rpc-c")}}),
+        case("fv-trust-observation-keys-aliased", "error", "two authority names under one key are one authority", factory.model_input("block-depth"), trusted_overrides={"observationAuthorityKeys": {name: factory.trusted["observationAuthorityKeys"]["rpc-a"] for name in ("rpc-a", "rpc-b", "rpc-c")}}),
+        case("fv-trust-observation-keys-unavailable", "indeterminate", "a verifier without observation-authority keys authenticates no head", factory.model_input("block-depth"), trusted_overrides={"observationAuthorityKeys": None}),
+        case("fv-trust-validator-set-not-pinned", "error", "a validator set held under the pinned hash must hash to it", factory.model_input("bft-final"), trusted_overrides={"validatorSets": {factory.validator_set_hash: {"validators": []}}}),
         case("fv-producer-freshness-substitution", "indeterminate", "a fresh producer report cannot refresh a stale authenticated head", changed("block-depth", lambda v: (v["evidence"]["settlementFinality"].__setitem__("finalityObservedAt", OBSERVED_AT + 61_000), factory.resign_evidence(v["evidence"]))), trusted_overrides={"verificationTimeMs": OBSERVED_AT + 61_000}),
         case("fv-freshness-bound-wrong-type", "error", "nested arithmetic fields are shape-checked", changed("block-depth", lambda v: (v["rail"]["consumerFinalityProfile"]["settlement"]["observation"].__setitem__("maxHeadAgeSec", "60"), factory.rebind_rail(v)))),
         case("fv-evidence-cross-domain-replay", "fail", "legacy evidence domain cannot authenticate the new type", changed("block-depth", lambda v: factory.resign_evidence(v["evidence"], domain=LEGACY_EVIDENCE_DOMAIN))),
@@ -1825,6 +1831,8 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         ("result-status-tampered", lambda o: o["executionResult"]["record"].__setitem__("status", "failed"), "indeterminate"),
         ("result-quorum-missing", lambda o: o["executionResult"].__setitem__("attestations", o["executionResult"]["attestations"][:1]), "indeterminate"),
         ("result-duplicate-signer", lambda o: o["executionResult"]["attestations"].__setitem__(1, copy.deepcopy(o["executionResult"]["attestations"][0])), "indeterminate"),
+        # An attestation that is no signature object counts as none.
+        ("result-attestation-malformed", lambda o: o["executionResult"]["attestations"][0].pop("algorithm"), "indeterminate"),
         # Neither a relayer's appended attestation nor one faulty authority
         # turns a threshold-authenticated result into anything else.
         ("result-extra-unknown-attestation",
@@ -1833,6 +1841,9 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         ("result-spare-key-bad-signature",
          lambda o: o["executionResult"]["attestations"].append(
              dict(o["executionResult"]["attestations"][0], authorityRef="execution-c")), "pass"),
+        # Nor does an appended entry that is no signature object at all.
+        ("result-extra-malformed-attestation",
+         lambda o: o["executionResult"]["attestations"].append({"authorityRef": 7}), "pass"),
     ):
         value = factory.model_input("bft-final")
         mutate(value["context"]["observation"])
@@ -1876,7 +1887,6 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         ("result-member-missing", lambda o: o["executionResult"].pop("blockId"), True),
         ("result-kind-mismatch", lambda o: o["executionResult"].__setitem__("kind", "other-results-v1"), True),
         ("result-attestations-not-array", lambda o: o["executionResult"].__setitem__("attestations", {}), False),
-        ("result-attestation-malformed", lambda o: o["executionResult"]["attestations"][0].pop("algorithm"), False),
         ("result-inclusion-block-not-object", lambda o: o.__setitem__("inclusionBlock", []), False),
     ):
         value = factory.model_input("bft-final")

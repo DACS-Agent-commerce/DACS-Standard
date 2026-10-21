@@ -669,6 +669,12 @@ def build_cases() -> list[dict]:
              "without bft-final trust for the rail's network no pay-dem verdict can become final",
              lambda v: v["runtime"]["payDemBinding"][0].pop("bftFinalTrust"),
              reason="selected-availability")
+    add_case(cases, "selected-dem-binding-with-unusable-bft-final-trust-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "trust that holds a set under the pinned hash that does not hash to it can never verify the rail",
+             lambda v: v["runtime"]["payDemBinding"][0]["bftFinalTrust"].update({"validatorSets": {
+                 v["registry"]["resolutions"][0]["definition"]["consumerFinalityProfile"]["settlement"]
+                 ["validatorSetRef"]["contentHash"]: {"validators": []}}}),
+             reason="selected-availability")
     add_case(cases, "selected-dem-binding-without-execution-result-policy-rejected", "fail", "APR-3/RAV-R3/DEM-1",
              "without an FV-5 execution-result policy no pay-dem failure can be proven",
              lambda v: v["runtime"]["payDemBinding"][0].pop("executionResultPolicy"),

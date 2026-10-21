@@ -1606,8 +1606,8 @@
       }
     }
   },
-  "count": 51,
-  "hash": "0a6ae9ba842ca9e2dee60cb0657da17e931e59200977462d4ea6936fb9ae48ad",
+  "count": 52,
+  "hash": "c87d882f2a0182e579bc1f9764f590b89cc6ea90147d4a7ba2132468157d6592",
   "vectors": [
     {
       "name": "select-dem-projects-pay-dem",
@@ -3427,6 +3427,30 @@
             0,
             "bftFinalTrust"
           ]
+        }
+      ],
+      "expectedReason": "selected-availability"
+    },
+    {
+      "name": "selected-dem-binding-with-unusable-bft-final-trust-rejected",
+      "expected": "fail",
+      "rule": "APR-3/RAV-R3/DEM-1",
+      "operation": "execute",
+      "note": "trust that holds a set under the pinned hash that does not hash to it can never verify the rail",
+      "base": "dem",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "bftFinalTrust",
+            "validatorSets",
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+            "validators"
+          ],
+          "value": []
         }
       ],
       "expectedReason": "selected-availability"

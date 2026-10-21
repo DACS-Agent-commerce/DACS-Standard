@@ -63,6 +63,18 @@ def _options(crash: str | None = None, mutant: str | None = None, *extra: str) -
     return [*(["--crash", crash] if crash else []), *(["--mutant", mutant] if mutant else []), *extra]
 
 
+# The genuine, final, authenticated payment shown to the payee. The payee
+# decides on the evidence it is presented and never supplies its own.
+GENUINE_READ = generator.found(generator.record("confirmed"), authenticated=True)
+
+
+def evidence(work: Path) -> list[str]:
+    """The `deliver` option that presents GENUINE_READ to a payee in `work`."""
+    path = Path(work).parent / "presented-evidence.json"
+    path.write_text(json.dumps(GENUINE_READ), encoding="utf-8")
+    return ["--evidence", str(path)]
+
+
 def start_state(work: Path) -> list[Path]:
     """The payer's stored documents other than its journals."""
     return sorted(path for path in (work / "store").glob("*") if path.is_file()
@@ -204,7 +216,7 @@ def delivery_fsync_violations(root: Path, mutant: str | None = None) -> list[str
     with mock.patch.object(reference.os, "fsync", fsync):
         made = reference.payee(work, "boot-1", mutant=mutant)
         made.provision()
-        verdict = made.deliver(generator.JOB_ID)
+        verdict = made.deliver(generator.JOB_ID, read=GENUINE_READ)
     if verdict != "pass":
         return [f"no delivery: {verdict}"]
     sink, directory = os.stat(work / reference.DELIVERIES), os.stat(work)
@@ -231,7 +243,7 @@ def interrupted_delivery_violations(root: Path, mutant: str | None = None) -> li
     for point in FLUSH_POINTS:
         work = root / point
         run("provision", work, "boot-0")
-        first = run("deliver", work, "boot-1", "--job", generator.JOB_ID, *_options(point, mutant))
+        first = run("deliver", work, "boot-1", "--job", generator.JOB_ID, *_options(point, mutant), *evidence(work))
         if first.returncode != reference.CRASH_EXIT:
             violations.append(f"{point}: first start did not stop: {first.stderr[-400:]}")
             continue
@@ -243,7 +255,7 @@ def interrupted_delivery_violations(root: Path, mutant: str | None = None) -> li
             return real_fsync(fd)
 
         with mock.patch.object(reference.os, "fsync", fsync):
-            verdict = reference.payee(work, "boot-2", mutant=mutant).deliver(generator.JOB_ID)
+            verdict = reference.payee(work, "boot-2", mutant=mutant).deliver(generator.JOB_ID, read=GENUINE_READ)
         if verdict != "pass":
             violations.append(f"{point}: restart did not deliver: {verdict}")
             continue
@@ -294,7 +306,7 @@ def payee_violations(root: Path, mutant: str | None = None) -> list[str]:
         steps = (("boot-1", generator.JOB_ID, point), ("boot-2", generator.OTHER_JOB_ID, None),
                  ("boot-3", generator.JOB_ID, None))
         for boot, job, crash in steps:
-            result = run("deliver", work, boot, "--job", job, *_options(crash, mutant))
+            result = run("deliver", work, boot, "--job", job, *_options(crash, mutant), *evidence(work))
             if result.returncode not in (0, reference.CRASH_EXIT):
                 violations.append(f"{point}: {boot} failed: {result.stderr[-400:]}")
         deliveries = reference.read_lines(work / reference.DELIVERIES)
@@ -330,17 +342,17 @@ def index_loss_violations(root: Path, mutant: str | None = None) -> list[str]:
     for name, damage in (("lost", lose), ("corrupt", corrupt), ("rolled-back", roll_back)):
         work = root / name
         run("provision", work, "boot-0")
-        run("deliver", work, "boot-1", "--job", generator.JOB_ID, *_options(None, mutant))
+        run("deliver", work, "boot-1", "--job", generator.JOB_ID, *_options(None, mutant), *evidence(work))
         damage(work / "payee-store")
         for boot, job in (("boot-2", generator.OTHER_JOB_ID), ("boot-3", generator.JOB_ID)):
-            again = run("deliver", work, boot, "--job", job, *_options(None, mutant))
+            again = run("deliver", work, boot, "--job", job, *_options(None, mutant), *evidence(work))
             if again.returncode == 0 and json.loads(again.stdout)["verdict"] == "pass":
                 violations.append(f"{name}: {boot} delivered for {job} after the index was {name}")
         count = len(reference.read_lines(work / reference.DELIVERIES))
         if count != 1:
             violations.append(f"{name}: {count} deliveries")
     unprovisioned = run("deliver", root / "unprovisioned", "boot-1", "--job", generator.JOB_ID,
-                        *_options(None, mutant))
+                        *_options(None, mutant), *evidence(root / "unprovisioned"))
     if unprovisioned.returncode == 0 and json.loads(unprovisioned.stdout)["verdict"] == "pass":
         violations.append("a check created its own index and delivered")
     return violations
@@ -583,9 +595,9 @@ def concurrent_violations(root: Path, mutant: str | None = None) -> list[str]:
     verdicts = {}
 
     def interleave():
-        verdicts["other"] = second.deliver(generator.OTHER_JOB_ID)
+        verdicts["other"] = second.deliver(generator.OTHER_JOB_ID, read=GENUINE_READ)
 
-    verdicts["own"] = first.deliver(generator.JOB_ID, between=interleave)
+    verdicts["own"] = first.deliver(generator.JOB_ID, read=GENUINE_READ, between=interleave)
     delivered = [verdict for verdict in verdicts.values() if verdict == "pass"]
     return [] if len(delivered) <= 1 else [f"both checks delivered: {verdicts}"]
 
@@ -879,6 +891,21 @@ class PayDemCrashRestartTests(unittest.TestCase):
                 self.assertNotEqual("pass", payee.deliver(generator.JOB_ID, read=reads[name]))
                 self.assertEqual(set(), payee.delivered())
                 self.assertEqual([], payee.snapshot()["admissions"])
+        # No evidence is no payment: the payee never supplies its own. The
+        # entry point has no default read (b981129 built a passing one).
+        work = self.root / "evidence-omitted"
+        payee = reference.payee(work, "boot-1")
+        payee.provision()
+        with self.assertRaises(TypeError):
+            payee.deliver(generator.JOB_ID)
+        for omitted in (None, [], "pass"):
+            with self.subTest(evidence=omitted):
+                self.assertEqual("error", payee.deliver(generator.JOB_ID, read=omitted))
+        cli = run("deliver", work, "boot-2", "--job", generator.JOB_ID)
+        self.assertEqual(0, cli.returncode, cli.stderr[-400:])
+        self.assertEqual({"verdict": "error"}, json.loads(cli.stdout))
+        self.assertEqual(set(), payee.delivered())
+        self.assertEqual([], payee.snapshot()["admissions"])
         work = self.root / "evidence-genuine"
         payee = reference.payee(work, "boot-1")
         payee.provision()
@@ -888,10 +915,14 @@ class PayDemCrashRestartTests(unittest.TestCase):
     def test_nothing_is_sent_without_every_input_a_final_verdict_needs(self):
         """DEM-3 success needs bft-final trust covering the rail's profile,
         and DEM-4 an FV-5 policy. A binding with the other three members but
-        without either, or with one that can never verify, used to pass the
-        gate (f2148e4): the payer was debited and every re-read stayed
-        substrate. Now nothing is retained or sent."""
+        without either used to pass the gate (f2148e4), and so did trust that
+        is present but that FV rejects (b981129): a set under the pinned hash
+        that is not the pinned set, keys that do not decode or alias one key.
+        The payer was debited and every re-read stayed substrate. Now nothing
+        is retained or sent."""
         trust, policy = generator.BINDING_TRUST, generator.BINDING_POLICY
+        names = generator.FINALITY_PROFILE["observation"]["authorityRefs"]
+        pinned = generator.FINALITY_PROFILE["validatorSetRef"]["contentHash"]
         refused = {
             "no-bft-final-trust": generator.binding_entry(bftFinalTrust=generator._OMIT),
             "no-execution-policy": generator.binding_entry(executionResultPolicy=generator._OMIT),
@@ -900,6 +931,13 @@ class PayDemCrashRestartTests(unittest.TestCase):
             "malformed-policy": generator.binding_entry(executionResultPolicy=dict(policy, threshold=0)),
             "policy-for-another-network": generator.binding_entry(
                 executionResultPolicy=dict(policy, **generator.OTHER_NETWORK)),
+            "validator-set-not-the-pinned-one": generator.binding_entry(
+                bftFinalTrust=dict(trust, validatorSets={pinned: {"validators": []}})),
+            "observation-keys-do-not-decode": generator.binding_entry(
+                bftFinalTrust=dict(trust, observationAuthorityKeys={name: "not-a-key" for name in names})),
+            "observation-keys-alias-one-key": generator.binding_entry(
+                bftFinalTrust=dict(trust, observationAuthorityKeys={
+                    name: trust["observationAuthorityKeys"]["rpc-a"] for name in names})),
         }
         for name, binding in refused.items():
             with self.subTest(binding=name):
@@ -918,6 +956,34 @@ class PayDemCrashRestartTests(unittest.TestCase):
         self.assertEqual(["confirm", "broadcast"],
                          [entry["call"] for entry in reference.read_lines(control / "egress.jsonl")])
         self.assertEqual((dict(generator.FINALITY_TRUST), generator.FV5_POLICY), handler._trust())
+
+    def test_rereads_verify_under_the_binding_members_never_other_configuration(self):
+        """DEM-1: the handler's re-reads verify under the binding members its
+        gate checked. With the module's fixture trust and FV-5 policy emptied,
+        a genuine payment still settles and a genuine failure is still
+        proven, from the binding alone; the classification input carries
+        exactly the binding's members. A handler that reads separate
+        configuration settles nothing here."""
+        entry = generator.binding_entry()
+        trust = dict({key: entry["bftFinalTrust"][key] for key in reference.oracle.BFT_FINAL_TRUST},
+                     verificationTimeMs=generator.FINALITY_TRUST["verificationTimeMs"])
+        policy = {key: entry["executionResultPolicy"][key] for key in reference.oracle.EXECUTION_POLICY}
+        empty_policy = dict(generator.FV5_POLICY, threshold=2, authorityKeys={})
+        with mock.patch.object(generator, "FINALITY_TRUST", {}), \
+                mock.patch.object(generator, "FV5_POLICY", empty_policy):
+            paid = reference.payer(self.root / "paid", "boot-1", bindings=[entry], fv5="policy")
+            result = paid.pay(generator.signed())
+            self.assertEqual((True, None), (result.get("ok"), result.get("errorClass")))
+            journal = paid.store.read(paid.journal)
+            read = paid._read(journal["retainedTransfer"]["txHash"])
+            classified = paid._classify_input(journal, read)
+            self.assertEqual((trust, policy), (classified["finalityTrust"], classified["fv5Policy"]))
+            again = paid.advance()
+            self.assertEqual((True, None), (again.get("ok"), again.get("errorClass")))
+            failed = reference.payer(self.root / "failed", "boot-1", bindings=[entry], fv5="policy",
+                                     record_status="failed")
+            result = failed.pay(generator.signed())
+            self.assertEqual((False, "permanent"), (result.get("ok"), result.get("errorClass")))
 
     def test_journal_is_on_stable_storage_before_the_first_egress(self):
         self.assertEqual([], fsync_violations(self.root / "reference"))

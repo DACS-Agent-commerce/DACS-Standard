@@ -18,7 +18,7 @@
     "statusIndex": "getTransactionStatus state for the retained hash (included, pending or unknown); never decisive",
     "railNetwork": "the rail's Demos network (networkId, genesisHash): the pinned RailDefinition's consumerFinalityProfile.settlement network, never one a Demos binding supplies (a Demos NetworkSpec is the bare kind demos). Applied-payment authority must name the same network; the pre-sign, broadcast and preflight gates find the payer's binding entry by it; a missing or malformed one binds nothing",
     "demosBinding": "the payer's Demos binding configuration: one entry per network (networkId, genesisHash) holding pinnedNodes and appliedPaymentAuthority, each naming the network and genesis it was configured for, and gasFeeSeparation, the sealed genesis's forks.gasFeeSeparation attestation (networkId, genesisHash, activationHeight). The gates use the entry whose network is railNetwork, wherever it stands; a member is held only when it names exactly railNetwork, and the attestation only with activationHeight null. A missing entry or member, a member for another network or genesis, a scheduled height and any other form are refused",
-    "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity",
+    "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity. It is a plain read: no DEM-7 fail rests on it, and a contradiction that is only its block ID refutes nothing",
     "recordRead": "getTxByHash read: found (record and nodeBuild), not-found or unavailable; appliedTransfer (networkId, genesisHash, blockId, txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs, committedBalances: payerBeforeOs, payerAfterOs, payeeBeforeOs, payeeAfterOs, feeOs) and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived from the record's status, amount or edits; payerDebitOs must be payerBeforeOs - payerAfterOs - feeOs and payeeCreditOs must be payeeAfterOs - payeeBeforeOs, or the authority establishes nothing; the fixtures take the committed balances from the scenario's own pre-state and outcome (applied, rolled-back or no-op)",
     "nodeBuild": "the build attestation the Demos binding configuration holds for the node that served the read (source binding-attestation, commit, tree); only binding-attestation of commit 61b8e75aa8db5e408c49e1c3a89db4d673f45578 with a clean tree is pinned, and a self-reported build, another commit or a dirty tree is not",
     "gcr_edits": "a confirmed record establishes success only when its gcr_edits, each txhash blanked, are the four edits of its send; the pinned node applies a missing or empty list as a successful no-op",
@@ -33,7 +33,7 @@
     "railSelectable": "rail-preflight want member: whether the orchestrator may select the rail, before Agreement signature and the PIPE-6 commitment",
     "fv5Policy": "the FV-5 independent execution-result policy the verifier trusts, from its own configuration: the settlement-finality corpus's fixture-independent-results-v1 kind, authorityKeys (base64url Ed25519) and threshold; a missing or malformed policy authenticates nothing",
     "executionResult": "recordRead member: FV-5's signed execution result for the record (kind, networkId, genesisHash, blockId, transactionRef, record, attestations, and the optional appliedTransfer: txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs, committedBalances), as the settlement-finality corpus signs it over the FV domain. It authenticates the record only when at least the policy's threshold of distinct policy keys verify it, it names railNetwork and the inclusion observation's blockId, its transactionRef is the record's own (kind demos, hash, blockNumber), its record serializes exactly as the record read, and a carried appliedTransfer is the change of its committedBalances, names the record's transaction, block and parties, and moves the record's OS amount when confirmed and nothing when failed. A handler's DEM-4 failure, a consumer's DEM-7 failed refutation or contradiction, and delivery need it; a plain RPC read has none",
-    "inclusionProof": "recordRead and retainedFailureProof member: FV's bft-final inclusion observation of the record's transaction (networkId, genesisHash, transactionRef, transactionInclusionProof, inclusionBlock, authenticatedHead, ancestryProof, authorityEvidence, finalityCertificate) in the settlement-finality corpus's fixture codecs, whose raw transaction body is the native-send form (networkId, genesisHash, transactionRef, txHash, optional eventsRoot). every final verdict needs it to verify under finalityProfile and finalityTrust: DEM-4's other half (for the failed record's own reference, its inclusionBlock.id the blockId the verifying signed result names), DEM-3 success (for the retained txHash at the observed block, its inclusionBlock.id the observation's blockId), and DEM-7's fail and delivery (for the signed txRef, in the block the signed result names, or the observed block without one). Missing, unfinalized, under a forged certificate, absent from the block, off the authenticated head or of another block, it proves nothing and the verdict is indeterminate",
+    "inclusionProof": "recordRead and retainedFailureProof member: FV's bft-final inclusion observation of the record's transaction (networkId, genesisHash, transactionRef, transactionInclusionProof, inclusionBlock, authenticatedHead, ancestryProof, authorityEvidence, finalityCertificate) in the settlement-finality corpus's fixture codecs, whose raw transaction body is the native-send form (networkId, genesisHash, transactionRef, txHash, optional eventsRoot). every final verdict needs it to verify under finalityProfile and finalityTrust: DEM-4's other half (for the failed record's own reference, its inclusionBlock.id the blockId the verifying signed result names), DEM-3 success (for the retained txHash at the observed block, its inclusionBlock.id the observation's blockId), and DEM-7's fail and delivery (for the signed txRef, in the block the signed result names, or the observed block without one; for an applied-payment authority's contradiction, in the block that authority names, which the contradiction is then checked against instead of the observation). Missing, unfinalized, under a forged certificate, absent from the block, off the authenticated head or of another block, it proves nothing and the verdict is indeterminate",
     "finalityProfile": "the rail's signed consumerFinalityProfile.settlement ChainFinalityProfile (kind bft-final, networkId and genesisHash of railNetwork, observation, validatorSetRef, quorumNumerator, quorumDenominator); one of another kind or network verifies nothing",
     "finalityTrust": "the verifier's own trust for that profile: validatorSets (by content hash), observationAuthorityKeys (base64url Ed25519) and verificationTimeMs, its local clock",
     "authenticated": "recordRead member of an earlier draft: a read that says it is FV-5-authenticated. It decides nothing, whoever sets it; the *-fv5-flag-only vectors pin that",
@@ -48,8 +48,8 @@
     "admissionIndex": "admit-for-delivery: the snapshot (revision, admissions) of the payee's durable admission index read for this check. consumerAdmissions must equal its admissions as a multiset of exact JCS bytes; a missing or malformed snapshot, or a presented history that omits or adds an admission, is error and authorizes no delivery. The payee adds this phase's admission with a write conditional on that revision",
     "guards": "checks whose removal makes this vector fail"
   },
-  "count": 383,
-  "hash": "b438548bff198c382ca137bb8139d3a895a1d57472351479be1edc747f2fe1b3",
+  "count": 401,
+  "hash": "db2613e1fc36b8b71ad7306afaaf46b087c9cd4203aac67ed1062f9375ca4e23",
   "vectors": [
     {
       "name": "included-confirmed",
@@ -44787,6 +44787,1961 @@
       "note": "Authenticated committed balances unchanged by a confirmed send with all four edits refute the payment."
     },
     {
+      "name": "consumer-four-edits-uncommitted-payment-bft-final-inclusion-missing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "0",
+            "payeeCreditOs": "0",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "1000000000000000000000000000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000000000000000",
+              "feeOs": "0"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "An authority's contradiction with no inclusion observation shows the execution result, not its bft-final inclusion."
+    },
+    {
+      "name": "consumer-four-edits-uncommitted-payment-bft-final-inclusion-unfinalized",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "0",
+            "payeeCreditOs": "0",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "1000000000000000000000000000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000000000000000",
+              "feeOs": "0"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "bft-final-inclusion-verified",
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "The block that includes the transaction has no BFT finality certificate: it is not final."
+    },
+    {
+      "name": "consumer-four-edits-uncommitted-payment-bft-final-certificate-forged",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "vr8WADHPwfJvLewuDW2KFANOr71_vp0yfiYqGDIkIXy2x8LsBCyIsF30Erh4qevpL9tBJbWkgSRu5_nY0tfAAA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "peI09aZIUeaM4HgqYrTh27mPb0qgOa7LqrNtWyEME2JKhPqcBiqoMCRx_JeEUVUIDqTNesfg166z16lIvoyHBA"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "0",
+            "payeeCreditOs": "0",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "1000000000000000000000000000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000000000000000",
+              "feeOs": "0"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "bft-final-inclusion-verified",
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "A certificate under the validator names whose signatures verify under no key of the trusted validator set finalizes nothing."
+    },
+    {
+      "name": "consumer-four-edits-uncommitted-payment-bft-final-transaction-absent",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "d08b6a1d67cb9c8b7e5f1f2c833cf2a5e264734e6849d7442b5097363b415119",
+              "leafIndex": 0,
+              "root": "ec84a2cf7c5dd3ea02d8b6ed88070a50d6a833269f7f870f6bd50de7539e8455"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "0",
+            "payeeCreditOs": "0",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "1000000000000000000000000000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000000000000000",
+              "feeOs": "0"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "bft-final-inclusion-verified",
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "The transaction proof does not reach the finalized block's transactions root: the transaction is not in that block."
+    },
+    {
+      "name": "consumer-four-edits-uncommitted-payment-bft-final-block-off-authenticated-head",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "88731c5c66cc86eef603b871d4f0839b61582f9f1358e05c8cee8b9d00e0d307",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhYmRkYTIwMmYzMmYxMDIxNDk5NWRhOTllNDE0MTgyZTk5MjhhYWU3ZjM3MjMyMWFmNjMxYjRjZDdhMDRjMjcyIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "88731c5c66cc86eef603b871d4f0839b61582f9f1358e05c8cee8b9d00e0d307",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhYmRkYTIwMmYzMmYxMDIxNDk5NWRhOTllNDE0MTgyZTk5MjhhYWU3ZjM3MjMyMWFmNjMxYjRjZDdhMDRjMjcyIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "NZ259-wt6lyeZWBlq4CNdu4D9Kesz9KvQgqCxLp7K8l_2_uruo3ukhDEkz91Gd4AUDTGXHHoyuos5M0X8kIlBg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "_MHbAk5WJ-GmLKLVUmctN_S8E7_Nqc5uyFG__hOuHhZD4-Wqv7CMEOiZaIoxT4XzGW0oOr0vlF5Ic7jUB3jADg"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "0",
+            "payeeCreditOs": "0",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "1000000000000000000000000000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000000000000000",
+              "feeOs": "0"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "bft-final-inclusion-verified",
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "The authenticated head does not descend from the block: it is on another branch than the authenticated chain."
+    },
+    {
+      "name": "consumer-four-edits-uncommitted-payment-bft-final-inclusion-of-another-block",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "15cf4ea8f635b660deb4ca83592417bf9bb65ca3578c9c185db33af39f7294e6",
+              "parentId": "75233a15a50ece84462d5a4484ba4245e9c2dcfef6313eecf56f78d2ed872e7d",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI3NTIzM2ExNWE1MGVjZTg0NDYyZDVhNDQ4NGJhNDI0NWU5YzJkY2ZlZjYzMTNlZWNmNTZmNzhkMmVkODcyZTdkIiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "853ae31fd21d72837ccbf10578d98911966f257a9990d1904d656961fdaf9c7e",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIxNWNmNGVhOGY2MzViNjYwZGViNGNhODM1OTI0MTdiZjliYjY1Y2EzNTc4YzljMTg1ZGIzM2FmMzlmNzI5NGU2IiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "853ae31fd21d72837ccbf10578d98911966f257a9990d1904d656961fdaf9c7e",
+                "parentId": "15cf4ea8f635b660deb4ca83592417bf9bb65ca3578c9c185db33af39f7294e6",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIxNWNmNGVhOGY2MzViNjYwZGViNGNhODM1OTI0MTdiZjliYjY1Y2EzNTc4YzljMTg1ZGIzM2FmMzlmNzI5NGU2IiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "s2z5_QMJ3YUQGABEXJ9JR_ZjnVWXWB97Eunk57AMYzN6UsKOIMMPC1fB-cBd9byzgq0odns1aWT1eD95mG_PBw"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "NWVz6vUp_UWRBFLXGgp96pCo8eaxtl6W3_nDsaQeQQOXxn98vv-uhfloOH8sxq2ysiO-PWX6oLaphpCvANlRCg"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "15cf4ea8f635b660deb4ca83592417bf9bb65ca3578c9c185db33af39f7294e6",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "PY1P5AZCTcMNhdMNcaMkiuZRnJ6CGrfHZrsgD1kM_FAQb1pABwPiGzKdG3h2nnbHSKPhRIUxOdNXX2-l2y07CQ"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "cJndjP65Gmo5UXEZxODTLcNY_cjFkKAPe4lSWvJdBNWvNd_xvLkM8yooS4qQuWQKAPTqY7V4QbR_-zcYFpHdDg"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "0",
+            "payeeCreditOs": "0",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "1000000000000000000000000000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000000000000000",
+              "feeOs": "0"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "bft-final-inclusion-binds-result-block",
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "A final block of another branch at the same height includes the transaction, but the signed result names the observed block."
+    },
+    {
+      "name": "consumer-confirmed-no-op-apply-bft-final-inclusion-missing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": []
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "0",
+            "payeeCreditOs": "0",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "1000000000000000000000000000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000000000000000",
+              "feeOs": "0"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "Without the bft-final inclusion of the presented reference, an authority's unmoved balances refute nothing."
+    },
+    {
+      "name": "consumer-fee-separated-edits-uncommitted-payment-bft-final-inclusion-missing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                  "amount": 500000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23",
+                  "amount": 500000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23",
+                  "amount": 1000000000,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade"
+                },
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "0",
+            "payeeCreditOs": "0",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "1000000000000000000000000000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000000000000000",
+              "feeOs": "0"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "Without the bft-final inclusion of the presented reference, an authority's unmoved balances refute nothing."
+    },
+    {
       "name": "consumer-four-edits-authority-not-committed-change",
       "operation": "admit-evidence",
       "protocolInput": {
@@ -51698,7 +53653,7 @@
           "appliedTransfer": {
             "networkId": "demos:mainnet",
             "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
-            "blockId": "be5dab3ca373775fb9afe2273f6fc2cab537c6b8aa3c36ad58b6ee858554c9fd",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
             "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
             "blockNumber": 43,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
@@ -51725,7 +53680,7 @@
         "consumer-binds-block",
         "consumer-requires-confirmed-record"
       ],
-      "note": "An unauthenticated read in another block does not satisfy DEM-7."
+      "note": "An unauthenticated read in another block does not satisfy DEM-7, even with an authority naming the observed block."
     },
     {
       "name": "consumer-wrong-payer-unauthenticated",
@@ -76716,6 +78671,205 @@
       "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
     },
     {
+      "name": "consumer-applied-transfer-zero-credit-bft-final-inclusion-missing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "0",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000000000000000",
+              "feeOs": "1000000000"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Without the bft-final inclusion of the presented reference, an authority's contradiction refutes nothing."
+    },
+    {
       "name": "confirmed-applied-transfer-zero-debit",
       "operation": "classify-execution",
       "protocolInput": {
@@ -77260,6 +79414,205 @@
         "success-requires-applied-transfer"
       ],
       "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
+    },
+    {
+      "name": "consumer-applied-transfer-zero-debit-bft-final-inclusion-missing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "0",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999999000000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Without the bft-final inclusion of the presented reference, an authority's contradiction refutes nothing."
     },
     {
       "name": "confirmed-applied-transfer-wrong-hash",
@@ -77808,6 +80161,205 @@
       "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
     },
     {
+      "name": "consumer-applied-transfer-wrong-hash-bft-final-inclusion-missing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "935a9f844685c90ba8c634c2a00bb43b4d55fa4bcb73704cdd4c6b83c7b3fab9",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Without the bft-final inclusion of the presented reference, an authority's contradiction refutes nothing."
+    },
+    {
       "name": "confirmed-applied-transfer-wrong-block",
       "operation": "classify-execution",
       "protocolInput": {
@@ -78352,6 +80904,205 @@
         "success-requires-applied-transfer"
       ],
       "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
+    },
+    {
+      "name": "consumer-applied-transfer-wrong-block-bft-final-inclusion-missing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 43,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Without the bft-final inclusion of the presented reference, an authority's contradiction refutes nothing."
     },
     {
       "name": "confirmed-applied-transfer-wrong-sender",
@@ -78900,6 +81651,205 @@
       "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
     },
     {
+      "name": "consumer-applied-transfer-wrong-sender-bft-final-inclusion-missing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Without the bft-final inclusion of the presented reference, an authority's contradiction refutes nothing."
+    },
+    {
       "name": "confirmed-applied-transfer-wrong-recipient",
       "operation": "classify-execution",
       "protocolInput": {
@@ -79444,6 +82394,205 @@
         "success-requires-applied-transfer"
       ],
       "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
+    },
+    {
+      "name": "consumer-applied-transfer-wrong-recipient-bft-final-inclusion-missing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "443fa90f691dc4a512813f3566273f33b3ddada3ed8283112b823fda7778d06f",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Without the bft-final inclusion of the presented reference, an authority's contradiction refutes nothing."
     },
     {
       "name": "confirmed-applied-transfer-other-network",
@@ -79994,6 +83143,206 @@
       "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
     },
     {
+      "name": "consumer-applied-transfer-other-network-bft-final-inclusion-missing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:testnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "applied-transfer-binds-network",
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Without the bft-final inclusion of the presented reference, an authority's contradiction refutes nothing."
+    },
+    {
       "name": "confirmed-applied-transfer-other-genesis",
       "operation": "classify-execution",
       "protocolInput": {
@@ -80542,6 +83891,206 @@
       "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
     },
     {
+      "name": "consumer-applied-transfer-other-genesis-bft-final-inclusion-missing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "91d35a73db815165e78406dc8d9c3a364a2669ea7679a2bb50801197c7fc22c1",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "applied-transfer-binds-network",
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "Without the bft-final inclusion of the presented reference, an authority's contradiction refutes nothing."
+    },
+    {
       "name": "confirmed-applied-transfer-other-block-id",
       "operation": "classify-execution",
       "protocolInput": {
@@ -81075,7 +84624,7 @@
           }
         }
       },
-      "expected": "fail",
+      "expected": "indeterminate",
       "want": {
         "dem7GatePassed": false,
         "deliveryAuthorized": false
@@ -81083,11 +84632,657 @@
       "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
       "guards": [
         "applied-transfer-binds-block-id",
-        "consumer-authenticated-contradiction-fails",
+        "consumer-contradiction-requires-bft-final-inclusion",
         "consumer-requires-confirmed-record",
         "success-requires-applied-transfer"
       ],
-      "note": "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate."
+      "note": "An authority about another block than the presented reference's bft-final inclusion contradicts nothing."
+    },
+    {
+      "name": "consumer-stale-observed-block-refutes-nothing",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "15cf4ea8f635b660deb4ca83592417bf9bb65ca3578c9c185db33af39f7294e6"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "applied-transfer-binds-block-id",
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "An observation naming another block than the authority's bft-final one does not refute the payment."
+    },
+    {
+      "name": "delivery-stale-observed-block-refutes-nothing",
+      "operation": "admit-for-delivery",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "15cf4ea8f635b660deb4ca83592417bf9bb65ca3578c9c185db33af39f7294e6"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": {
+            "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "status": "confirmed",
+            "content": {
+              "type": "native",
+              "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+              "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+              "amount": 1500000000,
+              "nonce": "9",
+              "data": [
+                "native",
+                {
+                  "nativeOperation": "send",
+                  "args": [
+                    "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "1500000000"
+                  ]
+                }
+              ],
+              "timestamp": "1791649642726",
+              "transaction_fee": {
+                "network_fee": 1000000000,
+                "rpc_fee": 1000000000,
+                "additional_fee": 0,
+                "rpc_address": null
+              },
+              "gcr_edits": [
+                {
+                  "type": "balance",
+                  "operation": "remove",
+                  "isRollback": false,
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "operation": "add",
+                  "isRollback": false,
+                  "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "amount": "1500000000"
+                },
+                {
+                  "type": "balance",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "operation": "remove",
+                  "amount": "1000000000",
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                },
+                {
+                  "type": "nonce",
+                  "operation": "add",
+                  "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                  "amount": 1,
+                  "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "isRollback": false
+                }
+              ]
+            }
+          },
+          "executionResult": {
+            "kind": "fixture-independent-results-v1",
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "record": {
+              "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42,
+              "status": "confirmed",
+              "content": {
+                "type": "native",
+                "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "amount": 1500000000,
+                "nonce": "9",
+                "data": [
+                  "native",
+                  {
+                    "nativeOperation": "send",
+                    "args": [
+                      "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                      "1500000000"
+                    ]
+                  }
+                ],
+                "timestamp": "1791649642726",
+                "transaction_fee": {
+                  "network_fee": 1000000000,
+                  "rpc_fee": 1000000000,
+                  "additional_fee": 0,
+                  "rpc_address": null
+                },
+                "gcr_edits": [
+                  {
+                    "type": "balance",
+                    "operation": "remove",
+                    "isRollback": false,
+                    "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                    "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                    "amount": "1500000000"
+                  },
+                  {
+                    "type": "balance",
+                    "operation": "add",
+                    "isRollback": false,
+                    "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                    "amount": "1500000000"
+                  },
+                  {
+                    "type": "balance",
+                    "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                    "operation": "remove",
+                    "amount": "1000000000",
+                    "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                    "isRollback": false
+                  },
+                  {
+                    "type": "nonce",
+                    "operation": "add",
+                    "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                    "amount": 1,
+                    "txhash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                    "isRollback": false
+                  }
+                ]
+              }
+            },
+            "attestations": [
+              {
+                "authorityRef": "execution-a",
+                "algorithm": "ed25519",
+                "value": "mePvWBQ-HlZdktxADNj0PLpk-n-EPlC5KhE7klIvuwLIBtBN6qnEv8MTNmQygeq8YYldzpERxjB6S8A4u9LeCg"
+              },
+              {
+                "authorityRef": "execution-b",
+                "algorithm": "ed25519",
+                "value": "KIOGHt_5Y9yFrvRzZQQHHWd0_4BwjR0PMfSCT8qMd71jlgpI-cSJDvul_pipddnokTUQdbke_f3DDMY4dglsBQ"
+              }
+            ]
+          },
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        },
+        "otherGates": {
+          "fv": "pass",
+          "sb1": "pass",
+          "pb": "pass"
+        },
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "applied-transfer-binds-block-id",
+        "consumer-contradiction-requires-bft-final-inclusion",
+        "consumer-requires-confirmed-record",
+        "success-requires-applied-transfer"
+      ],
+      "note": "A stale observed block ID neither refutes the payment nor authorizes delivery."
     },
     {
       "name": "confirmed-inclusion-without-block-id",

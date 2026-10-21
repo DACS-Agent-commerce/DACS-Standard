@@ -66,7 +66,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 383 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 401 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
@@ -1253,7 +1253,7 @@ python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 
 ### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
 
-383 candidate vectors pin native-DEM settlement on execution, not inclusion.
+401 candidate vectors pin native-DEM settlement on execution, not inclusion.
 The node's status index may label a transaction `included` while its
 transaction record is `failed`, so the index is never decisive. Records use
 the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
@@ -1413,7 +1413,16 @@ delivery. An authenticated contradiction or authenticated `failed` record is
 contradicts the bound values of a `confirmed` record (including the unchanged
 balances of a no-op, or of a record carrying all four edits whose apply
 committed nothing), while an unauthenticated mismatched or `failed` read stays
-`indeterminate`. A `failed` record keeps its own outcome whatever the
+`indeterminate`. The authority's contradiction is `fail` only with the
+`bft-final` inclusion of the presented reference in the block the authority
+names, and it is checked against that verified block, never the plain
+observation: without that inclusion, under each of its six failures, an
+authority about another block, and an observation naming another block ID
+than the honest authority's are each `indeterminate`
+(`consumer-*-bft-final-inclusion-missing`,
+`consumer-four-edits-uncommitted-payment-bft-final-*`,
+`consumer-applied-transfer-other-block-id`, `*-stale-observed-block-refutes-nothing`;
+guard `consumer-contradiction-requires-bft-final-inclusion`). A `failed` record keeps its own outcome whatever the
 authority reports. The record
 hash, block, payer, payee and amount are each bound under their own guard. `admit-for-delivery`
 cases authorize delivery only when DEM-7 passes on an FV-5-authenticated

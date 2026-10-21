@@ -136,6 +136,7 @@ GUARDS = frozenset({
     # success (PC-7), DEM-7's refutation and delivery
     "success-requires-bft-final-inclusion",
     "consumer-refutation-requires-bft-final-inclusion",
+    "consumer-contradiction-requires-bft-final-inclusion",
     "delivery-requires-bft-final-inclusion",
     # DEM-5
     "unresolved-authorizes-nothing",
@@ -247,7 +248,7 @@ PINNED_BUILD = {
     "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
     "tree": "clean",
 }
-REQUESTS =frozenset({"confirm-retained", "broadcast-retained", "broadcast-replacement"})
+REQUESTS = frozenset({"confirm-retained", "broadcast-retained", "broadcast-replacement"})
 FEE_AMOUNTS = ("network_fee", "rpc_fee", "additional_fee")
 # The pinned node's RPC ingress rebuilds the fee object in this order before
 # it re-derives the hash (src/forks/serializerGate.ts).
@@ -581,11 +582,22 @@ def is_confirmed(status, off) -> bool:
     return status == "confirmed"
 
 
-def applied(read, projection, protocol_input, off) -> str:
+def observed_block(protocol_input: dict):
+    inclusion = protocol_input.get("inclusionObservation")
+    return inclusion.get("blockId") if isinstance(inclusion, dict) else None
+
+
+# `applied`'s default block: the observed inclusion's. A sentinel, so that a
+# JSON null block ID is compared as null, never replaced by the observation.
+_OBSERVED_BLOCK = object()
+
+
+def applied(read, projection, protocol_input, off, block_id=_OBSERVED_BLOCK) -> str:
     """DEMOS-MAPPING §A.2 applied-payment authority for the handler (DEM-3) and
-    the consumer (DEM-7): it names the phase's network, the observed inclusion
-    block ID, the projected transaction and parties, and a debit and credit of
-    the OS amount. Without the network or block ID to compare it binds nothing."""
+    the consumer (DEM-7): it names the phase's network, the inclusion block ID
+    (`block_id`, by default the observed one), the projected transaction and
+    parties, and a debit and credit of the OS amount. Without the network or
+    block ID to compare it binds nothing."""
     if "success-requires-applied-transfer" in off:
         return "pass"
     proof = read.get("appliedTransfer")
@@ -609,8 +621,8 @@ def applied(read, projection, protocol_input, off) -> str:
             return "indeterminate"
         expected.update(network)
     if "applied-transfer-binds-block-id" not in off:
-        inclusion = protocol_input.get("inclusionObservation")
-        block_id = inclusion.get("blockId") if isinstance(inclusion, dict) else None
+        if block_id is _OBSERVED_BLOCK:
+            block_id = observed_block(protocol_input)
         if not (isinstance(block_id, str) and HASH.fullmatch(block_id)):
             return "indeterminate"
         expected["blockId"] = block_id
@@ -1193,6 +1205,22 @@ def egress_outcome(protocol_input: dict, off) -> tuple[str, dict]:
     return unresolved
 
 
+def authority_refutes(read, projection, protocol_input: dict, reference, off) -> bool:
+    """DEM-7 and the Finality rule: an applied-payment authority's
+    contradiction is `fail` only about the presented reference's final
+    inclusion, which FV's bft-final verification shows in the block the
+    authority names, and only when it still contradicts against that verified
+    block. The observed block ID is a plain read: a stale or forked node that
+    names another block contradicts nothing, and an authority about a block
+    no certificate finalizes, a fork or another block refutes nothing."""
+    if "consumer-contradiction-requires-bft-final-inclusion" in off:
+        # The wrong implementation refutes on the plain observation alone.
+        return True
+    block = read["appliedTransfer"].get("blockId")
+    return bft_final(read.get("inclusionProof"), reference, block, protocol_input, off) and (
+        applied(read, projection, protocol_input, off, block) == "fail")
+
+
 def dem7(protocol_input: dict, off) -> str:
     """DEM-7 consumer gate, including the payee before delivery."""
     if (
@@ -1224,6 +1252,8 @@ def dem7(protocol_input: dict, off) -> str:
     status = projection["status"]
     if is_bound and is_confirmed(status, off):
         decision = applied(read, projection, protocol_input, off)
+        if decision == "fail" and not authority_refutes(read, projection, protocol_input, reference, off):
+            decision = "indeterminate"
         if decision != "pass":
             return "indeterminate" if "consumer-authenticated-contradiction-fails" in off else decision
         if not sends_payment(record, off):
@@ -2085,10 +2115,18 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                         and committed_change(varied) == (varied.get("payerDebitOs"), varied.get("payeeCreditOs"))):
                     differs.discard("committedBalances")
                 rest = {k: v for k, v in vector["protocolInput"].items() if k != "recordRead"}
-                if len(differs) == 1 and rest == {k: v for k, v in control["protocolInput"].items() if k != "recordRead"}:
+                read_rest = {k: v for k, v in vector["protocolInput"]["recordRead"].items() if k != "appliedTransfer"}
+                if (len(differs) == 1
+                        and rest == {k: v for k, v in control["protocolInput"].items() if k != "recordRead"}
+                        and read_rest == {k: v for k, v in control["protocolInput"]["recordRead"].items()
+                                          if k != "appliedTransfer"}):
                     with self.subTest(name=name):
-                        # Figures without their committed change prove nothing either way.
-                        self.assertEqual("indeterminate" if differs == {"committedBalances"} else refused,
+                        # Figures without their committed change prove nothing
+                        # either way. For the consumer, an authority about
+                        # another block than the presented reference's
+                        # bft-final inclusion contradicts nothing (DEM-7).
+                        self.assertEqual("indeterminate" if differs == {"committedBalances"}
+                                         or (refused == "fail" and differs == {"blockId"}) else refused,
                                          evaluate(vector)[0])
                         self.assertIn("success-requires-applied-transfer", vector["guards"])
                     witnessed |= differs
@@ -2404,6 +2442,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                  "resume-without-proof-confirmed": "success-requires-bft-final-inclusion",
                  "consumer-failed-fails": "consumer-refutation-requires-bft-final-inclusion",
                  "consumer-wrong-payee-authenticated": "consumer-refutation-requires-bft-final-inclusion",
+                 "consumer-four-edits-uncommitted-payment": "consumer-contradiction-requires-bft-final-inclusion",
+                 "consumer-applied-transfer-wrong-recipient": "consumer-contradiction-requires-bft-final-inclusion",
                  "delivery-after-all-gates": "delivery-requires-bft-final-inclusion"}
         for name, guard in final.items():
             with self.subTest(name=name):
@@ -2426,8 +2466,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     self.assertEqual(case["expected"], evaluate(stripped, {guard})[0], strip)
         refused = [vector for vector in self.data["vectors"]
                    if {"success-requires-bft-final-inclusion", "consumer-refutation-requires-bft-final-inclusion",
+                       "consumer-contradiction-requires-bft-final-inclusion",
                        "delivery-requires-bft-final-inclusion"} & set(vector["guards"])]
-        self.assertEqual({"classify-execution": 7, "resume-phase": 1, "admit-evidence": 7, "admit-for-delivery": 6},
+        self.assertEqual({"classify-execution": 7, "resume-phase": 1, "admit-evidence": 25, "admit-for-delivery": 7},
                          {op: sum(v["operation"] == op for v in refused) for op in
                           ("classify-execution", "resume-phase", "admit-evidence", "admit-for-delivery")})
         for vector in refused:
@@ -2438,6 +2479,61 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 self.assertFalse(want.get("deliveryAuthorized"))
                 self.assertFalse(want.get("settlementAccounting", False))
                 self.assertFalse(want.get("replacementPermitted", False))
+
+    # Each operation's final verdicts about the Demos payment: DEM-3 success,
+    # a DEM-4 failure (and its reuse), APR evidence, DEM-7's `fail` and
+    # delivery. A DEM-7 `pass` alone is one gate, not a final verdict.
+    FINAL_VERDICTS = {"classify-execution": {"pass", "fail"}, "resume-phase": {"pass", "fail"},
+                      "apr-reconciliation-evidence": {"pass"}, "admit-evidence": {"fail"},
+                      "admit-for-delivery": {"pass", "fail"}}
+
+    def test_no_final_verdict_survives_without_its_bft_final_inclusion(self):
+        """The Finality rule over every vector, whichever branch decides it:
+        without the bft-final inclusion proofs it carries, or without their
+        finality certificates, no final verdict remains."""
+        def strip(value, member):
+            if isinstance(value, dict):
+                value.pop(member, None)
+                for item in value.values():
+                    strip(item, member)
+            elif isinstance(value, list):
+                for item in value:
+                    strip(item, member)
+
+        checked = 0
+        for vector in self.data["vectors"]:
+            if vector["expected"] not in self.FINAL_VERDICTS.get(vector["operation"], ()):
+                continue
+            checked += 1
+            for member in ("inclusionProof", "finalityCertificate"):
+                with self.subTest(name=vector["name"], strip=member):
+                    stripped = json.loads(json.dumps(vector))
+                    strip(stripped["protocolInput"], member)
+                    self.assertEqual("indeterminate", evaluate(stripped)[0])
+        self.assertGreaterEqual(checked, 30)
+
+    def test_a_plain_observation_never_decides_a_final_verdict(self):
+        """A stale or forked pinned node names another block ID at the
+        height: the plain observation never creates a final verdict and
+        never turns a payment into `fail` (DEM-2: the pin does not
+        authenticate that read)."""
+        checked = 0
+        for vector in self.data["vectors"]:
+            observation = vector["protocolInput"].get("inclusionObservation")
+            if vector["operation"] not in self.FINAL_VERDICTS or not isinstance(observation, dict):
+                continue
+            checked += 1
+            with self.subTest(name=vector["name"]):
+                stale = json.loads(json.dumps(vector))
+                stale["protocolInput"]["inclusionObservation"]["blockId"] = "ab" * 32
+                self.assertIn(evaluate(stale)[0], {vector["expected"], "indeterminate"})
+        self.assertGreaterEqual(checked, 200)
+        # The honest authority of a final payment against a stale observation.
+        for name in ("consumer-stale-observed-block-refutes-nothing", "delivery-stale-observed-block-refutes-nothing"):
+            with self.subTest(name=name):
+                case = self.cases[name]
+                self.assertEqual("indeterminate", evaluate(case)[0])
+                self.assertEqual("fail", evaluate(case, {"consumer-contradiction-requires-bft-final-inclusion"})[0])
 
     def test_only_an_authenticated_failed_record_refutes_evidence(self):
         self.assertEqual("fail", evaluate(self.cases["consumer-failed-fails"])[0])

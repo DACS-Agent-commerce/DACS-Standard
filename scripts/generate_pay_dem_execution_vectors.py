@@ -1954,6 +1954,33 @@ def build_vectors() -> list[dict[str, Any]]:
             "Authenticated committed balances unchanged by a confirmed send with all four edits refute the payment.",
             read=found(record("confirmed"), state=ROLLED_BACK),
         ),
+        # An authority's contradiction refutes the evidence only with FV's
+        # bft-final verification of the presented reference's inclusion in
+        # the block that authority names, as every final verdict does.
+        *(
+            admit(
+                "consumer-four-edits-uncommitted-payment-" + suffix, "indeterminate", "DEM-7/FV-5",
+                ["consumer-contradiction-requires-bft-final-inclusion", "consumer-requires-confirmed-record",
+                 "success-requires-applied-transfer",
+                 *(guard for guard in guards if guard != "failure-requires-bft-final-inclusion")],
+                note.replace("A verifying signed result", "An authority's contradiction"),
+                read=found(record("confirmed"), state=ROLLED_BACK, inclusion=inclusion),
+            )
+            for suffix, guards, inclusion, note in bft_final_variants()
+        ),
+        *(
+            admit(
+                name + "-bft-final-inclusion-missing", "indeterminate", "DEM-7/FV-5",
+                ["consumer-contradiction-requires-bft-final-inclusion", "consumer-requires-confirmed-record"],
+                "Without the bft-final inclusion of the presented reference, an authority's unmoved balances refute nothing.",
+                read=found(record("confirmed", edits=edits), state=state, inclusion=_OMIT),
+            )
+            for name, edits, state in (
+                ("consumer-confirmed-no-op-apply", [], NO_OP),
+                ("consumer-fee-separated-edits-uncommitted-payment", fee_separated_edits(send_content(), TX_HASH),
+                 ROLLED_BACK),
+            )
+        ),
         admit(
             "consumer-four-edits-authority-not-committed-change", "indeterminate", "DEM-7",
             ["applied-transfer-is-committed-change", "consumer-requires-confirmed-record", "success-requires-applied-transfer"],
@@ -2027,8 +2054,8 @@ def build_vectors() -> list[dict[str, Any]]:
         ),
         admit(
             "consumer-wrong-block-unauthenticated", "indeterminate", "DEM-7", ["consumer-binds-block", "consumer-requires-confirmed-record"],
-            "An unauthenticated read in another block does not satisfy DEM-7.",
-            read=found(record("confirmed", blockNumber=BLOCK + 1), authenticated=False),
+            "An unauthenticated read in another block does not satisfy DEM-7, even with an authority naming the observed block.",
+            read=found(record("confirmed", blockNumber=BLOCK + 1), authenticated=False, applied_block_id=block_id(BLOCK)),
         ),
         admit(
             "consumer-wrong-payer-unauthenticated", "indeterminate", "DEM-7", ["consumer-binds-payer", "consumer-requires-confirmed-record"],
@@ -2369,11 +2396,48 @@ def build_vectors() -> list[dict[str, Any]]:
                                 ["success-requires-applied-transfer"] + binding + unresolved,
                                 "Applied payment authority must authenticate this exact native send on the phase's network and inclusion block.",
                                 read=read))
+        if suffix == "other-block-id":
+            # The presented reference's bft-final inclusion is in the
+            # observed block, not the one this authority names: it is about a
+            # fork or a block no certificate finalizes and refutes nothing.
+            vectors.append(admit("consumer-applied-transfer-" + suffix, "indeterminate", "DEM-7/FV-5",
+                                 ["consumer-contradiction-requires-bft-final-inclusion",
+                                  "consumer-requires-confirmed-record", "success-requires-applied-transfer"] + binding,
+                                 "An authority about another block than the presented reference's bft-final "
+                                 "inclusion contradicts nothing.", read=read))
+            continue
         vectors.append(admit("consumer-applied-transfer-" + suffix,
                              "indeterminate" if suffix == "unauthenticated" else "fail", "DEM-7/FV-5",
                              ["consumer-requires-confirmed-record", "success-requires-applied-transfer"] + binding
                              + ([] if suffix == "unauthenticated" else ["consumer-authenticated-contradiction-fails"]),
                              "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate.", read=read))
+        if suffix != "unauthenticated":
+            missing = copy.deepcopy(read)
+            del missing["inclusionProof"]
+            vectors.append(admit("consumer-applied-transfer-" + suffix + "-bft-final-inclusion-missing", "indeterminate",
+                                 "DEM-7/FV-5",
+                                 ["consumer-contradiction-requires-bft-final-inclusion",
+                                  "consumer-requires-confirmed-record", "success-requires-applied-transfer"] + binding,
+                                 "Without the bft-final inclusion of the presented reference, an authority's "
+                                 "contradiction refutes nothing.", read=missing))
+    # A stale or forked pinned node names another block at the height. The
+    # honest authority names the block in which the presented reference's
+    # inclusion verifies bft-final: the plain observation refutes nothing.
+    stale_block = {"blockNumber": BLOCK, "blockId": FORK_INCLUSION_PROOF["inclusionBlock"]["id"]}
+    for vector in (
+        admit("consumer-stale-observed-block-refutes-nothing", "indeterminate", "DEM-7/FV-5",
+              ["applied-transfer-binds-block-id", "consumer-contradiction-requires-bft-final-inclusion",
+               "consumer-requires-confirmed-record", "success-requires-applied-transfer"],
+              "An observation naming another block than the authority's bft-final one does not refute the payment.",
+              read=found(record("confirmed"))),
+        deliver("delivery-stale-observed-block-refutes-nothing", "indeterminate", "DEM-7/FV-5",
+                ["applied-transfer-binds-block-id", "consumer-contradiction-requires-bft-final-inclusion",
+                 "consumer-requires-confirmed-record", "success-requires-applied-transfer"],
+                "A stale observed block ID neither refutes the payment nor authorizes delivery.",
+                dem7_passed=False),
+    ):
+        vector["protocolInput"]["inclusionObservation"] = dict(stale_block)
+        vectors.append(vector)
     # Two checks refuse it, so neither guard alone flips it: the
     # consumer-path twin below keeps the applied-authority witness.
     vectors.append(classify("confirmed-inclusion-without-block-id", "indeterminate", "DEM-3/DEM-5",
@@ -2797,7 +2861,7 @@ def document() -> dict[str, Any]:
             "statusIndex": "getTransactionStatus state for the retained hash (included, pending or unknown); never decisive",
             "railNetwork": "the rail's Demos network (networkId, genesisHash): the pinned RailDefinition's consumerFinalityProfile.settlement network, never one a Demos binding supplies (a Demos NetworkSpec is the bare kind demos). Applied-payment authority must name the same network; the pre-sign, broadcast and preflight gates find the payer's binding entry by it; a missing or malformed one binds nothing",
             "demosBinding": "the payer's Demos binding configuration: one entry per network (networkId, genesisHash) holding pinnedNodes and appliedPaymentAuthority, each naming the network and genesis it was configured for, and gasFeeSeparation, the sealed genesis's forks.gasFeeSeparation attestation (networkId, genesisHash, activationHeight). The gates use the entry whose network is railNetwork, wherever it stands; a member is held only when it names exactly railNetwork, and the attestation only with activationHeight null. A missing entry or member, a member for another network or genesis, a scheduled height and any other form are refused",
-            "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity",
+            "inclusionObservation": "block number and, when observed, block ID (blockId) that include the retained hash or the signed txRef, or null; applied-payment authority must name the same block ID, and without one it binds no block identity. It is a plain read: no DEM-7 fail rests on it, and a contradiction that is only its block ID refutes nothing",
             "recordRead": "getTxByHash read: found (record and nodeBuild), not-found or unavailable; appliedTransfer (networkId, genesisHash, blockId, txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs, committedBalances: payerBeforeOs, payerAfterOs, payeeBeforeOs, payeeAfterOs, feeOs) and appliedTransferAuthenticated model separate authenticated committed state-transition authority, never derived from the record's status, amount or edits; payerDebitOs must be payerBeforeOs - payerAfterOs - feeOs and payeeCreditOs must be payeeAfterOs - payeeBeforeOs, or the authority establishes nothing; the fixtures take the committed balances from the scenario's own pre-state and outcome (applied, rolled-back or no-op)",
             "nodeBuild": "the build attestation the Demos binding configuration holds for the node that served the read (source binding-attestation, commit, tree); only binding-attestation of commit 61b8e75aa8db5e408c49e1c3a89db4d673f45578 with a clean tree is pinned, and a self-reported build, another commit or a dirty tree is not",
             "gcr_edits": "a confirmed record establishes success only when its gcr_edits, each txhash blanked, are the four edits of its send; the pinned node applies a missing or empty list as a successful no-op",
@@ -2812,7 +2876,7 @@ def document() -> dict[str, Any]:
             "railSelectable": "rail-preflight want member: whether the orchestrator may select the rail, before Agreement signature and the PIPE-6 commitment",
             "fv5Policy": "the FV-5 independent execution-result policy the verifier trusts, from its own configuration: the settlement-finality corpus's fixture-independent-results-v1 kind, authorityKeys (base64url Ed25519) and threshold; a missing or malformed policy authenticates nothing",
             "executionResult": "recordRead member: FV-5's signed execution result for the record (kind, networkId, genesisHash, blockId, transactionRef, record, attestations, and the optional appliedTransfer: txHash, blockNumber, sender, recipient, payerDebitOs, payeeCreditOs, committedBalances), as the settlement-finality corpus signs it over the FV domain. It authenticates the record only when at least the policy's threshold of distinct policy keys verify it, it names railNetwork and the inclusion observation's blockId, its transactionRef is the record's own (kind demos, hash, blockNumber), its record serializes exactly as the record read, and a carried appliedTransfer is the change of its committedBalances, names the record's transaction, block and parties, and moves the record's OS amount when confirmed and nothing when failed. A handler's DEM-4 failure, a consumer's DEM-7 failed refutation or contradiction, and delivery need it; a plain RPC read has none",
-            "inclusionProof": "recordRead and retainedFailureProof member: FV's bft-final inclusion observation of the record's transaction (networkId, genesisHash, transactionRef, transactionInclusionProof, inclusionBlock, authenticatedHead, ancestryProof, authorityEvidence, finalityCertificate) in the settlement-finality corpus's fixture codecs, whose raw transaction body is the native-send form (networkId, genesisHash, transactionRef, txHash, optional eventsRoot). every final verdict needs it to verify under finalityProfile and finalityTrust: DEM-4's other half (for the failed record's own reference, its inclusionBlock.id the blockId the verifying signed result names), DEM-3 success (for the retained txHash at the observed block, its inclusionBlock.id the observation's blockId), and DEM-7's fail and delivery (for the signed txRef, in the block the signed result names, or the observed block without one). Missing, unfinalized, under a forged certificate, absent from the block, off the authenticated head or of another block, it proves nothing and the verdict is indeterminate",
+            "inclusionProof": "recordRead and retainedFailureProof member: FV's bft-final inclusion observation of the record's transaction (networkId, genesisHash, transactionRef, transactionInclusionProof, inclusionBlock, authenticatedHead, ancestryProof, authorityEvidence, finalityCertificate) in the settlement-finality corpus's fixture codecs, whose raw transaction body is the native-send form (networkId, genesisHash, transactionRef, txHash, optional eventsRoot). every final verdict needs it to verify under finalityProfile and finalityTrust: DEM-4's other half (for the failed record's own reference, its inclusionBlock.id the blockId the verifying signed result names), DEM-3 success (for the retained txHash at the observed block, its inclusionBlock.id the observation's blockId), and DEM-7's fail and delivery (for the signed txRef, in the block the signed result names, or the observed block without one; for an applied-payment authority's contradiction, in the block that authority names, which the contradiction is then checked against instead of the observation). Missing, unfinalized, under a forged certificate, absent from the block, off the authenticated head or of another block, it proves nothing and the verdict is indeterminate",
             "finalityProfile": "the rail's signed consumerFinalityProfile.settlement ChainFinalityProfile (kind bft-final, networkId and genesisHash of railNetwork, observation, validatorSetRef, quorumNumerator, quorumDenominator); one of another kind or network verifies nothing",
             "finalityTrust": "the verifier's own trust for that profile: validatorSets (by content hash), observationAuthorityKeys (base64url Ed25519) and verificationTimeMs, its local clock",
             "authenticated": "recordRead member of an earlier draft: a read that says it is FV-5-authenticated. It decides nothing, whoever sets it; the *-fv5-flag-only vectors pin that",

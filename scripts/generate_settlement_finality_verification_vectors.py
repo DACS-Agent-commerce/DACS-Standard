@@ -1713,14 +1713,20 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     vectors.append(case("fv-bft-final-confirmed-no-op-copied-authority", "indeterminate",
                         "an authority that reports payment for a confirmed send without its edits establishes nothing",
                         demos_record(gcr_edits=None)))
-    # The edit list must equal the send's four edits exactly: a partial list
-    # or reordered members is not that list, whatever the authority reports.
+    # The edit list must equal the send's four edits: a partial list or a
+    # changed member is not that list, whatever the authority reports. The
+    # signed result is hashed over JCS bytes, which do not keep the order of an
+    # edit's members, so that order is not authenticated and decides nothing.
     full = factory.demos_send_record(factory.transaction_ref("bft-final", "bft-final"))["content"]["gcr_edits"]
-    for name, edits in (("partial-edits", full[:2]),
-                        ("reordered-edit-members", [dict(reversed(list(full[0].items())))] + full[1:])):
-        vectors.append(case("fv-bft-final-confirmed-" + name, "indeterminate",
-                            "a confirmed send whose edits are not exactly its four send edits establishes no payment",
-                            demos_record(gcr_edits=edits)))
+    vectors.append(case("fv-bft-final-confirmed-partial-edits", "indeterminate",
+                        "a confirmed send whose edits are not exactly its four send edits establishes no payment",
+                        demos_record(gcr_edits=full[:2])))
+    vectors.append(case("fv-bft-final-confirmed-edit-member-changed", "indeterminate",
+                        "a confirmed send whose edit names another amount than its send is not its four send edits",
+                        demos_record(gcr_edits=[dict(full[0], amount="1")] + full[1:])))
+    vectors.append(case("fv-bft-final-confirmed-reordered-edit-members", "pass",
+                        "the order of an edit's members is not signed (JCS sorts members), so reordering them changes neither the result's signature nor the decision",
+                        demos_record(gcr_edits=[dict(reversed(list(full[0].items())))] + full[1:])))
     # With `gasFeeSeparation` active the pinned node's apply prepends
     # fee-distribution edits (feeDistribution.ts shape; the burn/treasury
     # split is illustrative) and stores them: such a network is outside the
@@ -1983,6 +1989,28 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     # own controlled key: claim is the only source, and the sender is not it.
     vectors.append(case("fv-bft-final-payer-key-claim-did-listed-sender", "fail", "a did:demos:agent: claim names a key but DACS-1 defines no control of it, so a sender it names contradicts the phase beside the payer's own controlled claim",
                         claimed_sender, trusted_overrides=claims_of(buyer_claim, controlled_claim("did:demos:agent:" + claimed_key))))
+    # DACS-1 §6.3.1: a reader ignores a ?<parameters> suffix; the canonical
+    # identity is the scheme and identifier. key:demos:agent:<hex> is neither
+    # accepted scheme form.
+    vectors.append(case("fv-bft-final-payer-key-claim-unknown-parameters", "pass", "a controlled key: claim that carries a ?<parameters> suffix still binds the sender: readers ignore parameters (DACS-1 §6.3.1)",
+                        factory.model_input("bft-final"),
+                        trusted_overrides=claims_of(controlled_claim("key:" + buyer_key + "?jurisdiction=US"))))
+    vectors.append(case("fv-bft-final-payer-key-claim-demos-agent-form", "indeterminate", "key:demos:agent:<hex> is no Demos key claim, so it controls nothing",
+                        factory.model_input("bft-final"),
+                        trusted_overrides=claims_of(controlled_claim("key:demos:agent:" + buyer_key))))
+    # DEM-7's order: the FV-10 verdict, then `error` for a malformed phase
+    # value or claim, then `indeterminate` for no controlled claim, then the
+    # record. A malformed claim is `error` whatever the record shows, and an
+    # inclusion that FV decides is that verdict whatever the claim is.
+    malformed_claims = claims_of(controlled_claim("key:" + buyer_key, ["presentation-signature"]))
+    vectors.append(case("fv-bft-final-payer-key-claim-malformed-record-undecodable", "error", "a malformed claim is error before the record is decoded",
+                        demos_record(type="storage"), trusted_overrides=malformed_claims))
+    vectors.append(case("fv-bft-final-payer-key-claim-malformed-semantics-unpinned", "error", "a malformed claim is error before the record's semantics pin is consulted",
+                        factory.model_input("bft-final"),
+                        trusted_overrides=dict(malformed_claims, demosRecordProfile=None)))
+    vectors.append(case("fv-bft-final-payer-key-claim-malformed-certificate-forged", "fail", "FV-10: an inclusion whose certificate does not verify is fail before a malformed claim is error",
+                        changed("bft-final", lambda v: v["context"]["observation"]["finalityCertificate"]["signatures"][0].__setitem__("value", "A" * 86)),
+                        trusted_overrides=malformed_claims))
     # A malformed phase value is `error` before the claims' verdict, as DEM-7
     # orders them.
     vectors.append(case("fv-bft-final-payer-key-claim-none-controlled-amount-not-dem", "error", "a phase without a DEM amount is error whatever the bundle controls",

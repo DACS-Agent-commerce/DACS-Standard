@@ -66,6 +66,7 @@ GUARDS = frozenset({
     # RAV-R3 for pay-dem, before rail selection
     "preflight-requires-binding",
     "preflight-selects-configured-rail",
+    "preflight-requires-controlled-key-claim",
     "pay-dem-preflight-whatever-availability",
     # DEMOS-MAPPING §A.2 pay-dem party address
     "phase-party-address-projects",
@@ -93,9 +94,13 @@ GUARDS = frozenset({
     "signed-ed25519-address",
     "signed-native-edits",
     "signed-nonce-integer",
+    "signed-nonce-compares-by-value",
     "no-cross-phase-reuse",
     # DEM-2 and the DEMOS-MAPPING §A.2 native-send record profile
     "node-build-attested",
+    "claim-reference-parameters-ignored",
+    "consumer-fv5-record-binds-without-node-pin",
+    "consumer-fv5-edit-members-compare-by-name",
     "node-build-commit",
     "node-build-clean-tree",
     "decode-hash",
@@ -197,7 +202,6 @@ GUARDS = frozenset({
     "delivery-requires-admission-index",
     "delivery-admission-entries-validated",
     "delivery-history-is-admission-index",
-    "sb2-admitted-legacy-collapse",
     "sb2-admitted-malformed-error",
     "sb2-same-tuple-idempotent",
     "sb1-demos-id",
@@ -253,9 +257,14 @@ ADDRESS = re.compile(r"(?:0x)?([0-9a-f]{64})")
 # DEMOS-MAPPING §A.2 pay-dem party address: a Demos key, or a DACS-1
 # `did:demos:agent:` DID whose key component is 64 lower-case hex digits.
 PARTY_ADDRESS = re.compile(r"(?:0x|did:demos:agent:|key:)?([0-9a-f]{64})")
+# A `key:` or `did:demos:agent:` spelling is a ClaimReference, so DACS-1
+# §6.3.1 has a reader ignore a `?<parameters>` suffix on it; bare and `0x`
+# hex are not ClaimReferences and take none.
+PARTY_CLAIM_PARAMETERS = re.compile(r"(?:did:demos:agent:|key:)([0-9a-f]{64})\?.*", re.DOTALL)
 # A Demos key claim of a party's bundle is a DACS-1 ClaimReference: bare and
 # 0x hex are address spellings, not claims (DEMOS-MAPPING §A.2).
-DEMOS_KEY_CLAIM = re.compile(r"(key|did):(?:demos:agent:)?([0-9a-f]{64})")
+# Its identity is `(scheme, identifier)`; a `?<parameters>` suffix is ignored.
+DEMOS_KEY_CLAIM = re.compile(r"(key|did:demos:agent):([0-9a-f]{64})(?:\?.*)?", re.DOTALL)
 DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)")
 SIGNATURE = re.compile(r"0x[0-9a-f]{128}")
 RETAINED = {"jobId", "phaseIndex", "txHash", "nonce", "sender", "recipient", "amountOs"}
@@ -454,7 +463,10 @@ def decode(transaction, off, *, executed: bool = True):
     if not executed and "signed-nonce-integer" not in off:
         # demosdk signs a JSON integer nonce; the pinned node never applies a string.
         nonce = content.get("nonce")
-        if not (isinstance(nonce, int) and _safe_integer(nonce)):
+        # JSON numbers compare by value (DEMOS-MAPPING §A.2 *Decoding*): `9.0`
+        # is the integer 9, which JSON.stringify signs as `9`. The wrong
+        # implementation takes only a host integer type.
+        if not _safe_integer(nonce) or ("signed-nonce-compares-by-value" in off and not isinstance(nonce, int)):
             return None
     if not executed and "signed-timestamp" not in off:
         timestamp = content.get("timestamp")
@@ -800,9 +812,11 @@ def fv5_result(result, record, protocol_input: dict, block, off) -> bool:
     ):
         return False
     if "fv5-result-binds-record" not in off and not (
-        _exact_json(result["record"], record)
+        # Signed over JCS bytes, the result's record is the read record up to
+        # member order, which the signature does not cover.
+        _jcs_equal(result["record"], record)
         # A ChainTxRef compares by its JCS bytes, as the settlement-finality
-        # reference compares it; the record's member order is its own.
+        # reference compares it.
         and _jcs_equal(result["transactionRef"],
                        {"kind": "demos", "txHash": record.get("hash"), "blockNumber": record.get("blockNumber")})
     ):
@@ -1005,7 +1019,7 @@ def party_address(value, off):
     if "phase-party-address-projects" in off:
         # The wrong implementation compares the phase's spelling as given.
         return value
-    match = PARTY_ADDRESS.fullmatch(value) if isinstance(value, str) else None
+    match = (PARTY_ADDRESS.fullmatch(value) or PARTY_CLAIM_PARAMETERS.fullmatch(value)) if isinstance(value, str) else None
     return match[1] if match else None
 
 
@@ -1045,7 +1059,9 @@ def payer_claims(phase, off):
                 keys.add(match[1])
             continue
         match = DEMOS_KEY_CLAIM.fullmatch(claim["claim"])
-        if not match:
+        # The wrong implementation matches the whole reference string, so a
+        # `?<parameters>` suffix DACS-1 has a reader ignore makes the claim none.
+        if not match or ("claim-reference-parameters-ignored" in off and "?" in claim["claim"]):
             continue
         # The wrong implementation takes any step (6) mechanism as control of any scheme.
         controlled = (claim["control"] in CLAIM_CONTROLS if "control-is-the-schemes-mechanism" in off
@@ -1180,6 +1196,13 @@ def rail_preflight(protocol_input: dict, off) -> tuple[str, dict]:
     gated = availability in RAV_R3_GATED or "pay-dem-preflight-whatever-availability" not in off
     if gated and "preflight-requires-binding" not in off and not all(binding_members(protocol_input, off).values()):
         return "fail", {"railSelectable": False}
+    # The payer's bundle, when the preflight holds it, must control a Demos key
+    # claim: DEM-1 signs for no other key, so a bundle that controls none (a
+    # session-key presentation, a listing only) is refused here, before the
+    # Agreement is signed, not at settle.
+    if gated and "payerKeyClaims" in protocol_input and "preflight-requires-controlled-key-claim" not in off:
+        if not payer_claims({"payerKeyClaims": protocol_input["payerKeyClaims"]}, off):
+            return "fail", {"railSelectable": False}
     if "preflight-selects-configured-rail" in off:
         return "fail", {"railSelectable": False}
     return "pass", {"railSelectable": True}
@@ -1423,9 +1446,13 @@ def dem7(protocol_input: dict, off) -> str:
         return "indeterminate"
     record = read.get("record") if read.get("state") == "found" else None
     projection = decode(record, off) if record is not None else None
-    if projection is None or not pinned(read, off):
-        return "indeterminate"
     reference = protocol_input["signedEvidence"]["txRef"]
+    # DEM-7 binds a record two ways: from a pinned node (a plain read) or as
+    # FV-5 authenticates it. A signed result carries its own record, so the
+    # build of the node that served the plain read is not what it rests on.
+    signed = fv5_authenticated(read, protocol_input, off, reference)
+    if projection is None or not (signed and "consumer-fv5-record-binds-without-node-pin" not in off or pinned(read, off)):
+        return "indeterminate"
     expected_values = {
         "txHash": reference["txHash"],
         "blockNumber": reference["blockNumber"],
@@ -1445,13 +1472,18 @@ def dem7(protocol_input: dict, off) -> str:
             decision = "indeterminate"
         if decision != "pass":
             return "indeterminate" if "consumer-authenticated-contradiction-fails" in off else decision
-        if not sends_payment(record, off):
+        # A signed result is hashed over JCS bytes, which do not keep member
+        # order: for a record FV-5 authenticates the edits compare by member,
+        # as the settlement-finality reference compares them. A plain read is
+        # the node's own text, whose member order the node compares.
+        if not (sends_payment(record, off) if not signed or "consumer-fv5-edit-members-compare-by-name" in off
+                else "confirmed-requires-send-edits" in off or _demos_send_edits_match(record["content"])):
             return "indeterminate"
         return "indeterminate" if "consumer-admits-confirmed" in off else "pass"
     # FV-5's signed result refutes the payment only with the bft-final
     # inclusion of the presented reference in the block it names: a signed
     # failure about a fork or an unfinalized block decides nothing.
-    authenticated = fv5_authenticated(read, protocol_input, off, reference) and presented_final(
+    authenticated = signed and presented_final(
         read, protocol_input, "consumer-refutation-requires-bft-final-inclusion", off)
     if is_bound and status == "failed" and (
         authenticated or "consumer-failed-requires-authentication" in off
@@ -1476,15 +1508,15 @@ ADMISSION = frozenset({"txRef", "jobId", "phaseIndex"})
 
 def valid_admission(admission) -> bool:
     """One admitted reference: its raw `txRef`, the `(jobId, phaseIndex)` it
-    was admitted for and, only for verified legacy evidence, `legacy: true`.
+    was admitted for. No Demos reference is legacy evidence (SB-1), so the
+    admission has no `legacy` member.
     The reference payee validates its index with this same check."""
     return (
         isinstance(admission, dict)
-        and ADMISSION <= set(admission) <= ADMISSION | {"legacy"}
+        and set(admission) == ADMISSION
         and isinstance(admission["txRef"], dict)
         and isinstance(admission["jobId"], str) and admission["jobId"] != ""
         and isinstance(admission["phaseIndex"], int) and _safe_integer(admission["phaseIndex"])
-        and isinstance(admission.get("legacy", False), bool)
     )
 
 
@@ -1552,14 +1584,10 @@ def admit_for_delivery(protocol_input: dict, off) -> tuple[str, dict]:
             return result("error")
     elif history(admissions) != history(index["admissions"]) and "delivery-history-is-admission-index" not in off:
         return result("error")
-    # SB-1 projects every admitted reference, collapsing a verified legacy
-    # spelling, before SB-2 compares; one that cannot project is malformed.
+    # SB-1 projects every admitted reference before SB-2 compares; one that
+    # cannot project is malformed. A Demos reference has no legacy spelling.
     presented = demos_id(protocol_input["signedEvidence"]["txRef"], off)
-    keys = [
-        demos_id(admitted.get("txRef"), off,
-                 legacy=admitted.get("legacy") is True and "sb2-admitted-legacy-collapse" not in off)
-        for admitted in admissions
-    ]
+    keys = [demos_id(admitted.get("txRef"), off) for admitted in admissions]
     if (presented is None or None in keys) and "sb2-admitted-malformed-error" not in off:
         return result("error")
     others = [
@@ -1572,7 +1600,7 @@ def admit_for_delivery(protocol_input: dict, off) -> tuple[str, dict]:
     return result("pass")
 
 
-def demos_id(reference, off, *, legacy=False):
+def demos_id(reference, off):
     if not (isinstance(reference, dict) and set(reference) == {"kind", "txHash", "blockNumber"}
             and reference["kind"] == "demos" and _safe_integer(reference["blockNumber"])):
         return None
@@ -1581,7 +1609,7 @@ def demos_id(reference, off, *, legacy=False):
         return None
     if "sb1-demos-shape" in off:
         return "demos:" + value
-    if legacy or "sb1-demos-canonical" in off:
+    if "sb1-demos-canonical" in off:
         value = value.removeprefix("0x").lower()
     if not HASH.fullmatch(value):
         return None
@@ -1589,7 +1617,7 @@ def demos_id(reference, off, *, legacy=False):
 
 
 def project_id(protocol_input, off):
-    key = demos_id(protocol_input["txRef"], off, legacy=protocol_input.get("legacy", False))
+    key = demos_id(protocol_input["txRef"], off)
     return ("pass" if key else "error"), {"settlementTxId": key}
 
 
@@ -1601,7 +1629,7 @@ def resolve_group(protocol_input, off):
         # The wrong implementation adds its own earlier admissions, so its
         # result cannot be reproduced from the presented set.
         records = records + protocol_input["consumerAdmissions"]
-    keys = [demos_id(record["txRef"], off, legacy=record.get("legacy", False)) for record in records]
+    keys = [demos_id(record["txRef"], off) for record in records]
     if None in keys:
         return "error", {"records": []}
     groups = {}
@@ -1812,7 +1840,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         }
         self.assertEqual({"delivery-after-all-gates", "delivery-same-tuple-readmitted", "delivery-to-0x-payee-address",
                           "delivery-to-did-payee-address", "delivery-from-0x-paying-key",
-                          "delivery-fv-form-result"}, delivered)
+                          "delivery-fv-form-result", "delivery-fv-form-result-self-reported-node",
+                          "delivery-fv-form-result-reordered-edit-members"}, delivered)
         for name in delivered:
             protocol_input = self.cases[name]["protocolInput"]
             self.assertTrue(fv5_authenticated(protocol_input["recordRead"], protocol_input, frozenset()))
@@ -1909,6 +1938,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 self.assertTrue(edits_match(served))
         permitted = [vector["name"] for vector in self.data["vectors"] if vector["want"].get("broadcastPermitted")]
         self.assertEqual(["first-broadcast-after-durable-retention", "broadcast-prefixed-send-argument",
+                          "broadcast-signed-nonce-integer-valued-number",
                           "broadcast-with-rail-network-entry-among-several",
                           "broadcast-to-0x-payee-address", "broadcast-to-did-payee-address",
                           "broadcast-from-did-paying-key", "confirm-from-key-claim-paying-key",
@@ -2244,7 +2274,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                           "sign-without-execution-result-policy", "sign-with-malformed-execution-result-policy",
                           "sign-with-unknown-execution-result-policy-kind",
                           "sign-with-rail-network-entry-among-several",
-                          "sign-with-key-claim-paying-key", "sign-with-foreign-key-claim-listed"}
+                          "sign-with-key-claim-paying-key", "sign-with-foreign-key-claim-listed",
+                          "sign-with-key-claim-parameters-paying-key"}
                          | {"sign-with-" + suffix for suffix in (*NETWORK_VARIANTS, *UNUSABLE_TRUST)},
                          {name for name in presign if presign[name]["expected"] != "error"})
         # A party address that does not project is refused before signing,
@@ -2525,33 +2556,29 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         live = self.cases["consumer-node2-confirmed-refused"]["protocolInput"]["phase"]
         self.assertEqual({"amount": "9.5", "currency": "DEM"}, live["amount"])
 
-    def test_admitted_legacy_spellings_collapse_before_sb2(self):
+    def test_a_demos_reference_has_no_legacy_spelling(self):
+        """SB-1: only the frozen EVM, Solana and x402 arms have legacy
+        spellings. No datum marks a Demos reference legacy, so a `0x` or
+        upper-case Demos `txHash` is malformed (`error`) whoever calls it
+        legacy, and an admission carries no `legacy` member."""
         base = self.cases["delivery-hash-admitted-for-another-job"]
         tx_hash = base["protocolInput"]["signedEvidence"]["txRef"]["txHash"]
         for spelling in ("0x" + tx_hash, tx_hash.upper(), "0x" + tx_hash.upper()):
-            for legacy, verdict in ((True, "indeterminate"), (False, "error"), (None, "error")):
-                with self.subTest(spelling=spelling[:6], legacy=legacy):
-                    case = json.loads(json.dumps(base))
-                    # The presented history and the index snapshot hold the same admission.
-                    for admission in (case["protocolInput"]["consumerAdmissions"][0],
-                                      case["protocolInput"]["admissionIndex"]["admissions"][0]):
-                        admission["txRef"]["txHash"] = spelling
-                        if legacy is not None:
-                            admission["legacy"] = legacy
-                    expected, want = evaluate(case)
-                    self.assertEqual(verdict, expected)
-                    self.assertFalse(want["deliveryAuthorized"])
-                    self.assertFalse(want["settlementAccounting"])
-        # The same spelling for the same tuple is still idempotent.
-        same = json.loads(json.dumps(self.cases["delivery-same-tuple-readmitted"]))
-        for admission in (same["protocolInput"]["consumerAdmissions"][0],
-                          same["protocolInput"]["admissionIndex"]["admissions"][0]):
-            admission["txRef"]["txHash"] = "0x" + tx_hash.upper()
-            admission["legacy"] = True
-        self.assertEqual("pass", evaluate(same)[0])
-        group = self.cases["sb2-demos-legacy-spelling-collision"]
-        self.assertEqual(["indeterminate", "indeterminate"],
-                         [record["decision"] for record in evaluate(group)[1]["records"]])
+            with self.subTest(spelling=spelling[:6]):
+                case = json.loads(json.dumps(base))
+                # The presented history and the index snapshot hold the same admission.
+                for admission in (case["protocolInput"]["consumerAdmissions"][0],
+                                  case["protocolInput"]["admissionIndex"]["admissions"][0]):
+                    admission["txRef"]["txHash"] = spelling
+                expected, want = evaluate(case)
+                self.assertEqual("error", expected)
+                self.assertFalse(want["deliveryAuthorized"])
+                self.assertFalse(want["settlementAccounting"])
+        for name in ("sb1-demos-current-prefixed", "sb1-demos-current-uppercase", "sb1-demos-prefixed-upper-case"):
+            self.assertEqual("error", evaluate(self.cases[name])[0])
+            self.assertNotIn("legacy", self.cases[name]["protocolInput"])
+        self.assertEqual("error", evaluate(self.cases["sb2-demos-noncanonical-spelling"])[0])
+        self.assertIn("A Demos `txHash` has no legacy spelling", SPEC.read_text(encoding="utf-8"))
 
     def test_a_flag_or_label_never_decides_fv5(self):
         """FV-5 is the signed execution result: in every operation, a read
@@ -3234,12 +3261,19 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertEqual("pass", evaluate(self.cases["resume-without-proof-confirmed"])[0])
 
     def test_restart_makes_a_retained_transfer_maybe_broadcast(self):
-        """DEM-6: a crash can fall between a call that carried the signed
-        bytes and its journal entry, so after a (re)start a retained transfer
-        is maybe-broadcast whatever state the handler recorded."""
+        """DEM-6: a handler that journals late, or a journal that lost its
+        last write, shows no entry for a call that was made, so after a
+        (re)start a retained transfer is maybe-broadcast whatever state the
+        handler recorded, and a missing entry never shows that nothing left.
+        The liveness cost is stated beside the rule."""
         spec = SPEC.read_text(encoding="utf-8")
-        self.assertIn("a transfer the handler finds retained when it starts or restarts MUST be treated as "
-                      "possibly broadcast, whatever progress its journal records.", spec)
+        self.assertIn("A transfer the handler finds retained when it starts or restarts MUST therefore be treated "
+                      "as possibly broadcast, whatever progress its journal records, and the handler MUST NOT "
+                      "conclude from a missing entry that nothing left.", spec)
+        self.assertNotIn("A crash can fall between a call that carried the signed transaction and the journal entry", spec)
+        self.assertIn("A start or restart between the retention and the first `confirm` leaves the handler with a "
+                      "retained transfer it must treat as possibly broadcast", spec)
+        self.assertIn("the phase stays `substrate` and ends `failed-substrate` at ST-7 expiry", spec)
         for name in ("confirm-after-restart-refused", "replacement-after-restart-refused",
                      "broadcast-after-restart-from-confirm-returned-refused", "broadcast-gate-restart-unstated"):
             with self.subTest(name=name):
@@ -3416,7 +3450,10 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             with self.subTest(name=vector["name"]):
                 proof = read.get("appliedTransfer")
                 if vector["expected"] == "pass":
-                    self.assertTrue(edits_match(read["record"]["content"]))
+                    # A record FV-5 authenticates compares its edits by member,
+                    # as the settlement-finality reference does.
+                    self.assertTrue(edits_match(read["record"]["content"])
+                                    or _demos_send_edits_match(read["record"]["content"]))
                     amount = (vector["protocolInput"].get("phase") or vector["protocolInput"]["retainedTransfer"])["amountOs"]
                     self.assertEqual((amount, amount), committed_change(proof))
                     balances = proof["committedBalances"]
@@ -3644,7 +3681,17 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                         read["nodeProfile"] = "pinned"
                     else:
                         read["nodeBuild"] = build
-                    self.assertNotEqual("pass", evaluate(mutated)[0])
+                    # The pin is what a plain read rests on (DEM-2, and DEM-7
+                    # for a plain read). A record FV-5 authenticates (delivery
+                    # needs one) is bound as the signed result carries it,
+                    # whatever node served the read (DEM-7).
+                    if name == "delivery-after-all-gates":
+                        self.assertTrue(fv5_authenticated(read, mutated["protocolInput"], frozenset(),
+                                                          mutated["protocolInput"]["signedEvidence"]["txRef"]))
+                        self.assertEqual("pass", evaluate(mutated)[0])
+                        self.assertNotEqual("pass", evaluate(mutated, {"consumer-fv5-record-binds-without-node-pin"})[0])
+                    else:
+                        self.assertNotEqual("pass", evaluate(mutated)[0])
         # Each member of the pin has its own refusing vector on both paths.
         for guard in ("node-build-attested", "node-build-commit", "node-build-clean-tree"):
             operations = {v["operation"] for v in self.data["vectors"] if guard in v["guards"]}
@@ -3708,10 +3755,16 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         # compares them exactly, which is stricter and fails closed.
         self.assertIn("refuses a native transaction whose edits still differ after it normalises their amounts", demos)
         self.assertIn("This profile is stricter: it compares the edits exactly as listed, as `JSON.stringify` "
-                      "serializes them, members in order. A JSON number therefore compares by value", demos)
+                      "serializes them, members in order, for a record read as the node's own text", demos)
+        self.assertIn("the order of an edit's members is not signed and carries no meaning there: the edits compare "
+                      "by member name and value, in list order. A JSON number therefore compares by value", demos)
+        self.assertIn("DEM-7 and FV-5 admit no record whose sender is none", demos)
+        self.assertIn("A `?<parameters>` suffix is not part of that identity", demos)
+        self.assertIn("so DEM-7 and FV-5 bind it under the record semantics pinned in the verifier's configuration "
+                      "with no node pin", demos)
         self.assertIn("An applied transfer that an FV-5 execution result carries is not a separate authority", demos)
         self.assertIn("A bound `failed` record from an ordinary RPC read is `indeterminate`.", spec)
-        self.assertIn("collapsing a verified legacy spelling", spec)
+        self.assertIn("A Demos `txHash` has no legacy spelling", spec)
 
     def test_sb2_history_is_the_payees_delivery_input_only(self):
         """SB-2 is scoped to the presented set and DACS-5 derivations must be
@@ -3876,8 +3929,10 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         spec = SPEC.read_text(encoding="utf-8")
         self.assertIn("For a `pay-dem` rail (§9.5.9) the preflight applies whatever the rail's availability, "
                       "`live` included", spec)
-        self.assertIn("so before Agreement signature and the PIPE-6 commitment, and MUST NOT select or offer the rail "
-                      "without it", spec)
+        self.assertIn("and so before Agreement signature and the PIPE-6 commitment, and MUST NOT select the rail for "
+                      "the payer, or let the payer sign an Agreement on it, without it", spec)
+        self.assertIn("MAY list, offer or select the rail", spec)
+        self.assertIn("holds a controlled Demos key claim (DEMOS-MAPPING §A.2), since DEM-1 signs for no other key", spec)
         self.assertIn("one found missing at settle makes the rail non-operational for this payer under RAV-R4", spec)
         preflights = {name: case for name, case in self.cases.items() if case["operation"] == "rail-preflight"}
         self.assertEqual({"preflight-live-rail-with-binding", "preflight-live-rail-without-applied-payment-authority",
@@ -3886,7 +3941,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                           "preflight-live-rail-without-execution-result-policy",
                           "preflight-operator-gated-rail-without-pinned-node",
                           "preflight-operator-gated-rail-with-binding",
-                          "preflight-live-rail-with-rail-network-entry-among-several"}
+                          "preflight-live-rail-with-rail-network-entry-among-several",
+                          "preflight-bundle-controls-key-claim", "preflight-session-key-bundle-refused"}
                          | {"preflight-live-rail-with-" + suffix for suffix in (*NETWORK_VARIANTS, *UNUSABLE_TRUST)},
                          set(preflights))
         for availability in ("disabled", "failed", "mocked"):

@@ -33,7 +33,7 @@ from frozen_dacs5_v05_reader import (  # noqa: E402
 )
 from scripts.jcs import canonicalize  # noqa: E402
 from scripts.settlement_finality_reference import (  # noqa: E402
-    DEM_AMOUNT_RE, bft_final_trust, verify_finality, _demos_committed_change, _demos_native_send, _demos_os_spelling,
+    DEM_AMOUNT_RE, DEMOS_KEY_CLAIM_RE, bft_final_trust, verify_finality, _demos_committed_change, _demos_native_send, _demos_os_spelling,
     _demos_send_edits_match,
 )
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
@@ -170,7 +170,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(227, self.data["count"])
+        self.assertEqual(233, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -552,19 +552,68 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 outcome = self.evaluate_case(case)
                 self.assertEqual(expected, outcome["decision"])
                 self.assertIn(reason, outcome["reason"])
-        # Each edit member, its order and its JSON type are compared.
+        # Each edit member and its JSON type are compared; the order of an
+        # edit's members is not authenticated (JCS sorts them), so it is not.
         content = result["record"]["content"]
         for label, mutate in (
             ("payment-only", lambda c: c.__setitem__("gcr_edits", c["gcr_edits"][:2])),
             ("credit-elsewhere", lambda c: c["gcr_edits"][1].__setitem__("account", c["from"])),
             ("boolean-nonce", lambda c: c["gcr_edits"][3].__setitem__("amount", True)),
-            ("reordered", lambda c: c["gcr_edits"].__setitem__(0, dict(reversed(list(c["gcr_edits"][0].items()))))),
             ("rollback", lambda c: c["gcr_edits"][0].__setitem__("isRollback", True)),
         ):
             with self.subTest(edits=label):
                 changed = copy.deepcopy(content)
                 mutate(changed)
                 self.assertFalse(_demos_send_edits_match(changed))
+        reordered = copy.deepcopy(content)
+        reordered["gcr_edits"][0] = dict(reversed(list(reordered["gcr_edits"][0].items())))
+        self.assertTrue(_demos_send_edits_match(reordered))
+        self.assertEqual(canonicalize(content), canonicalize(reordered))
+
+    def test_demos_claims_ignore_parameters_and_take_two_schemes_only(self):
+        """DACS-1 §6.3.1: a reader ignores a `?<parameters>` suffix, and the
+        canonical identity is the scheme and identifier. DEMOS-MAPPING §A.2
+        names exactly `key:<hex>` and `did:demos:agent:<hex>`."""
+        key = "ab" * 32
+        for claim, expected in (
+            ("key:" + key, ("key", key)),
+            ("key:" + key + "?jurisdiction=US", ("key", key)),
+            ("key:" + key + "?a=1&b=2", ("key", key)),
+            ("did:demos:agent:" + key, ("did:demos:agent", key)),
+            ("did:demos:agent:" + key + "?jurisdiction=US", ("did:demos:agent", key)),
+            ("key:demos:agent:" + key, None),
+            ("did:" + key, None),
+            ("key:0x" + key, None),
+            ("key:" + key.upper(), None),
+            ("key:" + key + "x", None),
+            (key, None),
+        ):
+            with self.subTest(claim=claim):
+                match = DEMOS_KEY_CLAIM_RE.match(claim)
+                self.assertEqual(expected, None if match is None else match.groups())
+        for name, expected in (
+            ("fv-bft-final-payer-key-claim-unknown-parameters", "pass"),
+            ("fv-bft-final-payer-key-claim-demos-agent-form", "indeterminate"),
+        ):
+            with self.subTest(case=name):
+                self.assertEqual(expected, self.evaluate_case(self.cases[name])["decision"])
+
+    def test_demos_record_decides_in_dem7_order(self):
+        """DEM-7: the FV-10 verdict of the inclusion, then `error` for a
+        malformed phase value or claim, then the record. A record that does not
+        decode or whose semantics are unpinned is never reached by a malformed
+        claim, and a forged certificate is `fail` whatever the claim is."""
+        for name, expected in (
+            ("fv-bft-final-payer-key-claim-malformed-record-undecodable", "error"),
+            ("fv-bft-final-payer-key-claim-malformed-semantics-unpinned", "error"),
+            ("fv-bft-final-payer-key-claim-malformed-certificate-forged", "fail"),
+        ):
+            with self.subTest(case=name):
+                self.assertEqual(expected, self.evaluate_case(self.cases[name])["decision"])
+        # The same inputs with well-formed claims keep the record's own verdict.
+        undecodable = copy.deepcopy(self.cases["fv-bft-final-payer-key-claim-malformed-record-undecodable"])
+        undecodable["trustedOverrides"] = {}
+        self.assertEqual("indeterminate", self.evaluate_case(undecodable)["decision"])
 
     def test_fee_separated_record_follows_the_dem7_order(self):
         """A fee-separated record establishes no payment. A confirmed result

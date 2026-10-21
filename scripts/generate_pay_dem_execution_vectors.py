@@ -439,6 +439,13 @@ def fee_separated_edits(content: dict[str, Any], tx_hash: str) -> list[dict[str,
             edit("add", FEE_TREASURY_ACCOUNT, 1000000000)] + served_edits(content, tx_hash)
 
 
+def reordered_edits() -> list[dict[str, Any]]:
+    """The served edits with the first edit's members in reverse order: the
+    same JCS bytes, so a signed result cannot tell them apart."""
+    edits = served_edits(send_content(), TX_HASH)
+    return [dict(reversed(list(edits[0].items())))] + edits[1:]
+
+
 def record(
     status: str, content: dict[str, Any] | None = None, *, edits: Any = _SERVED, **changes: Any,
 ) -> dict[str, Any]:
@@ -1039,10 +1046,13 @@ REFERENCE_GUARDS = ["claims-are-claim-references"]
 
 def preflight(name: str, expected: str, guards: list[str], note: str, *, availability: str = "live",
               pinned_node: Any = True, applied_authority: Any = True,
-              fee_separation_unscheduled: Any = True, binding: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+              fee_separation_unscheduled: Any = True, binding: list[dict[str, Any]] | None = None,
+              payer_key_claims: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """RAV-R3 for a new production session, before the rail is selected:
     `availability` and `railNetwork` are the pinned RailDefinition's, and the
-    preflight finds the payer's Demos binding entry for that network."""
+    preflight finds the payer's Demos binding entry for that network. With
+    `payer_key_claims`, the claims of the payer's bundle that the Agreement
+    pins, which must hold a controlled Demos key claim."""
     return _vector(
         name, "rail-preflight",
         _apply({
@@ -1051,6 +1061,7 @@ def preflight(name: str, expected: str, guards: list[str], note: str, *, availab
             "finalityProfile": FINALITY_PROFILE,
             "demosBinding": (demos_binding(pinned_node, applied_authority, fee_separation_unscheduled)
                              if binding is None else binding),
+            **({} if payer_key_claims is None else {"payerKeyClaims": payer_key_claims}),
         }, {}),
         expected, {"railSelectable": expected == "pass"}, "RAV-R3/DEM-1", guards, note,
     )
@@ -1122,14 +1133,13 @@ ALL_GATES_PASS = {"sb1": "pass", "pb": "pass"}
 
 
 def _admission(admission: dict[str, Any]) -> dict[str, Any]:
-    """One raw admitted reference: `txHash` overrides the canonical spelling
-    and `legacy` marks verified legacy evidence."""
+    """One raw admitted reference: `txHash` overrides the canonical spelling.
+    A Demos reference has no legacy spelling, so there is no `legacy` member."""
     return _apply(
         {
             "jobId": admission["jobId"],
             "phaseIndex": admission["phaseIndex"],
             "txRef": {"kind": "demos", "txHash": admission.get("txHash", TX_HASH), "blockNumber": BLOCK},
-            "legacy": admission.get("legacy", _OMIT),
         },
         {},
     )
@@ -2056,6 +2066,12 @@ def build_vectors() -> list[dict[str, Any]]:
             read=found(record("failed"), authenticated=True, state=ROLLED_BACK),
         ),
         admit(
+            "consumer-failed-fv5-self-reported-node-fails", "fail", "DEM-7/FV-5",
+            ["consumer-failed-refutes", "consumer-fv5-record-binds-without-node-pin", "consumer-requires-confirmed-record"],
+            "DEM-7 binds a record as FV-5 authenticates it without a node pin: the signed result carries its own record, so the build of the node that served the read is not what it rests on.",
+            read=found(record("failed"), node=SELF_REPORTED_BUILD, authenticated=True, state=ROLLED_BACK),
+        ),
+        admit(
             "consumer-failed-fv-form-result-fails", "fail", "DEM-7/FV-5",
             ["consumer-failed-refutes", "consumer-requires-confirmed-record"],
             "FV-5's signed result in the settlement-finality corpus's combined form, with its rolled-back appliedTransfer, refutes the evidence too.",
@@ -2143,6 +2159,25 @@ def build_vectors() -> list[dict[str, Any]]:
             read=found(record("confirmed")),
             phase_context=phase(payerKeyClaims=[claim("cci-xm:evm:8453:0x" + PAYER_KEY[:40], "sr1-linkage"),
                                                 claim("key:" + PAYER_KEY), claim("lei:529900T8BM49AURSDO55", "holder-binding")]),
+        ),
+        admit(
+            "consumer-claim-key-unknown-parameters-controlled", "pass", "DEM-7",
+            ["claim-reference-parameters-ignored", "claims-are-claim-references", "consumer-admits-confirmed"],
+            "A ClaimReference's canonical identity is its scheme and identifier; DACS-1 §6.3.1 has a reader ignore a ?<parameters> suffix, so a controlled key: claim that carries one still binds the payer's key.",
+            read=found(record("confirmed")),
+            phase_context=phase(payerKeyClaims=[claim("key:" + PAYER_KEY + "?jurisdiction=US")]),
+        ),
+        admit(
+            "consumer-claim-key-demos-agent-form-is-no-claim", "indeterminate", "DEM-7",
+            ["consumer-requires-confirmed-record"],
+            "key:demos:agent:<hex> is neither key:<hex> nor did:demos:agent:<hex>: it is no Demos key claim, whatever mechanism is said to control it.",
+            read=found(record("confirmed")),
+            phase_context=phase(payerKeyClaims=[claim("key:demos:agent:" + PAYER_KEY)]),
+        ),
+        admit(
+            "consumer-payee-address-key-claim-parameters", "pass", "DEM-7", PARTY_GUARDS["admit"],
+            "A payeeAddress spelled as a key: ClaimReference ignores a ?<parameters> suffix as every reader of one does.",
+            read=found(record("confirmed")), phase_context=phase(payeeAddress="key:" + PAYEE_KEY + "?jurisdiction=US"),
         ),
         deliver(
             "delivery-sender-listed-not-controlled", "fail", "DEM-7/FV-5",
@@ -2260,6 +2295,20 @@ def build_vectors() -> list[dict[str, Any]]:
                       executionResult=execution_result(record("confirmed"), applied=APPLIED)),
         ),
         deliver(
+            "delivery-fv-form-result-self-reported-node", "pass", "DEM-7/FV-5",
+            ["consumer-admits-confirmed", "consumer-fv5-record-binds-without-node-pin"],
+            "A record FV-5 authenticates binds without a node pin, so a self-reporting node that served the read does not stop delivery.",
+            read=dict(found(record("confirmed"), node=SELF_REPORTED_BUILD, authenticated=True),
+                      executionResult=execution_result(record("confirmed"), applied=APPLIED)),
+        ),
+        deliver(
+            "delivery-fv-form-result-reordered-edit-members", "pass", "DEM-7/FV-5",
+            ["consumer-admits-confirmed", "consumer-fv5-edit-members-compare-by-name"],
+            "A signed result is hashed over JCS bytes, which do not keep member order, so a record FV-5 authenticates compares its edits by member name and value: reordering the members changes neither the signature nor the decision.",
+            read=dict(found(record("confirmed", edits=reordered_edits()), authenticated=True),
+                      executionResult=execution_result(record("confirmed", edits=reordered_edits()), applied=APPLIED)),
+        ),
+        deliver(
             "delivery-fv-form-result-applied-another-amount", "indeterminate", "DEM-7/FV-5",
             ["consumer-admits-confirmed", "delivery-requires-authenticated-record", "fv5-result-applied-transfer-binds-record"],
             "A signed result whose own appliedTransfer moved another amount than its confirmed record contradicts itself: no delivery.",
@@ -2307,12 +2356,6 @@ def build_vectors() -> list[dict[str, Any]]:
             "delivery-hash-admitted-for-another-job", "indeterminate", "DEM-7/SB-2", ["consumer-admits-confirmed", "delivery-sb2-own-admissions"],
             "pay-dem has no settlement-side job binding: a demos:{txHash} the payee already admitted for another job makes the group indeterminate.",
             admissions=[{"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX}],
-        ),
-        deliver(
-            "delivery-hash-admitted-legacy-spelling-for-another-job", "indeterminate", "DEM-7/SB-1/SB-2",
-            ["consumer-admits-confirmed", "delivery-sb2-own-admissions", "sb1-demos-shape", "sb2-admitted-legacy-collapse"],
-            "A verified legacy 0x/upper-case spelling admitted for another job collapses to the same demos:{txHash}; the group is indeterminate.",
-            admissions=[{"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX, "txHash": "0x" + TX_HASH.upper(), "legacy": True}],
         ),
         deliver(
             "delivery-admitted-reference-noncanonical", "error", "DEM-7/SB-1",
@@ -2369,8 +2412,8 @@ def build_vectors() -> list[dict[str, Any]]:
          ["delivery-admission-entries-validated"]),
         ("phase-index-string", {"jobId": OTHER_JOB_ID, "phaseIndex": str(PHASE_INDEX), "txRef": other_ref},
          ["delivery-admission-entries-validated"]),
-        ("legacy-not-boolean", {"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX, "txRef": other_ref,
-                                "legacy": "yes"}, ["delivery-admission-entries-validated"]),
+        ("legacy-member", {"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX, "txRef": other_ref,
+                           "legacy": True}, ["delivery-admission-entries-validated"]),
         ("extra-member", {"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX, "txRef": other_ref, "note": ""},
          ["delivery-admission-entries-validated"]),
         ("missing-tx-ref", {"jobId": OTHER_JOB_ID, "phaseIndex": PHASE_INDEX}, []),
@@ -2527,6 +2570,10 @@ def build_vectors() -> list[dict[str, Any]]:
         omit = changes.pop("omit", ())
         vectors.append(gate("broadcast-signed-" + name, "fail", "DEM-1", [guard, "signed-transfer-matches-retention"], note,
                             **consistent(_apply(signed_body, changes), omit=omit)))
+    vectors.append(gate("broadcast-signed-nonce-integer-valued-number", "pass", "DEM-1",
+                        ["signed-nonce-compares-by-value", "first-broadcast-allowed", "submission-completes-own-confirm"],
+                        "JSON numbers compare by value: a nonce spelled 9.0 is the integer 9, which JSON.stringify signs as 9, so the signature and hash are unchanged and the transfer may be broadcast.",
+                        **consistent(send_content(nonce=float(NONCE), amount=AMOUNT_OS))))
     vectors.append(gate("broadcast-dem-os-misconversion", "fail", "DEM-1",
                         ["retained-amount-is-phase-amount"], "1.5 DEM is 1500000000 OS, not 1500000001.",
                         **consistent(send_content(nonce=NONCE, amount=OTHER_AMOUNT_OS, amount_os=OTHER_AMOUNT_OS), amountOs=OTHER_AMOUNT_OS)))
@@ -2813,6 +2860,15 @@ def build_vectors() -> list[dict[str, Any]]:
              ["binding-network-is-rail-network", "first-broadcast-allowed", "submission-completes-own-confirm"],
              "The broadcast gate reads the entry for the rail's network, wherever it stands in the binding.",
              binding=several),
+        preflight("preflight-bundle-controls-key-claim", "pass",
+                  ["preflight-selects-configured-rail"],
+                  "A payer bundle that controls a key: claim passes the preflight beside the binding.",
+                  payer_key_claims=[claim("key:" + PAYER_KEY)]),
+        preflight("preflight-session-key-bundle-refused", "fail",
+                  ["consumer-binds-controlled-claims-only", "pay-dem-preflight-whatever-availability",
+                   "preflight-requires-controlled-key-claim"],
+                  "A bundle presented by a session key controls no Demos key claim, so DEM-1 would refuse to sign: the rail is not selectable, before the Agreement is signed.",
+                  payer_key_claims=[claim("key:" + PAYER_KEY, "none")]),
         preflight("preflight-live-rail-with-rail-network-entry-among-several", "pass",
                   ["binding-network-is-rail-network", "preflight-selects-configured-rail"],
                   "The preflight finds the rail's entry by its network.", binding=several),
@@ -2903,6 +2959,12 @@ def build_vectors() -> list[dict[str, Any]]:
         pre_sign("sign-with-key-claim-paying-key", "pass", ["phase-party-address-projects", "sign-allowed-when-configured"],
                  "A paying key spelled as the controlled key: claim of the retained bundle may be signed for.",
                  phase_context=phase(payerPayingKey="key:" + PAYER_KEY, payerKeyClaims=[claim("key:" + PAYER_KEY)])),
+        pre_sign("sign-with-key-claim-parameters-paying-key", "pass",
+                 ["claim-reference-parameters-ignored", "claims-are-claim-references", "phase-party-address-projects",
+                  "sign-allowed-when-configured"],
+                 "A key: claim that carries a ?<parameters> suffix (DACS-1 §6.3.1: readers ignore it) is still the controlled claim of the paying key.",
+                 phase_context=phase(payerPayingKey="key:" + PAYER_KEY + "?jurisdiction=US",
+                                     payerKeyClaims=[claim("key:" + PAYER_KEY + "?jurisdiction=US")])),
         pre_sign("sign-with-foreign-key-claim-listed", "pass", ["sign-allowed-when-configured"],
                  "Another key the bundle merely lists does not disturb the controlled paying key.",
                  phase_context=phase(payerKeyClaims=[claim("key:" + PAYER_KEY), claim("key:" + OTHER_KEY, "none")])),
@@ -2923,32 +2985,30 @@ def build_vectors() -> list[dict[str, Any]]:
         ]
 
     ref = {"kind": "demos", "txHash": TX_HASH, "blockNumber": BLOCK}
-    for name, value, legacy, expected in (
-        ("canonical", TX_HASH, False, "pass"),
-        ("legacy-spelling", "0x" + TX_HASH.upper(), True, "pass"),
-        ("current-prefixed", "0x" + TX_HASH, False, "error"),
-        ("current-uppercase", TX_HASH.upper(), False, "error"),
-        ("malformed", "gg" * 32, False, "error"),
-        ("short", TX_HASH[:-1], False, "error"),
+    for name, value, expected in (
+        ("canonical", TX_HASH, "pass"),
+        ("current-prefixed", "0x" + TX_HASH, "error"),
+        ("current-uppercase", TX_HASH.upper(), "error"),
+        ("prefixed-upper-case", "0x" + TX_HASH.upper(), "error"),
+        ("malformed", "gg" * 32, "error"),
+        ("short", TX_HASH[:-1], "error"),
     ):
         vectors.append(_vector("sb1-demos-" + name, "project-settlement-id",
-                               {"txRef": dict(ref, txHash=value), "legacy": legacy}, expected,
+                               {"txRef": dict(ref, txHash=value)}, expected,
                                {"settlementTxId": "demos:" + TX_HASH if expected == "pass" else None},
-                               "DEM-7/SB-1", [], "Project a verified raw Demos ChainTxRef to the byte-identical settlement ID."))
+                               "DEM-7/SB-1", [], "Project a verified raw Demos ChainTxRef to the byte-identical settlement ID; a Demos txHash has no legacy spelling."))
     for name, second_ref, expected in (
         ("two-job-collision", dict(ref, blockNumber=BLOCK + 1), "indeterminate"),
         ("distinct-hash-control", dict(ref, txHash=OTHER_TX_HASH), "pass"),
-        ("legacy-spelling-collision", dict(ref, txHash="0x" + TX_HASH.upper()), "indeterminate"),
+        ("noncanonical-spelling", dict(ref, txHash="0x" + TX_HASH.upper()), "error"),
     ):
         refs = [ref, second_ref]
         records = [{"jobId": job, "phaseIndex": PHASE_INDEX, "txRef": item} for job, item in zip((JOB_ID, OTHER_JOB_ID), refs)]
-        if name == "legacy-spelling-collision":
-            records[1]["legacy"] = True
         vectors.append(_vector("sb2-demos-" + name, "resolve-settlement-group", {"records": records, "consumerAdmissions": []},
                                expected,
-                               {"records": [{"settlementTxId": "demos:" + item["txHash"].removeprefix("0x").lower(),
-                                             "decision": expected} for item in refs]},
-                               "DEM-7/SB-1/SB-2", [], "Derive keys before grouping; no job, block or legacy spelling may split one transfer."))
+                               {"records": [] if expected == "error" else [
+                                   {"settlementTxId": "demos:" + item["txHash"], "decision": expected} for item in refs]},
+                               "DEM-7/SB-1/SB-2", [], "Derive keys before grouping; no job or block may split one transfer, and a spelling that is not the canonical hash is malformed."))
     # Settlement accounting and the DACS-5 derivation group the presented set
     # only: an earlier admission of the same hash for another job that is not
     # presented must not change the result, or a re-run of the derivation from
@@ -3059,9 +3119,9 @@ def build_vectors() -> list[dict[str, Any]]:
         gate("confirm-after-confirm-returned-refused", "fail", "DEM-6", ["no-rebroadcast", "retention-before-first-egress"],
              "After this submission's confirm returned, only its own broadcast follows, never another confirm.",
              broadcast_state="confirm-returned", request="confirm-retained"),
-        # DEM-6 after a restart: a crash can fall between a call carrying the
-        # signed bytes and the journal entry that records it, so a transfer
-        # retained before the (re)start is maybe-broadcast whatever was recorded.
+        # DEM-6 after a restart: a late-journaling handler, or a journal that
+        # lost its last write, shows no entry for a call that was made, so a
+        # transfer retained before the (re)start is maybe-broadcast whatever was recorded.
         gate("confirm-after-restart-refused", "fail", "DEM-6",
              ["no-rebroadcast", "restart-is-maybe-broadcast", "retention-before-first-egress"],
              "A retained transfer still recorded as never-broadcast after a restart may have reached a node: no confirm.",
@@ -3142,16 +3202,16 @@ def build_vectors() -> list[dict[str, Any]]:
             name = vector["name"]
             vector["guards"] = (
                 ["sb1-demos-id"] if name.endswith("-canonical") else
-                ["sb1-demos-id", "sb1-demos-shape"] if name.endswith("-legacy-spelling") else
-                ["sb1-demos-canonical", "sb1-demos-shape"] if name.endswith(("-current-prefixed", "-current-uppercase")) else
+                ["sb1-demos-canonical", "sb1-demos-shape"] if name.endswith(("-current-prefixed", "-current-uppercase", "-prefixed-upper-case")) else
                 ["sb1-demos-shape"]
             )
         elif vector["operation"] == "resolve-settlement-group":
+            malformed = vector["name"].endswith("-noncanonical-spelling")
             vector["guards"] = sorted(
-                ["sb1-demos-id"]
+                ([] if malformed else ["sb1-demos-id"])
                 + (["sb2-group-raw-references"] if vector["expected"] == "indeterminate" else [])
                 + (["sb2-presented-set-only"] if vector["protocolInput"]["consumerAdmissions"] else [])
-                + (["sb1-demos-shape"] if vector["name"].endswith("-legacy-spelling-collision") else [])
+                + (["sb1-demos-canonical", "sb1-demos-shape"] if malformed else [])
             )
     return vectors
 
@@ -3255,7 +3315,7 @@ def document() -> dict[str, Any]:
             "call": "classify-egress-outcome: the handler's own step that returned, pre-egress-check (its balance read before any confirm or broadcast carried the signed bytes), confirm or broadcast; any other value may have carried the bytes",
             "outcome": "classify-egress-outcome: what that step returned: insufficient-balance, refused-not-valid (demosdk confirm()/broadcast() valid false), refused-by-dem1 (the handler's own refusal of the completing broadcast), transport-error, timeout, accepted, or anything else (unrecognized). Only insufficient-balance found by a pre-egress-check on an un-restarted journal recording never-broadcast is permanent; every other outcome is substrate with the retained hash kept and no further call, never transient",
             "cause": "classify-egress-outcome want member: call:outcome, so the result keeps the step and reply that produced it",
-            "consumerAdmissions": "raw txRef, (jobId, phaseIndex) and legacy (verified legacy evidence) of pay-dem records the consumer admitted earlier. For admit-for-delivery they are the payee's own admissions, which its delivery check presents with the evidence: derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error. For resolve-settlement-group they lie outside the presented records, and settlement accounting and the DACS-5 derivation never add them",
+            "consumerAdmissions": "raw txRef and (jobId, phaseIndex) of pay-dem records the consumer admitted earlier. For admit-for-delivery they are the payee's own admissions, which its delivery check presents with the evidence: derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error. For resolve-settlement-group they lie outside the presented records, and settlement accounting and the DACS-5 derivation never add them",
             "admissionIndex": "admit-for-delivery: the snapshot (revision, admissions) of the payee's durable admission index read for this check. consumerAdmissions must equal its admissions as a multiset of exact JCS bytes; a missing or malformed snapshot, or a presented history that omits or adds an admission, is error and authorizes no delivery. The payee adds this phase's admission with a write conditional on that revision",
             "guards": "checks whose removal makes this vector fail",
         },

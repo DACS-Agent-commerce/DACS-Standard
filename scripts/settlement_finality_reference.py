@@ -45,12 +45,14 @@ POSITION_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 DEMOS_KEY_RE = re.compile(r"(?:0x)?([0-9a-f]{64})\Z")
 # DEMOS-MAPPING §A.2 Demos key claim: a payer-bundle claim whose DACS-1
-# ClaimReference is exactly `key:<64 lower-case hex>` or
+# ClaimReference has the canonical identity `key:<64 lower-case hex>` or
 # `did:demos:agent:<64 lower-case hex>` (DACS-1 §6.3.1); it projects to the 64
-# digits. Bare and `0x` hex are address spellings, not ClaimReferences, and a
-# `cci-xm:` reference has no registered mapping to a Demos account key: none of
-# them is a Demos key claim.
-DEMOS_KEY_CLAIM_RE = re.compile(r"(key|did):(?:demos:agent:)?([0-9a-f]{64})\Z")
+# digits. The `?<parameters>` suffix is not part of that identity: DACS-1 has
+# readers ignore parameters they do not know, never reject on them. Bare and
+# `0x` hex are address spellings, not ClaimReferences, and a `cci-xm:`
+# reference has no registered mapping to a Demos account key: none of them is
+# a Demos key claim. Group 1 is the scheme prefix, group 2 the 64 digits.
+DEMOS_KEY_CLAIM_RE = re.compile(r"(key|did:demos:agent):([0-9a-f]{64})(?:\?.*)?\Z", re.DOTALL)
 # How a payer bundle claim's control was established: the DACS-1 §6.3.2
 # step (6) mechanisms, as the verifier's own check of the bundle that
 # `payer.bundleHash` pins reports them, or "none" for a claim the bundle only
@@ -1122,10 +1124,10 @@ def _json_value(value: Any) -> tuple[str, Any]:
 def _demos_send_edits_match(content: dict) -> bool:
     """DEMOS-MAPPING §A.2: a `confirmed` record shows payment only when its
     `gcr_edits`, each `txhash` blanked, are the four edits of its send in
-    member order. The pinned node applies a missing or empty list as a
-    successful no-op. Necessary, never sufficient. The node compares the
-    serialized lists, so a number compares by value, as JSON.stringify
-    spells it."""
+    list order (each edit's members compare by name: JCS does not preserve
+    their order). The pinned node applies a missing or empty list as a
+    successful no-op. Necessary, never sufficient. A number compares by
+    value, as JSON.stringify spells it."""
     edits, data, sender = content.get("gcr_edits"), content.get("data"), content.get("from_ed25519_address")
     if not (isinstance(edits, list) and len(edits) == 4 and all(isinstance(edit, dict) for edit in edits)
             and isinstance(data, list) and len(data) == 2 and isinstance(data[1], dict)
@@ -1141,9 +1143,12 @@ def _demos_send_edits_match(content: dict) -> bool:
         [("type", "nonce"), ("operation", "add"), ("account", sender), ("amount", 1), ("txhash", ""), ("isRollback", False)],
     ]
     actual = [[(k, "" if k == "txhash" else v) for k, v in edit.items()] for edit in edits]
+    # A signed execution result is hashed over CORE JCS bytes, which sort
+    # members: the order of an edit's members is not authenticated and cannot
+    # decide anything here, so each edit compares by member name and value.
     # bool is an int in Python: compare JSON kinds too, so `1` is not `True`.
-    return ([[(k, _json_value(v)) for k, v in edit] for edit in actual]
-            == [[(k, _json_value(v)) for k, v in edit] for edit in expected])
+    return ([{k: _json_value(v) for k, v in edit} for edit in actual]
+            == [{k: _json_value(v) for k, v in edit} for edit in expected])
 
 
 def _party_demos_key(trusted: dict, claim: Any) -> str | None:
@@ -1219,6 +1224,42 @@ def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -
 def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: dict,
                          applied_transfer: Any = None) -> tuple[str, str]:
     """DACS-4 §9.5.9 DEM-7 under FV-5 for an authenticated `pay-dem` record."""
+    # DEM-7 decides in one order: a malformed phase value or claim is `error`,
+    # then a bundle with no controlled Demos key claim is `indeterminate`, then
+    # the record. (An FV-10 verdict on the inclusion comes before all of them:
+    # the caller takes it first.) The record checks below therefore never turn
+    # a malformed phase into `indeterminate`.
+    amount = DEM_AMOUNT_RE.match(expected.get("amount") or "") if expected.get("currency") == "DEM" else None
+    # The sender binds the controlled Demos key claims of the payer's party
+    # bundle that the Agreement pins (payer.bundleHash): the claims whose
+    # control the payer proved under DACS-1 §6.3.2 step (6). A claim the
+    # bundle only lists binds nothing, since another payer's key could be
+    # listed in it. The handler's payer.payingKey is such a claim (§9.5.1).
+    # Nothing a consumer receives names the payer's per-phase selection, and a
+    # key the payer's message names is unauthenticated.
+    bundles = trusted.get("demosPayerKeyClaims")
+    if bundles is not None and not isinstance(bundles, dict):
+        return "error", "malformed payer bundle Demos key claims"
+    claims = None if bundles is None else bundles.get(expected["payer"])
+    if claims is not None and not (isinstance(claims, list) and claims and all(
+            isinstance(claim, dict) and set(claim) == {"claim", "control"}
+            and isinstance(claim["claim"], str) and isinstance(claim["control"], str)
+            and claim["control"] in DEMOS_CLAIM_CONTROLS | {DEMOS_CLAIM_UNCONTROLLED}
+            for claim in claims)):
+        return "error", "malformed payer bundle Demos key claims"
+    payee = _party_demos_key(trusted, expected.get("payee"))
+    if amount is None or payee is None:
+        return "error", "phase lacks a DEM amount or Demos party keys"
+    if claims is None:
+        return "indeterminate", "payer bundle Demos key claims unavailable"
+    # A claim that is no Demos key claim (an EVM address, a LEI, a bare hex
+    # string) is skipped, never an error. A Demos key claim is controlled only
+    # by the step (6) mechanism DACS-1 defines for its scheme.
+    matches = [DEMOS_KEY_CLAIM_RE.match(claim["claim"]) for claim in claims]
+    payers = {match.group(2) for match, claim in zip(matches, claims)
+              if match and DEMOS_KEY_CLAIM_CONTROL.get(match.group(1)) == claim["control"]}
+    if not payers:
+        return "indeterminate", "payer bundle controls no Demos key claim"
     if trusted.get("demosRecordProfile") != DEMOS_RECORD_PROFILE:
         return "indeterminate", "Demos execution-record semantics are not pinned (DEM-7)"
     projection = _demos_native_send(record)
@@ -1232,41 +1273,6 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
         return "indeterminate", "authenticated Demos record status is not an execution result (DEM-7)"
     if problem is not None:
         return "indeterminate", "Demos applied transfer " + problem + " (DEM-7)"
-    amount = DEM_AMOUNT_RE.match(expected.get("amount") or "") if expected.get("currency") == "DEM" else None
-    # The sender binds the controlled Demos key claims of the payer's party
-    # bundle that the Agreement pins (payer.bundleHash): the claims whose
-    # control the payer proved under DACS-1 §6.3.2 step (6). A claim the
-    # bundle only lists binds nothing, since another payer's key could be
-    # listed in it. The handler's payer.payingKey is such a claim (§9.5.1).
-    # Nothing a consumer receives names the payer's per-phase selection, and a
-    # key the payer's message names is unauthenticated.
-    bundles = trusted.get("demosPayerKeyClaims")
-    if bundles is None:
-        return "indeterminate", "payer bundle Demos key claims unavailable"
-    if not isinstance(bundles, dict):
-        return "error", "malformed payer bundle Demos key claims"
-    claims = bundles.get(expected["payer"])
-    if claims is None:
-        return "indeterminate", "payer bundle Demos key claims unavailable"
-    if not (isinstance(claims, list) and claims and all(
-            isinstance(claim, dict) and set(claim) == {"claim", "control"}
-            and isinstance(claim["claim"], str) and isinstance(claim["control"], str)
-            and claim["control"] in DEMOS_CLAIM_CONTROLS | {DEMOS_CLAIM_UNCONTROLLED}
-            for claim in claims)):
-        return "error", "malformed payer bundle Demos key claims"
-    # A claim that is no Demos key claim (an EVM address, a LEI, a bare hex
-    # string) is skipped, never an error. A Demos key claim is controlled only
-    # by the step (6) mechanism DACS-1 defines for its scheme.
-    matches = [DEMOS_KEY_CLAIM_RE.match(claim["claim"]) for claim in claims]
-    payers = {match.group(2) for match, claim in zip(matches, claims)
-              if match and DEMOS_KEY_CLAIM_CONTROL.get(match.group(1)) == claim["control"]}
-    # Malformed phase values are decided before the claims' verdict, as DEM-7
-    # orders them: error, then (FV-10 aside) no controlled claim, then the record.
-    payee = _party_demos_key(trusted, expected.get("payee"))
-    if amount is None or payee is None:
-        return "error", "phase lacks a DEM amount or Demos party keys"
-    if not payers:
-        return "indeterminate", "payer bundle controls no Demos key claim"
     amount_os = _demos_os_spelling(amount)
     if (
         projection["txHash"] != reference.get("txHash")
@@ -1349,15 +1355,17 @@ def _verify_chain_observation(
     record_decision, record_reason = "pass", ""
     if native_send:
         record_decision, record_reason, execution = _verify_demos_execution(observation, reference, trusted)
+        # A malformed result is malformed whatever the chain shows.
+        if record_decision == "error":
+            return _result(record_decision, record_reason), None
+        # DEM-7 orders the rest: the FV-10 verdict of the inclusion path
+        # first, then `error` for a malformed phase value or claim, then the
+        # record. A signed failure or contradiction refutes the payment only
+        # once the canonical bft-final path of its block verifies: a result
+        # about a fork or an unfinalized block decides nothing.
         if record_decision == "pass":
             record_decision, record_reason = _verify_demos_record(
                 execution["record"], reference, expected, trusted, execution.get("appliedTransfer"))
-        # A malformed result is malformed whatever the chain shows. A signed
-        # failure or contradiction refutes the payment only once the canonical
-        # bft-final path of its block verifies: a result about a fork or an
-        # unfinalized block decides nothing (DACS-4 §9.5.9 DEM-7).
-        if record_decision == "error":
-            return _result(record_decision, record_reason), None
 
     path_decision, path_reason = _verify_inclusion_path(observation, profile, reference, trusted)
     if path_decision != "pass":

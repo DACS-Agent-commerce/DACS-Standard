@@ -101,6 +101,7 @@ The output map describes the intended DACS-X step-3 policy boundary: a full tran
 - `MANIFEST.json` — the case index: every vector's `id`, `area`, spec `§`, summary, `status`, provenance `reason`, and pinned `want`.
 - `fixtures/attestation-bundle-0004.json` — the full byte-stable completed §10.4 AttestationBundle fixture.
 - `fixtures/attestation-bundle-0004-seller.json` — the same `jobId` as DACS-VERIFY-0004 with a divergent `failed-counterparty` outcome; it verifies independently and has a different bundle hash.
+  Both fixtures' payment references use the shape placeholder `demos-testnet:tx-dacs-verify-0004-*` for a Demos `txHash`; it is not a canonical SB-1 spelling (64 lower-case hexadecimal digits), so DACS-4 SB-1 would treat it as malformed. The fixtures exercise bundle structure and signatures, not settlement finality.
 - `fixtures/attestation-bundle-htlc9.json` — the full byte-stable HTLC-9 asymmetric-settlement fixture.
 - `fixtures/evidence-bound-fault-bundle-compatibility-v0.4.json` — deterministic signed listing/EBFAB fixture covering bundle and extended-pointer domains, discriminator/type-swap refusal, cross-type replay, signed-but-SEB-invalid rejection, EBFAB/EBFAB member divergence, and EBFAB authority across every older bundle type. The checked-in signed fixture includes the #333-P01 supported-selector-plus-inert-member case and is regenerated from the integrated source.
 - `fixtures/identity/dacs1-vet-golden-inputs-v0.1.json` — complete,

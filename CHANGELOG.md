@@ -65,11 +65,8 @@ The format used per release:
 - FV-5 and DEM-7: a consumer's signed result must name the presented
   `txRef`. A self-consistent result for another transaction refutes
   nothing: `consumer-wrong-hash-authenticated` is `indeterminate`.
-- DEM-7 and FV-5: the record's sender binds a Demos key claim of the
-  payer's party bundle that the Agreement pins (`payer.bundleHash`), the
-  source a consumer can authenticate; the handler's `payer.payingKey` is
-  one of them. The FV reference's trusted `demosPhasePayingKeys` is
-  replaced by `demosPayerKeyClaims` (keyed by payer), and the
+- FV reference: the trusted `demosPhasePayingKeys` is replaced by
+  `demosPayerKeyClaims` (keyed by payer), and the
   `fv-bft-final-selected-paying-key-*` cases by `fv-bft-final-payer-key-claim-*`.
 - DEMOS-MAPPING §A.2: `gcr_edits` compare as `JSON.stringify` serializes
   them, so a JSON number compares by value (`1` and `1.0`) and never
@@ -79,7 +76,7 @@ The format used per release:
   so no retention pins a phase that can never be paid (four
   `sign-*-address` / `sign-paying-key-*` vectors).
 - DEM-7: every admission in the payee's index is validated (reference,
-  job, phase index, `legacy`) before any collision group forms; a
+  job, phase index) before any collision group forms; a
   malformed entry is `error`, never a crash or a pass (six
   `delivery-admission-*` vectors; the reference payee shares the check).
 - RAV-R3: the pay-dem preflight is the payer side's check before the
@@ -91,8 +88,80 @@ The format used per release:
   which its JCS `hash` covers; a runner parses each before evaluating. A
   member-sorting round trip of the file changed 58 results before and
   changes none now. A runner of this set MUST parse those members.
-- Corpora: pay-dem has 482 vectors (42 `pass`, 167 `fail`, 223
-  `indeterminate`, 50 `error`) and 138 guards. FV has 227 cases.
+- DEM-7 and FV-5: a record that an FV-5 result authenticates binds
+  without a node pin. The signed result carries the record, so the build
+  of the node that served a plain read beside it is not what it rests on;
+  DEMOS-MAPPING §A.2 no longer calls such a record unbound under DEM-7. A
+  plain read still needs the pin, and so does the handler (DEM-2). The
+  pay-dem oracle and the FV reference now give one answer for
+  `consumer-failed-fails` and `delivery-fv-form-result` read from a
+  self-reporting node (`consumer-failed-fv5-self-reported-node-fails`,
+  `delivery-fv-form-result-self-reported-node`; guard
+  `consumer-fv5-record-binds-without-node-pin`).
+- FV-5 and DEMOS-MAPPING §A.2: a signed result is hashed over JCS bytes,
+  which sort members, so the order of a record's edit members is not
+  signed. For a record FV-5 authenticates, the four edits compare by
+  member name and value, in list order, in the FV reference and the
+  oracle (`fv-bft-final-confirmed-reordered-edit-members` and
+  `delivery-fv-form-result-reordered-edit-members` pass; guard
+  `consumer-fv5-edit-members-compare-by-name`). A plain read of the
+  node's own text keeps its member order. The result's record is compared
+  with the read record by JCS bytes, not member order. This replaces the
+  `fv-bft-final-confirmed-reordered-edit-members` case that was
+  `indeterminate`.
+- DACS-1 §6.3.1 and DEMOS-MAPPING §A.2: a ClaimReference's identity is its
+  scheme and identifier, so a `?<parameters>` suffix is ignored in a
+  Demos key claim and in a `key:` or `did:demos:agent:` party address
+  (`consumer-claim-key-unknown-parameters-controlled`,
+  `sign-with-key-claim-parameters-paying-key`,
+  `fv-bft-final-payer-key-claim-unknown-parameters`; guard
+  `claim-reference-parameters-ignored`). The claim pattern is also exact:
+  `key:demos:agent:<hex>` is no Demos key claim
+  (`fv-bft-final-payer-key-claim-demos-agent-form`).
+- DEM-7 and FV-5: the FV reference decides in DEM-7's stated order. A
+  malformed phase value or claim is `error` before the record's pin,
+  decoding or applied transfer can make it `indeterminate`, and only once
+  the inclusion verifies: a forged certificate is `fail` whatever the
+  claim is (`fv-bft-final-payer-key-claim-malformed-*`).
+- DEM-1 and DEMOS-MAPPING §A.2: a signed `nonce` of `9.0` is the integer
+  9 (JSON numbers compare by value) and the oracle's gate accepts it
+  (`broadcast-signed-nonce-integer-valued-number`; guard
+  `signed-nonce-compares-by-value`).
+- RAV-R3: the pay-dem preflight also checks that the payer's pinned bundle
+  controls a Demos key claim, so a session-key payer is refused before the
+  Agreement is signed and not at settle (`preflight-session-key-bundle-refused`;
+  guard `preflight-requires-controlled-key-claim`). The sentence that both
+  obliged and exempted an orchestrator without the payer's binding is
+  split: the payer side must not select the rail or sign without the
+  preflight, and another orchestrator may list, offer or select it.
+- SB-1: a Demos `txHash` has no legacy spelling. The `legacy` marker was
+  a caller's word, which SB-1 says to ignore; it is gone from the corpus
+  and from an admission, a `0x` or upper-case Demos hash is `error`
+  whoever calls it legacy, and only the frozen EVM arms collapse legacy
+  spellings. The legacy-spelling vectors are replaced
+  (`sb2-demos-noncanonical-spelling`, `sb1-demos-prefixed-upper-case`).
+- FV-5, DEM-4 and APR-6: `AuthenticatedChainObservation` gains the
+  Demos-only `executionResult` member (`DemosExecutionResult`), and DEM-4
+  says how the failure proof travels as APR-6 reconciliation evidence and
+  what binds the failed record to the prior phase (its transaction hash
+  against the one the prior session retained). No decision changes.
+- DEM-6: the stated reason for treating a retained transfer as possibly
+  broadcast after a restart no longer contradicts journal-before-call: a
+  late-journaling handler or a journal that lost its last write shows no
+  entry for a call that was made. The liveness cost (a restart between
+  retention and the first `confirm` strands the phase at `failed-substrate`)
+  is now a non-normative note in DACS-4 and a THREAT-MODEL line.
+- Vectors README: applied-transfer and no-op contradictions are
+  `indeterminate`, as the corpus has them. Summary rows in DACS-4,
+  CONFORMANCE-PLAN and THREAT-MODEL name every DEM-1 binding member.
+- Migration: for a `demos` reference the raw transaction body that a
+  `bft-final` inclusion proof commits to carries `txHash` (the identity
+  the block commits), not `status`; a body that still carries `status` is
+  `error` (malformed raw transaction body). A `bft-final` input built for
+  the merge base's FV reference must be regenerated with `txHash`, and
+  its execution result must be signed over the record (FV-5).
+- Corpora: pay-dem has 491 vectors (48 `pass`, 169 `fail`, 222
+  `indeterminate`, 52 `error`) and 142 guards. FV has 233 cases.
 
 ### Fixed — pay-dem: trust counts at the gate only when FV can verify under it; no default payee evidence; no unsigned attestation decides
 

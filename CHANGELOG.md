@@ -21,11 +21,28 @@ The format used per release:
   sender and recipient, or that does not move the record's OS amount for
   `confirmed` and nothing for `failed`, authenticates nothing: neither
   payment nor a proven failure. The settlement-finality reference
-  implements the check once and the pay-dem oracle calls it. Twelve
+  implements the check once and the pay-dem oracle calls it. Eleven
   `fv-bft-final-*` applied-transfer, no-op and uncommitted-payment cases
-  give `indeterminate` instead of `fail`, and
+  move from `fail` to `indeterminate`, and the new case
   `fv-bft-final-included-execution-failed-shows-payment` pins a signed
   `failed` record whose own balances show the payment as `indeterminate`.
+- DEM-7 and FV-5: the record's sender binds only a *controlled* Demos
+  key claim of the payer's pinned party bundle, a claim whose control the
+  payer proved under DACS-1 §6.3.2 step (6) (its own presentation
+  signature, or an SR-1 linkage). A bundle can list another buyer's key,
+  and listing is not control, so that buyer's payment bound for the payer
+  and was admitted first. DEMOS-MAPPING §A.2 defines *Demos key claim* and
+  *controlled*; claims that are no Demos key are skipped, not an `error`,
+  and a bundle with no controlled Demos key claim is `indeterminate`. The
+  FV reference's trusted `demosPayerKeyClaims` carries `{claim, control}`
+  entries (`control`: `presentation-signature`, `sr1-linkage` or `none`).
+  Eight FV cases (`fv-bft-final-payer-key-claim-listed-*`, `-none-controlled`,
+  `-non-demos-skipped`, `-malformed-spelling-uncounted`, `-claim-*`) and
+  five pay-dem cases (`consumer-sender-*`, `consumer-no-controlled-claim`,
+  `consumer-non-demos-claim-skipped`, `delivery-sender-listed-not-controlled`)
+  pin it; the pay-dem consumer corpus takes an optional `payerKeyClaims`
+  phase member, and the `distinct` and `any-of-bundle` FV cases now list
+  controlled claims.
 - FV-5 and DEM-7: a consumer's signed result must name the presented
   `txRef`. A self-consistent result for another transaction refutes
   nothing: `consumer-wrong-hash-authenticated` is `indeterminate`.
@@ -55,8 +72,8 @@ The format used per release:
   which its JCS `hash` covers; a runner parses each before evaluating. A
   member-sorting round trip of the file changed 58 results before and
   changes none now. A runner of this set MUST parse those members.
-- Corpora: pay-dem has 440 vectors (36 `pass`, 162 `fail`, 215
-  `indeterminate`, 27 `error`) and 132 guards. FV has 204 cases.
+- Corpora: pay-dem has 445 vectors (38 `pass`, 164 `fail`, 216
+  `indeterminate`, 27 `error`) and 133 guards. FV has 212 cases.
 
 ### Fixed — pay-dem: trust counts at the gate only when FV can verify under it; no default payee evidence; no unsigned attestation decides
 
@@ -1785,7 +1802,7 @@ The format used per release:
   and its `ed25519` signature by `content.from` covers that hash. The Demos
   `txHash` spelling (64 lower-case hex digits, no `0x`) is now canonical for
   `ChainTxRef` and SB-1.
-- **Vectors** — adds the generated 440-case `pay-dem-execution-v0.1` set in
+- **Vectors** — adds the generated 445-case `pay-dem-execution-v0.1` set in
   the node's record shape, including two read-only node2 records. It covers
   handler classification, profile decoding, node pinning, resume, the
   first-egress gate (`confirm` or broadcast) with binding, phase and payment authority and signed-envelope
@@ -1798,7 +1815,7 @@ The format used per release:
   (draft hash `da86e204…`), has a different schema and hash. This set supersedes it, and a runner built
   for the draft must be rewritten for this schema when it is re-pinned. The
   set is identified by its `hash`, not by its name alone. In
-  `settlement-finality-verification` (204 cases), transaction inclusion and
+  `settlement-finality-verification` (212 cases), transaction inclusion and
   execution-result authentication are verified separately. The fixture uses
   independently pinned threshold result signatures over the full Demos record,
   network, block identity, transaction reference and committed payment debit

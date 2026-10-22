@@ -186,7 +186,8 @@ A cross-cutting test category that every conforming implementation runs once:
 The general DACS-4 RTB-1, PC-1 and AMEND-1 MUST-to-vector map below uses
 `conformance/fixtures/settlement/payment-input-amendment-v0.1.json` and
 `conformance/fixtures/settlement/rail-authority-time-bound-v0.1.json`, executed
-by `tests/test_settlement_contract_vectors.py`. Its resolver, binding, session
+by `tests/test_settlement_contract_vectors.py`, with admission boundaries in
+`tests/test_settlement_admission_regressions.py`. Its resolver, binding, session
 and trust arguments, including the orchestrator's and registry's authorized
 receipt writers, are verifier-owned; its finality proofs use a synthetic test
 profile whose proof binds every receipt member except `evidence`, and its
@@ -204,7 +205,12 @@ outcome over placeholder companions, and IBH-1..IBH-5 itself is exercised by
 the IBH corpus. AMEND-1 receives the amendment and the resolved target as
 bytes (their JSON text unless a case gives `amendmentText` or `artifactText`)
 and admits them under CORE CF-5. Every resolver lists all carriers it found
-for an address, so equivocation is decided rather than fetch order. The RTB-1
+for an address. Observations of one SR2-5 tuple reconcile first under SR2-7;
+the synthetic proof's signed canonical-decimal `observationSequence` orders
+finalized re-observations whose only changed receipt field is `observedAt`.
+Observer time never supplies precedence, and unordered conflicting snapshots
+remain indeterminate. Equivocation concerns incompatible remaining bindings.
+The RTB-1
 index is a projection of the DACS-4 numeric snapshot in CORE's closed
 `RegistryIndexSnapshot` entry shape. The FV-1 and DACS-5 current-use corpora
 model `input.rail` as the session rail a verifier already resolved under
@@ -214,7 +220,7 @@ model `input.rail` as the session rail a verifier already resolved under
 | --- | --- |
 | RTB-1 registry-index receipt, definition receipt and `governance.acceptedAt` no later than the session `startedAt` | `rail-authority-pinned-before-start`, `rail-authority-at-session-start` (verified at equality); `index-receipt-after-session-start`, `definition-receipt-after-session-start`, `accepted-at-after-session-start` (rejected); inclusive-bound and authenticated-time unit tests |
 | RTB-1 a steward-signed definition without pinned index membership and both finalized anchor bindings does not resolve a rail | `definition-without-index-membership`, `index-pins-other-content`, `definition-anchor-binds-other-content`, `steward-signature-invalid`, `agreement-pins-other-version`, `index-entry-not-object` (rejected); `index-missing`, `index-receipt-missing`, `definition-receipt-missing`, `definition-receipt-not-finalized`, `index-receipt-proof-invalid`, `index-receipt-outsider-writer`, `definition-receipt-outsider-writer` (indeterminate); verifier-owned trust-pin and receipt-field unit tests |
-| RTB-1 two canonically unequal authorized receipts for one binding are an equivocation; an equal copy or an outsider's receipt changes nothing | `index-receipt-equivocation`, `definition-receipt-equivocation` (indeterminate); `index-receipt-duplicate-carrier`, `definition-receipt-duplicate-carrier`, `index-receipt-outsider-second-carrier`, `definition-receipt-outsider-second-carrier` (verified); equivocation unit test |
+| RTB-1 SR2-7 reconciliation precedes equivocation between incompatible authorized bindings; an equal copy or an outsider's receipt changes nothing | `index-receipt-equivocation`, `definition-receipt-equivocation` (indeterminate); `index-receipt-duplicate-carrier`, `definition-receipt-duplicate-carrier`, `index-receipt-outsider-second-carrier`, `definition-receipt-outsider-second-carrier` (verified); ordered-history and equivocation unit tests |
 | RTB-1 a phase signature the consumer does not implement leaves the rail unresolved | `pa3-multisig-rail-not-implemented`, `pa1-in-code-rail-not-implemented` (indeterminate); registry-shape unit test (undeclared anchoring rejected) |
 | CORE `RegistryIndexSnapshot`: closed entries, positive versions, any registered anchor kind, positive revision and session pin | `index-lists-ipfs-and-https-entries` (verified); `index-entry-version-zero`, `index-entry-extra-member`, `index-entry-anchor-extra-member`, `index-revision-boolean`, `session-registry-version-zero`, `session-registry-version-negative` (rejected); registry-shape unit test |
 | §9.4.3 step 2 version selection under RTB-1: an exact pin, otherwise the unique greatest listed version; a hint member selects nothing | `unpinned-selects-greatest-version`, `pinned-older-version` (verified); `unpinned-older-version-rejected`, `latest-hint-is-inert`, `railref-other-rail-id` (rejected); `index-duplicate-version` (indeterminate); unpinned-selection unit test |
@@ -227,7 +233,7 @@ model `input.rail` as the session rail a verifier already resolved under
 | PC-1 no adding, dropping or renaming members; permanent rejected result before rail calls | Every phase-input case checks unchanged input and handler call count; every rejection checks `ok: false`, `errorClass: permanent` |
 | AMEND-1 resolve anchored target and recompute its AttestationRef hash before interpreting members | `ordinary-target`, `ordinary-target-native-locator` (valid), `anchor-binds-other-content` (authentic anchor of another hash by the orchestrator's writer, violation), `anchor-content-mismatch`, `anchor-proof-signature-invalid`, `anchor-without-evidence`, `anchor-disposition-edited` (inauthentic receipt, indeterminate), `anchor-indeterminate-disposition`, `ordinary-target-outsider-writer`, `anchor-binds-other-content-outsider-writer` (indeterminate), `content-hash-mismatch` (substituted bytes, indeterminate); `amendment-reference-extra-member` (valid, SIG-5); hash-before-discriminator, inauthentic-anchor, receipt-field, reference-shape and writer-pin unit tests |
 | AMEND-1 admits the amendment and the resolved target from their exact received bytes (CORE CF-5) | `amendment-duplicate-member` (violation); `target-duplicate-member` (refused target bytes, indeterminate); received-bytes unit test (invalid UTF-8, trailing data, non-bytes, oversize) |
-| AMEND-1 two canonically unequal authorized carriers for the address are an equivocation | `anchor-equivocation`, `anchor-equivocation-other-content` (indeterminate); `anchor-duplicate-carrier`, `anchor-outsider-second-carrier` (valid); equivocation unit test (carrier-list bound) |
+| AMEND-1 SR2-7 reconciliation precedes equivocation between incompatible authorized bindings for the address | `anchor-equivocation`, `anchor-equivocation-other-content` (indeterminate); `anchor-duplicate-carrier`, `anchor-outsider-second-carrier` (valid); ordered-history and equivocation unit tests (carrier-list bound) |
 | AMEND-1 exclusive recognized discriminator among the three payment evidence arms, and supported version | `ordinary-target`, `legacy-transition-target`, `finality-bound-target`, `no-selector`, `dual-selectors`, `all-selectors`, `unsupported-selector`, `*-unsupported-version`. `dual-selectors` and `all-selectors` are decided by the discriminator count before any arm shape is read |
 | AMEND-1 complete record, including outcome-required members; the closed transition and finality-bound arms reject unknown members, while ordinary `SettlementEvidence` keeps them (SIG-5) | `*-success-without-paymentAmount`, `*-success-without-settlementFinality`, `ordinary-success-without-payment-tx-refs`, `legacy-transition-without-reservation-ref`, `finality-bound-without-rail-definition-ref`, `ordinary-malformed-outcome`, `ordinary-success-with-reason`, `legacy-transition-unknown-member`, `finality-bound-unknown-member` (violation); `ordinary-failure-target`, `ordinary-unknown-member`, `ordinary-target-fractional-member`, `ordinary-target-nfd-value-and-member-name` (valid; CORE §B.2 value model) |
 | AMEND-1 verify signature under selected domain by the verifier-owned session orchestrator | `*-wrong-domain`, `*-seller-signed`, `signature-invalid`, `signature-missing`, `amendment-signature-missing`, `ordinary-target-algorithm-rsa` (violation); `ordinary-target-algorithm-ecdsa-secp256k1`, `ordinary-target-algorithm-sr1-aggregate` (registered, not implemented here: indeterminate); pinned-orchestrator, CF-3 key-lookup, reference-signer and §B.2 value-model unit tests |
@@ -235,6 +241,14 @@ model `input.rail` as the session rail a verifier already resolved under
 | AMEND-1 canonical amendment address form and its `{jobId}` and `{evidenceHash}` segments | The reference checks the verifier-owned address: `address-signature-inclusive-hash`, `address-other-target-hash`, `address-wrong-job`, `address-noncanonical-index`, `address-wrong-kind`, `address-later-index`; address unit test |
 | AMEND-1 unavailable, unanchored or unfinalized target remains indeterminate | Every arm's `*-unavailable`, `*-unanchored`, `*-included`; unavailable-resolver unit test (every resolver exception, cause kept) |
 | AMEND-4 target violation is not a valid unwind; reject/flag remains a consumer policy | All `violation` cases remain separate from `valid`/`indeterminate` |
+
+`tests/test_settlement_admission_regressions.py` additionally pins ordinary
+historical hash carriers, open nested members with complete signed/hash scope,
+closed transaction-reference unions, equivalent integer JSON spellings,
+optional ordinary failure reasons, JID validation before lookup, complete
+PC-2/CF-4 addresses for both locator forms, malformed receipt-digest disposal,
+and shape/SIG-6 checks before unsupported cryptography or missing keys. Each
+boundary includes an allowed control and a refused or unresolved case.
 
 For substrates other than Demos that claim conformance, additional capability tests apply:
 

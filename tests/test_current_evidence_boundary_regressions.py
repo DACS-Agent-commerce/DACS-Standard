@@ -2273,10 +2273,10 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
             for carrier in value["authority"]["legacyAgreementAuthorityByPhaseKey"].values():
                 carrier["binding"]["receiptWriter"] = "did:demos:buyer"
 
-        def float_invocation(value, kind):
+        def fractional_invocation(value, kind):
             value["authority"]["sessionExecutionAuthorityByPhaseKey"]["2:pay-dem"][
                 "phaseIndex"
-            ] = 2.0
+            ] = 2.5
 
         def entry_value(field, field_value):
             def mutate(value, kind):
@@ -2437,7 +2437,7 @@ class CurrentFabDeliveryAdmissionTests(unittest.TestCase):
              payment(member_lifecycle("not-an-object")), error),
             ("carrier receipt writer is not the evidence signer",
              payment(other_receipt_writer), fail),
-            ("non-integer row invocation", payment(float_invocation), error),
+            ("non-integer row invocation", payment(fractional_invocation), error),
             ("ST-8 successor", successor(), ("pass", "indeterminate", "indeterminate")),
             ("ST-8 interim dependency not finalized",
              successor(interim_not_finalized), fail),

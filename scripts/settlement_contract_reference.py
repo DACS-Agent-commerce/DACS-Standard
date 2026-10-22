@@ -11,8 +11,9 @@ or receipts. Finality uses a synthetic test proof profile
 AMEND-1 admits the amendment and the resolved target from their exact
 received bytes under CORE CF-5 (`raw_json_profile.loads`), as it admits the
 embedded finality proof. Resolvers return every carrier they found for an
-address, so two canonically unequal authorized carriers are an equivocation
-(CORE §5) rather than a fetch-order choice. Only `ed25519` signatures are
+address. Observations of each SR2-5 tuple are reconciled through authenticated
+binding order before incompatible authorized bindings count as equivocation
+(CORE §5). Only `ed25519` signatures are
 implemented; another registered `ComponentSignature` algorithm leaves the
 decision `indeterminate`. This module makes no live rail calls and implements
 no refund ledger. A `valid` result admits the target under AMEND-1 only.
@@ -23,6 +24,12 @@ IBH-1..IBH-5 rerun over their contents is the verifier-owned
 `PhaseBinding.identity_binding`, and without it an identity-bound payment is
 `indeterminate`. RTB-1 here verifies PA-2 single-signer rails; a PA-1 in-code
 or PA-3 multisig rail is left `indeterminate`, not verified.
+
+The synthetic finality proof may carry a signed `observationSequence`, a
+canonical unsigned-decimal string ordering finalized observations of one
+SR2-5 tuple. Such observations may differ in `observedAt` only; all anchor
+facts, including blockRef consensus time, remain fixed. Without that native
+order, unequal snapshots of one tuple are unorderable (SR2-7).
 """
 from __future__ import annotations
 
@@ -37,6 +44,7 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import unquote
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -57,6 +65,10 @@ ORDINARY_INPUT_MEMBERS = frozenset({
 })
 _AMENDMENT_ADDRESS = re.compile(
     r"dacs4:amendment:([^:]+):([0-9a-f]{64}):(0|[1-9][0-9]*)\Z"
+)
+_JOB_ID = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z")
+_PAYMENT_ADDRESS = re.compile(
+    r"dacs4:payment:([^:]+):([^:]+):(0|[1-9][0-9]*)(:resolved)?\Z"
 )
 # DACS-3 AgreementArtifact discriminators; the last three carry payout bindings.
 _AGREEMENT_SELECTORS = {
@@ -171,9 +183,10 @@ class InputAuthorityUnavailable(RuntimeError):
     """§9.5.1: required identity-binding authority is missing: indeterminate."""
 
 
-def _party_valid(shape, value, key_member: str) -> bool:
+def _party_valid(shape, value, key_member: str, *, identity_bound=False) -> bool:
     if (not isinstance(value, dict) or not {"bundleHash", "primaryClaim", key_member} <= set(value)
-            or not shape._sha256_hex(value["bundleHash"])
+            or not (shape._sha256_hex(value["bundleHash"]) if identity_bound
+                    else shape._nonempty_jcs_string(value["bundleHash"]))
             or not shape._claim_reference_shape_valid(value["primaryClaim"])):
         return False
     if key_member == "payingKey":
@@ -444,7 +457,7 @@ def _rail_valid(shape, value) -> bool:
             and shape._nonempty_jcs_string(value["signature"].get("value")))
 
 
-def _session_context_valid(shape, value) -> bool:
+def _session_context_valid(shape, value, *, identity_bound=False) -> bool:
     # The runtime SubstrateSigner is not serializable, so `signer` may be absent.
     return (isinstance(value, dict)
             and {"jobId", "listingRef", "recipeRegistryVersion", "railRegistryVersion",
@@ -456,7 +469,8 @@ def _session_context_valid(shape, value) -> bool:
             and isinstance(value["parties"], list) and bool(value["parties"])
             and all(isinstance(party, dict)
                     and shape._string_member(party.get("role"), {"buyer", "seller", "orchestrator"})
-                    and shape._sha256_hex(party.get("bundleHash"))
+                    and (shape._sha256_hex(party.get("bundleHash")) if identity_bound
+                         else shape._nonempty_jcs_string(party.get("bundleHash")))
                     and shape._claim_reference_shape_valid(party.get("primaryClaim"))
                     and ("vetRecordRef" not in party
                          or _attestation_ref_valid(shape, party["vetRecordRef"]))
@@ -479,11 +493,11 @@ def check_payment_input(binding: PhaseBinding, phase_input: Any) -> None:
     if not (shape._nonempty_jcs_string(phase_input["jobId"])
             and _agreement_valid(shape, phase_input["agreement"])
             and _rail_valid(shape, phase_input["rail"])
-            and _party_valid(shape, phase_input["payer"], "payingKey")
-            and _party_valid(shape, phase_input["payee"], "payeeAddress")
+            and _party_valid(shape, phase_input["payer"], "payingKey", identity_bound=binding.identity_bound)
+            and _party_valid(shape, phase_input["payee"], "payeeAddress", identity_bound=binding.identity_bound)
             and _price_term_valid(shape, phase_input["amount"])):
         raise InputArmError("payment input member is not its declared type")
-    if not _session_context_valid(shape, phase_input["sessionContext"]):
+    if not _session_context_valid(shape, phase_input["sessionContext"], identity_bound=binding.identity_bound):
         raise InputArmError("sessionContext is not SessionContext")
     # §9.5.1: the signed Listing's selection alone selects the path; an
     # agreement of the other kind contradicts it in either direction.
@@ -633,17 +647,23 @@ def verify_embedded(value: dict, public_keys: dict, domain: bytes) -> None:
     if not isinstance(signature, dict):
         raise Invalid("missing signature")
     algorithm = signature.get("algorithm")
-    if algorithm not in REGISTERED_ALGORITHMS:
+    if not isinstance(algorithm, str) or algorithm not in REGISTERED_ALGORITHMS:
         raise Invalid("unregistered signature algorithm")
+    claim_identity(signature.get("signer"))
+    raw = b64u_decode(signature.get("value"))
+    if not raw:
+        raise Invalid("signature value must be non-empty")
+    if not in_number_profile(value):
+        raise Invalid("signed value is outside the CORE §B.2 value model")
+    if algorithm == "ed25519" and len(raw) != 64:
+        raise Invalid("Ed25519 key or signature has the wrong length")
     if algorithm != "ed25519":
         # Registered but not implemented here: another verifier may decide it.
         raise Unknown(f"signature algorithm {algorithm} is not implemented by this verifier")
     encoded_key = _public_key(public_keys, signature.get("signer"))
     if encoded_key is None:
         raise Unknown(f"no authenticated key for {signature.get('signer')}")
-    if not in_number_profile(value):
-        raise Invalid("signed value is outside the CORE §B.2 value model")
-    key, raw = b64u_decode(encoded_key), b64u_decode(signature.get("value"))
+    key = b64u_decode(encoded_key)
     if len(key) != 32 or len(raw) != 64:
         raise Invalid("Ed25519 key or signature has the wrong length")
     message = domain + content_hash(value).encode("ascii")
@@ -655,7 +675,7 @@ def verify_embedded(value: dict, public_keys: dict, domain: bytes) -> None:
 
 def _verify_finality_proof(receipt: dict, *, writer: str, public_keys: dict,
                            network_authority: str, network_id: str, proof_profile: str,
-                           validator_set_id: str) -> None:
+                           validator_set_id: str) -> int | None:
     """Authenticate an AnchorReceipt's own fields (CORE SR2-4) and its writer.
 
     The synthetic proof is a network-authority-signed copy of every receipt
@@ -671,6 +691,8 @@ def _verify_finality_proof(receipt: dict, *, writer: str, public_keys: dict,
     for key in ("logicalAddress", "nativeAddress", "contentHash", "writer"):
         if not isinstance(receipt.get(key), str) or not receipt[key]:
             raise Invalid(f"AnchorReceipt {key} is malformed")
+    if not _shapes()._sha256_hex(receipt["contentHash"]):
+        raise Invalid("AnchorReceipt contentHash is malformed")
     # CORE §5.1: nonce is required only where the substrate uses one.
     if "nonce" in receipt and (not isinstance(receipt["nonce"], str) or not receipt["nonce"]):
         raise Invalid("AnchorReceipt nonce is malformed")
@@ -715,11 +737,21 @@ def _verify_finality_proof(receipt: dict, *, writer: str, public_keys: dict,
         "proofProfile": proof_profile,
         "validatorSetId": validator_set_id,
     }
-    if set(proof) != set(expected) | {"signature"} or any(
+    if not (set(expected) | {"signature"}) <= set(proof) or set(proof) - set(expected) - {
+            "signature", "observationSequence"} or any(
             canonicalize(proof[key]) != canonicalize(value) for key, value in expected.items()):
         raise Invalid("AnchorReceipt finality proof does not bind the receipt's fields")
     if receipt["writer"] != writer:
         raise Invalid("AnchorReceipt writer is not the authorized writer")
+    # Test-profile SR2-7 order lives inside the signed evidence, never in
+    # observedAt or an unverified sidecar. Finalized re-observations preserve
+    # every receipt field except observer time, including anchor consensus time.
+    sequence = proof.get("observationSequence")
+    if "observationSequence" in proof:
+        if not isinstance(sequence, str) or _HEIGHT.fullmatch(sequence) is None:
+            raise Invalid("AnchorReceipt observation sequence is malformed")
+        return int(sequence)
+    return None
 
 
 def _established_finalized(receipt: Any) -> bool:
@@ -746,25 +778,46 @@ def _sole_carrier(receipts: Any, label: str, for_address: Callable[[dict], None]
 
     Every candidate that is not an established finalized receipt for this
     address, whose proof does not authenticate its fields, or whose writer
-    is not the authorized one is discarded (SR2-4, SR2-11, SR2-12). Two
-    canonically unequal survivors are an equivocation: fetch order selects
-    no winner and nothing resolves.
+    is not the authorized one is discarded (SR2-4, SR2-11, SR2-12).
+    Observations of the same tuple are reconciled by this test profile's
+    signed observationSequence. Distinct bindings are equivocation; neither
+    fetch order nor observer time can choose a winner.
     """
     if not isinstance(receipts, list) or not receipts:
         raise Unknown(f"{label} has no finalized anchor binding")
     if len(receipts) > MAX_CARRIERS:
         raise Unknown(f"{label} lists more carriers than this verifier admits")
-    survivors, causes = {}, []
+    groups, causes = {}, []
     for receipt in receipts:
         try:
             if not _established_finalized(receipt):
                 raise Invalid("receipt is not an established finalized receipt")
             for_address(receipt)
-            _verify_finality_proof(receipt, **pins)
+            sequence = _verify_finality_proof(receipt, **pins)
         except (Invalid, ValueError, TypeError, KeyError) as exc:
             causes.append(str(exc))
             continue
-        survivors.setdefault(canonicalize({k: v for k, v in receipt.items() if k != "evidence"}), receipt)
+        binding = canonicalize({key: receipt.get(key) for key in (
+            "substrate", "logicalAddress", "nativeAddress", "contentHash",
+            "transactionRef", "writer", "nonce")})
+        groups.setdefault(binding, []).append((receipt, sequence))
+    survivors = {}
+    for binding, observations in groups.items():
+        bodies = {canonicalize({k: v for k, v in r.items() if k != "evidence"})
+                  for r, _ in observations}
+        if len(bodies) == 1:
+            survivors[binding] = observations[0][0]
+            continue
+        fixed = {canonicalize({k: v for k, v in r.items() if k not in {"evidence", "observedAt"}})
+                 for r, _ in observations}
+        ordered = {}
+        for receipt, sequence in observations:
+            body = canonicalize({k: v for k, v in receipt.items() if k != "evidence"})
+            if (sequence is None or len(fixed) != 1
+                    or (sequence in ordered and ordered[sequence][0] != body)):
+                raise Unknown(f"{label} has unorderable observations of one transaction (SR2-7)")
+            ordered[sequence] = (body, receipt)
+        survivors[binding] = ordered[max(ordered)][1]
     if len(survivors) > 1:
         raise Unknown(f"{label} has {len(survivors)} canonically unequal authorized carriers (equivocation)")
     if not survivors:
@@ -773,6 +826,59 @@ def _sole_carrier(receipts: Any, label: str, for_address: Callable[[dict], None]
 
 
 # ---- AMEND-1 ------------------------------------------------------------------
+
+def _ordinary_target_shape(record: dict) -> dict:
+    """Declared members of open ordinary types, only for shape checking.
+
+    Hashing and signature verification always use the complete received object.
+    ChainTxRef remains its explicitly closed discriminated union (§9.3).
+    """
+    checked = {k: v for k, v in record.items() if k in _SETTLEMENT_EVIDENCE_MEMBERS}
+
+    def project(value, members):
+        return {k: v for k, v in value.items() if k in members} if isinstance(value, dict) else value
+
+    def attestation(value):
+        value = project(value, {"anchor", "contentHash", "signer"})
+        if isinstance(value, dict) and "anchor" in value:
+            value["anchor"] = project(value["anchor"], {"kind", "locator"})
+        return value
+
+    for key, members in (
+            ("paymentAmount", {"amount", "currency", "unit"}),
+            ("paymentFee", {"amount", "currency", "unit"}),
+            ("signature", {"algorithm", "signer", "value"}),
+            ("settlementFinality", {"model", "finalityBlocks", "finalityCommitmentLevel", "finalityObservedAt"}),
+            ("deliverableAnchor", {"kind", "locator"})):
+        if key in checked:
+            checked[key] = project(checked[key], members)
+    for key in ("attestationRef", "supersedesEvidenceRef"):
+        if key in checked:
+            checked[key] = attestation(checked[key])
+    if isinstance(checked.get("amendmentRefs"), list):
+        checked["amendmentRefs"] = [attestation(value) for value in checked["amendmentRefs"]]
+    if isinstance(checked.get("paymentTxRefs"), list):
+        refs = []
+        for value in checked["paymentTxRefs"]:
+            if isinstance(value, dict) and value.get("kind") in ("ap2", "ap2-sr3"):
+                # The union arm stays closed; its embedded reference types
+                # retain their own open-member policy.
+                value = dict(value)
+                if "receiptAttestation" in value:
+                    value["receiptAttestation"] = attestation(value["receiptAttestation"])
+                if "receiptTransactionRef" in value:
+                    value["receiptTransactionRef"] = project(value["receiptTransactionRef"], {"kind", "value"})
+            refs.append(value)
+        checked["paymentTxRefs"] = refs
+    return checked
+
+
+def _payment_address_valid(address: Any, job_id: str) -> bool:
+    match = _PAYMENT_ADDRESS.fullmatch(address) if isinstance(address, str) else None
+    if match is None or match[1] != job_id:
+        return False
+    rail = unquote(match[2], errors="strict")
+    return _RAIL_ID.fullmatch(rail) is not None and cf4_encode(rail) == match[2]
 
 def consume_amendment_target(
     amendment: bytes, resolve: Callable[[dict], dict | None], *,
@@ -801,13 +907,13 @@ def consume_amendment_target(
         amendment = admit(amendment, Invalid, "amendment")
         if not isinstance(amendment, dict):
             raise Invalid("amendment is not an object")
-        verify_embedded(amendment, public_keys, AMENDMENT_DOMAIN)
+        if not isinstance(amendment.get("jobId"), str) or _JOB_ID.fullmatch(amendment["jobId"]) is None:
+            raise Invalid("amendment jobId malformed")
         target_ref = amendment.get("amendsEvidenceRef")
         # Declared members typed; unknown signed members stay open (SIG-5).
         if not _attestation_ref_valid(shape, target_ref):
             raise Invalid("amendment target reference malformed")
-        if not shape._nonempty_jcs_string(amendment.get("jobId")):
-            raise Invalid("amendment jobId malformed")
+        verify_embedded(amendment, public_keys, AMENDMENT_DOMAIN)
         try:
             resolved = resolve(target_ref)
         except Exception as exc:  # noqa: BLE001 - any resolver failure is unavailability
@@ -816,12 +922,11 @@ def consume_amendment_target(
         if not isinstance(resolved, dict):
             raise Unknown("amendment target unavailable")
         locator = target_ref["anchor"]["locator"]
-        payment_prefix = f"dacs4:payment:{cf4_encode(amendment['jobId'])}:"
 
         def for_payment_address(receipt):
             if locator not in (receipt.get("logicalAddress"), receipt.get("nativeAddress")):
                 raise Invalid("AnchorReceipt is for another address")
-            if not str(receipt.get("logicalAddress")).startswith(payment_prefix):
+            if not _payment_address_valid(receipt.get("logicalAddress"), amendment["jobId"]):
                 raise Invalid("AnchorReceipt is not for a PC-2 payment address of this job")
         # CORE SR2-4/SR2-11/SR2-12: receipt fields are assertions until its
         # proof binds them, and only the orchestrator's writer has authority
@@ -853,12 +958,13 @@ def consume_amendment_target(
         domain, shape_name = _TARGET_ARMS[selector]
         if not isinstance(target.get("signature"), dict):
             raise Invalid("amendment target signature missing")
+        if not isinstance(target.get("jobId"), str) or _JOB_ID.fullmatch(target["jobId"]) is None:
+            raise Invalid("amendment target jobId malformed")
         # Every evidence arm is signed by the session's phase orchestrator.
         require_signer(target, orchestrator)
-        verify_embedded(target, public_keys, domain)
         # The ordinary arm keeps unknown optional members (CORE SIG-5); the
         # transition and finality-bound arms are closed.
-        checked = ({key: value for key, value in target.items() if key in _SETTLEMENT_EVIDENCE_MEMBERS}
+        checked = (_ordinary_target_shape(target)
                    if selector == "evidenceVersion" else target)
         if not getattr(shape, shape_name)(checked):
             raise Invalid(f"amendment target is not its {selector} arm")
@@ -874,6 +980,7 @@ def consume_amendment_target(
         if (address is None or address.group(1) != amendment.get("jobId")
                 or address.group(2) != digest):
             raise Invalid("amendment address does not bind the target evidence hash")
+        verify_embedded(target, public_keys, domain)
         return "valid", "AMEND-1 target verified"
     except Unknown as exc:
         return "indeterminate", str(exc)

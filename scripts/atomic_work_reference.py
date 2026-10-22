@@ -449,6 +449,19 @@ def require_signer(value: dict[str, Any], expected: str, field: str = "signature
         raise Invalid(f"{field} signer is not the authenticated authority")
 
 
+def artifact_content_hash(value: dict[str, Any]) -> str:
+    """CORE B.2 per-artifact content hash; never a signed-envelope byte hash."""
+    if "evidenceBoundFaultBundleVersion" in value:
+        return bundle_hash(value)
+    if any(key in value for key in ("agreementVersion", "payeeBoundAgreementVersion",
+                                   "identityBoundAgreementVersion", "identityBoundPayeeAgreementVersion",
+                                   "sealedSelectionAgreementVersion")):
+        return _agreement_hash(value)
+    if any(key in value for key in ("recordVersion", "finalityCommitmentVersion", "atomicEvidenceVersion", "amendmentVersion")):
+        return sha256_hex(jcs_bytes({k: v for k, v in value.items() if k != "signature"}))
+    return sha256_hex(jcs_bytes(value))
+
+
 def _signed_hash(value: dict[str, Any], excluded: Iterable[str]) -> str:
     if not _is_pure_json(value):
         raise Invalid("signed value is not NFC-normalized safe-integer JSON")
@@ -750,7 +763,6 @@ def _is_pure_json(value: Any) -> bool:
     if isinstance(value, dict):
         return all(
             isinstance(k, str)
-            and unicodedata.normalize("NFC", k) == k
             and _is_pure_json(v)
             for k, v in value.items()
         )
@@ -1430,10 +1442,8 @@ def evaluate_attempts(data: dict[str, Any]) -> dict[str, Any] | None:
             expected_network_authority=data.get("expectedNetworkAuthority"),
             expected_proof_profile=data.get("expectedProofProfile"),
         )
-        if authenticated_winner is None or receipt.get("winningAttempt") != {
-            "attemptId": authenticated_winner["attemptId"],
-            "nativeTransactionRef": authenticated_winner["nativeTransactionRef"],
-        }:
+        if authenticated_winner is None or any(receipt.get("winningAttempt", {}).get(field) != authenticated_winner[field]
+               for field in ("attemptId", "nativeTransactionRef")):
             raise Invalid("receipt winner differs from authenticated ledger-selected attempt")
         expected_inclusion = {
             "committed": "included-committed",
@@ -1477,7 +1487,7 @@ def _validated_storage_output(
     payload = operation.get("payload", {})
     expected_content_hash = payload.get("contentHash")
     if expected_content_hash is None and isinstance(payload.get("artifact"), dict):
-        expected_content_hash = sha256_hex(jcs_bytes(payload["artifact"]))
+        expected_content_hash = artifact_content_hash(payload["artifact"])
     if (
         output["logicalAddress"] != payload.get("logicalAddress")
         or output["contentHash"] != expected_content_hash
@@ -1871,18 +1881,21 @@ def _verify_rail_definition(
     """Verify the closed native-DEM RailDefinition used by this candidate."""
     if not _is_pure_json(rail):
         raise Invalid("RailDefinition is not NFC-normalized safe-integer JSON")
-    if set(rail) != {
+    from settlement_contract_reference import _rail_valid, _shapes
+    if not _rail_valid(_shapes(), rail):
+        raise Invalid("RailDefinition member is not its PC-1 declared type")
+    if not {
         "railVersion", "railId", "railType", "asset", "network",
         "phaseHandler", "parameters", "availability", "governance",
         "signature",
-    }:
-        raise Invalid("RailDefinition is not the closed candidate shape")
+    } <= set(rail):
+        raise Invalid("RailDefinition required member missing")
     rail_id = rail.get("railId")
     if (
         type(rail.get("railVersion")) is not int
         or not (1 <= rail["railVersion"] <= SAFE_INT_MAX)
         or not isinstance(rail_id, str)
-        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,63}", rail_id)
+        or not re.fullmatch(r"[\x21-\x7e]{1,64}", rail_id)
         or rail.get("railType") != "demos-native"
         or rail.get("asset") != {
             "kind": "native-dem", "symbol": "DEM", "decimals": 9,
@@ -1899,7 +1912,7 @@ def _verify_rail_definition(
         governance_fields.add("supersedes")
     if (
         not isinstance(governance, dict)
-        or set(governance) != governance_fields
+        or not governance_fields <= set(governance)
         or not claim_equal(governance.get("proposedBy"), steward)
         or type(governance.get("acceptedAt")) is not int
         or not (0 <= governance["acceptedAt"] <= SAFE_INT_MAX)
@@ -2097,6 +2110,8 @@ def _agreement_hash(agreement: dict[str, Any]) -> str:
 def _agreement_artifact_kind(agreement: dict[str, Any]) -> str:
     """Select exactly one DACS-3 agreement artifact before reading its terms."""
     discriminators = {
+        "identity-bound": "identityBoundAgreementVersion",
+        "selection-bound": "sealedSelectionAgreementVersion",
         "legacy": "agreementVersion",
         "payee-bound": "payeeBoundAgreementVersion",
         "identity-bound-payee": "identityBoundPayeeAgreementVersion",
@@ -2117,6 +2132,8 @@ def _agreement_artifact_kind(agreement: dict[str, Any]) -> str:
         if "payoutBindings" in terms:
             raise Invalid("legacy AgreementDocument cannot carry payout bindings")
         return "legacy"
+    if artifact_kind in {"identity-bound", "selection-bound"}:
+        raise Invalid("agreement type is outside the fixed-price Atomic profile")
     if not isinstance(terms.get("payoutBindings"), list):
         raise Invalid("payout-bearing AgreementArtifact bindings are unavailable")
     return artifact_kind
@@ -2127,6 +2144,9 @@ def _verify_agreement(
 ) -> str:
     if not _is_pure_json(agreement):
         raise Invalid("AgreementArtifact is not NFC-normalized safe-integer JSON")
+    from settlement_contract_reference import _agreement_valid, _shapes
+    if not _agreement_valid(_shapes(), agreement):
+        raise Invalid("AgreementArtifact member is not its PC-1 declared type")
     artifact_kind = _agreement_artifact_kind(agreement)
     parties = agreement.get("parties")
     if not isinstance(parties, list):
@@ -2247,7 +2267,7 @@ def _verify_finality_commitment(
     verify_embedded(record, public_keys, _COMMITMENT_DOMAIN)
     _verify_anchor_receipt(
         anchor_receipt, logical=f"dacs3:commit:{record.get('jobId')}",
-        content_hash=sha256_hex(jcs_bytes(record)),
+        content_hash=artifact_content_hash(record),
         public_keys=public_keys, network_authority=network_authority,
         network_id=network_id, proof_profile=proof_profile,
         validator_set_id=validator_set_id,
@@ -2633,10 +2653,9 @@ def _verify_atomic_payment_session_context(
         or not claim_equal(
             by_role["orchestrator"].get("primaryClaim"), orchestrator
         )
-        or source["priorPhaseOutputs"].get("agreementHash")
+        or source["priorPhaseOutputs"].get("negotiate-fixed-price", {}).get("agreementHash")
         != _agreement_hash(agreement)
-        or source["priorPhaseOutputs"].get("commitmentHash")
-        != sha256_hex(jcs_bytes(source_intent["operations"][3]["payload"]["artifact"]))
+        or source["priorPhaseOutputs"].get({"legacy": "commit-agreement", "payee-bound": "commit-payee-bound-agreement", "identity-bound-payee": "commit-identity-bound-payee-agreement"}[_agreement_artifact_kind(agreement)], {}).get("agreementHash") != _agreement_hash(agreement)
     ):
         raise Invalid("authenticated SessionContext source contradicts DACS authority")
     for operation_index, role, bundle in (
@@ -2657,7 +2676,7 @@ def _verify_atomic_payment_session_context(
                     f"{cf4_encode(record.get('evaluatedParty'))}"
                 ),
             },
-            "contentHash": sha256_hex(jcs_bytes(record)),
+            "contentHash": artifact_content_hash(record),
         }
         source_ref = by_role[role].get("vetRecordRef")
         agreement_ref = agreement_roles.get(role, {}).get("vetRecordRef")
@@ -2921,7 +2940,7 @@ def _verified_authority_context(
     )
     if payee.get("payeeAddress") != payee_account:
         raise Invalid("AtomicPaymentPhaseInputV1 payee address is not bundle-derived")
-    if _agreement_artifact_kind(agreement) == "payee-bound":
+    if _agreement_artifact_kind(agreement) in {"payee-bound", "identity-bound-payee"}:
         expected_binding = {
             "railId": agreement_rail,
             "phaseIndex": selected["phaseIndex"],
@@ -2957,11 +2976,40 @@ def _verified_authority_context(
         for role, expected in expected_claims.items()
     ):
         raise Invalid("role roster contradicts authenticated authority context")
-    if roster["payer"].get("nativeAccount") != payer_account:
+    if "nativeAccount" in roster["payer"] and roster["payer"]["nativeAccount"] != payer_account:
         raise Invalid("payer roster account is not bundle-derived")
     if "nativeAccount" in roster["seller"] and roster["seller"].get("nativeAccount") != payee_account:
         raise Invalid("seller roster account is not bundle-derived")
 
+    for role, bundle in (("buyer", payer_bundle), ("orchestrator", authority.get("orchestratorBundle"))):
+        if "nativeAccount" not in roster[role]:
+            continue
+        if not isinstance(bundle, dict):
+            raise Invalid(f"authenticated {role} native-account bundle unavailable")
+        _verify_identity_bundle(bundle, public_keys)
+        session_party = next(p for p in verified_session_source["parties"] if p["role"] == role)
+        if _identity_bundle_hash(bundle) != session_party["bundleHash"]:
+            raise Invalid(f"{role} native-account bundle differs from session authority")
+        try:
+            expected_account = _bundle_native_account(bundle, expected_claims[role], role)
+        except Unknown as exc:
+            raise Invalid(f"{role} roster account cannot be independently derived") from exc
+        if roster[role]["nativeAccount"] != expected_account:
+            raise Invalid(f"{role} roster account is not bundle-derived")
+    from settlement_contract_reference import check_payment_input, PhaseBinding, InputArmError
+    try:
+        check_payment_input(PhaseBinding("pay-dem", "dacs-purchase-v1", True), payment_input)
+    except InputArmError as exc:
+        raise Invalid(str(exc)) from exc
+    price = agreement["terms"]["price"]
+    if price["currency"] != rail_definition["asset"]["symbol"]:
+        raise Invalid("agreed currency does not match native DEM asset")
+    # Decimal's context must not round an over-precision payment into OS units.
+    fraction = price["amount"].partition(".")[2]
+    if len(fraction) > rail_definition["asset"]["decimals"]:
+        raise Invalid("agreed amount is not exactly representable in native units")
+    _verify_purchase_commitment_operation(source_intent)
+    _verify_atomic_delivery_eligibility(listing, selected["phaseIndex"])
     commitment_operation = source_intent["operations"][3]
     conflict = {
         **expected_slot_key,
@@ -2991,6 +3039,27 @@ def _verified_authority_context(
     }
 
 
+def _verify_purchase_commitment_operation(intent: dict[str, Any]) -> None:
+    payload = intent["operations"][3].get("payload", {})
+    if payload.get("artifact", {}).get("finalityCommitmentVersion") != "1":
+        raise Invalid("commitment artifact discriminator mismatch")
+    if (payload.get("logicalAddress") != f"dacs3:commit:{intent['jobId']}"
+            or payload.get("writeCondition") != {"kind": "create-only"}):
+        raise Invalid("signed commitment address/write condition mismatch")
+
+
+def _verify_atomic_delivery_eligibility(listing: dict[str, Any], payment_index: int) -> None:
+    pipeline = listing.get("pipeline", [])
+    delivery = [(i, step) for i, step in enumerate(pipeline)
+                if str(step.get("kind", "")).startswith("deliver-")]
+    if (len(delivery) != 1 or delivery[0][1].get("kind") != "deliver-storage-program"
+            or delivery[0][0] <= payment_index):
+        raise Invalid("Atomic Purchase requires one subsequent storage delivery under PIPE-4")
+    spec = listing.get("offering", {}).get("deliverable", {})
+    if spec.get("kind") != "storage-program" or spec.get("accessModel") != "public":
+        raise Invalid("Atomic v1 supports only public storage-program delivery")
+
+
 def evaluate_profile(data: dict[str, Any], *, committed_at: int | None = None) -> None:
     intent = data["intent"]
     validate_intent(intent)
@@ -3010,6 +3079,7 @@ def evaluate_profile(data: dict[str, Any], *, committed_at: int | None = None) -
             or phases[0].get("index") != intent["phaseIndex"]
         ):
             raise Invalid("Purchase signed Listing pay-dem phase tuple mismatch")
+        _verify_atomic_delivery_eligibility(listing, intent["phaseIndex"])
         agreement = intent["operations"][2].get("payload", {}).get("artifact")
         if not isinstance(agreement, dict):
             raise Invalid("AgreementDocument bytes are incomplete")
@@ -3043,7 +3113,15 @@ def evaluate_profile(data: dict[str, Any], *, committed_at: int | None = None) -
                 ):
                     raise Invalid("Vet storage operation address/write condition mismatch")
             elif operation.get("kind") == "assert-artifact":
-                raise Unknown("finalized resolvable Vet AnchorReceipt unavailable")
+                anchor = data.get("vetReceipts", {}).get(role)
+                if not isinstance(anchor, dict):
+                    raise Unknown("finalized resolvable Vet AnchorReceipt unavailable")
+                _verify_anchor_receipt(
+                    anchor, logical=f"dacs2:composite:{intent['jobId']}:{cf4_encode(record['evaluatedParty'])}",
+                    content_hash=artifact_content_hash(record), public_keys=data["publicKeys"],
+                    network_authority=_network_authority(data), network_id=intent["networkId"],
+                    proof_profile=data["expectedProofProfile"], validator_set_id=data["capability"]["validatorSetId"],
+                )
         if any(
             op.get("payload", {}).get("liveAction") is not None
             for op in intent["operations"][:2]
@@ -3052,17 +3130,10 @@ def evaluate_profile(data: dict[str, Any], *, committed_at: int | None = None) -
         commitment = intent["operations"][3].get("payload", {}).get("artifact")
         if not isinstance(commitment, dict):
             raise Invalid("commitment artifact missing")
-        if commitment.get("finalityCommitmentVersion") != "1":
-            raise Invalid("commitment artifact discriminator mismatch")
+        _verify_purchase_commitment_operation(intent)
         verify_embedded(commitment, data["publicKeys"], _COMMITMENT_DOMAIN)
         require_signer(commitment, data.get("authenticatedOrchestrator"))
         _verify_commitment_subject(commitment, agreement, intent["jobId"])
-        if intent["operations"][3].get("payload", {}).get("logicalAddress") != (
-            f"dacs3:commit:{intent['jobId']}"
-        ) or intent["operations"][3].get("payload", {}).get("writeCondition") != {
-            "kind": "create-only"
-        }:
-            raise Invalid("signed commitment address/write condition mismatch")
         atomic_receipt = data.get("atomicReceipt")
         if not isinstance(atomic_receipt, dict):
             raise Unknown("common BFT Work receipt unavailable; sequential gate required")
@@ -3108,6 +3179,7 @@ def evaluate_profile(data: dict[str, Any], *, committed_at: int | None = None) -
             expected_proof_profile=data.get("expectedProofProfile"),
         )
         _profile_shape(prior_intent, "dacs-purchase-v1")
+        _verify_purchase_commitment_operation(prior_intent)
         commitment_projection = data.get("purchaseCommitmentProjection")
         if not isinstance(commitment_projection, dict):
             raise Unknown("finalized Purchase commitment AnchorReceipt unavailable")
@@ -3143,7 +3215,7 @@ def evaluate_profile(data: dict[str, Any], *, committed_at: int | None = None) -
             raise Invalid("Completion delivery phase was substituted for Purchase slot phase")
         delivery = intent["operations"][1].get("payload", {})
         if (
-            delivery.get("logicalAddress") != f"dacs4:deliverable:{intent['jobId']}"
+            delivery.get("logicalAddress") != f"dacs4:deliverable:{intent['jobId']}:{intent['phaseIndex']}"
             or delivery.get("writeCondition") != {"kind": "create-only"}
         ):
             raise Invalid("Completion delivery address/write condition mismatch")
@@ -3153,12 +3225,9 @@ def evaluate_profile(data: dict[str, Any], *, committed_at: int | None = None) -
         _verify_agreement(agreement, data["publicKeys"])
         expected_spec = listing.get("offering", {}).get("deliverable")
         expected_ref = agreement.get("terms", {}).get("deliverable", {})
-        atomic_delivery = agreement.get("terms", {}).get("additionalTerms", {}).get("atomicDelivery", {})
         if (
             expected_ref.get("deliverableType") != expected_spec.get("kind")
             or expected_ref.get("hash") != sha256_hex(jcs_bytes(expected_spec))
-            or delivery.get("logicalAddress") != atomic_delivery.get("logicalAddress")
-            or delivery.get("contentHash") != atomic_delivery.get("contentHash")
         ):
             raise Invalid("Completion bytes/pointer do not match verified agreement DeliverableSpec")
         if data.get("claimsEvidenceFinalized") or data.get("claimsBundleFinalized"):
@@ -3351,7 +3420,7 @@ def evaluate_slot(data: dict[str, Any]) -> None:
     payee_roster = roster.get("seller", {})
     if (
         not claim_equal(payer_roster.get("signer"), payer.get("payingKey"))
-        or payer_roster.get("nativeAccount") != payer_account
+        or ("nativeAccount" in payer_roster and payer_roster["nativeAccount"] != payer_account)
         or not claim_equal(payee_roster.get("signer"), payee.get("primaryClaim"))
         or (
             "nativeAccount" in payee_roster
@@ -3525,7 +3594,7 @@ def _verify_atomic_publication(
         raise Unknown("Atomic publication lifecycle proof unavailable")
     if set(anchor) != required_anchor_fields:
         raise Invalid("Atomic publication AnchorReceipt is incomplete")
-    content_hash = sha256_hex(canonical_bytes)
+    content_hash = atomic_evidence_hash(evidence)
     if (
         anchor.get("receiptVersion") != "1"
         or anchor.get("substrate") != network_id
@@ -3568,6 +3637,7 @@ def _verify_atomic_publication(
         "networkId": network_id,
         "proofProfile": proof_profile,
         "validatorSetId": validator_set_id,
+        "canonicalBytesHash": sha256_hex(canonical_bytes),
     }
     if any(proof.get(field) != value for field, value in expected_proof.items()):
         raise Invalid("Atomic publication lifecycle proof subject mismatch")
@@ -3580,7 +3650,8 @@ def _verify_atomic_publication(
     }
     reconciled = {
         "kind": "create-only", "disposition": "reconciled-identical",
-        "priorState": {"state": "present", "contentHash": content_hash},
+        "priorState": {"state": "present", "contentHash": content_hash,
+                       "canonicalBytesHash": sha256_hex(canonical_bytes)},
     }
     if write_condition == created:
         if mode != "create-only":
@@ -3596,6 +3667,8 @@ def verify_settlement(data: dict[str, Any]) -> None:
     evidence = data.get("evidence")
     if not isinstance(evidence, dict):
         raise Unknown("Atomic settlement evidence unavailable")
+    if "phaseIndex" in evidence and (type(evidence["phaseIndex"]) is not int or not 0 <= evidence["phaseIndex"] <= SAFE_INT_MAX):
+        raise Malformed("Atomic evidence phaseIndex is not a canonical safe integer")
     validate_schema(evidence, "atomic-settlement-evidence-v1.schema.json")
     # AWS-17: atomicEvidenceVersion is exclusive; no other DACS-4 evidence
     # selector may accompany it, as tests/dacs5_reference.py also requires.
@@ -3604,7 +3677,7 @@ def verify_settlement(data: dict[str, Any]) -> None:
     ]
     if selectors != ["atomicEvidenceVersion"]:
         raise Invalid("Atomic evidence discriminator must be the only evidence selector")
-    if evidence.get("atomicEvidenceVersion") != "1" or "kind" in evidence:
+    if evidence.get("atomicEvidenceVersion") != "1":
         raise Invalid("legacy transaction reference is not Atomic settlement evidence")
     verify_embedded(evidence, data["publicKeys"], EVIDENCE_DOMAIN)
     receipt = data.get("receipt")
@@ -3781,7 +3854,9 @@ def verify_settlement(data: dict[str, Any]) -> None:
         if outcome == "success":
             payment = evidence.get("paymentAmount")
             operation_payload = intent["operations"][index]["payload"]
-            if payment != {"amount": operation_payload.get("amount"), "currency": operation_payload.get("asset")}:
+            if (not _json_equal(payment, authority_context["agreement"]["terms"]["price"])
+                    or payment.get("amount") != operation_payload.get("amount")
+                    or payment.get("currency") != operation_payload.get("asset")):
                 raise Invalid("paymentAmount does not match payment operation")
             if evidence.get("settlementFinality", {}).get("model") != "bft-final":
                 raise Invalid("payment settlement finality is not BFT-final")
@@ -3931,81 +4006,32 @@ def _role_claims(intent: dict[str, Any]) -> dict[str, str]:
 def _verify_published_evidence(
     entry: Any, intent: dict[str, Any], receipt: dict[str, Any],
     operation_kind: str, orchestrator: str, data: dict[str, Any],
+    *, expected_outcome: str = "success",
 ) -> None:
-    """Bind one successful Atomic settlement record to its finalized Work
-    operation and to its own finalized AWS-28 publication (DACS-5 ST-11)."""
+    """Consume the complete AWS result for the exact published artifact."""
     if not isinstance(entry, dict) or not isinstance(entry.get("evidence"), dict):
         raise Unknown(f"published {operation_kind} settlement evidence unavailable")
-    # Authenticate the capability before reading its proof profile or pins.
-    network_authority = _network_authority(data)
     evidence = entry["evidence"]
-    validate_schema(evidence, "atomic-settlement-evidence-v1.schema.json")
-    if [key for key in EVIDENCE_SELECTORS if key in evidence] != ["atomicEvidenceVersion"]:
-        raise Invalid("Atomic evidence discriminator must be the only evidence selector")
-    verify_embedded(evidence, data["publicKeys"], EVIDENCE_DOMAIN)
-    require_signer(evidence, orchestrator)
-    if evidence.get("outcome") != "success":
-        raise Invalid("settlement evidence does not record the committed operation's success")
-    for field in ("networkId", "jobId", "railId", "phaseIndex"):
-        if type(evidence.get(field)) is not type(intent.get(field)) or evidence.get(field) != intent.get(field):
-            raise Invalid(f"settlement evidence {field} does not match the verified Work")
-    leaves = [
-        leaf for leaf in receipt["operationResults"]
-        if leaf.get("operationKind") == operation_kind
-    ]
-    if len(leaves) != 1 or leaves[0].get("status") != "committed":
-        raise Invalid("verified Work lacks one committed settlement operation")
-    leaf = leaves[0]
-    index = leaf["operationIndex"]
-    expected_ref = {
-        "kind": "demos-work-operation-v1", "networkId": receipt["networkId"],
-        "workId": receipt["workId"], "operationIndex": index,
-        "operationId": leaf["operationId"], "operationKind": operation_kind,
-    }
-    if any(evidence["operationRef"].get(k) != v for k, v in expected_ref.items()):
-        raise Invalid("settlement evidence names another Work operation")
-    expected_receipt_hash = receipt_hash(receipt)
-    receipt_ref = evidence["workReceiptRef"]
-    if (
-        receipt_ref.get("networkId") != receipt["networkId"]
-        or receipt_ref.get("workId") != receipt["workId"]
-        or receipt_ref.get("receiptCommitment") != receipt["receiptCommitment"]
-        or receipt_ref.get("contentHash") != expected_receipt_hash
-    ):
-        raise Invalid("settlement evidence names another Work receipt")
-    proof = evidence["operationProof"]
-    expected_subject = {
-        "networkId": receipt["networkId"], "workId": receipt["workId"],
-        "winningAttemptId": receipt["winningAttempt"]["attemptId"],
-        "operationReceiptRoot": receipt["operationReceiptRoot"],
-        "operationIndex": index, "operationId": leaf["operationId"],
-        "operationKind": operation_kind, "receiptContentHash": expected_receipt_hash,
-    }
-    if any(proof["subject"].get(k) != v for k, v in expected_subject.items()):
-        raise Invalid("settlement operation proof subject mismatch")
-    if proof.get("proofProfile") != data["capability"].get("proofProfile"):
-        raise Invalid("unsupported operation proof profile")
-    try:
-        path = json.loads(b64u_decode(proof["value"]).decode("utf-8"))
-    except (Invalid, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise Invalid("operation proof value encoding invalid") from exc
-    if not isinstance(path, list) or not verify_inclusion(leaf, path, receipt["operationReceiptRoot"]):
-        raise Invalid("operation receipt inclusion path invalid")
-    generation = (
-        receipt.get("paymentSlot", {}).get("after", {}).get("generation")
-        if evidence.get("phase") == "pay-dem" else None
-    )
-    verify_atomic_evidence_address(entry.get("evidenceAddress"), evidence, generation)
     publication = entry.get("publication")
     anchor = publication.get("anchorReceipt") if isinstance(publication, dict) else None
     if not isinstance(anchor, dict) or anchor.get("state") != "finalized":
         raise Unknown("Atomic evidence publication is not finalized")
-    _verify_atomic_publication(
-        publication, evidence, entry["evidenceAddress"], data["publicKeys"],
-        network_authority=network_authority, network_id=intent["networkId"],
-        proof_profile=data.get("expectedProofProfile"),
-        validator_set_id=data["capability"]["validatorSetId"],
-    )
+    authority = copy.deepcopy(data.get("authorizationAuthority"))
+    if not isinstance(authority, dict):
+        raise Unknown("complete settlement authority unavailable for publication consumer")
+    if intent["profile"] == "dacs-completion-v1":
+        authority["purchaseIntent"] = data.get("purchaseIntent")
+    verify_settlement({
+        **data, "intent": intent, "receipt": receipt, "authority": authority,
+        "evidence": evidence, "auditPublication": publication,
+        "authenticatedContext": {k: intent[k] for k in ("networkId", "jobId", "railId", "phaseIndex")},
+        "pc2Address": f"dacs4:payment:{intent['jobId']}:{cf4_encode(intent['railId'])}:{intent['phaseIndex']}",
+        "settlementId": settlement_id(evidence["operationRef"]),
+        "evidenceAddress": entry.get("evidenceAddress"),
+    })
+    require_signer(evidence, orchestrator)
+    if evidence.get("outcome") != expected_outcome or evidence["operationRef"]["operationKind"] != operation_kind:
+        raise Invalid("published evidence does not record the required operation outcome")
 
 
 def _bundle_roles(bundle: dict[str, Any], roster: dict[str, str]) -> set[str]:
@@ -4061,7 +4087,7 @@ def _verify_role_bundle_publication(
     capability = data["capability"]
     logical = bundle_logical_address(bundle["jobId"], role)
     _verify_anchor_receipt(
-        receipt, logical=logical, content_hash=sha256_hex(jcs_bytes(bundle)),
+        receipt, logical=logical, content_hash=bundle_hash(bundle),
         public_keys=data["publicKeys"], network_authority=network_authority,
         network_id=network_id, proof_profile=data.get("expectedProofProfile"),
         validator_set_id=capability["validatorSetId"], state=receipt["state"],
@@ -4090,6 +4116,92 @@ def _evidence_refs(bundle: dict[str, Any]) -> list[tuple[str, str]]:
 def _published_ref(entry: dict[str, Any]) -> tuple[str, str]:
     return (entry["publication"]["anchorReceipt"]["nativeAddress"],
             atomic_evidence_hash(entry["evidence"]))
+
+
+def _verify_bundle_dependencies(bundle, intent, receipt, data):
+    from settlement_contract_reference import _shapes
+    if not _shapes()._absolute_fault_bundle_shape_valid(bundle, "evidence-bound"):
+        raise Invalid("bundle is not a complete EvidenceBoundFaultAttestationBundle")
+    authority = data.get("authorizationAuthority")
+    if not isinstance(authority, dict):
+        raise Unknown("bundle Listing/agreement/session authority unavailable")
+    context = _verified_authority_context(
+        intent, authority, data["publicKeys"], data["capability"],
+        data["expectedProofProfile"], data.get("expectedRailRegistryAuthority"),
+        consensus_timestamp=receipt["blockRef"]["timestamp"],
+        require_current_profile="identityBoundPayeeAgreementVersion" in authority["agreement"],
+    )
+    listing = context["listing"]
+    agreement = context["agreement"]
+    source = authority["sessionContextSource"]
+    if (not _json_equal(bundle["listingRef"], agreement["listingRef"])
+            or bundle["recipeRegistryVersion"] != source["recipeRegistryVersion"]
+            or bundle["railRegistryVersion"] != source["railRegistryVersion"]
+            or bundle["finalisedAt"] < receipt["blockRef"]["timestamp"]):
+        raise Invalid("bundle Listing/registry/time differs from authenticated session")
+    parties = {p["role"]: p for p in bundle["parties"]}
+    expected_parties = {p["role"]: {k: p[k] for k in ("role", "bundleHash", "primaryClaim")}
+                        for p in source["parties"]}
+    if any(claim_equal(expected_parties["orchestrator"]["primaryClaim"], expected_parties[role]["primaryClaim"])
+           for role in ("buyer", "seller")):
+        del expected_parties["orchestrator"]
+    if not _json_equal(parties, expected_parties):
+        raise Invalid("bundle parties differ from authenticated session")
+    expected_vets = [p["vetRecordRef"] for p in agreement["parties"]]
+    if sorted(map(jcs_bytes, bundle["vetRecords"])) != sorted(map(jcs_bytes, expected_vets)):
+        raise Invalid("bundle Vet set differs from authenticated agreement")
+    commitment = intent["operations"][3]["payload"]["artifact"]
+    expected_agreement_ref = source["priorPhaseOutputs"]["negotiate-fixed-price"].get("agreementRef", {})
+    selected_agreement_hash = _agreement_hash(agreement)
+    if expected_agreement_ref.get("contentHash") != selected_agreement_hash or not _json_equal(bundle.get("agreementRef"), expected_agreement_ref):
+        raise Invalid("bundle agreementRef does not resolve the committed agreement")
+    # Work storage outputs are proven by the independently finalized receipt.
+    # Asserted Vet artifacts additionally require their own finalized SR-2 receipt.
+    for index, role in ((0, "buyer"), (1, "seller")):
+        op = intent["operations"][index]
+        if op["kind"] == "assert-artifact":
+            anchor = data.get("vetReceipts", {}).get(role)
+            if not isinstance(anchor, dict):
+                raise Unknown("finalized Vet publication unavailable")
+            _verify_anchor_receipt(anchor, logical=expected_vets[index]["anchor"]["locator"],
+                content_hash=expected_vets[index]["contentHash"], public_keys=data["publicKeys"],
+                network_authority=_network_authority(data), network_id=intent["networkId"],
+                proof_profile=data["expectedProofProfile"], validator_set_id=data["capability"]["validatorSetId"])
+    pipeline = listing["pipeline"]
+    rows = bundle["phaseSummary"]
+    if len(rows) != len(pipeline):
+        raise Invalid("bundle phaseSummary is not the executed pipeline")
+    for index, (row, step) in enumerate(zip(rows, pipeline)):
+        if row["index"] != index or row["kind"] != step["kind"]:
+            raise Invalid("bundle phaseSummary differs from signed pipeline")
+        if index < len(pipeline) - 1 and row["outcome"] != "ok":
+            raise Invalid("bundle contradicts committed Purchase phases")
+        if row.get("attestationRef") is not None and row["attestationRef"] not in bundle["settlementEvidence"] + bundle["vetRecords"]:
+            raise Invalid("bundle phase back-pointer is outside its exact evidence set")
+        if "txRefs" in row and (not isinstance(row["txRefs"], list)
+                or not all(_shapes()._chain_tx_ref_shape_valid(item) for item in row["txRefs"])):
+            raise Invalid("bundle phase transaction references are malformed")
+        entries = data.get("st11Closure", {}).get("settlementEvidence", [])
+        if data.get("failureDeliveryEvidence"):
+            entries = [data["paymentEvidence"], data["failureDeliveryEvidence"]]
+        expected_ref = next(({"anchor": {"kind": "storage-program", "locator": entry["publication"]["anchorReceipt"]["nativeAddress"]},
+                              "contentHash": atomic_evidence_hash(entry["evidence"])}
+                             for entry in entries if entry["evidence"]["phaseIndex"] == index), None)
+        if expected_ref is not None and row.get("attestationRef") is not None and not _json_equal(row["attestationRef"], expected_ref):
+            raise Invalid("bundle phase back-pointer differs from its authenticated phase result")
+    last = rows[-1]
+    if bundle["outcome"] == "completed":
+        if last["outcome"] != "ok":
+            raise Invalid("completed bundle contains a failed phase")
+    elif bundle["outcome"] != "failed-substrate":
+        expected_error = {"failed-perm": "permanent", "failed-counterparty": "counterparty"}.get(bundle["outcome"])
+        transient = (bundle["outcome"] == "failed-perm" and last.get("errorClass") == "transient"
+                     and last.get("retryExhausted") is True)
+        if last["outcome"] != "fail" or (last.get("errorClass") != expected_error and not transient):
+            raise Invalid("failure bundle does not match terminal phase result")
+    elif last["outcome"] == "fail" and last.get("errorClass") != "substrate":
+        raise Invalid("substrate failure bundle has another terminal cause")
+    return set(expected_parties)
 
 
 def _verify_st11_closure(
@@ -4133,14 +4245,14 @@ def _verify_st11_closure(
     ):
         raise Invalid("bundle is not this job's completed EvidenceBoundFaultAttestationBundle")
     roles = _bundle_roles(bundle, roster)
-    if roles != {"buyer", "seller"}:
-        raise Invalid("completed bundle parties are not the buyer and seller")
+    if roles != _verify_bundle_dependencies(bundle, purchase_intent, purchase_receipt, data):
+        raise Invalid("completed bundle parties differ from authenticated session")
     refs = _evidence_refs(bundle)
     expected_refs = {_published_ref(entry) for entry in by_phase.values()}
     if len(refs) != len(expected_refs) or set(refs) != expected_refs:
         raise Invalid("bundle settlementEvidence differs from the published Atomic evidence")
     missing = [
-        role for role in ("buyer", "seller")
+        role for role in sorted(roles)
         if _bundle_signature_missing(bundle, role, roster, data["publicKeys"])
     ]
     if missing:
@@ -4166,7 +4278,10 @@ def _verify_failure_record(
         or outcome not in _FAILURE_OUTCOMES
     ):
         raise Invalid("failure record is not this job's failed EvidenceBoundFaultAttestationBundle")
+    if outcome in {"aborted-by-self", "aborted-by-other"}:
+        raise Invalid("ST-3 forbids abort after final Purchase payment")
     roles = _bundle_roles(bundle, roster)
+    _verify_bundle_dependencies(bundle, intent, data["purchaseReceipt"], data)
     if role not in roles:
         raise Invalid("failure bundle is anchored by a role outside its parties")
     faulted = bundle.get("faultedParty")
@@ -4179,8 +4294,16 @@ def _verify_failure_record(
         raise Invalid("faultedParty is outside the permissible set for this outcome and role")
     if _bundle_signature_missing(bundle, role, roster, data["publicKeys"]):
         raise Invalid("failure bundle is not signed by its anchoring role holder")
-    if _published_ref(payment) not in set(_evidence_refs(bundle)):
-        raise Invalid("failure record omits or reverses the final Purchase payment")
+    delivery = data.get("failureDeliveryEvidence")
+    completion_intent = data.get("failureCompletionIntent")
+    completion_receipt = data.get("failureCompletionReceipt")
+    if not isinstance(completion_intent, dict) or not isinstance(completion_receipt, dict):
+        raise Unknown("failed delivery invocation and evidence unavailable")
+    _verify_published_evidence(delivery, completion_intent, completion_receipt,
+        "storage-program-put", roster["orchestrator"], data, expected_outcome="success" if bundle["phaseSummary"][-1]["outcome"] == "ok" else "failure")
+    refs = _evidence_refs(bundle)
+    if len(refs) != 2 or set(refs) != {_published_ref(payment), _published_ref(delivery)}:
+        raise Invalid("failure bundle evidence differs from the exact phase-result set")
     _verify_role_bundle_publication(
         record, bundle, roster, data, intent["networkId"], ("included", "finalized")
     )
@@ -4195,6 +4318,17 @@ def _verify_refund_amendment(
     amendment = data.get("amendment")
     if not isinstance(amendment, dict) or amendment.get("amendmentVersion") != "1":
         raise Unknown("a versioned SettlementAmendment is unavailable")
+    if (not isinstance(amendment.get("reason"), str)
+            or not isinstance(amendment.get("observedAt"), (int, float))
+            or isinstance(amendment["observedAt"], bool)
+            or not 0 <= amendment["observedAt"] <= SAFE_INT_MAX):
+        raise Invalid("SettlementAmendment required reason/observedAt is malformed")
+    from settlement_contract_reference import _shapes
+    if ("refundTxRefs" in amendment and (not isinstance(amendment["refundTxRefs"], list)
+            or not all(_shapes()._chain_tx_ref_shape_valid(item) for item in amendment["refundTxRefs"]))):
+        raise Invalid("SettlementAmendment refundTxRefs is malformed")
+    if "refundAmount" in amendment and not _shapes()._price_term_shape_valid(amendment["refundAmount"]):
+        raise Invalid("SettlementAmendment refundAmount is malformed")
     verify_embedded(amendment, data["publicKeys"], _AMENDMENT_DOMAIN)
     # The refunding party (the seller who was paid) authorizes the amendment.
     require_signer(amendment, roster["seller"])
@@ -4238,7 +4372,7 @@ def _verify_refund_amendment(
         raise Unknown("SettlementAmendment publication is not finalized")
     network_authority = _network_authority(data)
     _verify_anchor_receipt(
-        receipt, logical=address, content_hash=sha256_hex(jcs_bytes(amendment)),
+        receipt, logical=address, content_hash=artifact_content_hash(amendment),
         public_keys=data["publicKeys"], network_authority=network_authority,
         network_id=intent["networkId"], proof_profile=data.get("expectedProofProfile"),
         validator_set_id=data["capability"]["validatorSetId"],
@@ -4792,6 +4926,7 @@ def _evaluate_composed_admission(
             "purchaseCommitmentProjection": data.get("purchaseCommitmentProjection"),
             "claimsEvidenceFinalized": False, "claimsBundleFinalized": False,
         })
+    profile_input["vetReceipts"] = data.get("vetReceipts", {})
     evaluate_profile(profile_input, committed_at=authority_context["committedAt"])
     verify_receipt(
         receipt, intent, data["publicKeys"], capability=capability,

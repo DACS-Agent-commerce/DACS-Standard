@@ -757,7 +757,7 @@ class B2ConformanceHashTests(unittest.TestCase):
             "SettlementEvidence": "evidenceVersion",
         }
         selectors = sorted(module.DACS4_EVIDENCE_SELECTORS)
-        self.assertEqual(len(selectors), 4)
+        self.assertEqual(len(selectors), 5)
         for kind, expected_selector in expected_by_kind.items():
             with self.subTest(kind=kind, case="expected-singleton"):
                 self.assertTrue(module.lifecycle_evidence_kind_matches(

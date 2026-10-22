@@ -24,7 +24,7 @@
     "payer": "5555555555555555555555555555555555555555555555555555555555555555"
   },
   "count": 68,
-  "hash": "6d6ff9f4c4f873dc22407becee8175283a63ab79d330d8740a7fa1be0a52ca32",
+  "hash": "8e47ce89311ffef17cf1fb3b4e1f5061969fa90841278d1b4a485607efdbcb66",
   "coverage": {
     "classification": "candidate-complete-applicable-polarity",
     "applicabilityProfile": "atomic-v0.1-explicit",
@@ -1430,7 +1430,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -1443,7 +1443,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -1464,7 +1464,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -1475,12 +1475,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -1500,7 +1500,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -1515,7 +1515,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -1545,7 +1545,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -1567,7 +1567,7 @@
             }
           ]
         },
-        "claimedWorkId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7"
+        "claimedWorkId": "e6c2e3505e4167edd90e45d1f4f4b1cff11ca12c4eda10592c491abaff3466db"
       },
       "expected": "pass",
       "reason": "Pure JSON with unique ordered roles is JCS-canonicalized, and its exact canonical bytes are accepted only under the derived identifier."
@@ -1685,7 +1685,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -1698,7 +1698,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -1719,7 +1719,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -1730,12 +1730,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -1755,7 +1755,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -1770,7 +1770,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -1800,7 +1800,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -1958,7 +1958,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -1971,7 +1971,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -1992,7 +1992,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -2003,12 +2003,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -2028,7 +2028,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -2043,7 +2043,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -2073,7 +2073,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -2235,7 +2235,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -2248,7 +2248,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -2269,7 +2269,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -2280,12 +2280,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -2305,7 +2305,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -2320,7 +2320,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -2350,7 +2350,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -2509,7 +2509,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -2522,7 +2522,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -2543,7 +2543,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -2554,12 +2554,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -2579,7 +2579,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -2594,7 +2594,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -2624,7 +2624,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -2783,7 +2783,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -2796,7 +2796,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -2817,7 +2817,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -2828,12 +2828,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -2853,7 +2853,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -2868,7 +2868,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -2898,7 +2898,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -3057,7 +3057,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -3070,7 +3070,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -3091,7 +3091,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -3102,12 +3102,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -3127,7 +3127,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -3142,7 +3142,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -3172,7 +3172,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -3331,7 +3331,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -3344,7 +3344,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -3365,7 +3365,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -3376,12 +3376,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -3401,7 +3401,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -3416,7 +3416,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -3446,7 +3446,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -3605,7 +3605,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -3618,7 +3618,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -3639,7 +3639,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -3650,12 +3650,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -3675,7 +3675,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -3690,7 +3690,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -3720,7 +3720,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -3879,7 +3879,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -3892,7 +3892,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -3913,7 +3913,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -3924,12 +3924,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -3949,7 +3949,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -3964,7 +3964,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -3994,7 +3994,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -4154,7 +4154,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -4167,7 +4167,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -4188,7 +4188,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -4199,12 +4199,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -4224,7 +4224,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -4239,7 +4239,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -4269,7 +4269,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -4428,7 +4428,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -4441,7 +4441,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -4462,7 +4462,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -4473,12 +4473,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -4498,7 +4498,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -4513,7 +4513,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -4543,7 +4543,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -4702,7 +4702,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -4715,7 +4715,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -4736,7 +4736,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -4747,12 +4747,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -4772,7 +4772,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -4787,7 +4787,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -4817,7 +4817,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -4980,7 +4980,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -4993,7 +4993,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -5014,7 +5014,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -5025,12 +5025,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -5050,7 +5050,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -5065,7 +5065,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -5095,7 +5095,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -5253,7 +5253,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -5266,7 +5266,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -5287,7 +5287,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -5298,12 +5298,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -5323,7 +5323,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -5338,7 +5338,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -5368,7 +5368,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -5505,7 +5505,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -5518,7 +5518,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -5527,19 +5527,19 @@
                     {
                       "algorithm": "ed25519",
                       "party": "did:dacs:test:buyer",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "algorithm": "ed25519",
                       "party": "did:dacs:test:seller",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ],
                   "terms": {
                     "additionalTerms": {
                       "atomicDelivery": {
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d",
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000"
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3"
                       }
                     },
                     "deadline": 1800000060000,
@@ -5571,7 +5571,7 @@
               "operationId": "commitment",
               "payload": {
                 "artifact": {
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "createdAt": 1799999950000,
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
@@ -5588,7 +5588,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -5608,7 +5608,7 @@
               "kind": "payment-slot-cas",
               "operationId": "payment-slot",
               "payload": {
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78",
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f",
                 "expected": {
                   "generation": 0,
                   "state": "vacant"
@@ -5666,7 +5666,7 @@
           ],
           "workVersion": "1"
         },
-        "claimedWorkId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7"
+        "claimedWorkId": "e6c2e3505e4167edd90e45d1f4f4b1cff11ca12c4eda10592c491abaff3466db"
       },
       "expected": "pass",
       "reason": "Object member insertion order does not affect JCS or workId; operation array order remains fixed."
@@ -5804,7 +5804,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -5817,7 +5817,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -5838,7 +5838,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -5849,12 +5849,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -5874,7 +5874,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -5889,7 +5889,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -5919,7 +5919,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -6065,7 +6065,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -6078,7 +6078,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -6099,7 +6099,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -6110,12 +6110,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -6135,7 +6135,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -6150,7 +6150,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -6180,7 +6180,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -6341,7 +6341,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -6354,7 +6354,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -6375,7 +6375,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -6386,12 +6386,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -6411,7 +6411,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -6426,7 +6426,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -6456,7 +6456,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -6478,7 +6478,7 @@
             }
           ]
         },
-        "claimedWorkId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+        "claimedWorkId": "e6c2e3505e4167edd90e45d1f4f4b1cff11ca12c4eda10592c491abaff3466db",
         "attemptId": "not-hashed",
         "outerFee": "99"
       },
@@ -6618,7 +6618,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -6631,7 +6631,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -6652,7 +6652,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -6663,12 +6663,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -6688,7 +6688,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -6703,7 +6703,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -6733,7 +6733,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -6892,7 +6892,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -6905,7 +6905,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -6926,7 +6926,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -6937,12 +6937,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -6962,7 +6962,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -6977,7 +6977,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -7007,7 +7007,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -7247,7 +7247,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -7260,7 +7260,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -7281,7 +7281,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -7292,12 +7292,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -7317,7 +7317,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -7332,7 +7332,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -7362,7 +7362,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -7520,7 +7520,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -7533,7 +7533,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -7554,7 +7554,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -7565,12 +7565,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -7590,7 +7590,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -7605,7 +7605,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -7635,7 +7635,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -7797,7 +7797,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -7810,7 +7810,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -7831,7 +7831,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -7842,12 +7842,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -7867,7 +7867,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -7882,7 +7882,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -7912,7 +7912,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -8074,7 +8074,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -8087,7 +8087,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -8108,7 +8108,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -8119,12 +8119,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -8144,7 +8144,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -8159,7 +8159,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -8189,7 +8189,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -8350,7 +8350,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -8363,7 +8363,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -8384,7 +8384,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -8395,12 +8395,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -8420,7 +8420,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -8435,7 +8435,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -8465,7 +8465,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -8624,7 +8624,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -8637,7 +8637,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -8658,7 +8658,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -8669,12 +8669,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -8694,7 +8694,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -8709,7 +8709,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -8739,7 +8739,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -8899,7 +8899,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -8912,7 +8912,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -8933,7 +8933,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -8944,12 +8944,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -8969,7 +8969,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -8984,7 +8984,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -9014,7 +9014,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -9246,7 +9246,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -9259,7 +9259,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -9280,7 +9280,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -9291,12 +9291,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -9316,7 +9316,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -9331,7 +9331,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -9361,7 +9361,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -9525,7 +9525,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -9538,7 +9538,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -9559,7 +9559,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -9570,12 +9570,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -9595,7 +9595,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -9610,7 +9610,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -9640,7 +9640,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -9865,7 +9865,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -9878,7 +9878,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -9899,7 +9899,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -9910,12 +9910,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -9935,7 +9935,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -9950,7 +9950,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -9980,7 +9980,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -10198,7 +10198,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -10211,7 +10211,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -10232,7 +10232,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -10243,12 +10243,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -10268,7 +10268,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -10283,7 +10283,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -10313,7 +10313,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -10532,7 +10532,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -10545,7 +10545,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -10566,7 +10566,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -10577,12 +10577,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -10602,7 +10602,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -10617,7 +10617,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -10647,7 +10647,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -10866,7 +10866,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -10879,7 +10879,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -10900,7 +10900,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -10911,12 +10911,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -10936,7 +10936,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -10951,7 +10951,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -10981,7 +10981,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -11137,7 +11137,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -11150,7 +11150,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -11171,7 +11171,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -11182,12 +11182,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -11207,7 +11207,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -11222,7 +11222,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -11252,7 +11252,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -11274,7 +11274,7 @@
             }
           ]
         },
-        "claimedWorkId": "a848f9d6c0d47ed24ddbc30813966f065e480baa06ba0c0e6dffb4a7f62ae7e5"
+        "claimedWorkId": "ed5edf0a99aa9a7f410888895fdb32bbc43bef82bc6374db994ddc63bda95008"
       },
       "expected": "fail",
       "reason": "A dacs-purchase-v1 roster carries all four roles; dropping the buyer, who authorizes no Purchase operation, is rejected even under a recomputed workId."
@@ -11403,7 +11403,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -11416,7 +11416,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -11437,7 +11437,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -11448,12 +11448,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -11473,7 +11473,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -11488,7 +11488,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -11518,7 +11518,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -11540,7 +11540,7 @@
             }
           ]
         },
-        "claimedWorkId": "fbc4d71bbe1bc5982e92fc898decdab53f792bf0b995a7c65d8a5672ed470ca5"
+        "claimedWorkId": "15894bd7a41ccbef9150c3fb8bb6ff555703d9f0513e79525f50fb20c7ed136c"
       },
       "expected": "fail",
       "reason": "An ordered, unique orchestrator-and-payer roster still omits two of the four v1 roles."
@@ -11592,7 +11592,7 @@
                   "executionProfile": "demos-bft-work/1",
                   "profile": "dacs-purchase-v1",
                   "networkId": "demos:testnet-atomic",
-                  "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+                  "workId": "e6c2e3505e4167edd90e45d1f4f4b1cff11ca12c4eda10592c491abaff3466db",
                   "winningAttempt": {
                     "attemptId": "attempt-a",
                     "nativeTransactionRef": {
@@ -11616,11 +11616,11 @@
                       "storageOutput": {
                         "logicalAddress": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer",
                         "nativeAddress": "stor-6ff08de8534e412cf4eb728787bd5d4d2fc7b318",
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "writer": "native:fee-payer-77",
                         "nonce": "200"
                       },
-                      "outputHash": "2ac9ec602ac5dd044b946194b772d8342749d80e39f1fa0cc806ef8378865531"
+                      "outputHash": "0d909678f83dbe9a6975927200cbc798e046e672bed5fb8e6db8d465f2308a76"
                     },
                     {
                       "operationId": "seller-vet",
@@ -11631,17 +11631,17 @@
                       "storageOutput": {
                         "logicalAddress": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller",
                         "nativeAddress": "stor-cdbf9556a1f3aa9af24c5b052f2b040b2f6b507c",
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "writer": "native:fee-payer-77",
                         "nonce": "201"
                       },
-                      "outputHash": "4841d2f8ad59928262496347c824479ed4d63c8825aac02ac39532f8bd31a40c"
+                      "outputHash": "95e722bdddfde31cada468112c5fe532908e83c643b93beef3c23081449beb52"
                     },
                     {
                       "operationId": "agreement",
                       "operationIndex": 2,
                       "operationKind": "assert-artifact",
-                      "inputHash": "592dba6a93aa409d0d8e347613ebcc25d8877ef42fb1c9592cec3feaf97942b2",
+                      "inputHash": "b7d00bf8ec34c25d8cccce1fcfe8d1e8037dac984ece154729926c660a5b6ab5",
                       "status": "committed",
                       "outputHash": "abcae3bc067fb01c00052f3007a78114ecba0967ec0cf280d68f4d3f0b61bdcc"
                     },
@@ -11649,22 +11649,22 @@
                       "operationId": "commitment",
                       "operationIndex": 3,
                       "operationKind": "storage-program-put",
-                      "inputHash": "63a08a91d91228a5688d21c06da0e67597f81395a6dd6a622c50f23aaabc64f4",
+                      "inputHash": "0496b7cba0c82c8b77cc67f448bc34f3c01f0e98ba0ec7458314d99ae011099a",
                       "status": "committed",
                       "storageOutput": {
                         "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
                         "nativeAddress": "stor-a8f07d68e71de4710ded4a1184bc7246b397897b",
-                        "contentHash": "876098adb9977047162fcc9d1dfd8bdb1ec9b2b8833e394e67ff0724e1d52418",
+                        "contentHash": "42738ad30ea57562c88587b83a84c4e2ebe922a24a1b822daada4c6fd96755c7",
                         "writer": "native:fee-payer-77",
                         "nonce": "203"
                       },
-                      "outputHash": "fcec0dd7f94b614e1016e8739739ce62651f06db905359a8978397d7ba3803fb"
+                      "outputHash": "6f6f3056488063d36506b73c7510849ab7f6b8cfcb538649ed5e2028ef93f573"
                     },
                     {
                       "operationId": "payment-slot",
                       "operationIndex": 4,
                       "operationKind": "payment-slot-cas",
-                      "inputHash": "e9caad89161bf5e7f00bdd7427165e8535c7985e6a16a507ba51e1339f9fba95",
+                      "inputHash": "77030595ef1c0929c0c263d356c83ae036f6749e6e2b29a05c1b66f7d9b8a027",
                       "status": "committed",
                       "outputHash": "248bf77a99424ed2631faf3a2aa8a17de87c6ac856945ca5840df066dfc08c17"
                     },
@@ -11677,7 +11677,7 @@
                       "outputHash": "5b20397c764d2f14745d3ae418408c9f2ced981527cd16765457c7c523018b0d"
                     }
                   ],
-                  "operationReceiptRoot": "2b23de3ef6596a23446233e14ba6ab0a0d3049a3a7ad6fda994bb3a40ee05073",
+                  "operationReceiptRoot": "2dcb250cfcd23fdbc3c1d4ede496aa9ddf5d368b1de2771de876806a4c2de203",
                   "businessState": {
                     "preRoot": "ed9767c9769b94e485c51be3452823b6afcf29beb2243a717b86786319168833",
                     "postRoot": "e6c3b2bc3ac52579a71be6d92408244123cdd7e45d27255b305a7e67f8eaff4c",
@@ -11701,23 +11701,23 @@
                     "after": {
                       "state": "settled",
                       "generation": 0,
-                      "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
-                      "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78",
-                      "receiptCommitment": "f600c99ab8da49c33daabe8f7f9b28cf3ba068c5927760fc1aa51e8e413dc299"
+                      "workId": "e6c2e3505e4167edd90e45d1f4f4b1cff11ca12c4eda10592c491abaff3466db",
+                      "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f",
+                      "receiptCommitment": "1e3ba207ed678e6abd2ad2ffab0f9abf615234b7df7b502dbb6cde73a46a97da"
                     }
                   },
                   "envelopeEffects": {
                     "nonceConsumed": true,
                     "feeCharged": "1"
                   },
-                  "receiptCommitment": "f600c99ab8da49c33daabe8f7f9b28cf3ba068c5927760fc1aa51e8e413dc299",
+                  "receiptCommitment": "1e3ba207ed678e6abd2ad2ffab0f9abf615234b7df7b502dbb6cde73a46a97da",
                   "slotStateEvidence": {
                     "kind": "test-payment-slot-state",
-                    "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0LWF0b21pYyIsInByb29mUHJvZmlsZSI6ImRlbW9zLWJmdC1wcm9vZi90ZXN0LTEiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiYzdKUG1QYWV5bTFPZGZNVUxfWVJvOW9ZcXU4X0JxTUhGMS01cEVyYkFRV1ZLQ1RycHdzZ0NBdlRqd21RLUk5QXFVREU3Y1M5RkdDSERXaFlGdENoQXcifSwic2xvdCI6eyJhZnRlciI6eyJjb25mbGljdERpZ2VzdCI6ImU1M2UwMWEzY2NlMTVlMGQ0NTFiZTg4ZmQxNjYwMzI2ODcxYTdjZTAyYmQ4ZWJkOWYxYjdhMDQ4YWVlMThhNzgiLCJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InNldHRsZWQiLCJ3b3JrSWQiOiJmZWExYjJkOGY4N2JkMDlhZjYzNGZiYjkyMWUyMDFlNTdiZDQzNjVkODlmZTc0M2VjYjhlNDJhNzM4NGZiOGY3In0sImJlZm9yZSI6eyJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InZhY2FudCJ9LCJrZXkiOnsiam9iSWQiOiIwMUsxRFBBMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm5ldHdvcmtJZCI6ImRlbW9zOnRlc3RuZXQtYXRvbWljIiwicGhhc2VJbmRleCI6MiwicmFpbElkIjoiZGVtb3MtbmF0aXZlOkRFTSJ9fSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSIsIndvcmtJZCI6ImZlYTFiMmQ4Zjg3YmQwOWFmNjM0ZmJiOTIxZTIwMWU1N2JkNDM2NWQ4OWZlNzQzZWNiOGU0MmE3Mzg0ZmI4ZjcifQ"
+                    "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0LWF0b21pYyIsInByb29mUHJvZmlsZSI6ImRlbW9zLWJmdC1wcm9vZi90ZXN0LTEiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiaUdZMHFueVNjdTczb1JwQWxfMGp4Y3FsX3Z6cjM3eEtLM3hCVy1UV0FVamRtT1FLRThBcFlZSWdNeS1tMXl1MHVEVFZqYWtwUGJaRjJuaS0zVkh0QmcifSwic2xvdCI6eyJhZnRlciI6eyJjb25mbGljdERpZ2VzdCI6IjBhNTdhYmQ3YjYwYzQ0Y2Y2ZTBkNzgzMTFmZWJiODE3Yjc1ZWQwMGQwMTEwMWRmNzlhOTFlZmQyZTFmMzQzNGYiLCJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InNldHRsZWQiLCJ3b3JrSWQiOiJlNmMyZTM1MDVlNDE2N2VkZDkwZTQ1ZDFmNGY0YjFjZmYxMWNhMTJjNGVkYTEwNTkyYzQ5MWFiYWZmMzQ2NmRiIn0sImJlZm9yZSI6eyJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InZhY2FudCJ9LCJrZXkiOnsiam9iSWQiOiIwMUsxRFBBMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm5ldHdvcmtJZCI6ImRlbW9zOnRlc3RuZXQtYXRvbWljIiwicGhhc2VJbmRleCI6MiwicmFpbElkIjoiZGVtb3MtbmF0aXZlOkRFTSJ9fSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSIsIndvcmtJZCI6ImU2YzJlMzUwNWU0MTY3ZWRkOTBlNDVkMWY0ZjRiMWNmZjExY2ExMmM0ZWRhMTA1OTJjNDkxYWJhZmYzNDY2ZGIifQ"
                   },
                   "finalityEvidence": {
                     "kind": "test-bft-checkpoint",
-                    "value": "eyJibG9ja0lkIjoiYmxvY2stYXRvbWljLTkwMSIsImtpbmQiOiJ0ZXN0LWJmdC1jaGVja3BvaW50IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicmVjZWlwdENvbW1pdG1lbnQiOiJmNjAwYzk5YWI4ZGE0OWMzM2RhYWJlOGY3ZjliMjhjZjNiYTA2OGM1OTI3NzYwZmMxYWE1MWU4ZTQxM2RjMjk5Iiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6ImlJUXBzbEI5T2lpZjJCdEhNWTFkbWxITjhvaE5EWFFFeG1HY0FJU2t4VlRIZUh5SGxPSVNjQ09BRUVNWjRIbndnR1l0QVRCX1JwQmZWRmh2bDJlUEN3In0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
+                    "value": "eyJibG9ja0lkIjoiYmxvY2stYXRvbWljLTkwMSIsImtpbmQiOiJ0ZXN0LWJmdC1jaGVja3BvaW50IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicmVjZWlwdENvbW1pdG1lbnQiOiIxZTNiYTIwN2VkNjc4ZTZhYmQyYWQyZmZhYjBmOWFiZjYxNTIzNGI3ZGY3YjUwMmRiYjZjZGU3M2E0NmE5N2RhIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6IjhvV2VjV25acUVHSkxJSkhkbUVPNXh2N2hoVklWSnZETjNKb2V4RnBXR2ljX05sX1cyemt1WVlsRTFlZUZNUDY3dWV4WGdRMFRqdDdzd01aMFE0M0FnIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
                   }
                 }
               }
@@ -11735,7 +11735,7 @@
               "payload": {
                 "bytes": "ZGV0ZXJtaW5pc3RpYy1yZXN1bHQtdjE",
                 "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d",
-                "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                 "writeCondition": {
                   "kind": "create-only"
                 }
@@ -11743,7 +11743,7 @@
             }
           ]
         },
-        "claimedWorkId": "2c021247782d6251f859546627c13e2fd7de321c6b99f56a04a65e6652eb82cc"
+        "claimedWorkId": "dd89389cfd455962bdf7fdd49eae2de737cf39d94839a8cd65cf308edc813699"
       },
       "expected": "fail",
       "reason": "A dacs-completion-v1 roster carries all four roles; dropping the payer, who authorizes no Completion operation, is rejected."
@@ -11880,7 +11880,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -11893,7 +11893,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -11914,7 +11914,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -11925,12 +11925,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -11950,7 +11950,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -11965,7 +11965,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -11995,7 +11995,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -12151,7 +12151,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:7ZZZZZZZZZZZZZZZZZZZZZZZZZ:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "f0aed149fbf7fb6c6628815bbde53183fa5d0aa51fd0ace2e0ae9fbd9b334134",
+                        "contentHash": "b6376121fc17901373ad22c9219c6cb8688f420ea67c86e2bcf445f0467fa38f",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -12164,7 +12164,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:7ZZZZZZZZZZZZZZZZZZZZZZZZZ:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "23867928c99d3c5b65a423c545f84da1ad4bb7e0d8020b3d241266b275fd1c17",
+                        "contentHash": "5633299faa71e3a84d8f57c22970db3c4f2453c463a7a2e41695c09df5465d21",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -12185,7 +12185,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:7ZZZZZZZZZZZZZZZZZZZZZZZZZ",
+                        "logicalAddress": "dacs4:deliverable:7ZZZZZZZZZZZZZZZZZZZZZZZZZ:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -12196,12 +12196,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "_CBfYti_7vrL0GsofKDg2gvl6Eze2fgEwxKjv6SCt18kCGF9Y70wOEsDYbmpk7reFt-oD7k3X3YN8T2uoUTqCQ"
+                      "value": "mftrEcIjalvVqw_b5pDJMwd-3qDJVTJdHkE9Pszjuxn1t4MsuCxsQMWcciyn524YLaL2eBtqMhtAXrdqUEi-Cg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "YjoMFod08pp30p5CEb-jyjag3BN8DwRGAqH_ewZFnwbpUtX85o3zAYZMOT5iJ9vZv6S-mH1SqESuMPz4nrPkAg"
+                      "value": "Lv_5F-Tf76jttopd3hjh72-4DeSN4kzl9RtuPaZYQc9UzBQkqB_0l2Tnr5xq0QIyFC4B6A5lQPalyJKeHR2cAw"
                     }
                   ]
                 }
@@ -12221,7 +12221,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "7ZZZZZZZZZZZZZZZZZZZZZZZZZ",
-                  "agreementHash": "5482aef981817367bb937460a512c284645927f8acb5b102d5869f33b24e2026",
+                  "agreementHash": "119b22fe22a565884aa025643e66f7c5131fe4ec86029379ddb372ec01f79762",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -12236,7 +12236,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "KPtuSCImO80hSyFfa_S5dieXDLypDW2_Stb4reFEIcV6Kcb_fiFtYRQ2IArMdGUGV9-Gtmp3p0dutLvsUNZLCw"
+                    "value": "wpnWVF5jcWqR4cmwhMPrwB4vpk75NFyeMJddHgGRkW_Ermrq6_PxJrWeFc46sR3IC4x0et2sZqgD3PMjMserDQ"
                   }
                 },
                 "logicalAddress": "dacs3:commit:7ZZZZZZZZZZZZZZZZZZZZZZZZZ",
@@ -12266,7 +12266,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e8d59433bd682e41f63fba177e625ad5f447c9fbb4351073266437d4e138705d"
+                "conflictDigest": "dadcf8ff5a05b13bdf56b53b8954b0b564267455a7401d697ec35b34f0435c6e"
               }
             },
             {
@@ -12288,7 +12288,7 @@
             }
           ]
         },
-        "claimedWorkId": "b0ba29ecef5578c377bb355f2083bc9cc71e2a42d237a7fde4f6de16ce38d9c8"
+        "claimedWorkId": "e560b92097ee3924ac5bc55cb9dfcbcff66a823eec14c132a2b3983d8b5d153c"
       },
       "expected": "pass",
       "reason": "The largest 128-bit ULID text form, first character 7, is a canonical JID-1 jobId."
@@ -12425,7 +12425,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:81K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "79be9a39eaf560bf6b21e5bfe6a7866d89bc1b32b132c141f48d7246559a69af",
+                        "contentHash": "206472af32e387d48f41223fb182155f2c135e8fe8dd33dbce63eaf718203ee3",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -12438,7 +12438,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:81K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "1529378d5faf2559ed55087612552096ae42f3eb8257e3255a29ce1f19d98eb8",
+                        "contentHash": "45145f696ea9a41fa298f6a10f754d52b6915b679858540ce2e9149b56cf8e67",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -12459,7 +12459,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:81K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:81K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -12470,12 +12470,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "fepMG4Kk95rZKedoTg_oMBbjQvruri4Jz6jOlg1Np7gAwcxDIV6RxEWIyFwRGM-zxUwWvPhulDvNW-O42rQ7Cg"
+                      "value": "W-LTEUc4HnuoRdIhCByM09_C7DUV2fDlWPmPKw6h5CMTjWFeW7POPToCcukDrPlgdNHD4dNGNHOlCbRh7SxrBg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "-tm-4Bx8Afm4X4n8p56Ks5wMLLOGGZqGi6ABJqhAQEY19hANbuuRw2n6lXCY5adypTFt52kmhi9kwbsqOr6tAA"
+                      "value": "uWaJyw9jrPjEZ-8ff3K2BKB8qyFs11wVp-N0aALB1ysi5ihP4HAgYZp5v4Cu7DfYyx2HGURZbC2gJvaiqH32Dg"
                     }
                   ]
                 }
@@ -12495,7 +12495,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "81K1DPA0000000000000000000",
-                  "agreementHash": "9193d50e1a01861426550eb84dfbd83d983cae386f4ad9d42f40ff1435305577",
+                  "agreementHash": "5f3df3a23a32596e67f03049db967422cb7b3d791475749227a0c4785e184d1a",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -12510,7 +12510,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "-OIwcfdwSwUyWozM0oDPAhipyVApTONTtG3UkypSy5lw4snISfmAC1G3oUmWJqij7ekhvaabutCLhnNha0rpBw"
+                    "value": "onYv5k3yF7LX2YWcPRoiM_c5zu8-HbjNbS72B7_wZ0dqV2mWOsAuppLzFyy9BwdwKtWLwDg3C6-RGQspUWBiCQ"
                   }
                 },
                 "logicalAddress": "dacs3:commit:81K1DPA0000000000000000000",
@@ -12540,7 +12540,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e0ccbd33cd9404aa949c1c02892d36234463a772f2da807a92701f8f0b91557a"
+                "conflictDigest": "55dfb609e1ec380eba3c000b73c8f54ca54c25ecc135a80e4a712f513be14d4d"
               }
             },
             {
@@ -12562,7 +12562,7 @@
             }
           ]
         },
-        "claimedWorkId": "2041ff99340a9393372abf1663d080c7a5572c0af40375a6e82d0b88692c3072"
+        "claimedWorkId": "6e9a996b883d35666697b2e926d0623c825b9ff87915dcf3821dee103d2fa857"
       },
       "expected": "fail",
       "reason": "A 26-character Crockford string starting with 8 encodes 130 bits and is a malformed JID-1 jobId, not a distinct session."
@@ -12699,7 +12699,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:91K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "0bc5a456a3af45543e1ea09083508701aef29c4ee2f73ebc78fbc7d3e2f1a0a5",
+                        "contentHash": "5eadd08c846aafd633ea6b0f85652a4492955f025f43991cb66d4a8d51c72e6a",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -12712,7 +12712,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:91K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "77fd0d0232a54ed229b9d98584365883e5e698d6d88720769072a533b04d981d",
+                        "contentHash": "d6d4131d0f453eedc91f2e4b2bb4c9e3132a2f708c3d3803263b8945e0248122",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -12733,7 +12733,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:91K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:91K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -12744,12 +12744,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "ewJPzBmgGWcXOeIQqeh2oOuHsGh5iLRy5N6_HwBtI1fuFvCbn8MluQKOn5pnbSYyRCeoLJeIs6zEC8ESTMTKCg"
+                      "value": "INK0wPXHZlgjLWHc9cXrFR4MKPz6v8v_FYopWEG3nlZMCHDAGAXU5ZmIUyfI1UDDedvlFfO0DL9qvgQVN98pCw"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "SUfkmuRwqfmJjlcJazRxbP_JpiCT7Ibr8kMPiSa3xMGajByUKgcIbTatZkpheTLKBaJspHQtpuLdibaXqkIICw"
+                      "value": "KJd8TL69t09wWty_6A2pgPdigajFExwS_SN7A3jxpgZIo5Ay_RW8V1Ji5Wzj-GaYzaMbZFfd3Or2vrVFru9QCg"
                     }
                   ]
                 }
@@ -12769,7 +12769,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "91K1DPA0000000000000000000",
-                  "agreementHash": "2bf9ba78ba51ec0a4a4a7f53b881531f4b93b14e4bac501076fd26d432678b54",
+                  "agreementHash": "729eccae4c79ffbc42d267da6cf11fb58b5db7c8aa2c8bcdfa6de9853626e46b",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -12784,7 +12784,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "oO2Jcori9PqLLuFImoKUQATiUDYFxbZWetZ3Cb5MgKvlhDI1lLnmGKI0RnrMH0nL3PgZ_BlbAgHvNZmb6NZSBQ"
+                    "value": "RMPuZrLj3y0vIU0T3Z-jbWh-o0rlpM87Y1HUkmKa7KkRKJqcFP7VaGkLskUK17fDUomB5858T2DB5-4cYjuhBw"
                   }
                 },
                 "logicalAddress": "dacs3:commit:91K1DPA0000000000000000000",
@@ -12814,7 +12814,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "f76f82669851cea0a7e5e4d851e5a9969594383c7345151565fe7aeceaf8e83e"
+                "conflictDigest": "fd25a7fbf618333a1d5feb15eca14db23a1f9730ba0aafb29876664ba5990dfa"
               }
             },
             {
@@ -12836,7 +12836,7 @@
             }
           ]
         },
-        "claimedWorkId": "04bd2e22d2b2efaf6c0ac15a5ee22ea39655d0a5084bd205529f46bbb349bd8e"
+        "claimedWorkId": "d74f6c5de6898473cac633eb0d4969391d3a294a60f7e688310767ae6c23eaa3"
       },
       "expected": "fail",
       "reason": "A 26-character Crockford string starting with 9 encodes 130 bits and is a malformed JID-1 jobId, not a distinct session."
@@ -12973,7 +12973,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -12986,7 +12986,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -13007,7 +13007,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -13018,12 +13018,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -13043,7 +13043,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -13058,7 +13058,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -13088,7 +13088,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -13110,7 +13110,7 @@
             }
           ]
         },
-        "claimedWorkId": "39cf4401d200709eadf16bef838f57f4fa5d1c3e6c630ef472030d81e54b7cc3"
+        "claimedWorkId": "3222a89890caff8270ad8fbf2284b46138bd24a925144a254006a999885f3732"
       },
       "expected": "fail",
       "reason": "An intent with workVersion 2 is not AtomicDacsWorkIntentV1, whatever identifier its bytes derive."
@@ -13248,7 +13248,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -13261,7 +13261,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -13282,7 +13282,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -13293,12 +13293,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -13318,7 +13318,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -13333,7 +13333,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -13363,7 +13363,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -13522,7 +13522,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -13535,7 +13535,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -13556,7 +13556,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -13567,12 +13567,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -13592,7 +13592,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -13607,7 +13607,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -13637,7 +13637,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -13796,7 +13796,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -13809,7 +13809,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -13830,7 +13830,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -13841,12 +13841,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -13866,7 +13866,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -13881,7 +13881,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -13911,7 +13911,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -14070,7 +14070,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -14083,7 +14083,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -14104,7 +14104,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -14115,12 +14115,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -14140,7 +14140,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -14155,7 +14155,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -14185,7 +14185,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {
@@ -14562,7 +14562,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
                         },
-                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "contentHash": "3a67258859c171c7066f5ef71503f8f72fd209fe40735c551ce3b7caa259c56c",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     },
@@ -14575,7 +14575,7 @@
                           "kind": "storage-program",
                           "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
                         },
-                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "contentHash": "c3911fba7ab3e9b614824dc68e5663fa62b7db97d9bff59148d23605f5c44f94",
                         "signer": "did:dacs:test:orchestrator"
                       }
                     }
@@ -14596,7 +14596,7 @@
                     "deadline": 1800000060000,
                     "additionalTerms": {
                       "atomicDelivery": {
-                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000:3",
                         "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
                       }
                     }
@@ -14607,12 +14607,12 @@
                     {
                       "party": "did:dacs:test:buyer",
                       "algorithm": "ed25519",
-                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                      "value": "5zTt1p2rFm6qWwI4YHTYqQlpZsErczvqJc_jIOfn2zyouIlaZClSgvzMVkkohkiocplj1GRwsbH1vTIzGjiDDg"
                     },
                     {
                       "party": "did:dacs:test:seller",
                       "algorithm": "ed25519",
-                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                      "value": "_uKOFell__iFEFLWIu0b1OCHdDWlAtKJlSRDFOa5iHmXOPYXM_QQgLLAB7-h5Xa5i4FwP-d91tji2H22RoV9Bg"
                     }
                   ]
                 }
@@ -14632,7 +14632,7 @@
                 "artifact": {
                   "finalityCommitmentVersion": "1",
                   "jobId": "01K1DPA0000000000000000000",
-                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "agreementHash": "4db6ed914a2eed6d52513b0ecc204e8bf4c36a698db8a88ca2d5359572486471",
                   "listingRef": {
                     "listingId": "atomic-fixed-1",
                     "version": 1,
@@ -14647,7 +14647,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "did:dacs:test:orchestrator",
-                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                    "value": "zmgTnT1s8mIL1n_UClVzbrGEiIv2p6_pGHi0TYFlzQ-c0p8bw2sByZ5P3B0jpvPowSdDC45FIGJrsP6ETzWnBA"
                   }
                 },
                 "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
@@ -14677,7 +14677,7 @@
                   "state": "vacant",
                   "generation": 0
                 },
-                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+                "conflictDigest": "0a57abd7b60c44cf6e0d78311febb817b75ed00d01101df79a91efd2e1f3434f"
               }
             },
             {

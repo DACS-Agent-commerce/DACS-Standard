@@ -568,9 +568,7 @@ def make_atomic_authority(variant="pass"):
         ref = {
             "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-" + hashlib.sha256(
-                    ("atomic-ebfab:" + phase_key).encode()
-                ).hexdigest(),
+                "locator": settlement["auditPublication"]["anchorReceipt"]["nativeAddress"],
             },
             "contentHash": evidence_hash,
         }
@@ -586,9 +584,8 @@ def make_atomic_authority(variant="pass"):
             },
         }
         logical_address = settlement["evidenceAddress"]
-        receipts[ref_key] = _atomic_anchor_receipt(
-            ref, phase_key, logical_address
-        )
+        # Consume the exact AWS-28 receipt, with its artifact content hash.
+        receipts[ref_key] = copy.deepcopy(settlement["auditPublication"]["anchorReceipt"])
         executions[phase_key] = {
             "jobId": job_id,
             "phaseIndex": int(phase_index),
@@ -598,7 +595,7 @@ def make_atomic_authority(variant="pass"):
                 "ordinary" if variant == "wrong-family" else "atomic"
             ),
             "atomicEvidenceLogicalAddress": logical_address,
-            "anchorNonce": phase_index,
+            "anchorNonce": receipts[ref_key]["nonce"],
             **({"railId": A.TEST_RAIL_ID} if phase.startswith("pay-") else {}),
         }
         admissions[ref_key] = {

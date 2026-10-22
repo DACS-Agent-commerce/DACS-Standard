@@ -14701,25 +14701,17 @@ def _validate_ebfab_boolean(
         )
         atomic_admission = None
         if evidence_type == "atomic":
-            if not isinstance(atomic_evidence_admission_by_canonical_ref, dict):
-                return (
-                    False,
-                    _DispositionReason(
-                        "verifier-owned Atomic Work settlement admission is unavailable",
-                        "indeterminate",
-                    ),
-                    None,
-                )
-            atomic_admission = atomic_evidence_admission_by_canonical_ref.get(ref_key)
+            if isinstance(atomic_evidence_admission_by_canonical_ref, dict):
+                atomic_admission = atomic_evidence_admission_by_canonical_ref.get(ref_key)
             if atomic_admission is None:
-                return (
-                    False,
-                    _DispositionReason(
-                        "exact Atomic Work settlement admission is unavailable",
-                        "indeterminate",
-                    ),
-                    None,
-                )
+                # Continue independent member and set checks; availability must
+                # not hide a deterministic contradiction in a later member.
+                receipt = verified_receipt_by_canonical_ref.get(ref_key, {})
+                atomic_admission = {
+                    "disposition": "indeterminate", "evidenceHash": evidence_hash,
+                    "phaseKey": f"{record['phaseIndex']}:{record['phase']}",
+                    "logicalAddress": receipt.get("logicalAddress", "unavailable"),
+                }
             if (
                 not isinstance(atomic_admission, dict)
                 or set(atomic_admission) != {

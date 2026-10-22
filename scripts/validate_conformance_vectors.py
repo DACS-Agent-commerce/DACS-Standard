@@ -112,6 +112,7 @@ BODY_DISCRIMINATORS = {
 }
 
 DACS4_EVIDENCE_SELECTORS = frozenset({
+    "atomicEvidenceVersion",
     "deliveryEvidenceVersion",
     "evidenceVersion",
     "finalityBoundEvidenceVersion",

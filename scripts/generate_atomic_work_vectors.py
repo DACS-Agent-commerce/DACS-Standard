@@ -315,7 +315,7 @@ def vet_record_ref(
                 f"{ref.cf4_encode(CLAIMS[role])}"
             ),
         },
-        "contentHash": ref.sha256_hex(ref.jcs_bytes(record)),
+        "contentHash": ref.artifact_content_hash(record),
         "signer": record["signature"]["signer"],
     }
 
@@ -438,7 +438,7 @@ def agreement_document(
             },
             "deadline": 1_800_000_060_000,
             "additionalTerms": {"atomicDelivery": {
-                "logicalAddress": f"dacs4:deliverable:{job_id}",
+                "logicalAddress": f"dacs4:deliverable:{job_id}:3",
                 "contentHash": ref.sha256_hex(delivery_bytes),
             }},
         },
@@ -492,7 +492,7 @@ def commitment_anchor_receipt(record: dict[str, Any]) -> dict[str, Any]:
         "finalityProfile": "demos-bft-proof/test-1",
         "logicalAddress": f"dacs3:commit:{record['jobId']}",
         "nativeAddress": "stor-" + "a1" * 20,
-        "contentHash": ref.sha256_hex(ref.jcs_bytes(record)),
+        "contentHash": ref.artifact_content_hash(record),
         "transactionRef": {"kind": "demos-transaction", "value": "tx-commitment"},
         "writer": "native:relay-1", "nonce": "100", "state": "finalized",
         "observationDisposition": "established", "observedAt": 1_800_000_030_500,
@@ -522,7 +522,7 @@ def registry_anchor_receipt(
     logical_address: str, value: dict[str, Any], *, label: str, nonce: str,
     block_timestamp: int = 1_799_999_750_000, state: str = "finalized",
 ) -> dict[str, Any]:
-    content_hash = ref.sha256_hex(ref.jcs_bytes(value))
+    content_hash = ref.artifact_content_hash(value)
     receipt = {
         "receiptVersion": "1",
         "substrate": "demos:testnet-atomic",
@@ -643,8 +643,13 @@ def portable_session_context_source(intent: dict[str, Any]) -> dict[str, Any]:
             },
         ],
         "priorPhaseOutputs": {
-            "agreementHash": ref._agreement_hash(agreement),
-            "commitmentHash": ref.sha256_hex(ref.jcs_bytes(commitment)),
+            "negotiate-fixed-price": {"agreementHash": ref._agreement_hash(agreement),
+                "agreementRef": {"anchor": {"kind": "storage-program", "locator": f"dacs3:agreement:{intent['jobId']}"},
+                                 "contentHash": ref._agreement_hash(agreement)}},
+            ("commit-identity-bound-payee-agreement" if "identityBoundPayeeAgreementVersion" in agreement
+             else "commit-payee-bound-agreement" if "payeeBoundAgreementVersion" in agreement else "commit-agreement"): {
+                "agreementHash": ref._agreement_hash(agreement), "anchorTxRef": "tx-commit-40",
+                "anchorReceipt": commitment_anchor_receipt(commitment), "committedAt": 1_800_000_000_000},
         },
         "startedAt": 1_799_999_800_000,
     }
@@ -697,7 +702,7 @@ def payment_phase_input(intent: dict[str, Any]) -> dict[str, Any]:
         "rail": rail_definition(intent["railId"]),
         "payer": {"bundleHash": ref._identity_bundle_hash(buyer_bundle), "primaryClaim": CLAIMS["buyer"], "payingKey": CLAIMS["payer"]},
         "payee": {"bundleHash": seller_party["bundleHash"], "primaryClaim": seller_party["primaryClaim"], "payeeAddress": payee_address},
-        "amount": {"amount": "10", "currency": "DEM"},
+        "amount": copy.deepcopy(agreement["terms"]["price"]),
         "atomicSessionContext": atomic_payment_session_context(intent),
     }
 
@@ -888,7 +893,7 @@ def purchase_intent(
     conflict = {
         **slot_key, "agreementHash": ref._agreement_hash(agreement),
         "commitmentLogicalAddress": f"dacs3:commit:{job_id}",
-        "payer": "dem-test-payer", "payee": payee_account, "asset": "DEM", "amount": "10",
+        "payer": "dem-test-payer", "payee": payee_account, "asset": "DEM", "amount": agreement["terms"]["price"]["amount"],
     }
     result = {
         "workVersion": "1",
@@ -907,7 +912,7 @@ def purchase_intent(
             {"operationId": "agreement", "kind": "assert-artifact", "critical": True, "dependsOn": ["buyer-vet", "seller-vet"], "requiredRoles": ["orchestrator"], "payload": {"artifact": agreement}},
             {"operationId": "commitment", "kind": "storage-program-put", "critical": True, "dependsOn": ["agreement"], "requiredRoles": ["orchestrator"], "payload": {"artifact": commitment, "logicalAddress": f"dacs3:commit:{job_id}", "writeCondition": {"kind": "create-only"}}},
             {"operationId": "payment-slot", "kind": "payment-slot-cas", "critical": True, "dependsOn": ["commitment"], "requiredRoles": ["payer"], "payload": {"slotKey": slot_key, "expected": {"state": expected_state, "generation": generation}, "conflictDigest": ref.conflict_digest(conflict)}},
-            {"operationId": "payment", "kind": "native-dem-transfer", "critical": True, "dependsOn": ["payment-slot"], "requiredRoles": ["payer"], "payload": {"from": "dem-test-payer", "to": payee_account, "asset": "DEM", "amount": "10"}},
+            {"operationId": "payment", "kind": "native-dem-transfer", "critical": True, "dependsOn": ["payment-slot"], "requiredRoles": ["payer"], "payload": {"from": "dem-test-payer", "to": payee_account, "asset": "DEM", "amount": agreement["terms"]["price"]["amount"]}},
         ],
     }
     if prior_failure is not None:
@@ -933,7 +938,7 @@ def completion_intent(
         "roleRoster": role_roster(),
         "operations": [
             {"operationId": "purchase-receipt", "kind": "assert-work-receipt", "critical": True, "dependsOn": [], "requiredRoles": ["orchestrator"], "payload": {"receipt": purchase_receipt}},
-            {"operationId": "delivery", "kind": "storage-program-put", "critical": True, "dependsOn": ["purchase-receipt"], "requiredRoles": ["seller"], "payload": {"bytes": ref.b64u(delivery_bytes), "contentHash": ref.sha256_hex(delivery_bytes), "logicalAddress": f"dacs4:deliverable:{job_id}", "writeCondition": {"kind": "create-only"}}},
+            {"operationId": "delivery", "kind": "storage-program-put", "critical": True, "dependsOn": ["purchase-receipt"], "requiredRoles": ["seller"], "payload": {"bytes": ref.b64u(delivery_bytes), "contentHash": ref.sha256_hex(delivery_bytes), "logicalAddress": f"dacs4:deliverable:{job_id}:3", "writeCondition": {"kind": "create-only"}}},
         ],
     }
 
@@ -1123,7 +1128,7 @@ def operation_results(
                 payload = operation["payload"]
                 content_hash = payload.get("contentHash")
                 if content_hash is None and isinstance(payload.get("artifact"), dict):
-                    content_hash = ref.sha256_hex(ref.jcs_bytes(payload["artifact"]))
+                    content_hash = ref.artifact_content_hash(payload["artifact"])
                 leaf["storageOutput"] = {
                     "logicalAddress": payload["logicalAddress"],
                     "nativeAddress": f"stor-{ref.sha256_hex((intent['jobId'] + ':' + operation['operationId']).encode())[:40]}",
@@ -2812,8 +2817,12 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     remedy_evidence = settlement_evidence(remedy_purchase, remedy_receipt, "payment")
     remedy_payment = published_evidence(remedy_evidence, ref.atomic_evidence_address(
         remedy_evidence, remedy_receipt["paymentSlot"]["after"]["generation"]))
+    failed_delivery = failed_delivery_material(remedy_purchase, remedy_receipt)
     remedy_base = {
+        **failed_delivery,
         "purchaseIntent": remedy_purchase, "purchaseReceipt": remedy_receipt,
+        "authorizationAuthority": authorization_authority(remedy_purchase),
+        "expectedRailRegistryAuthority": CLAIMS["network"],
         "paymentEvidence": remedy_payment, "capability": capability(),
         "expectedNetworkAuthority": CLAIMS["network"],
         "expectedProofProfile": "demos-bft-proof/test-1", "publicKeys": PUBLIC_KEYS,
@@ -2823,7 +2832,7 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         """The buyer's fault copy after the seller fails to deliver."""
         options = {"role": "buyer", "outcome": "failed-counterparty",
                    "faulted": "seller", "signers": ("buyer",), **bundle_options}
-        return role_bundle(remedy_purchase, [remedy_payment], **options)
+        return role_bundle(remedy_purchase, [remedy_payment, failed_delivery["failureDeliveryEvidence"]], **options)
 
     def failure_input(bundle: dict[str, Any] | None, *, job: str | None = None,
                       **publish: Any) -> dict[str, Any]:
@@ -2963,7 +2972,7 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         vector("awp-completion-commitment-projection-mismatch", ["AWP-13"], "profile", bad_commitment_projection, "fail", "A contradictory Purchase commitment AnchorReceipt cannot satisfy the Completion gate."),
         vector("awp-completion-authenticated-delivery", ["AWP-21"], "profile", wrong_completion_phase, "fail", "Completion delivery phase index must match the verified signed Listing invocation while retaining the Purchase slot phase.", boundary_rules=["AWP-21"]),
         vector("awp-delivery-content-mismatch", ["AWP-14"], "profile", {**completion_base, "intent": bad_delivery}, "fail", "Delivery bytes must match the agreed content hash."),
-        vector("awp-delivery-address-mismatch", ["AWP-14"], "profile", {**completion_base, "intent": wrong_delivery_address}, "fail", "Completion delivery must use dacs4:deliverable:{jobId}."),
+        vector("awp-delivery-address-mismatch", ["AWP-14"], "profile", {**completion_base, "intent": wrong_delivery_address}, "fail", "Completion delivery must use dacs4:deliverable:{jobId}:{phaseIndex}."),
         vector("awp-delivery-cas-forbidden", ["AWP-14"], "profile", {**completion_base, "intent": delivery_cas}, "fail", "Atomic Completion delivery is create-only and cannot CAS-rewrite a prior artifact."),
         vector("awp-completion-does-not-finalize-bundle", ["AWP-16"], "profile", {**completion_base, "claimsBundleFinalized": True}, "fail", "Completion inclusion alone is not a DACS-5 finalization proof."),
         vector("awp-post-purchase-failure-placeholder", ["AWP-17"], "post-purchase", {"remedy": "ordinary-failure-record", "roleSpecificBundle": True}, "indeterminate", "A Boolean cannot establish a verified role-specific DACS failure record.", boundary_rules=["AWP-17"]),
@@ -3056,7 +3065,7 @@ def settlement_evidence(
             evidence["reason"] = reason
     elif leaf["operationKind"] == "native-dem-transfer":
         payload = intent["operations"][index]["payload"]
-        evidence["paymentAmount"] = {"amount": payload["amount"], "currency": payload["asset"]}
+        evidence["paymentAmount"] = copy.deepcopy(intent["operations"][2]["payload"]["artifact"]["terms"]["price"])
         evidence["settlementFinality"] = {
             "model": "bft-final",
             "finalityObservedAt": receipt["blockRef"]["timestamp"],
@@ -3087,7 +3096,7 @@ def atomic_publication(
 ) -> dict[str, Any]:
     canonical_bytes = ref.jcs_bytes(evidence)
     logical_address = anchor_address or address
-    bound_hash = content_hash or ref.sha256_hex(canonical_bytes)
+    bound_hash = content_hash or ref.atomic_evidence_hash(evidence)
     native_address = "stor-" + ref.sha256_hex(logical_address.encode())[:40]
     transaction_ref = {
         "kind": "demos-transaction",
@@ -3097,16 +3106,15 @@ def atomic_publication(
         "id": "block-audit-950", "height": "950",
         "timestamp": 1_800_000_040_000,
     }
-    writer = "native:audit-relay-1"
+    writer = CLAIMS["orchestrator"]
     nonce = "950"
     write_condition_result = (
         {
             "kind": "create-only", "disposition": "reconciled-identical",
             "priorState": {
                 "state": "present",
-                "contentHash": ref.sha256_hex(
-                    ref.jcs_bytes(existing_evidence or evidence)
-                ),
+                "contentHash": ref.atomic_evidence_hash(existing_evidence or evidence),
+                "canonicalBytesHash": ref.sha256_hex(ref.jcs_bytes(existing_evidence or evidence)),
             },
         }
         if mode == "replay"
@@ -3130,6 +3138,7 @@ def atomic_publication(
             "proofProfile": "demos-bft-proof/test-1",
             "validatorSetId": "test-validator-set-1",
             "writeConditionResult": write_condition_result,
+            "canonicalBytesHash": ref.sha256_hex(canonical_bytes),
         },
         "network", ref._PUBLICATION_TEST_DOMAIN,
     )
@@ -3910,6 +3919,14 @@ def bundle_binding(intent: dict[str, Any], role: str, storage: dict[str, Any]) -
     )
 
 
+def failed_delivery_material(purchase, purchase_receipt):
+    completion = completion_intent(purchase_receipt, purchase["jobId"], gate_mode=purchase["gateMode"])
+    receipt = final_receipt(completion, "rolled-back", 1)
+    evidence = settlement_evidence(completion, receipt, "delivery", outcome="failure", reason="delivery failed")
+    return {"failureCompletionIntent": completion, "failureCompletionReceipt": receipt,
+            "failureDeliveryEvidence": published_evidence(evidence, ref.atomic_evidence_address(evidence))}
+
+
 def published_evidence(
     evidence: dict[str, Any], address: str, **publication_options: Any,
 ) -> dict[str, Any]:
@@ -3942,9 +3959,18 @@ def role_bundle(
     bundle = {
         "evidenceBoundFaultBundleVersion": "1", "jobId": intent["jobId"],
         "outcome": outcome, "faultedParty": faulted, "anchoredByRole": role,
-        "parties": [
-            {"role": party, "primaryClaim": CLAIMS[party]} for party in ("buyer", "seller")
-        ],
+        "listingRef": copy.deepcopy(intent["operations"][2]["payload"]["artifact"]["listingRef"]),
+        "agreementRef": copy.deepcopy(portable_session_context_source(intent)["priorPhaseOutputs"]["negotiate-fixed-price"]["agreementRef"]),
+
+        "parties": [{k: p[k] for k in ("role", "bundleHash", "primaryClaim")}
+                    for p in portable_session_context_source(intent)["parties"]],
+        "phaseSummary": [{"index": i, "kind": step["kind"],
+                          "outcome": "fail" if outcome != "completed" and i == 3 else "ok",
+                          **({"errorClass": {"failed-counterparty": "counterparty", "failed-perm": "permanent", "failed-substrate": "substrate"}.get(outcome, "counterparty")}
+                             if outcome != "completed" and i == 3 else {})}
+                         for i, step in enumerate(authorization_authority(intent)["listing"]["pipeline"])],
+        "vetRecords": [copy.deepcopy(p["vetRecordRef"]) for p in intent["operations"][2]["payload"]["artifact"]["parties"]],
+        "recipeRegistryVersion": 1, "railRegistryVersion": 1, "finalisedAt": 1_800_000_044_000,
         "settlementEvidence": [
             {"anchor": {"kind": "storage-program",
                         "locator": entry["publication"]["anchorReceipt"]["nativeAddress"]},
@@ -3952,6 +3978,11 @@ def role_bundle(
             for entry in entries
         ],
     }
+    separate = not any(ref.claim_equal(CLAIMS["orchestrator"], CLAIMS[role]) for role in ("buyer", "seller"))
+    if not separate:
+        bundle["parties"] = [p for p in bundle["parties"] if p["role"] != "orchestrator"]
+    if outcome == "completed" and separate:
+        signers = tuple(dict.fromkeys((*signers, "orchestrator")))
     return sign_bundle(bundle, signers)
 
 
@@ -4099,6 +4130,8 @@ def audit_role_vectors() -> list[dict[str, Any]]:
             + audit_dependency_proofs("completion", receipt)
         ),
         "st11Closure": st11_closure,
+        "authorizationAuthority": authorization_authority(purchase),
+        "expectedRailRegistryAuthority": CLAIMS["network"],
         "sessionStateBefore": "audit-pending",
         "sessionStateAfter": "finalised",
         "publicKeys": PUBLIC_KEYS,
@@ -4818,7 +4851,7 @@ def predicate_pin_vectors(
 
     def session_source_differs(value):
         authority = value["authority"]
-        authority["sessionContextSource"]["priorPhaseOutputs"]["agreementHash"] = "0f" * 32
+        authority["sessionContextSource"]["priorPhaseOutputs"]["negotiate-fixed-price"]["agreementHash"] = "0f" * 32
         rebind_session_source_evidence(authority)
         session = atomic_payment_session_context_from_source(authority["sessionContextSource"])
         authority["atomicSessionContext"] = session

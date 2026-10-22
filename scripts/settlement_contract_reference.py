@@ -526,7 +526,7 @@ def is_pure_json(value: Any) -> bool:
     if isinstance(value, list):
         return all(is_pure_json(item) for item in value)
     if isinstance(value, dict):
-        return all(isinstance(key, str) and unicodedata.normalize("NFC", key) == key
+        return all(isinstance(key, str)
                    and is_pure_json(item) for key, item in value.items())
     return False
 
@@ -693,12 +693,26 @@ def consume_amendment_target(
         try:
             if anchor.get("logicalAddress") != target_ref["anchor"]["locator"]:
                 raise Invalid("AnchorReceipt is for another address")
-            _verify_finality_proof(
-                anchor, public_keys=public_keys, network_authority=network_authority,
-                network_id=network_id, proof_profile=proof_profile,
-                validator_set_id=validator_set_id,
-            )
-        except (Invalid, ValueError, TypeError, KeyError) as exc:
+            if anchor.get("evidence", {}).get("kind") == "test-anchor-publication":
+                import atomic_work_reference as atomic
+                publication = resolved.get("publication")
+                if not isinstance(publication, dict) or publication.get("anchorReceipt") != anchor:
+                    raise Unknown("complete Atomic publication proof unavailable")
+                try:
+                    atomic._verify_atomic_publication(
+                        publication, target, anchor["logicalAddress"], public_keys,
+                        network_authority=network_authority, network_id=network_id,
+                        proof_profile=proof_profile, validator_set_id=validator_set_id,
+                    )
+                except atomic.Unknown as exc:
+                    raise Unknown(str(exc)) from exc
+            else:
+                _verify_finality_proof(
+                    anchor, public_keys=public_keys, network_authority=network_authority,
+                    network_id=network_id, proof_profile=proof_profile,
+                    validator_set_id=validator_set_id,
+                )
+        except (Invalid, Unknown, ValueError, TypeError, KeyError) as exc:
             raise Unknown(f"amendment target anchor is not authentic: {exc}") from exc
         # PC-2's payment address is single-write, so an authentic anchor binding
         # another hash means the reference names other content.

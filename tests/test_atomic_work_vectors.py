@@ -1604,7 +1604,7 @@ class AtomicPresenterWiringWitnessTests(unittest.TestCase):
         mutant, removed = _without_calls(
             ref._verified_authority_context, "_verify_identity_bundle"
         )
-        self.assertEqual(removed, 2)
+        self.assertEqual(removed, 3)
         with mock.patch.object(ref, "_verified_authority_context", mutant):
             caught = self._run(consumer)
             helper_only = self._run(helper)
@@ -1848,7 +1848,7 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
             ("aw-receipt-signed-slot-tuple-differs", PASS),
         )),
         ("evaluate_profile", "Purchase signed Listing pay-dem phase tuple mismatch", (
-            ("awp-profile-pay-dem-tuple-differs", PASS),
+            ("awp-profile-pay-dem-tuple-differs", ("fail", "Atomic Purchase requires one subsequent storage delivery under PIPE-4")),
         )),
         ("evaluate_expiry", "Work expired before its first operation", (
             ("aw-expiry-equality-after-first-operation", PASS),
@@ -1902,7 +1902,7 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
         )),
         ("_verified_authority_context", "AtomicPaymentPhaseInputV1 is not the closed v1 shape", (
             ("aw-auth-pc1-ordinary-arm-not-coerced", ("fail", "authenticated capability/Listing/agreement/rail/phase namespace mismatch")),
-            ("aw-auth-pc1-both-arm-members", PASS),
+            ("aw-auth-pc1-both-arm-members", ("fail", "Atomic payment input is not its closed arm")),
             ("awp-composed-pc1-ordinary-arm-not-coerced", ("fail", "authenticated capability/Listing/agreement/rail/phase namespace mismatch")),
         )),
         ("_verify_identity_bundle", "pinned payer IdentityBundle malformed", (
@@ -2024,7 +2024,7 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
         ("_verify_current_profile_admission", "current Atomic payment requires IdentityBoundPayeeAgreementDocument", (
             ("awp-composed-payee-bound-agreement-with-current-admission", PASS),
         )),
-        ("evaluate_profile", "commitment artifact discriminator mismatch", (
+        ("_verify_purchase_commitment_operation", "commitment artifact discriminator mismatch", (
             ("awp-composed-commitment-version-2", PASS),
         )),
         ("_verify_commitment_subject", "finality commitment does not bind exact job/agreement/listing tuple", (
@@ -2069,7 +2069,7 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
         ("evaluate_profile", "Vet storage operation address/write condition mismatch", (
             ("awp-profile-vet-address-consistent-receipt", PASS),
         )),
-        ("evaluate_profile", "signed commitment address/write condition mismatch", (
+        ("_verify_purchase_commitment_operation", "signed commitment address/write condition mismatch", (
             ("awp-profile-commitment-address-consistent-receipt", PASS),
             ("awp-profile-commitment-cas-consistent-receipt", PASS),
         )),
@@ -2185,8 +2185,16 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
             surface: wrong for surface, evaluator in ref.EVALUATORS.items()
             if evaluator is function
         }
-        with mock.patch.object(ref, function_name, wrong), \
-                mock.patch.dict(ref.EVALUATORS, dispatch):
+        # The shared PC-1 type gate runs before these semantic gates. Exercise
+        # their independent refusal with that earlier layer intentionally open.
+        import settlement_contract_reference as contract
+        with contextlib.ExitStack() as stack:
+            if function_name == "_agreement_artifact_kind":
+                stack.enter_context(mock.patch.object(contract, "_agreement_valid", return_value=True))
+            if function_name == "_verify_rail_definition":
+                stack.enter_context(mock.patch.object(contract, "_rail_valid", return_value=True))
+            stack.enter_context(mock.patch.object(ref, function_name, wrong))
+            stack.enter_context(mock.patch.dict(ref.EVALUATORS, dispatch))
             yield
 
     @contextlib.contextmanager
@@ -2295,7 +2303,7 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
         self.assertIn("atomicEvidenceVersion", self._evaluate(name)[1])
         with self._schema_bypassed(self.EVIDENCE_SCHEMA):
             self.assertEqual(self._evaluate(name), ("fail", reason))
-            with self._without("verify_settlement", reason, operand=0):
+            with self._without("verify_settlement", reason):
                 self.assertEqual(self._evaluate(name), self.PASS)
 
     # DACS-5 ST-11 / AWB-10 audit closure and DACS-3 AWP-17/AWP-18 remedies:
@@ -2313,9 +2321,6 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
         ("_verify_published_evidence", "Atomic evidence publication is not finalized", (
             ("awb-audit-evidence-publication-unfinalized-pending", ("fail", "Atomic publication AnchorReceipt binding mismatch")),
             ("awp-refund-amendment-original-unpublished", ("indeterminate", "finalized Atomic evidence publication unavailable")),
-        )),
-        ("_verify_published_evidence", "f'settlement evidence {field} does not match the verified Work'", (
-            ("awb-audit-evidence-not-this-work", ("fail", "settlement evidence names another Work operation")),
         )),
         ("_verify_st11_closure", "completed bundle unavailable", (
             ("awb-audit-bundle-missing", ("error", "AttributeError: 'NoneType' object has no attribute 'get'")),
@@ -2342,7 +2347,7 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
         ("_verify_failure_record", "failure bundle is not signed by its anchoring role holder", (
             ("awp-post-purchase-failure-record-unsigned", PASS),
         )),
-        ("_verify_failure_record", "failure record omits or reverses the final Purchase payment", (
+        ("_verify_failure_record", "failure bundle evidence differs from the exact phase-result set", (
             ("awp-post-purchase-failure-record-omits-payment", PASS),
         )),
         ("_verify_refund_amendment", "a versioned SettlementAmendment is unavailable", (

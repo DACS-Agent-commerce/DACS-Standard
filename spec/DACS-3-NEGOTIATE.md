@@ -1425,7 +1425,11 @@ operations and dependencies:
   authorization is accepted; in particular, an empty or omitted
   `requiredRoles` array cannot reduce a table row's required authority.
 - (AWP-20) The Purchase profile MUST select exactly one `pay-dem` invocation
-  from the verified pinned signed Listing pipeline. Its `parameters.rail` and
+  from the verified pinned signed Listing pipeline. This candidate requires
+  exactly one subsequent `deliver-storage-program` phase and a `public`
+  storage-program `DeliverableSpec`; private and encrypted delivery require a
+  later proof profile. A delivery-before-payment pipeline is ineligible under
+  PIPE-4 and MUST be rejected before Purchase authorization. Its `parameters.rail` and
   bare array index MUST equal the intent's `railId` and payment `phaseIndex`
   and the payment-slot key. No other rail or phase type is eligible for
   `dacs-purchase-v1`. A later `BundlePhaseEntry` is an audit copy of that
@@ -1538,7 +1542,7 @@ operations and dependencies:
 - (AWP-14) `delivery` MUST write the exact deliverable bytes or an agreed
   content-addressed pointer under the committed `DeliverableSpec`. Its
   `storage-program-put` payload MUST use the existing DACS-4 §9.6.1 logical
-  address `dacs4:deliverable:{jobId}` and
+  address `dacs4:deliverable:{jobId}:{phaseIndex}` and
   `writeCondition: { kind: "create-only" }`; a CAS rewrite is not an Atomic
   Completion delivery.
 - (AWP-15) A Completion intent that differs from the table's exact operation

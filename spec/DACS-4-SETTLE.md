@@ -2875,8 +2875,9 @@ ordinary PC-2 tuple remains independently recoverable and verifiable.
   `settlementFinality.model` to `bft-final`.
 - (AWS-25) Successful `deliver-storage-program` evidence MUST identify the
   Completion Work's `storage-program-put` operation and copy its proven
-  `contentHash` and projected anchor into `deliverableContentHash` and
-  `deliverableAnchor`.
+  stored-byte `contentHash` and projected anchor into `deliverableContentHash` and
+  `deliverableAnchor`. The v1 candidate admits only public storage delivery
+  under AWP-20, so its stored and cleartext digests coincide under DV-1/DV-4.
 - (AWS-26) A verifier MUST derive `atomicSettlementId` from the structured
   reference and apply SB-2 uniqueness to that identity. Identical Work IDs on
   different `networkId` values are distinct identities.

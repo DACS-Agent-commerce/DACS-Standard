@@ -80,6 +80,10 @@
       },
       "then": {
         "required": ["paymentAmount", "settlementFinality"],
+        "not": { "anyOf": [
+          { "required": ["deliverableContentHash"] },
+          { "required": ["deliverableAnchor"] }
+        ] },
         "properties": {
           "operationRef": {
             "properties": {
@@ -98,6 +102,10 @@
       },
       "then": {
         "required": ["deliverableContentHash", "deliverableAnchor"],
+        "not": { "anyOf": [
+          { "required": ["paymentAmount"] },
+          { "required": ["settlementFinality"] }
+        ] },
         "properties": {
           "operationRef": {
             "properties": {

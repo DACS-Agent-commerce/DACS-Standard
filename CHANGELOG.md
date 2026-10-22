@@ -1287,6 +1287,20 @@ The format used per release:
   fifteen requirements are yet `EXISTING — PIN/EVIDENCE`, four require a DACS
   binding, and eleven require implementation. This assigns the remaining work
   without weakening the capability gate or the sequential fallback.
+- **Atomic contract composition** (DACS-3 §8.6.1 AWP-6/AWP-13/AWP-14/AWP-20;
+  DACS-4 PC-1/PB-1/PIPE-4/AWS-23..AWS-28; DACS-5 ST-3/ST-11/§10.4.1) —
+  uses indexed deliverable addresses and explicitly limits the v1 candidate to
+  public storage delivery after payment. Admission applies the shared typed
+  payment contract, signed payout destination, exact DEM precision, and every
+  present role-account expectation while preserving optional omissions.
+  Session projections consume the documented phase outputs; finalized Vet
+  assertions consume their authenticated receipts. Publication receipts and
+  references share each artifact's canonical content hash, with exact signed
+  bytes committed separately for replay. Audit and failure bundles validate
+  their complete session dependencies and phase-result sets, including the
+  separate orchestrator's signatures; post-payment aborts are refused.
+  Atomic amendment resolution consumes the same publication proof. Adds
+  focused composition regressions and shares validation dependency pins.
 - **Atomic Vet records under the corrective Vet boundary** (DACS-3 §8.6.1
   AWP-1/AWP-7; DACS-1 §6.3.2; DACS-2 v0.6) — an already-signed
   `CompositeVerificationRecord` carried by `buyer-vet` or `seller-vet` is no

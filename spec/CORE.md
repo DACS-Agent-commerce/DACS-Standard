@@ -1477,15 +1477,17 @@ complete lexical and derivation constraints wherever that alias is used.
 Every phase handler in the stack consumes a SessionContext and returns a PhaseHandlerResult. The full TypeScript declarations:
 
 ```
-type SessionContext = {
+type SerializedSessionContext = {
   jobId: string                            // canonical JID-1 ULID
   listingRef: { listingId: string; version: number; contentHash: string }
   recipeRegistryVersion: number             // DACS-2 registry pinned at session start
   railRegistryVersion: number               // DACS-4 registry pinned at session start
   parties: SessionParty[]
   priorPhaseOutputs: Record<string, unknown> // accumulated contextDelta from completed phases
-  signer: SubstrateSigner                   // substrate-specific signing capability
   startedAt: number                         // unix ms
+}
+type SessionContext = SerializedSessionContext & {
+  signer: SubstrateSigner                   // trusted runtime capability, never serialized
 }
 type PhaseHandlerResult = {
   ok: boolean
@@ -1498,6 +1500,14 @@ type PhaseHandlerResult = {
   errorClass?: "permanent" | "transient" | "counterparty" | "substrate" | "settlement-atomicity"
 }
 ```
+
+`SerializedSessionContext` is the wire/state projection. Before dispatch, the
+orchestrator MUST validate that projection and attach its verifier-owned
+`SubstrateSigner` to a separate runtime `SessionContext`. A serialized `signer`
+member MUST be refused; input bytes never supply a signing capability. If the
+runtime capability is unavailable, dispatch is `indeterminate` with
+`ok: false`, `errorClass: "substrate"`, and no rail call. Hydration preserves
+all serialized members and does not mutate the received input.
 
 Conformance: phase handlers MUST accept a SessionContext and return a PhaseHandlerResult. On ok: true the orchestrator merges contextDelta into the corresponding PhaseEntry and records txRefs in the session event log; on ok: false the orchestrator classifies the failure per errorClass and applies the retry policy in chapter 10.
 

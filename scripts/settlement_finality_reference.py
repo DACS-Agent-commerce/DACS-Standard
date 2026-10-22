@@ -1581,6 +1581,20 @@ def _verify(value: Any, trusted: Any) -> dict:
     rail_decision, rail_reason, profile = _verify_rail(value.get("rail"), value["evidence"], agreement_terms, trusted)
     if rail_decision != "pass":
         return _result(rail_decision, rail_reason)
+    # RTB-1 applies to every later consumer, including DACS-5's calls here.
+    # Reauthenticate retained proofs; a signed replacement with the same ID
+    # and version does not establish membership in this session's snapshot.
+    try:
+        from settlement_contract_reference import verify_retained_rail
+    except ImportError:
+        from scripts.settlement_contract_reference import verify_retained_rail
+    retained_by_job = trusted.get("sessionRailAuthorityByJob")
+    retained_status, retained_reason = verify_retained_rail(
+        retained_by_job.get(value["evidence"]["jobId"]) if isinstance(retained_by_job, dict) else None,
+        value["rail"], value["evidence"]["railDefinitionRef"],
+        value["evidence"]["jobId"], trusted.get("railAuthorityPolicy"))
+    if retained_status != "verified":
+        return _result("fail" if retained_status == "rejected" else "indeterminate", retained_reason)
     report_decision, report_reason = _report_shape(value["evidence"].get("settlementFinality"), profile)
     if report_decision != "pass":
         return _result(report_decision, report_reason)

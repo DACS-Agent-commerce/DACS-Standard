@@ -19,8 +19,12 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-import generate_atomic_work_vectors as atomic
-import settlement_contract_reference as ref
+try:
+    from scripts import generate_atomic_work_vectors as atomic
+    from scripts import settlement_contract_reference as ref
+except ImportError:
+    import generate_atomic_work_vectors as atomic
+    import settlement_contract_reference as ref
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "conformance/fixtures/settlement/payment-input-amendment-v0.1.json"
@@ -72,6 +76,19 @@ ECDSA_PRIVATE_VALUE = (int.from_bytes(hashlib.sha256(b"settlement-contract-orche
 ECDSA_PUBLIC_KEYS = {CLAIMS["orchestrator"]: ec.derive_private_key(ECDSA_PRIVATE_VALUE, ec.SECP256K1())
                      .public_key().public_bytes(serialization.Encoding.X962,
                                                 serialization.PublicFormat.CompressedPoint).hex()}
+
+
+def retained_state(session=None, *, job_id=JOB_ID, orchestrator=None, steward=None):
+    """Independent fixture root's authenticated session/registry snapshot."""
+    return sign({
+        "jobId": job_id,
+        "session": session if session is not None else {
+            "startedAt": SESSION_STARTED_AT, "railRegistryVersion": 1},
+        "orchestrator": orchestrator or CLAIMS["orchestrator"],
+        "writer": ORCHESTRATOR_WRITER,
+        "steward": steward or CLAIMS["steward"],
+        "registryWriter": REGISTRY_WRITER,
+    }, "network", ref.RETAINED_STATE_DOMAIN)
 
 
 def ecdsa_sign(message: bytes) -> bytes:
@@ -893,6 +910,7 @@ def build_fixture():
     return {"fixtureVersion": "1", "publicKeys": PUBLIC_KEYS, "ecdsaPublicKeys": ECDSA_PUBLIC_KEYS,
             "verifierProfile": {"signatureAlgorithms": ["ed25519"]},
             "orchestrator": CLAIMS["orchestrator"], "orchestratorWriter": ORCHESTRATOR_WRITER,
+            "retainedState": retained_state(),
             "inputModel": (
                 "Bindings, the orchestrator, its native receipt writer and the finality-proof "
                 "pins are verifier-owned. Receipt blockRef.timestamp is CORE SR2-6 consensus "
@@ -965,6 +983,7 @@ def build_rail_fixture():
         cases.append({
             "name": name, "ruleRefs": ["RTB-1"],
             "session": case_session or session, "railRef": case_ref or rail_ref,
+            "retainedState": retained_state(case_session or session),
             "rail": value, "authority": authority if authority is not None else rail_authority(value),
             "expected": expected,
         })

@@ -21,17 +21,37 @@ def ibh(verdict):
     return lambda _phase_input: verdict
 
 
+SIGNER = object()  # Inert trusted runtime capability; no signing operation.
+
+
+def phase_binding(*args, **kwargs):
+    return ref.PhaseBinding(*args, signer=SIGNER, **kwargs)
+
+
+def serialized_input(value):
+    # The older IBH fixture models a runtime context with a capability placeholder.
+    value = copy.deepcopy(value)
+    value["sessionContext"].pop("signer", None)
+    return value
+
+
+def runtime_input(value):
+    if "atomicSessionContext" in value:
+        return value  # Atomic's closed arm carries no ordinary SessionContext.
+    return {**value, "sessionContext": {**value["sessionContext"], "signer": SIGNER}}
+
+
 # Enclosing handler metadata is fixed outside the phase input. The fixtures
 # cannot choose a profile by adding or removing an input member.
 BINDINGS = {
-    "ordinary": ref.PhaseBinding("pay-dem"),
-    "atomic": ref.PhaseBinding("pay-dem", "dacs-purchase-v1", True),
-    "ungated-purchase": ref.PhaseBinding("pay-dem", "dacs-purchase-v1", False),
-    "completion": ref.PhaseBinding("pay-dem", "dacs-completion-v1", True),
-    "other-payment": ref.PhaseBinding("pay-evm-erc20", "dacs-purchase-v1", True),
+    "ordinary": phase_binding("pay-dem"),
+    "atomic": phase_binding("pay-dem", "dacs-purchase-v1", True),
+    "ungated-purchase": phase_binding("pay-dem", "dacs-purchase-v1", False),
+    "completion": phase_binding("pay-dem", "dacs-completion-v1", True),
+    "other-payment": phase_binding("pay-evm-erc20", "dacs-purchase-v1", True),
     # The signed Listing phase selected an identity-bound agreement (§9.5.1)
     # and the verifier's IBH rerun verified the companions.
-    "identity-bound": ref.PhaseBinding("pay-dem", identity_bound=True, identity_binding=ibh("verified")),
+    "identity-bound": phase_binding("pay-dem", identity_bound=True, identity_binding=ibh("verified")),
 }
 
 
@@ -40,7 +60,7 @@ def binding_for(vector):
     if vector["binding"] != "identity-bound":
         return BINDINGS[vector["binding"]]
     verdict = vector.get("identityBinding")
-    return ref.PhaseBinding("pay-dem", identity_bound=True,
+    return phase_binding("pay-dem", identity_bound=True,
                             identity_binding=ibh(verdict) if verdict else None)
 
 
@@ -132,12 +152,15 @@ class SettlementContractTests(unittest.TestCase):
             amendment_address=vector["amendmentAddress"],
             orchestrator=orchestrator or self.data["orchestrator"],
             writer=writer or self.data["orchestratorWriter"],
-            public_keys=keys or self.data["publicKeys"], **TRUST,
+            public_keys=keys or self.data["publicKeys"],
+            retained_state=received(self.data["retainedState"]), **TRUST,
         )
 
     def resolve_rail(self, case, **change):
         pins = {"public_keys": self.rails["publicKeys"], "steward": self.rails["steward"],
-                "registry_writer": self.rails["registryWriter"], **TRUST, **change}
+                "registry_writer": self.rails["registryWriter"],
+                "retained_state": received(case["retainedState"]), "job_id": generator.JOB_ID,
+                **TRUST, **change}
         return ref.resolve_session_rail(
             case["session"], case["railRef"], case["rail"], case["authority"], **pins)
 
@@ -156,15 +179,19 @@ class SettlementContractTests(unittest.TestCase):
                     self.assertIs(result["ok"], False)
                     self.assertEqual(result["errorClass"], dispositions[vector["expected"]])
                 else:
-                    rail.assert_called_once_with(value)
-                    self.assertIs(rail.call_args.args[0], value)
+                    rail.assert_called_once_with(runtime_input(value))
+                    if binding_for(vector).atomic:
+                        self.assertIs(rail.call_args.args[0], value)
+                        self.assertNotIn("sessionContext", rail.call_args.args[0])
+                    else:
+                        self.assertIs(rail.call_args.args[0]["sessionContext"]["signer"], SIGNER)
 
     def test_identity_binding_companions_keep_the_ibh_dispositions(self):
         # §9.5.1 and the IBH corpus: an absent companion member is
         # `indeterminate` (no rail call, errorClass substrate); an empty or
         # malformed one is IBH `error`, a PC-1 rejection before any rail call.
         corpus = json.loads((ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json").read_text())
-        base = corpus["scenarios"]["identityBoundAgreement"]["paymentInput"]
+        base = serialized_input(corpus["scenarios"]["identityBoundAgreement"]["paymentInput"])
         vectors = {v["name"]: v for v in corpus["vectors"]}
         for name, expected, companions in (
                 ("malformed-payment-07-missing", "indeterminate", ...),
@@ -207,20 +234,20 @@ class SettlementContractTests(unittest.TestCase):
         # §9.5.1: the authenticated Listing alone selects the path, and only a
         # verified IBH-1..IBH-5 rerun reaches the rail.
         corpus = json.loads((ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json").read_text())
-        base = corpus["scenarios"]["identityBoundAgreement"]["paymentInput"]
+        base = serialized_input(corpus["scenarios"]["identityBoundAgreement"]["paymentInput"])
         failing = mock.Mock(side_effect=TimeoutError("admission store timed out"))
         for binding, status, error_class, reason in (
                 (BINDINGS["ordinary"], "rejected", "permanent", "agreement is not the agreement kind the Listing selects"),
-                (ref.PhaseBinding("pay-dem", identity_bound=True), "indeterminate", "substrate",
+                (phase_binding("pay-dem", identity_bound=True), "indeterminate", "substrate",
                  "no IBH-1..IBH-5 rerun authority for the identity-bound path"),
-                (ref.PhaseBinding("pay-dem", identity_bound=True, identity_binding=ibh("rejected")), "rejected", "permanent",
+                (phase_binding("pay-dem", identity_bound=True, identity_binding=ibh("rejected")), "rejected", "permanent",
                  "IBH-1..IBH-5 rerun rejected the identity binding"),
-                (ref.PhaseBinding("pay-dem", identity_bound=True, identity_binding=ibh("indeterminate")), "indeterminate", "substrate",
+                (phase_binding("pay-dem", identity_bound=True, identity_binding=ibh("indeterminate")), "indeterminate", "substrate",
                  "IBH-1..IBH-5 rerun did not verify ('indeterminate')"),
-                (ref.PhaseBinding("pay-dem", identity_bound=True, identity_binding=ibh(True)), "indeterminate", "substrate",
+                (phase_binding("pay-dem", identity_bound=True, identity_binding=ibh(True)), "indeterminate", "substrate",
                  "IBH-1..IBH-5 rerun did not verify (True)"),
                 # The rerun's own failure keeps its cause.
-                (ref.PhaseBinding("pay-dem", identity_bound=True, identity_binding=failing), "indeterminate", "substrate",
+                (phase_binding("pay-dem", identity_bound=True, identity_binding=failing), "indeterminate", "substrate",
                  "IBH-1..IBH-5 rerun unavailable (TimeoutError: admission store timed out)")):
             with self.subTest(binding=binding):
                 handler = mock.Mock(return_value={"status": "accepted", "ok": True})
@@ -228,21 +255,21 @@ class SettlementContractTests(unittest.TestCase):
                 self.assertEqual((result["status"], result["errorClass"], result["reason"]),
                                  (status, error_class, reason))
                 handler.assert_not_called()
-        # The rerun sees the exact phase input the handler would get.
+        # The rerun sees the exact serialized input, before runtime hydration.
         rerun = mock.Mock(return_value="verified")
         value = copy.deepcopy(base)
         handler = mock.Mock(return_value={"status": "accepted", "ok": True})
-        self.assertEqual(ref.dispatch_payment(ref.PhaseBinding("pay-dem", identity_bound=True, identity_binding=rerun), value, handler)["status"],
+        self.assertEqual(ref.dispatch_payment(phase_binding("pay-dem", identity_bound=True, identity_binding=rerun), value, handler)["status"],
                          "accepted")
         self.assertIs(rerun.call_args.args[0], value)
-        handler.assert_called_once_with(value)
+        handler.assert_called_once_with(runtime_input(value))
 
     def test_golden_payment_fixture_input_is_illustrative(self):
         # conformance/README: the golden input abbreviates the agreement and
         # session context, so a conforming PC-1 handler rejects it.
         golden = json.loads((ROOT / "conformance/fixtures/settlement-evidence-payment-success.json").read_text())
         handler = mock.Mock()
-        result = ref.dispatch_payment(ref.PhaseBinding("pay-evm-erc20"), golden["paymentInput"], handler)
+        result = ref.dispatch_payment(phase_binding("pay-evm-erc20"), golden["paymentInput"], handler)
         self.assertEqual((result["status"], result["errorClass"]), ("rejected", "permanent"))
         handler.assert_not_called()
         self.assertIn("is not a PC-1 handler input and a conforming handler rejects it",
@@ -253,6 +280,8 @@ class SettlementContractTests(unittest.TestCase):
         checked = 0
         for name, scenario in corpus["scenarios"].items():
             value = scenario.get("paymentInput")
+            if isinstance(value, dict):
+                value = serialized_input(value)
             if isinstance(value, dict) and "paymentAuthorization" in value:
                 # The scenario's Listing selects the agreement kind it carries.
                 identity_bound = any(key.startswith("identityBound") for key in value["agreement"])
@@ -441,7 +470,7 @@ class SettlementContractTests(unittest.TestCase):
                 handler = mock.Mock(return_value={"status": "accepted", "ok": True})
                 with self.subTest(binding=binding, asset=asset["kind"]):
                     self.assertEqual(ref.dispatch_payment(BINDINGS[binding], value, handler)["status"], "accepted")
-                    handler.assert_called_once_with(value)
+                    handler.assert_called_once_with(runtime_input(value))
                     self.assertEqual(value, before)
         ordinary = names["ordinary-input"]["input"]
         for asset in ({**ASSETS[0], "chainId": 2**53 - 1, "decimals": 0},
@@ -557,7 +586,7 @@ class SettlementContractTests(unittest.TestCase):
                                   + json.dumps(value["rail"].get("consumerFinalityProfile"))[:80]):
                     handler = mock.Mock(return_value={"status": "accepted", "ok": True})
                     self.assertEqual(ref.dispatch_payment(BINDINGS[binding], value, handler)["status"], "accepted")
-                    handler.assert_called_once_with(value)
+                    handler.assert_called_once_with(runtime_input(value))
             bad = [with_agreement(parties=[{**party, "encryptionKey": key}, *agreement["parties"][1:]])
                    for key in (None, 1, [], "")]
             bad += [with_agreement(derivedFromChannel=value) for value in (
@@ -636,7 +665,7 @@ class SettlementContractTests(unittest.TestCase):
                     value = {**base, "rail": {**base["rail"], "railId": rail_id}}
                     handler = mock.Mock(return_value={"status": "accepted", "ok": True})
                     self.assertEqual(ref.dispatch_payment(BINDINGS[binding], value, handler)["status"], "accepted")
-                    handler.assert_called_once_with(value)
+                    handler.assert_called_once_with(runtime_input(value))
             for rail_id in ("", "\x7e" * 65, "a\x20b", "\x7f", "évm"):
                 with self.subTest(binding=binding, rejected=rail_id):
                     value = {**base, "rail": {**base["rail"], "railId": rail_id}}
@@ -837,6 +866,7 @@ class SettlementContractTests(unittest.TestCase):
                           case["rail"]["governance"]["acceptedAt"]), (started, started, started))
         self.assertEqual(self.resolve_rail(case)[0], "verified")
         earlier = {**case, "session": {**case["session"], "startedAt": started - 1}}
+        earlier["retainedState"] = generator.retained_state(earlier["session"])
         self.assertEqual(self.resolve_rail(earlier),
                          ("rejected", "rail authority postdates the session start"))
 
@@ -874,13 +904,13 @@ class SettlementContractTests(unittest.TestCase):
         self.assertEqual(self.resolve_rail(case, steward="did:dacs:test:seller")[0], "rejected")
         self.assertEqual(self.resolve_rail(case, network_authority="did:dacs:test:seller")[0],
                          "indeterminate")
-        # Another registry writer leaves the receipts without authority (SR2-11).
+        # A caller writer conflicting with retained registry authority is refused.
         self.assertEqual(self.resolve_rail(case, registry_writer="native:outsider-writer-1")[0],
-                         "indeterminate")
+                         "rejected")
         target = next(v for v in self.data["amendmentTargets"] if v["name"] == "ordinary-target")
         result, reason = self.consume(target, writer="native:outsider-writer-1")
-        self.assertEqual(result, "indeterminate")
-        self.assertIn("AnchorReceipt writer is not the authorized writer", reason)
+        self.assertEqual(result, "violation")
+        self.assertIn("differs from retained session state", reason)
 
     def test_unpinned_selection_is_the_unique_greatest_listed_version(self):
         # §9.4.3 step 2; a hint member in the snapshot selects nothing.

@@ -223,6 +223,7 @@ def document() -> dict:
         "finalityResolutionCapability"
     ] = CAPABILITY
     factory.rebind_rail(base_value)
+    factory.retain_rail(base_value)
     base_trusted = copy.deepcopy(factory.trusted)
     keys = {
         key_id: Ed25519PrivateKey.from_private_bytes(bytes.fromhex(seed))
@@ -467,7 +468,7 @@ def document() -> dict:
     destination_profile = destination_leg_value["rail"][
         "consumerFinalityProfile"
     ]["settlement"]
-    destination_profile["requiredDepth"] = 13
+    # Both legs use the exact rail retained for this session (RTB-1).
     destination_reference = copy.deepcopy(reference)
     destination_reference["txHash"] = factory.tx_id("d2-composite-destination")
     destination_event = factory.common_event(destination_reference, session)

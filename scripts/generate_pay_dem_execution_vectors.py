@@ -3197,7 +3197,91 @@ def build_vectors() -> list[dict[str, Any]]:
              "retainedFailureProof": failure_proof(authentication=authentication, inclusion=inclusion)},
             expected, {"reconciliationEvidence": expected == "pass"}, "DEM-4/FV-5", guards, note,
         ))
+    # Independent APR and resume witnesses for every retained-field binding.
+    for field, replacement, guard in (
+        ("txHash", OTHER_TX_HASH, "bind-hash"), ("nonce", NONCE + 1, "bind-nonce"),
+        ("sender", OTHER_KEY, "bind-sender"), ("recipient", OTHER_KEY, "bind-recipient"),
+        ("amountOs", OTHER_AMOUNT_OS, "bind-amount"), ("inclusionBlock", BLOCK + 1, "bind-block"),
+    ):
+        for operation, prefix in (("apr-reconciliation-evidence", "apr-evidence"), ("resume-phase", "resume")):
+            value = {"railNetwork": NETWORK, **FINALITY, "fv5Policy": FV5_POLICY,
+                     "retainedTransfer": retained(), "retainedFailureProof": failure_proof()}
+            if field == "inclusionBlock":
+                value["retainedFailureProof"][field] = replacement
+            else:
+                value["retainedTransfer"][field] = replacement
+            guards = [guard, "apr-evidence-binds-prior-phase"] if prefix == "apr-evidence" else [guard, "resume-validates-failure-proof"]
+            if prefix == "resume":
+                value.update(recordRead=NOT_FOUND, statusIndex="unknown", inclusionObservation=None)
+            vectors.append(_vector(prefix + "-failure-proof-wrong-" + field, operation, value,
+                                   "indeterminate", {"reconciliationEvidence": False} if prefix == "apr-evidence"
+                                   else handler_want("indeterminate"), "DEM-4/DEM-6", guards,
+                                   "A genuine authenticated failure for another retained value authorizes nothing."))
+
+    # DACS-1 read grammar at every payment boundary, without rewriting signed bytes.
+    for label, prefix, suffix, valid in (
+        ("upper-key", "KEY:", "", True), ("mixed-key", "KeY:", "", True),
+        ("upper-did", "DID:demos:agent:", "", True),
+        ("unknown-parameters", "KEY:", "?jurisdiction=US&zone=", True),
+        ("empty-parameters", "key:", "?", False), ("bare-parameter", "key:", "?oops", False),
+        ("empty-parameter-key", "key:", "?=US", False),
+        ("parameter-newline", "key:", "?a=b\nc", False),
+    ):
+        reference = prefix + PAYER_KEY + suffix
+        # DIDs project as party addresses; their control mechanism stays unchanged.
+        claims = [claim(reference)] if "did" not in label else [claim("KEY:" + PAYER_KEY), claim(reference, "none")]
+        context = phase(payerPayingKey=reference, payerKeyClaims=claims)
+        vectors.append(pre_sign("sign-claim-read-" + label, "pass" if valid else "error",
+                                ["sign-allowed-when-configured"] if valid else [],
+                                "Read Scheme case insensitively and validate qualifiers before identity projection.",
+                                phase_context=context))
+        for request, gate_prefix in (("confirm-retained", "confirm-"), ("broadcast-retained", "broadcast-")):
+            vectors.append(gate(gate_prefix + "claim-read-" + label, "pass" if valid else "error", "DEM-1", [],
+                                "The same claim projection applies at every egress.", request=request, phase_context=context))
+        for delivery in (False, True):
+            vector = admit(("delivery" if delivery else "consumer") + "-claim-read-" + label,
+                           "pass" if valid else "error", "DEM-7", [],
+                           "DACS-1 scheme and parameter grammar also governs consumer admission.",
+                           read=found(record("confirmed"), authenticated=True),
+                           phase_context=phase(payerKeyClaims=claims, payeeAddress=prefix + PAYEE_KEY + suffix))
+            if delivery:
+                vector["operation"] = "admit-for-delivery"
+                vector["protocolInput"].update(otherGates={"sb1": "pass", "pb": "pass"}, consumerAdmissions=[],
+                                               admissionIndex={"revision": 0, "admissions": []})
+                vector["want"] = {"dem7GatePassed": valid, "deliveryAuthorized": valid, "settlementAccounting": valid}
+            vectors.append(vector)
+    # An unresolved inclusion must not hide a malformed phase claim.
+    vector = copy.deepcopy(next(v for v in vectors if v["name"] == "consumer-claim-control-array"))
+    vector["name"] = "consumer-malformed-claim-inclusion-below-threshold"
+    keys = vector["protocolInput"]["finalityTrust"]["observationAuthorityKeys"]
+    vector["protocolInput"]["finalityTrust"]["observationAuthorityKeys"] = {next(iter(keys)): next(iter(keys.values()))}
+    vector["guards"] = []
+    vectors.append(vector)
     for vector in vectors:
+        name = vector["name"]
+        if "-failure-proof-wrong-" in name:
+            vector["guards"] = sorted(vector["guards"] + (["no-rebroadcast"] if name.startswith("resume-") else []))
+        if "-claim-read-" in name:
+            action, label = name.split("-claim-read-", 1)
+            valid = vector["expected"] == "pass"
+            if valid:
+                guards = ["claim-scheme-case-insensitive", "claims-are-claim-references", "phase-party-address-projects"]
+                guards += {"sign": ["sign-allowed-when-configured"], "confirm": ["first-broadcast-allowed"],
+                           "broadcast": ["first-broadcast-allowed", "submission-completes-own-confirm"],
+                           "consumer": ["consumer-admits-confirmed"], "delivery": ["consumer-admits-confirmed"]}[action]
+                if label == "unknown-parameters":
+                    guards.append("claim-reference-parameters-ignored")
+            else:
+                guards = ["claim-parameters-well-formed"] + {
+                    "sign": [], "confirm": ["retention-before-first-egress"],
+                    "broadcast": ["submission-completes-own-confirm"],
+                    "consumer": ["consumer-requires-confirmed-record"],
+                    "delivery": ["consumer-requires-confirmed-record", "delivery-requires-dem7"]}[action]
+            vector["guards"] = sorted(guards)
+        if name == "consumer-malformed-claim-inclusion-below-threshold":
+            vector["guards"] = ["consumer-requires-confirmed-record"]
+        if vector["operation"] == "rail-preflight":
+            vector["protocolInput"].setdefault("payerKeyClaims", [claim("key:" + PAYER_KEY)])
         if vector["operation"] == "project-settlement-id":
             name = vector["name"]
             vector["guards"] = (
@@ -3281,7 +3365,7 @@ def document() -> dict[str, Any]:
             "nodeSource": "kynesyslabs/node@" + NODE_COMMIT + " (stabilisation)",
             "nodeBuild": PINNED_BUILD,
             "sdk": "@kynesyslabs/demosdk@4.0.16 sha512-nVhp1uC+tFGzhew9c8XIajTMmELopx7gd0joqqzDd2XyUuFDcqrda51NYqvX5C8+L3Xgnie/mRf7JRqZ7r3tHA==",
-            "liveObservations": "node2-* vectors copy read-only node2.demos.sh getTxByHash responses of 2026-10-17; the node reported 61b8e75 with a dirty tree, so they are observations, not the source pin",
+            "liveObservations": "node2-* vectors copy read-only node2.demos.sh getTxByHash responses of 2026-10-17; the node reported 61b8e75 with a dirty tree, so they are historical observations, not the source pin; node2 no longer serves these records as of 2026-10-22",
         },
         "fixtureVocabulary": {
             "exactJsonMembers": "every signedTransaction, confirmResponse, validityResponse and record member, at any depth, is carried as a string holding its exact JSON text, because member order is part of its meaning (a signed content hash, a signed validity response, gcr_edits member order); a runner parses each string, keeping member order and number spellings, before it evaluates the vector, and the corpus hash covers those bytes, so a JCS or other member-sorting round trip of the corpus changes no result. Every other object compares by value, member order not significant",
@@ -3315,7 +3399,7 @@ def document() -> dict[str, Any]:
             "call": "classify-egress-outcome: the handler's own step that returned, pre-egress-check (its balance read before any confirm or broadcast carried the signed bytes), confirm or broadcast; any other value may have carried the bytes",
             "outcome": "classify-egress-outcome: what that step returned: insufficient-balance, refused-not-valid (demosdk confirm()/broadcast() valid false), refused-by-dem1 (the handler's own refusal of the completing broadcast), transport-error, timeout, accepted, or anything else (unrecognized). Only insufficient-balance found by a pre-egress-check on an un-restarted journal recording never-broadcast is permanent; every other outcome is substrate with the retained hash kept and no further call, never transient",
             "cause": "classify-egress-outcome want member: call:outcome, so the result keeps the step and reply that produced it",
-            "consumerAdmissions": "raw txRef and (jobId, phaseIndex) of pay-dem records the consumer admitted earlier. For admit-for-delivery they are the payee's own admissions, which its delivery check presents with the evidence: derive SB-1 IDs, collapsing legacy spellings, before grouping; an admitted reference without an SB-1 ID is error. For resolve-settlement-group they lie outside the presented records, and settlement accounting and the DACS-5 derivation never add them",
+            "consumerAdmissions": "raw txRef and (jobId, phaseIndex) of pay-dem records the consumer admitted earlier. For admit-for-delivery they are the payee's own admissions, which its delivery check presents with the evidence: derive canonical SB-1 IDs before grouping; an admitted reference without an SB-1 ID is error. For resolve-settlement-group they lie outside the presented records, and settlement accounting and the DACS-5 derivation never add them",
             "admissionIndex": "admit-for-delivery: the snapshot (revision, admissions) of the payee's durable admission index read for this check. consumerAdmissions must equal its admissions as a multiset of exact JCS bytes; a missing or malformed snapshot, or a presented history that omits or adds an admission, is error and authorizes no delivery. The payee adds this phase's admission with a write conditional on that revision",
             "guards": "checks whose removal makes this vector fail",
         },

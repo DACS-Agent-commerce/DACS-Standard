@@ -194,7 +194,7 @@ def canonical_key(value):
     return jcs_canonicalize(value)
 
 
-def verify_prior_payment_context(vector):
+def verify_prior_payment_context(vector, resolved=None):
     agreement = vector["agreement"]
     disposition_ref = agreement.get("terms", {}).get("priorPaymentDispositionRef")
     if disposition_ref is None:
@@ -300,12 +300,57 @@ def verify_prior_payment_context(vector):
             return "fail", "prior-disposition-proof"
         return "pass", None
     if state == "closed-cannot-settle":
+        # Dispatch by the authenticated prior definition's handler, never by
+        # one registry railId: any pay-dem rail has the same DEM-4 obligation.
+        if resolved is None:
+            verdict, reason, resolved, _ = listing_gate(vector)
+            if verdict != "pass":
+                return verdict, reason
+        prior_definition = resolved.get(canonical_key(prior_selection))
+        if not isinstance(prior_definition, dict):
+            return "indeterminate", "prior-definition-unavailable"
+        native_dem = prior_definition.get("phaseHandler") == "pay-dem"
         if (
             not isinstance(evidence_refs, list)
             or not evidence_refs
-            or not resolution.get("reconciliationEvidenceVerified")
+            or (not native_dem
+                and not resolution.get("reconciliationEvidenceVerified"))
         ):
             return "fail", "prior-disposition-proof"
+        if native_dem:
+            transfer = authority.get("retainedTransfer")
+            proof = resolution.get("payDemFailureProof")
+            if (not pay_dem.complete_transfer(transfer)
+                    or transfer["jobId"] != prior_agreement.get("jobId")
+                    or transfer["phaseIndex"] != phase_index
+                    or not isinstance(proof, dict)
+                    or not any(ref.get("contentHash") == digest(proof) for ref in evidence_refs if isinstance(ref, dict))):
+                return "fail", "prior-disposition-proof"
+            trust = vector["runtime"].get("payDemReconciliationTrust")
+            consumer_profile = prior_definition.get("consumerFinalityProfile")
+            signed_profile = consumer_profile.get("settlement") if isinstance(consumer_profile, dict) else None
+            if (not isinstance(trust, dict) or not isinstance(signed_profile, dict)
+                    or trust.get("finalityProfile") != signed_profile
+                    or trust.get("railNetwork") != {k: signed_profile.get(k) for k in ("networkId", "genesisHash")}):
+                return "fail", "prior-disposition-proof"
+            try:
+                artifact = proof
+                result = artifact.get("executionResult")
+                reference = artifact.get("transactionRef")
+                if not isinstance(result, dict) or not isinstance(reference, dict):
+                    return "fail", "prior-disposition-proof"
+                # The resolved artifact is the FV observation with its signed
+                # executionResult. Project both halves without rebuilding them.
+                inclusion = {k: v for k, v in artifact.items() if k != "executionResult"}
+                held = {"classification": "permanent", "authentication": result,
+                        "record": result.get("record"), "inclusionProof": inclusion,
+                        "inclusionBlock": reference.get("blockNumber")}
+                verdict, _ = pay_dem.apr_evidence({**trust, "retainedTransfer": transfer,
+                    "retainedFailureProof": held}, frozenset())
+            except (KeyError, TypeError, ValueError):
+                verdict = "indeterminate"
+            if verdict != "pass":
+                return "fail", "prior-disposition-proof"
         return "pass", None
     return "fail", "prior-disposition-state"
 
@@ -443,6 +488,7 @@ def pay_dem_preflight(definition, runtime):
         "railNetwork": {key: settlement.get(key) for key in ("networkId", "genesisHash")},
         "finalityProfile": settlement,
         "demosBinding": runtime.get("payDemBinding"),
+        "payerKeyClaims": runtime.get("payerKeyClaims"),
     }, frozenset())
     return verdict == "pass"
 
@@ -547,7 +593,7 @@ def evaluate(vector, effects=None):
             return "fail", "fallback-forbidden"
         return "fail", "fresh-job-required"
 
-    verdict, reason = verify_prior_payment_context(vector)
+    verdict, reason = verify_prior_payment_context(vector, resolved)
     if verdict != "pass":
         return verdict, reason
 
@@ -609,6 +655,15 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
         cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.vectors = [materialize(cls.data, vector) for vector in cls.data["vectors"]]
         cls.by_name = {vector["name"]: vector for vector in cls.vectors}
+
+    def test_dem_failure_artifact_uses_the_fv_observation_shape(self):
+        """DEM-4 carries the FV observation itself through AttestationRef."""
+        context = self.by_name["fresh-job-after-conclusive-no-settlement"]["runtime"]["priorPaymentContext"]
+        artifact = context["resolution"]["payDemFailureProof"]
+        self.assertIsInstance(artifact["executionResult"]["record"], dict)
+        self.assertEqual(artifact["transactionRef"], artifact["executionResult"]["transactionRef"])
+        self.assertEqual(artifact["inclusionBlock"]["id"], artifact["executionResult"]["blockId"])
+        self.assertEqual(digest(artifact), context["disposition"]["reconciliationEvidenceRefs"][0]["contentHash"])
 
     def test_generated_file_is_current(self):
         result = subprocess.run(

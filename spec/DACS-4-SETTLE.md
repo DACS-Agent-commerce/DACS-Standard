@@ -2209,7 +2209,7 @@ is `error`.
   `fail` once the transaction's inclusion, authenticated head and finality verify
   (FV-5 inclusion, FV-6, FV-7); until they do the verdict is theirs, so a signed
   result about a fork or a block no certificate finalizes is never `fail`. A
-  malformed result is `error` whatever the chain shows. The phase, the claims and the record decide in DEM-7's order: the FV-10 verdict of the inclusion path first, then `error` for a malformed phase value or claim, then `indeterminate` for a bundle with no controlled Demos key claim, then the record's pinned semantics, decoding and applied transfer. A malformed phase value or claim is `error` only once the inclusion verifies: a forged certificate is `fail` whatever the claim is. A record that does not decode, unpinned record semantics and an
+  malformed result is `error` whatever the chain shows. The phase, the claims and the record decide in DEM-7's order: the FV-10 verdict of the inclusion path first, then `error` for a malformed phase value or claim, then `indeterminate` for a bundle with no controlled Demos key claim, then the record's pinned semantics, decoding and applied transfer. An inclusion verdict of `fail` or `error` precedes the phase checks; an `indeterminate` inclusion does not mask a malformed phase value or claim (`error`). A forged certificate is therefore `fail` whatever the claim is. A record that does not decode, unpinned record semantics and an
   authenticated status other than `confirmed` or `failed` are `indeterminate`.
 - **(FV-6) Authenticated canonical head and ancestry.** Verify
   `authorityEvidence` using exactly the profile method: a light client executes

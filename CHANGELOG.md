@@ -13,6 +13,14 @@ The format used per release:
 
 ## [Unreleased]
 
+- Align Demos ClaimReference readers with DACS-1 scheme casing and parameter
+  grammar across signing, egress, admission and FV verification. Carry and
+  independently verify DEM-4 artifacts in APR replacement authorization,
+  including their binding to the prior session's retained transfer. Extend
+  APR/resume vectors for every retained-field mismatch and require the payer's
+  controlled claims at APR selection preflight.
+
+
 ### Fixed — pay-dem: one FV-5 record decision across corpora; the payer key from the pinned bundle; ordered members as exact text
 
 - FV-5, DEM-4, DEM-7 and DEMOS-MAPPING §A.2: an applied transfer that a
@@ -120,8 +128,9 @@ The format used per release:
   (`fv-bft-final-payer-key-claim-demos-agent-form`).
 - DEM-7 and FV-5: the FV reference decides in DEM-7's stated order. A
   malformed phase value or claim is `error` before the record's pin,
-  decoding or applied transfer can make it `indeterminate`, and only once
-  the inclusion verifies: a forged certificate is `fail` whatever the
+  decoding or applied transfer can make it `indeterminate`. An inclusion
+  `fail` or `error` takes precedence; an unresolved inclusion does not hide
+  malformed claims. A forged certificate is `fail` whatever the
   claim is (`fv-bft-final-payer-key-claim-malformed-*`).
 - DEM-1 and DEMOS-MAPPING §A.2: a signed `nonce` of `9.0` is the integer
   9 (JSON numbers compare by value) and the oracle's gate accepts it

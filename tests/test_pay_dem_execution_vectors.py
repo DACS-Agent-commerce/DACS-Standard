@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import generate_pay_dem_execution_vectors as generator  # noqa: E402
 from jcs import canonicalize  # noqa: E402
 from demos_json import stringify  # noqa: E402
+from demos_identity import demos_key_claim, demos_party_address  # noqa: E402
 from settlement_finality_reference import (  # noqa: E402
     DEMOS_RECORD_PROFILE, _demos_committed_change, _demos_native_send, _demos_send_edits_match,
     _verify_demos_execution, _verify_demos_record, bft_final_trust, demos_applied_transfer_binds_record, demos_execution_policy, verify_transaction_inclusion,
@@ -99,6 +100,8 @@ GUARDS = frozenset({
     # DEM-2 and the DEMOS-MAPPING §A.2 native-send record profile
     "node-build-attested",
     "claim-reference-parameters-ignored",
+    "claim-parameters-well-formed",
+    "claim-scheme-case-insensitive",
     "consumer-fv5-record-binds-without-node-pin",
     "consumer-fv5-edit-members-compare-by-name",
     "node-build-commit",
@@ -140,6 +143,7 @@ GUARDS = frozenset({
     "terminal-never-reopens",
     "apr-evidence-requires-authenticated-failure",
     "apr-evidence-from-authenticated-failure",
+    "apr-evidence-binds-prior-phase",
     # DEM-4 and DEM-7 under FV-5: the signed execution result itself
     "fv5-authentication-is-a-signed-result",
     "fv5-result-signed",
@@ -254,17 +258,6 @@ SAFE_MAX = 2**53 - 1
 _ABSENT = object()
 HASH = re.compile(r"[0-9a-f]{64}")
 ADDRESS = re.compile(r"(?:0x)?([0-9a-f]{64})")
-# DEMOS-MAPPING §A.2 pay-dem party address: a Demos key, or a DACS-1
-# `did:demos:agent:` DID whose key component is 64 lower-case hex digits.
-PARTY_ADDRESS = re.compile(r"(?:0x|did:demos:agent:|key:)?([0-9a-f]{64})")
-# A `key:` or `did:demos:agent:` spelling is a ClaimReference, so DACS-1
-# §6.3.1 has a reader ignore a `?<parameters>` suffix on it; bare and `0x`
-# hex are not ClaimReferences and take none.
-PARTY_CLAIM_PARAMETERS = re.compile(r"(?:did:demos:agent:|key:)([0-9a-f]{64})\?.*", re.DOTALL)
-# A Demos key claim of a party's bundle is a DACS-1 ClaimReference: bare and
-# 0x hex are address spellings, not claims (DEMOS-MAPPING §A.2).
-# Its identity is `(scheme, identifier)`; a `?<parameters>` suffix is ignored.
-DEMOS_KEY_CLAIM = re.compile(r"(key|did:demos:agent):([0-9a-f]{64})(?:\?.*)?", re.DOTALL)
 DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)")
 SIGNATURE = re.compile(r"0x[0-9a-f]{128}")
 RETAINED = {"jobId", "phaseIndex", "txHash", "nonce", "sender", "recipient", "amountOs"}
@@ -985,7 +978,11 @@ def apr_evidence(protocol_input: dict, off) -> tuple[str, dict]:
     FV-5 at its `bft-final` inclusion qualifies, never a plain RPC read."""
     refused = ("indeterminate", {"reconciliationEvidence": False})
     proof = protocol_input["retainedFailureProof"]
-    if not valid_failure_proof(proof, protocol_input["retainedTransfer"], off):
+    if ("apr-evidence-binds-prior-phase" not in off
+            and not valid_failure_proof(proof, protocol_input["retainedTransfer"], off)):
+        return refused
+    if not (isinstance(proof, dict) and proof.get("classification") == "permanent"
+            and (decode(proof.get("record"), off) or {}).get("status") == "failed"):
         return refused
     authenticated = authenticated_proof(proof, protocol_input, off)
     if authenticated or "apr-evidence-requires-authenticated-failure" in off:
@@ -1019,8 +1016,12 @@ def party_address(value, off):
     if "phase-party-address-projects" in off:
         # The wrong implementation compares the phase's spelling as given.
         return value
-    match = (PARTY_ADDRESS.fullmatch(value) or PARTY_CLAIM_PARAMETERS.fullmatch(value)) if isinstance(value, str) else None
-    return match[1] if match else None
+    if isinstance(value, str):
+        if "claim-parameters-well-formed" in off:
+            value = value.partition("?")[0]
+        if "claim-scheme-case-insensitive" in off and ":" in value and value.split(":", 1)[0] != value.split(":", 1)[0].lower():
+            return None
+    return demos_party_address(value)
 
 
 # DACS-1 §6.3.2 step (6) mechanisms as a verifier's own check of the pinned
@@ -1058,16 +1059,24 @@ def payer_claims(phase, off):
             if match and (listed or claim["control"] in CLAIM_CONTROLS):
                 keys.add(match[1])
             continue
-        match = DEMOS_KEY_CLAIM.fullmatch(claim["claim"])
+        try:
+            reference = claim["claim"]
+            if "claim-parameters-well-formed" in off:
+                reference = reference.partition("?")[0]
+            match = demos_key_claim(reference)
+            if "claim-scheme-case-insensitive" in off and reference.partition(":")[0] != reference.partition(":")[0].lower():
+                match = None
+        except ValueError:
+            return None
         # The wrong implementation matches the whole reference string, so a
         # `?<parameters>` suffix DACS-1 has a reader ignore makes the claim none.
         if not match or ("claim-reference-parameters-ignored" in off and "?" in claim["claim"]):
             continue
         # The wrong implementation takes any step (6) mechanism as control of any scheme.
         controlled = (claim["control"] in CLAIM_CONTROLS if "control-is-the-schemes-mechanism" in off
-                      else KEY_CLAIM_CONTROL.get(match[1]) == claim["control"])
+                      else KEY_CLAIM_CONTROL.get(match[0]) == claim["control"])
         if listed or controlled:
-            keys.add(match[2])
+            keys.add(match[1])
     return keys
 
 
@@ -1200,8 +1209,8 @@ def rail_preflight(protocol_input: dict, off) -> tuple[str, dict]:
     # claim: DEM-1 signs for no other key, so a bundle that controls none (a
     # session-key presentation, a listing only) is refused here, before the
     # Agreement is signed, not at settle.
-    if gated and "payerKeyClaims" in protocol_input and "preflight-requires-controlled-key-claim" not in off:
-        if not payer_claims({"payerKeyClaims": protocol_input["payerKeyClaims"]}, off):
+    if gated and "preflight-requires-controlled-key-claim" not in off:
+        if not payer_claims({"payerKeyClaims": protocol_input.get("payerKeyClaims")}, off):
             return "fail", {"railSelectable": False}
     if "preflight-selects-configured-rail" in off:
         return "fail", {"railSelectable": False}
@@ -1733,7 +1742,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             root = Path(scratch)
             (root / "scripts").mkdir()
             for name in ("generate_pay_dem_execution_vectors.py", "jcs.py", "demos_json.py",
-                         "settlement_finality_reference.py"):
+                         "settlement_finality_reference.py", "demos_identity.py", "dacs_reference.py"):
                 shutil.copy(ROOT / "scripts" / name, root / "scripts" / name)
             output = root / "conformance/vectors/security/pay-dem-execution-v0.1.json"
             output.parent.mkdir(parents=True)
@@ -1841,7 +1850,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertEqual({"delivery-after-all-gates", "delivery-same-tuple-readmitted", "delivery-to-0x-payee-address",
                           "delivery-to-did-payee-address", "delivery-from-0x-paying-key",
                           "delivery-fv-form-result", "delivery-fv-form-result-self-reported-node",
-                          "delivery-fv-form-result-reordered-edit-members"}, delivered)
+                          "delivery-fv-form-result-reordered-edit-members"}
+                         | {"delivery-claim-read-" + label for label in
+                            ("upper-key", "mixed-key", "upper-did", "unknown-parameters")}, delivered)
         for name in delivered:
             protocol_input = self.cases[name]["protocolInput"]
             self.assertTrue(fv5_authenticated(protocol_input["recordRead"], protocol_input, frozenset()))
@@ -1943,7 +1954,10 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                           "broadcast-to-0x-payee-address", "broadcast-to-did-payee-address",
                           "broadcast-from-did-paying-key", "confirm-from-key-claim-paying-key",
                           "broadcast-from-key-claim-paying-key", "confirm-after-durable-retention",
-                          "broadcast-completes-own-confirm"], permitted)
+                          "broadcast-completes-own-confirm"]
+                         + [action + "-claim-read-" + label for label in
+                            ("upper-key", "mixed-key", "upper-did", "unknown-parameters")
+                            for action in ("confirm", "broadcast")], permitted)
         for name in permitted:
             with self.subTest(name=name):
                 signed_content = self.cases[name]["protocolInput"]["signedTransaction"]["content"]
@@ -2276,7 +2290,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                           "sign-with-rail-network-entry-among-several",
                           "sign-with-key-claim-paying-key", "sign-with-foreign-key-claim-listed",
                           "sign-with-key-claim-parameters-paying-key"}
-                         | {"sign-with-" + suffix for suffix in (*NETWORK_VARIANTS, *UNUSABLE_TRUST)},
+                         | {"sign-with-" + suffix for suffix in (*NETWORK_VARIANTS, *UNUSABLE_TRUST)}
+                         | {"sign-claim-read-" + label for label in
+                            ("upper-key", "mixed-key", "upper-did", "unknown-parameters")},
                          {name for name in presign if presign[name]["expected"] != "error"})
         # A party address that does not project is refused before signing,
         # PC-4 permanent, so no retention pins a phase that can never be paid.
@@ -2288,7 +2304,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         uncontrolled = {"sign-paying-key-" + suffix for suffix in (
             "listed-not-controlled", "session-key-presentation", "did-claim-only", "wrong-mechanism",
             "not-in-bundle", "claims-malformed")}
-        self.assertEqual(addresses | uncontrolled | {"sign-paying-key-upper-case"}, unpayable)
+        self.assertEqual(addresses | uncontrolled | {"sign-paying-key-upper-case"}
+                         | {"sign-claim-read-" + label for label in
+                            ("empty-parameters", "bare-parameter", "empty-parameter-key", "parameter-newline")}, unpayable)
         for name in unpayable:
             with self.subTest(name=name):
                 self.assertEqual(("error", {"signPermitted": False, "ok": False, "errorClass": "permanent"}),

@@ -14,7 +14,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from jcs import canonicalize as jcs_canonicalize
 # DACS-4 §9.5.9 DEM-1 / RAV-R3: the DEM rail's signed bft-final profile and the
 # payer's Demos binding entry for its network, as the pay-dem corpus builds them.
-from generate_pay_dem_execution_vectors import FINALITY_PROFILE, OTHER_NETWORK, binding_entry
+from generate_pay_dem_execution_vectors import (
+    FINALITY_PROFILE, FINALITY, NETWORK, FV5_POLICY, PAYER_KEY, OTHER_NETWORK, OTHER_TX_HASH,
+    binding_entry, failure_proof, retained, claim,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -264,6 +267,8 @@ def make_base(selected: str = "dem", *, ordinary_repeated: bool = False) -> dict
             "supportedHandlers": ["pay-dem", "pay-x402", "pay-ap2"],
             # The payer's Demos binding (RAV-R3 for a pay-dem rail).
             "payDemBinding": [binding_entry()],
+            "payerKeyClaims": [claim("key:" + PAYER_KEY)],
+            "payDemReconciliationTrust": {"railNetwork": NETWORK, **FINALITY, "fv5Policy": FV5_POLICY},
             "projectedStep": copy.deepcopy(projected[2]) if not ordinary_repeated else None,
             "agreementSignatureProduced": True,
             "priorPaymentContext": None,
@@ -479,6 +484,15 @@ def attach_prior_payment_context(
             "reconciliationEvidenceVerified": disposition == "closed-cannot-settle",
         },
     }
+
+    if prior_handler == "pay-dem" and disposition == "closed-cannot-settle":
+        context = value["runtime"]["priorPaymentContext"]
+        context["executionAuthority"]["retainedTransfer"] = retained(jobId=prior_job_id, phaseIndex=2)
+        retained_proof = failure_proof()
+        proof = {**retained_proof["inclusionProof"],
+                 "executionResult": retained_proof["authentication"]}
+        context["resolution"]["payDemFailureProof"] = proof
+        evidence_refs[0]["contentHash"] = digest(proof)
 
 
 def set_selection(value: dict, ref: dict, handler: str, *, job_id: str | None = None) -> None:
@@ -744,6 +758,70 @@ def build_cases() -> list[dict]:
     add_case(cases, "fresh-job-after-conclusive-no-settlement", "pass", "APR-6",
              "a proof-backed terminal reconciliation disposition permits the replacement",
              conclusive_no_settlement, base="x402")
+
+    for name, mutate in (
+        ("another-transaction", lambda c: c["executionAuthority"]["retainedTransfer"].update(txHash=OTHER_TX_HASH)),
+        ("missing-artifact", lambda c: c["resolution"].pop("payDemFailureProof")),
+        ("missing-retention", lambda c: c["executionAuthority"].pop("retainedTransfer")),
+        ("another-phase", lambda c: c["executionAuthority"]["retainedTransfer"].update(phaseIndex=1)),
+        ("another-job", lambda c: c["executionAuthority"]["retainedTransfer"].update(jobId=JOB_AP2)),
+        ("wrong-content-hash", lambda c: c["disposition"]["reconciliationEvidenceRefs"][0].update(contentHash="ab" * 32)),
+    ):
+        def bad_proof(v, mutate=mutate):
+            attach_prior_payment_context(v, "closed-cannot-settle")
+            mutate(v["runtime"]["priorPaymentContext"])
+        add_case(cases, "fresh-job-cannot-settle-proof-for-" + name, "fail", "APR-6/DEM-4",
+                 "An independently authenticated proof must bind the prior session's retained transfer.",
+                 bad_proof, base="x402", reason="prior-disposition-proof")
+    for label, claims in (("session-key-payer", [claim("key:" + PAYER_KEY, "none")]), ("missing-payer-claims", None)):
+        add_case(cases, "selected-dem-" + label + "-rejected", "fail", "RAV-R3",
+                 "Before commitment the payer bundle must control a Demos key claim.",
+                 lambda v, claims=claims: v["runtime"].update(payerKeyClaims=claims), reason="selected-availability")
+
+    def verified_artifact_without_label(v):
+        attach_prior_payment_context(v, "closed-cannot-settle")
+        v["runtime"]["priorPaymentContext"]["resolution"]["reconciliationEvidenceVerified"] = False
+    add_case(cases, "fresh-job-dem-proof-verified-without-label", "pass", "APR-6/DEM-4",
+             "The verifier checks the artifact itself; a supplied success label has no authority.",
+             verified_artifact_without_label, base="x402")
+    for label in ("forged-result", "missing-inclusion", "missing-verifier-trust", "malformed-reference"):
+        def invalid_artifact(v, label=label):
+            attach_prior_payment_context(v, "closed-cannot-settle")
+            context = v["runtime"]["priorPaymentContext"]
+            proof = context["resolution"]["payDemFailureProof"]
+            if label == "forged-result":
+                proof["executionResult"]["attestations"] = []
+            elif label == "missing-inclusion":
+                proof.pop("finalityCertificate")
+            elif label == "malformed-reference":
+                proof["transactionRef"] = ["not-a-reference"]
+            else:
+                v["runtime"].pop("payDemReconciliationTrust")
+            context["disposition"]["reconciliationEvidenceRefs"][0]["contentHash"] = digest(proof)
+        add_case(cases, "fresh-job-cannot-settle-" + label, "fail", "APR-6/DEM-4",
+                 "Even a hash-bound artifact needs independent result and finality verification.",
+                 invalid_artifact, base="x402", reason="prior-disposition-proof")
+
+    for mismatch in (False, True):
+        def another_native_rail(v, mismatch=mismatch):
+            attach_prior_payment_context(v, "closed-cannot-settle")
+            def rename(value):
+                if isinstance(value, dict):
+                    for key, item in value.items():
+                        if key == "railId" and item == DEM_REF["railId"]:
+                            value[key] = "demos-native:alternate"
+                        else:
+                            rename(item)
+                elif isinstance(value, list):
+                    for item in value:
+                        rename(item)
+            rename(v)
+            if mismatch:
+                v["runtime"]["priorPaymentContext"]["executionAuthority"]["retainedTransfer"]["txHash"] = OTHER_TX_HASH
+        add_case(cases, "fresh-job-alternate-dem-rail-" + ("wrong-proof" if mismatch else "bound-proof"),
+                 "fail" if mismatch else "pass", "APR-6/DEM-4",
+                 "DEM-4 follows the signed phase handler for every registry railId.",
+                 another_native_rail, base="x402", reason="prior-disposition-proof" if mismatch else None)
 
     def missing_disposition(v):
         v["agreement"]["terms"]["priorPaymentDispositionRef"] = {

@@ -1,4 +1,5 @@
 import base64
+from scripts.demos_identity import demos_key_claim
 import copy
 import hashlib
 import json
@@ -33,7 +34,7 @@ from frozen_dacs5_v05_reader import (  # noqa: E402
 )
 from scripts.jcs import canonicalize  # noqa: E402
 from scripts.settlement_finality_reference import (  # noqa: E402
-    DEM_AMOUNT_RE, DEMOS_KEY_CLAIM_RE, bft_final_trust, verify_finality, _demos_committed_change, _demos_native_send, _demos_os_spelling,
+    DEM_AMOUNT_RE, bft_final_trust, verify_finality, _demos_committed_change, _demos_native_send, _demos_os_spelling,
     _demos_send_edits_match,
 )
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
@@ -170,7 +171,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(233, self.data["count"])
+        self.assertEqual(242, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -579,8 +580,8 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ("key:" + key, ("key", key)),
             ("key:" + key + "?jurisdiction=US", ("key", key)),
             ("key:" + key + "?a=1&b=2", ("key", key)),
-            ("did:demos:agent:" + key, ("did:demos:agent", key)),
-            ("did:demos:agent:" + key + "?jurisdiction=US", ("did:demos:agent", key)),
+            ("did:demos:agent:" + key, ("did", key)),
+            ("did:demos:agent:" + key + "?jurisdiction=US", ("did", key)),
             ("key:demos:agent:" + key, None),
             ("did:" + key, None),
             ("key:0x" + key, None),
@@ -589,8 +590,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             (key, None),
         ):
             with self.subTest(claim=claim):
-                match = DEMOS_KEY_CLAIM_RE.match(claim)
-                self.assertEqual(expected, None if match is None else match.groups())
+                self.assertEqual(expected, demos_key_claim(claim))
         for name, expected in (
             ("fv-bft-final-payer-key-claim-unknown-parameters", "pass"),
             ("fv-bft-final-payer-key-claim-demos-agent-form", "indeterminate"),
@@ -607,6 +607,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ("fv-bft-final-payer-key-claim-malformed-record-undecodable", "error"),
             ("fv-bft-final-payer-key-claim-malformed-semantics-unpinned", "error"),
             ("fv-bft-final-payer-key-claim-malformed-certificate-forged", "fail"),
+            ("fv-bft-final-malformed-claim-inclusion-below-threshold", "error"),
         ):
             with self.subTest(case=name):
                 self.assertEqual(expected, self.evaluate_case(self.cases[name])["decision"])
@@ -803,7 +804,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         for spelling, expected in (("key:" + key, "pass"), (key, "indeterminate"), ("0x" + key, "indeterminate"),
                                    ("did:demos:agent:" + key, "indeterminate"),
                                    ("key:" + key.upper(), "indeterminate"), ("key:0x" + key, "indeterminate"),
-                                   ("DID:demos:agent:" + key, "indeterminate"), ("KEY:" + key, "indeterminate")):
+                                   ("DID:demos:agent:" + key, "indeterminate"), ("KEY:" + key, "pass")):
             with self.subTest(claim=spelling):
                 spelled = copy.deepcopy(trust)
                 spelled["demosPayerKeyClaims"][CLAIMS["buyer"]][0]["claim"] = spelling

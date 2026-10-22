@@ -18,6 +18,11 @@ import re
 from typing import Any
 from urllib.parse import urlsplit
 
+try:
+    from scripts.demos_identity import demos_key_claim
+except ImportError:  # direct script entry point
+    from demos_identity import demos_key_claim
+
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
@@ -44,15 +49,6 @@ DEMOS_RECORD_PROFILE = "kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f4557
 POSITION_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 DEMOS_KEY_RE = re.compile(r"(?:0x)?([0-9a-f]{64})\Z")
-# DEMOS-MAPPING §A.2 Demos key claim: a payer-bundle claim whose DACS-1
-# ClaimReference has the canonical identity `key:<64 lower-case hex>` or
-# `did:demos:agent:<64 lower-case hex>` (DACS-1 §6.3.1); it projects to the 64
-# digits. The `?<parameters>` suffix is not part of that identity: DACS-1 has
-# readers ignore parameters they do not know, never reject on them. Bare and
-# `0x` hex are address spellings, not ClaimReferences, and a `cci-xm:`
-# reference has no registered mapping to a Demos account key: none of them is
-# a Demos key claim. Group 1 is the scheme prefix, group 2 the 64 digits.
-DEMOS_KEY_CLAIM_RE = re.compile(r"(key|did:demos:agent):([0-9a-f]{64})(?:\?.*)?\Z", re.DOTALL)
 # How a payer bundle claim's control was established: the DACS-1 §6.3.2
 # step (6) mechanisms, as the verifier's own check of the bundle that
 # `payer.bundleHash` pins reports them, or "none" for a claim the bundle only
@@ -1255,9 +1251,12 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
     # A claim that is no Demos key claim (an EVM address, a LEI, a bare hex
     # string) is skipped, never an error. A Demos key claim is controlled only
     # by the step (6) mechanism DACS-1 defines for its scheme.
-    matches = [DEMOS_KEY_CLAIM_RE.match(claim["claim"]) for claim in claims]
-    payers = {match.group(2) for match, claim in zip(matches, claims)
-              if match and DEMOS_KEY_CLAIM_CONTROL.get(match.group(1)) == claim["control"]}
+    try:
+        matches = [demos_key_claim(claim["claim"]) for claim in claims]
+    except ValueError:
+        return "error", "malformed payer bundle ClaimReference parameters"
+    payers = {match[1] for match, claim in zip(matches, claims)
+              if match and DEMOS_KEY_CLAIM_CONTROL.get(match[0]) == claim["control"]}
     if not payers:
         return "indeterminate", "payer bundle controls no Demos key claim"
     if trusted.get("demosRecordProfile") != DEMOS_RECORD_PROFILE:
@@ -1368,6 +1367,10 @@ def _verify_chain_observation(
                 execution["record"], reference, expected, trusted, execution.get("appliedTransfer"))
 
     path_decision, path_reason = _verify_inclusion_path(observation, profile, reference, trusted)
+    if path_decision in {"fail", "error"}:
+        return _result(path_decision, path_reason), None
+    if record_decision == "error":
+        return _result(record_decision, record_reason), None
     if path_decision != "pass":
         return _result(path_decision, path_reason), None
     if record_decision != "pass":

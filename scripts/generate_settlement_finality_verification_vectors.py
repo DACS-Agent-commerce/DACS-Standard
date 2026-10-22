@@ -1995,6 +1995,23 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
     vectors.append(case("fv-bft-final-payer-key-claim-unknown-parameters", "pass", "a controlled key: claim that carries a ?<parameters> suffix still binds the sender: readers ignore parameters (DACS-1 §6.3.1)",
                         factory.model_input("bft-final"),
                         trusted_overrides=claims_of(controlled_claim("key:" + buyer_key + "?jurisdiction=US"))))
+    for label, reference, expected in (
+        ("scheme-upper-key", "KEY:" + buyer_key, "pass"),
+        ("scheme-mixed-key", "KeY:" + buyer_key, "pass"),
+        ("scheme-upper-did", "DID:demos:agent:" + buyer_key, "indeterminate"),
+        ("unknown-qualified-key", "KEY:" + buyer_key + "?jurisdiction=US&zone=", "pass"),
+        ("parameters-empty", "key:" + buyer_key + "?", "error"),
+        ("parameter-without-equals", "key:" + buyer_key + "?oops", "error"),
+        ("parameter-empty-key", "key:" + buyer_key + "?=US", "error"),
+        ("parameter-newline", "key:" + buyer_key + "?a=b\nc", "error"),
+    ):
+        vectors.append(case("fv-bft-final-claim-read-" + label, expected,
+                            "DACS-1 read grammar preserves identifier case and requires well-formed qualifiers.",
+                            factory.model_input("bft-final"), trusted_overrides=claims_of(controlled_claim(reference))))
+    vectors.append(case("fv-bft-final-malformed-claim-inclusion-below-threshold", "error",
+                        "An unresolved inclusion never hides a malformed phase claim.",
+                        factory.model_input("bft-final"), trusted_overrides={
+                            "demosPayerKeyClaims": {CLAIMS["buyer"]: []}, "observationAuthorityKeys": {}}))
     vectors.append(case("fv-bft-final-payer-key-claim-demos-agent-form", "indeterminate", "key:demos:agent:<hex> is no Demos key claim, so it controls nothing",
                         factory.model_input("bft-final"),
                         trusted_overrides=claims_of(controlled_claim("key:demos:agent:" + buyer_key))))

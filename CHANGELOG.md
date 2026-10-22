@@ -569,6 +569,20 @@ except where a bullet names the earlier check that decides it.
   `hashlib.sha3_256` at block boundaries. The release-pin tuple test reports an
   explicit skip when a source archive or shallow clone lacks the pinned commit.
 
+### Changed — Listing rule-reference locations
+
+- **Rule-reference location syntax** (DACS-1 §6.3.4; DACS-3 §8.4.3; DACS-4
+  §9.3) — DACS-1 now states that `<uri>` in `conflictOfLawsRule` and the
+  auction `selectionRule` is a nonempty RFC 3986 URI-reference: an absolute URI
+  or a relative reference, including a substrate storage identifier such as
+  `stor-rule`, written in ASCII with `%` plus two hexadecimal digits for each
+  escape. The auction form `rule-ref:<contentHash>:<uri>` requires the
+  authoritative lowercase 64-hex SHA-256 before the location. A relative
+  location does not replace the DACS-3 §8.4.3 content-hash binding or establish
+  that the referenced rule is available. The reference Listing shape check
+  (`scripts/listing_artifact.py`) now refuses other spellings. No signed
+  artifact shape or signature domain changes.
+
 ### Changed — current-delivery admission corrective boundary
 
 - **Breaking pre-v1 correction** (CORE v0.3 §11.1.2, DACS-4 v0.8 PDE-7/PDE-8,

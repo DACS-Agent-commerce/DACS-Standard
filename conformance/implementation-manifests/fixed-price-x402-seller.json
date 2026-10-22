@@ -31,7 +31,7 @@
     {
       "id": "claim-fixed-price",
       "level": "capability",
-      "result": "conformance-tested",
+      "result": "implemented",
       "roles": ["seller"],
       "modules": ["DACS-3"],
       "capabilityRefs": ["fixed-price"],
@@ -41,7 +41,7 @@
     {
       "id": "claim-pay-x402",
       "level": "capability",
-      "result": "conformance-tested",
+      "result": "implemented",
       "roles": ["seller"],
       "modules": ["DACS-4"],
       "capabilityRefs": ["pay-x402"],
@@ -55,7 +55,7 @@
       "roles": ["seller"],
       "modules": ["DACS-4"],
       "capabilityRefs": ["x402-default-rail"],
-      "ruleRefs": ["RD-1", "RD-2", "RD-3", "RD-4", "RD-5"],
+      "ruleRefs": ["DACS-4-9.4.2"],
       "evidenceRefs": ["x402-vectors"]
     }
   ],
@@ -68,7 +68,7 @@
       "roles": ["seller"],
       "supportStatus": "implemented",
       "availability": "live",
-      "testStatus": "passed",
+      "testStatus": "partial",
       "evidenceRefs": ["fixed-price-vectors"]
     },
     {
@@ -79,7 +79,7 @@
       "roles": ["seller"],
       "supportStatus": "implemented",
       "availability": "live",
-      "testStatus": "passed",
+      "testStatus": "partial",
       "evidenceRefs": ["x402-vectors"]
     },
     {
@@ -98,7 +98,7 @@
     {
       "id": "fixed-price-vectors",
       "result": "pass",
-      "caseIds": ["neg-pattern-mismatch", "neg-priceanchor-absent-ok"],
+      "caseIds": ["neg-pattern-mismatch", "neg-ps3-fixed-over-negotiable", "neg-priceanchor-absent-ok"],
       "command": "example-agent conformance run --capability fixed-price"
     },
     {

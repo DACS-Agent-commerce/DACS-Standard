@@ -5,12 +5,105 @@ These examples exercise the optional normative reporting contract in
 They are illustrative implementation reports, not endorsements or declarations that
 the named example software exists.
 
-The examples show four deliberately scoped surfaces:
+The examples show six deliberately scoped surfaces:
 
 - `fixed-price-x402-seller.json` — fixed-price negotiation plus `pay-x402`;
+- `fixed-price-pay-dem-seller.json` — the seller side of fixed-price negotiation,
+  `pay-dem` settlement, and `deliver-storage-program` delivery;
+- `fixed-price-pay-dem-buyer.json` — the buyer side of the same capability set;
 - `pay-dem-rfq-buyer.json` — the buyer side of an RFQ settled with `pay-dem`;
 - `pay-dem-rfq-seller.json` — the seller side of the same capability pairing; and
 - `verifier-indexer.json` — bundle verification, reputation derivation, and directory indexing.
+
+The two `fixed-price-pay-dem-*` examples are illustrative only. They are not
+normative and are not a claim about any implementation. Their implementation
+name, `example.invalid` repository, commit, and test commands are placeholders.
+The §14.10 shape has no free-text description outside deviations, so the files
+say this through those placeholder values.
+
+Both pin the coordinated v0.4 release: the annotated tag `v0.4` named in
+[PROFILE](../../spec/PROFILE.md), at commit `4bb9e48`, with the conformance
+manifest at that commit. They scope each claim's result to what its cited
+cases exercise, and no capability is exercised fully enough at that pin for a
+passing claim:
+
+- `fixed-price` cites every golden §8.5.x case that applies to it, but no case
+  in the v0.4 suite exercises the §8.4.1 procedure (including its auto-accept
+  checks) or PS-1 and PS-2. It is therefore `partial` and claimed only as
+  `implemented`;
+- PS-1..PS-3 appear only in the seller example, because DACS-3 §8.9 assigns
+  them to the listing publisher;
+- PB-1..PB-3 appear only in the buyer example, because DACS-4 §9.5.1 makes
+  them checks the payer runs before submitting payment;
+- `pay-dem`, with a single candidate case, is `partial` and claimed only as
+  `implemented`. No v0.4 case exercises the §9.5.9 procedure, whose step 5
+  returns success on the `included` state; a Demos node also reports
+  `included` for a failed transfer. Open draft PR #432 (head `518d30b`,
+  2026-10-19) proposes settling only on an executed transaction record with
+  independently authenticated applied-payment authority, as the
+  [FP-DEM map](../../docs/fp-dem-current-rules.md#known-gaps) records;
+- the `demos-native:DEM` rail is claimed against its DACS-4 §9.4.2 registry
+  entry with the `pay-dem` case, as `implemented`. No v0.4 case exercises a
+  `demos-native` rail, and RD-1..RD-5 are rail-author duties (§9.4.3, §9.10);
+- `deliver-storage-program` cites four of the six golden v0.4 settlement
+  cases that check delivery evidence and its anchor; it does not cite the
+  PC-6 and SIG-5 cases `settlement-delivery-with-finality-fail` and
+  `settlement-delivery-extra-payment-field-pass`. None of the six exercises
+  DV-1..DV-4 or the extended pointer that §9.6.1 requires above its 128 KB
+  soft limit; the Demos node itself enforces 1 MiB, as the FP-DEM map
+  records. The v0.4 `private-deliverables-v0.1` security set probes the DV
+  rules, but its vectors are not cases in the pinned conformance manifest.
+  Delivery is therefore `partial` and claimed only as `implemented`;
+- the out-of-scope `rfq` pattern is listed as `unsupported`;
+- the `delivery-type` capability's `id` is the phase kind
+  `deliver-storage-program`. §14.10 does not define the `id` tokens for each
+  capability `kind`; DACS-4 names the deliverable kind itself
+  `storage-program`; and
+- `availability` is omitted. These examples describe no deployment, so they
+  have no operational state to report. IM-2 allows the omission for a
+  non-operational library capability; a report from a running seller or
+  buyer would give an availability for each capability, as
+  `fixed-price-x402-seller.json` does.
+
+`fixed-price-x402-seller.json` makes no passing claim. A `capability` claim
+that is `conformance-tested` reports the whole capability (§14.10), but none
+of its three fixed-price cases exercises the §8.4.1 procedure, PS-1 or PS-2,
+and its PS-3 golden case covers only PS-3's negotiable band-centre clause,
+not the pattern/pricing compatibility. Its fixed-price claim, which names
+PS-1..PS-3, is therefore `partial` and claimed only as `implemented`, as in the
+`fixed-price-pay-dem-*` examples. Its `pay-x402` evidence is
+the single golden pass case `settlement-x402-pass`, which exercises none of
+the X402-1..X402-4 rejection paths in DACS-4 §9.5.7 or the SB-1..SB-3 session
+binding in §9.5.8, so `pay-x402` is `partial` and claimed only as
+`implemented`. Like the `fixed-price-pay-dem-*` DEM rail claims, it claims its
+`x402:default` rail against the §9.4.2 registry entry, since RD-1..RD-5 are
+rail-author duties. Open issue #274 reports that this registry entry cannot
+be resolved as written.
+
+These three examples, `fixed-price-x402-seller.json` and the two
+`fixed-price-pay-dem-*` examples, follow one rule for `ruleRefs`: an
+`implemented` claim names the rules its role implements, whether or not a
+cited case exercises them; its `result`, the capability's `testStatus` and
+the cited cases say how much of that is tested. So both of their seller
+examples name PS-1..PS-3 for fixed-price, and each seller's payment claim
+names the §9.5.8 settlement rules for its rail: the `pay-x402` claim names
+SB-1..SB-3, and the `pay-dem` claim names SB-1 and SB-2, because v0.4
+defines no SB-3 binding for `pay-dem`.
+
+The `pay-dem-rfq-*` and `verifier-indexer.json` examples predate this scoping
+and are not narrowed by it. They pin `9a1ca62`, whose conformance manifest is
+byte-identical to v0.4's. On the same single candidate case,
+`pb2-tier1-pay-dem-intrinsic-matches`, both `pay-dem-rfq-*` examples claim
+`pay-dem` as `conformance-tested` with test status `passed`, and claim the
+DEM rail against RD-1..RD-5; the seller also names PB-1..PB-3.
+`verifier-indexer.json` claims `derive-reputation` as `conformance-tested`
+on two cases, one of them a candidate. Under the scoping above, these would
+be `implemented` claims on `partial` capabilities.
+
+This scoping is the examples' own choice. IM-4 requires only that cited case
+ids exist in the pinned conformance manifest, and the validator does not check
+whether a cited case is golden or candidate, or whether the cases exercise the
+rules a claim names.
 
 Run the dependency-free validator from the repository root:
 

@@ -20,6 +20,68 @@ class RetainedAuthorityTests(unittest.TestCase):
         result = vectors.ref.dispatch_payment(vectors.BINDINGS['ordinary'], value, handler)
         self.assertTrue(result['ok'])
 
+    def test_inert_runtime_signers_never_reach_either_payment_handler(self):
+        # CORE B.5: an unavailable capability is indeterminate before dispatch.
+        for name, identity_bound in (("ordinary-input", False), ("identity-bound-input", True)):
+            value = next(v["input"] for v in self.fixture.data["phaseInputs"] if v["name"] == name)
+            class MissingSign:
+                def is_available(self):
+                    return True
+
+            class MissingReadiness:
+                def sign(self, payload):
+                    raise AssertionError("admission must not sign")
+
+            class NoncallableSign(MissingSign):
+                sign = "unusable"
+
+            class NoncallableReadiness(MissingReadiness):
+                is_available = True
+
+            for signer in (None, object(), {}, False, "fixture-signer", MissingSign(),
+                           MissingReadiness(), NoncallableSign(), NoncallableReadiness()):
+                with self.subTest(path=name, signer=type(signer).__name__):
+                    handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                    binding = vectors.ref.PhaseBinding(
+                        "pay-dem", identity_bound, vectors.ibh("verified"), signer)
+                    result = vectors.ref.dispatch_payment(binding, value, handler)
+                    self.assertEqual((result["status"], result["ok"], result.get("errorClass")),
+                                     ("indeterminate", False, "substrate"))
+                    handler.assert_not_called()
+
+    def test_signer_readiness_is_boolean_and_preserves_failure_causes(self):
+        for name, identity_bound in (("ordinary-input", False), ("identity-bound-input", True)):
+            value = next(v["input"] for v in self.fixture.data["phaseInputs"] if v["name"] == name)
+            for readiness in (False, None, 0, 1, "ready", {}, TimeoutError("local signer locked")):
+                signer = mock.Mock(spec=vectors.ref.SubstrateSigner)
+                if isinstance(readiness, Exception):
+                    signer.is_available.side_effect = readiness
+                else:
+                    signer.is_available.return_value = readiness
+                with self.subTest(path=name, readiness=readiness):
+                    handler = mock.Mock()
+                    binding = vectors.ref.PhaseBinding("pay-dem", identity_bound, vectors.ibh("verified"), signer)
+                    result = vectors.ref.dispatch_payment(binding, value, handler)
+                    self.assertEqual((result["status"], result["ok"], result.get("errorClass")),
+                                     ("indeterminate", False, "substrate"))
+                    if isinstance(readiness, Exception):
+                        self.assertIn("TimeoutError: local signer locked", result["reason"])
+                    handler.assert_not_called()
+                    signer.sign.assert_not_called()
+
+    def test_ready_signers_dispatch_without_signing_or_changing_wire_input(self):
+        for name, identity_bound in (("ordinary-input", False), ("identity-bound-input", True)):
+            value = next(v["input"] for v in self.fixture.data["phaseInputs"] if v["name"] == name)
+            before = copy.deepcopy(value)
+            for label in ("first-runtime-fixture", "second-runtime-fixture"):
+                signer = vectors.FixtureSigner(label)
+                handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                binding = vectors.ref.PhaseBinding("pay-dem", identity_bound, vectors.ibh("verified"), signer)
+                self.assertEqual(vectors.ref.dispatch_payment(binding, value, handler)["status"], "accepted")
+                self.assertEqual(signer.sign_calls, 0)
+                self.assertIs(handler.call_args.args[0]["sessionContext"]["signer"], signer)
+                self.assertEqual(value, before)
+
     def test_late_authority_cannot_be_backdated_by_caller(self):
         case = copy.deepcopy(next(c for c in self.fixture.rails['cases'] if c['name'] == 'index-receipt-after-session-start'))
         self.assertEqual(self.fixture.resolve_rail(case)[0], 'rejected')
@@ -38,14 +100,17 @@ class RetainedAuthorityTests(unittest.TestCase):
     def test_runtime_capability_is_trusted_and_missing_capability_never_dispatches(self):
         value = copy.deepcopy(next(v['input'] for v in self.fixture.data['phaseInputs'] if v['name'] == 'ordinary-input'))
         before = copy.deepcopy(value)
-        signer = mock.Mock()
-        signer.get_public_key.return_value = 'fixture-public-identity'
+        signer = vectors.FixtureSigner()
+        payload = b"fixture runtime signing payload"
         def handler(runtime):
             self.assertIs(runtime['sessionContext']['signer'], signer)
-            return {'ok': runtime['sessionContext']['signer'].get_public_key() == 'fixture-public-identity'}
+            self.assertEqual(signer.sign_calls, 0)
+            signature = runtime['sessionContext']['signer'].sign(payload)
+            signer.key.public_key().verify(signature, payload)
+            return {'ok': True}
         result = vectors.ref.dispatch_payment(vectors.ref.PhaseBinding('pay-dem', signer=signer), value, handler)
         self.assertTrue(result['ok'])
-        signer.get_public_key.assert_called_once_with()
+        self.assertEqual(signer.sign_calls, 1)
         self.assertEqual(value, before)
         handler = mock.Mock()
         result = vectors.ref.dispatch_payment(vectors.ref.PhaseBinding('pay-dem'), value, handler)

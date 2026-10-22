@@ -20,6 +20,11 @@ sys.path.insert(0, str(ROOT / "tests"))
 import generate_identity_bundle_hash_binding_vectors as generator  # noqa: E402
 import test_claim_requirement_qualification_vectors as qualification  # noqa: E402
 import dacs5_reference as reputation_reference  # noqa: E402
+import settlement_contract_reference as settlement_reference  # noqa: E402
+from settlement_signer_fixture import FixtureSigner  # noqa: E402
+
+# Runtime authority is supplied by the evaluator, never by a serialized scenario.
+_FIXTURE_RUNTIME_SIGNER = FixtureSigner("ibh-runtime-fixture")
 
 
 VECTORS = ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json"
@@ -1448,7 +1453,6 @@ def validated_session_parties(
 ) -> tuple[str, str, dict[str, dict]]:
     if not isinstance(value, dict):
         return "error", "malformed-input", {}
-    signer = value.get("signer")
     agreement = context.get("agreement")
     verifier_context = context.get("verifierContext")
     retained = (
@@ -1469,10 +1473,7 @@ def validated_session_parties(
         or not isinstance(value.get("priorPhaseOutputs"), dict)
         or not isinstance(value.get("startedAt"), int)
         or isinstance(value.get("startedAt"), bool)
-        or not isinstance(signer, dict)
-        or signer.get("kind") != "deterministic-test-capability"
-        or signer.get("claim")
-        != context.get("verifierContext", {}).get("authenticatedOrchestrator")
+        or "signer" in value
     ):
         return "error", "malformed-input", {}
     status, parties = carrier_map(value.get("parties"))
@@ -2193,7 +2194,8 @@ def current_payment_laa_gate(context: dict, artifact: str) -> tuple[str, str]:
 
 
 def validate_payment(
-    context: dict, artifact: str, unavailable: set[str], *, enforce_laa: bool = True
+    context: dict, artifact: str, unavailable: set[str], *, enforce_laa: bool = True,
+    runtime_signer=_FIXTURE_RUNTIME_SIGNER,
 ) -> tuple[str, str]:
     status, reason, digests, _ = pre_action_gate(
         context, artifact, "payment", unavailable
@@ -2323,7 +2325,19 @@ def validate_payment(
     if enforce_laa:
         # Deterministic input/party/rail/PB/key/authorization mismatches are
         # reported first; no payment effect has happened inside this validator.
-        return current_payment_laa_gate(context, artifact)
+        status, reason = current_payment_laa_gate(context, artifact)
+        if status != "pass":
+            return status, reason
+    # The IBH checks above constitute the verified rerun. Submit the exact
+    # committed wire input to PC-1 and hydrate only with evaluator-owned trust.
+    result = settlement_reference.dispatch_payment(
+        settlement_reference.PhaseBinding(
+            payment["rail"]["phaseHandler"], artifact in generator.STRONG_ARTIFACTS,
+            lambda _value: "verified", runtime_signer),
+        payment, lambda _runtime: {"status": "accepted", "ok": True},
+    )
+    if result["status"] != "accepted":
+        return ("error" if result["status"] == "rejected" else "indeterminate"), result["reason"]
     return "pass", "verified"
 
 
@@ -3304,6 +3318,27 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.cases = {case["name"]: case for case in cls.data["vectors"]}
+
+    def test_payment_evaluator_checks_exact_wire_input_and_uses_runtime_authority(self):
+        for name in ("identityBoundPayeeAgreement-payment-verified",
+                     "identity-bound-payee-replacement-verified"):
+            with self.subTest(vector=name):
+                context = materialize(self.data, self.cases[name])
+                payment = context["paymentInput"]
+                before = copy.deepcopy(payment)
+                with mock.patch.object(settlement_reference, "dispatch_payment",
+                                       wraps=settlement_reference.dispatch_payment) as dispatch_payment:
+                    self.assertEqual(validate_payment(context, context["artifact"], set())[0], "pass")
+                dispatch_payment.assert_called_once()
+                binding, wire, _ = dispatch_payment.call_args.args
+                self.assertIs(wire, payment)
+                self.assertIs(binding.signer, _FIXTURE_RUNTIME_SIGNER)
+                self.assertNotIn("signer", wire["sessionContext"])
+                self.assertEqual(payment, before)
+                self.assertEqual(validate_payment(context, context["artifact"], set(),
+                                                  runtime_signer=None)[0], "indeterminate")
+                payment["sessionContext"]["signer"] = {"kind": "serialized-placeholder"}
+                self.assertEqual(validate_payment(context, context["artifact"], set())[0], "error")
 
     def test_scenario_job_ids_are_distinct_canonical_jid1(self):
         ids = [scenario["agreement"]["jobId"] for scenario in self.data["scenarios"].values()]

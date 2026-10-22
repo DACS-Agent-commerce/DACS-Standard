@@ -1299,7 +1299,12 @@ handler, and amendment consumer.
   empty array or a companion that is not an object carrying `identityBundle` or
   `compositeRecord` is a PC-1 rejection on either path, matching IBH `error`.
   The IBH-1..IBH-5 rerun decides each companion's members before any rail
-  call.
+  call. CORE §B.5 separates serialized context from the runtime signer and
+  defines its callable signing and local readiness operations. Dispatch requires
+  boolean-true readiness without signing; an unavailable capability returns
+  `indeterminate` with `errorClass: "substrate"` before any rail call. The IBH
+  corpus carries serialized contexts and its evaluator supplies runtime
+  authority separately, submitting the exact payment input to PC-1.
 - **Amendment target** (DACS-4 §9.7.1 AMEND-1) — an amendment consumer MUST
   resolve `amendsEvidenceRef` and recompute its content hash before reading any
   target member, admitting the amendment and the target from their exact

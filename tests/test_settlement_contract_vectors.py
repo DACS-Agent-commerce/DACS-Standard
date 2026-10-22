@@ -14,24 +14,18 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import generate_settlement_contract_vectors as generator
 import settlement_contract_reference as ref
 from jcs import canonicalize
+from settlement_signer_fixture import FixtureSigner
 
 def ibh(verdict):
     """A verifier-owned IBH-1..IBH-5 rerun that returns a fixed outcome."""
     return lambda _phase_input: verdict
 
 
-SIGNER = object()  # Inert trusted runtime capability; no signing operation.
+SIGNER = FixtureSigner()
 
 
 def phase_binding(*args, **kwargs):
     return ref.PhaseBinding(*args, signer=SIGNER, **kwargs)
-
-
-def serialized_input(value):
-    # The older IBH fixture models a runtime context with a capability placeholder.
-    value = copy.deepcopy(value)
-    value["sessionContext"].pop("signer", None)
-    return value
 
 
 def runtime_input(value):
@@ -176,7 +170,7 @@ class SettlementContractTests(unittest.TestCase):
         # `indeterminate` (no rail call, errorClass substrate); an empty or
         # malformed one is IBH `error`, a PC-1 rejection before any rail call.
         corpus = json.loads((ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json").read_text())
-        base = serialized_input(corpus["scenarios"]["identityBoundAgreement"]["paymentInput"])
+        base = copy.deepcopy(corpus["scenarios"]["identityBoundAgreement"]["paymentInput"])
         vectors = {v["name"]: v for v in corpus["vectors"]}
         for name, expected, companions in (
                 ("malformed-payment-07-missing", "indeterminate", ...),
@@ -219,7 +213,7 @@ class SettlementContractTests(unittest.TestCase):
         # §9.5.1: the authenticated Listing alone selects the path, and only a
         # verified IBH-1..IBH-5 rerun reaches the rail.
         corpus = json.loads((ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json").read_text())
-        base = serialized_input(corpus["scenarios"]["identityBoundAgreement"]["paymentInput"])
+        base = copy.deepcopy(corpus["scenarios"]["identityBoundAgreement"]["paymentInput"])
         failing = mock.Mock(side_effect=TimeoutError("admission store timed out"))
         for binding, status, error_class, reason in (
                 (BINDINGS["ordinary"], "rejected", "permanent", "agreement is not the agreement kind the Listing selects"),
@@ -266,7 +260,7 @@ class SettlementContractTests(unittest.TestCase):
         for name, scenario in corpus["scenarios"].items():
             value = scenario.get("paymentInput")
             if isinstance(value, dict):
-                value = serialized_input(value)
+                value = copy.deepcopy(value)
             if isinstance(value, dict) and "paymentAuthorization" in value:
                 # The scenario's Listing selects the agreement kind it carries.
                 identity_bound = any(key.startswith("identityBound") for key in value["agreement"])
@@ -274,6 +268,24 @@ class SettlementContractTests(unittest.TestCase):
                     ref.check_payment_input(BINDINGS["identity-bound" if identity_bound else "ordinary"], value)
                     checked += 1
         self.assertGreater(checked, 0)
+
+    def test_committed_ibh_payment_wire_inputs_pass_pc1_without_repair(self):
+        import test_identity_bundle_hash_binding_vectors as ibh_vectors
+        corpus = json.loads(ibh_vectors.VECTORS.read_text())
+        for name, scenario in corpus["scenarios"].items():
+            with self.subTest(scenario=name):
+                if "paymentInput" in scenario:
+                    self.assertNotIn("signer", scenario["paymentInput"]["sessionContext"])
+        checked = []
+        for vector in corpus["vectors"]:
+            if vector.get("stage") != "payment" or vector["expected"] != "pass":
+                continue
+            with self.subTest(vector=vector["name"]):
+                value = ibh_vectors.materialize(corpus, vector)["paymentInput"]
+                ref.check_payment_input(BINDINGS["identity-bound"], value)
+                checked.append(vector["name"])
+        self.assertEqual(checked, ["identityBoundPayeeAgreement-payment-verified",
+                                   "identity-bound-payee-replacement-verified"])
 
     def test_typed_arm_shape_is_checked_before_handler(self):
         # PC-1 accepts the typed shape, not any object carrying its session key.

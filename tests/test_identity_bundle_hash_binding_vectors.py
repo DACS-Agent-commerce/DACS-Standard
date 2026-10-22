@@ -2381,8 +2381,9 @@ def validate_payment(
     # committed wire input to PC-1 and hydrate only with evaluator-owned trust.
     result = settlement_reference.dispatch_payment(
         settlement_reference.PhaseBinding(
-            payment["rail"]["phaseHandler"], artifact in generator.STRONG_ARTIFACTS,
-            lambda _value: "verified", runtime_signer),
+            payment["rail"]["phaseHandler"],
+            identity_bound=artifact in generator.STRONG_ARTIFACTS,
+            identity_binding=lambda _value: "verified", signer=runtime_signer),
         payment, lambda _runtime: {"status": "accepted", "ok": True},
     )
     if result["status"] != "accepted":

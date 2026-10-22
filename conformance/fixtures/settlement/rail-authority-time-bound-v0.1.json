@@ -24,6 +24,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -137,6 +153,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -252,6 +284,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -365,6 +413,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -480,6 +544,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -593,6 +673,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 2,
@@ -718,6 +814,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999801000,
+          "railRegistryVersion": 2
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "9KwA_xOdJbnrwVK9lXgWEeopZTHyaYbBUu0mYnaCZCxxiFTHOAyagUNwDSKZOW1MEkkhugulaxWYoBtGtU72Aw"
+        }
+      },
       "rail": {
         "railVersion": 2,
         "railId": "demos-native:DEM",
@@ -842,6 +954,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 2,
         "railId": "demos-native:DEM",
@@ -956,6 +1084,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 2,
@@ -1081,6 +1225,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -1203,6 +1363,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -1329,6 +1505,22 @@
         "railId": "demos-native:DEM",
         "railVersion": 1
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -1452,6 +1644,22 @@
       "railRef": {
         "railId": "evm-erc20:1:USDC"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -1565,6 +1773,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -1689,6 +1913,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -1804,6 +2044,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -1918,6 +2174,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -2016,6 +2288,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -2102,6 +2390,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -2187,6 +2491,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -2302,6 +2622,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -2415,6 +2751,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -2530,6 +2882,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -2643,6 +3011,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -2758,6 +3142,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -2871,6 +3271,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -2987,6 +3403,22 @@
         "railId": "demos-native:DEM",
         "railVersion": 2
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -3100,6 +3532,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -3233,6 +3681,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -3356,6 +3820,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -3470,6 +3950,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -3586,6 +4082,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 0
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "HxSC5qNgd59l4P3t8y8HsJxgeUzgmitisVxNJcHCDiIMaK2LR0LlSaPHofikjcj1ucbBJMtQanz_T2cKjHrdDg"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -3699,6 +4211,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": -1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "n-PoiuQwxm9ugiCtYfOuLGUhWinxlI7DArHewyDva8LVXZTYGZdNfqECLNvWgejMhGHqI7yGG0s395htO4wmBA"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -3814,6 +4342,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -3927,6 +4471,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -4042,6 +4602,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -4155,6 +4731,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -4296,6 +4888,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -4435,6 +5043,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,
@@ -4576,6 +5200,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -4716,6 +5356,22 @@
       "railRef": {
         "railId": "demos-native:DEM"
       },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
+      },
       "rail": {
         "railVersion": 1,
         "railId": "demos-native:DEM",
@@ -4855,6 +5511,22 @@
       },
       "railRef": {
         "railId": "demos-native:DEM"
+      },
+      "retainedState": {
+        "jobId": "01K1DPA0000000000000000000",
+        "session": {
+          "startedAt": 1799999800000,
+          "railRegistryVersion": 1
+        },
+        "orchestrator": "did:dacs:test:orchestrator",
+        "writer": "native:orchestrator-writer-1",
+        "steward": "did:dacs:test:steward",
+        "registryWriter": "native:registry-steward-writer-1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:dacs:test:network",
+          "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+        }
       },
       "rail": {
         "railVersion": 1,

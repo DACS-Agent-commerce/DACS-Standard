@@ -5,7 +5,11 @@ the session orchestrator and its native receipt writer, the session's
 `startedAt` and pinned rail-registry version, the amendment's anchored
 address, the rail steward and registry writer, and the resolver/network pins
 are verifier-owned arguments, never selected from phase input, target members
-or receipts. Finality uses a synthetic test proof profile
+or receipts. Session and registry pins are cross-checked against exact retained
+bytes authenticated by a separately pinned fixture root under
+`settlement-vector-retained-state:`. This test profile models an immutable
+authenticated session store; it does not define a production session envelope.
+Finality uses a synthetic test proof profile
 (`settlement-vector-anchor-finality:`), not a production Demos proof; its
 `blockRef.timestamp` is CORE SR2-6 consensus time in unix milliseconds.
 AMEND-1 admits the amendment and the resolved target from their exact
@@ -122,6 +126,9 @@ REGISTRY_INDEX_ADDRESS = "dacs4:registry:v0.1"
 # authenticates an AnchorReceipt's own fields. Not a DACS wire domain.
 ANCHOR_TEST_DOMAIN = b"settlement-vector-anchor-finality:"
 ANCHOR_TEST_KIND = "test-anchor-finality"
+# Fixture-only authentication of independently retained session/registry state.
+# This is not a new DACS artifact or a production session-signature codec.
+RETAINED_STATE_DOMAIN = b"settlement-vector-retained-state:"
 # Bound on decoded proof bytes, checked before JSON admission.
 MAX_PROOF_BYTES = 64 * 1024
 # Bounds on what a resolver hands back: received artifact bytes, checked
@@ -169,10 +176,13 @@ class PhaseBinding:
     IdentityBoundPaymentPhaseInput path. `identity_binding` is the verifier's
     IBH-1..IBH-5 rerun against the retained Identify/Vet admission: given the
     phase input it returns "verified", "rejected" or "indeterminate".
+    `signer` is the enclosing runtime's capability, attached only after wire
+    admission and the IBH rerun, never obtained from a serialized member.
     """
     phase: str
     identity_bound: bool = False
     identity_binding: Callable[[dict], str] | None = None
+    signer: Any = None
 
 
 class InputArmError(ValueError):
@@ -458,8 +468,9 @@ def _rail_valid(shape, value) -> bool:
 
 
 def _session_context_valid(shape, value, *, identity_bound=False) -> bool:
-    # The runtime SubstrateSigner is not serializable, so `signer` may be absent.
+    # This is SerializedSessionContext, never the runtime capability carrier.
     return (isinstance(value, dict)
+            and "signer" not in value
             and {"jobId", "listingRef", "recipeRegistryVersion", "railRegistryVersion",
                  "parties", "priorPhaseOutputs", "startedAt"} <= set(value)
             and shape._nonempty_jcs_string(value["jobId"])
@@ -544,13 +555,17 @@ def dispatch_payment(binding: PhaseBinding, phase_input: Any, handler: Callable)
         check_payment_input(binding, phase_input)
         if binding.identity_bound:
             _require_identity_binding(binding, phase_input)
+        if binding.signer is None:
+            raise InputAuthorityUnavailable("runtime SubstrateSigner unavailable")
     except InputArmError as exc:
         return {"status": "rejected", "ok": False, "errorClass": "permanent",
                 "reason": str(exc)}
     except InputAuthorityUnavailable as exc:
         return {"status": "indeterminate", "ok": False, "errorClass": "substrate",
                 "reason": str(exc)}
-    return handler(phase_input)
+    runtime_input = {**phase_input, "sessionContext": {
+        **phase_input["sessionContext"], "signer": binding.signer}}
+    return handler(runtime_input)
 
 
 # ---- signatures, hashes and authenticated receipts --------------------------
@@ -885,6 +900,7 @@ def consume_amendment_target(
     amendment_address: str, orchestrator: str, writer: str,
     public_keys: dict, network_authority: str, network_id: str,
     proof_profile: str, validator_set_id: str,
+    retained_state: bytes | None = None,
 ) -> tuple[str, str]:
     """Admit, resolve, establish finality, hash, then select/verify the AMEND-1 arm.
 
@@ -909,6 +925,12 @@ def consume_amendment_target(
             raise Invalid("amendment is not an object")
         if not isinstance(amendment.get("jobId"), str) or _JOB_ID.fullmatch(amendment["jobId"]) is None:
             raise Invalid("amendment jobId malformed")
+        state = authenticate_retained_state(retained_state, public_keys, network_authority)
+        if (state["jobId"] != amendment["jobId"]
+                or claim_identity(state["orchestrator"]) != claim_identity(orchestrator)
+                or state["writer"] != writer):
+            raise Invalid("amendment authority differs from retained session state")
+        orchestrator, writer = state["orchestrator"], state["writer"]
         target_ref = amendment.get("amendsEvidenceRef")
         # Declared members typed; unknown signed members stay open (SIG-5).
         if not _attestation_ref_valid(shape, target_ref):
@@ -1013,13 +1035,40 @@ def _index_entry_valid(shape, entry) -> bool:
             and shape._sha256_hex(entry["contentHash"]))
 
 
+def authenticate_retained_state(raw, public_keys, network_authority):
+    """Reauthenticate an immutable received snapshot against the fixture root.
+
+    No caller boolean or mutable projection establishes authority. Production
+    bindings obtain equivalent state from their authenticated session store.
+    """
+    if raw is None:
+        raise Unknown("authenticated retained session state unavailable")
+    if not isinstance(public_keys, dict):
+        raise Unknown("retained session trust keys unavailable")
+    state = admit(raw, Invalid, "retained session state")
+    if not isinstance(state, dict):
+        raise Invalid("retained session state is not an object")
+    verify_embedded(state, public_keys, RETAINED_STATE_DOMAIN)
+    if claim_identity(state["signature"]["signer"]) != claim_identity(network_authority):
+        raise Unknown("retained session state has no proof from the pinned authority")
+    if not {"jobId", "session", "orchestrator", "writer", "steward", "registryWriter"} <= set(state):
+        raise Invalid("retained session state lacks authority pins")
+    if not isinstance(state["session"], dict):
+        raise Invalid("retained session pins malformed")
+    return state
+
+
 def resolve_session_rail(
     session: dict, rail_ref: dict, rail: dict, authority: dict, *,
     public_keys: dict, steward: str, registry_writer: str, network_authority: str,
     network_id: str, proof_profile: str, validator_set_id: str,
+    retained_state: bytes | None = None, job_id: str | None = None,
 ) -> tuple[str, str]:
     """Check an existing session's PA-2 rail authority: §9.4.3 steps 1-2 and RTB-1.
 
+    `retained_state` supplies the authenticated immutable session/registry
+    snapshot. Bare caller pins cannot resolve anything: `session`, `steward`,
+    `registry_writer` and `job_id` must match that snapshot.
     `session` carries the authenticated `startedAt` and pinned
     `railRegistryVersion`; `authority` carries the registry index snapshot
     (CORE `RegistryIndexSnapshot` shape, `revision` = the pinned version) and
@@ -1038,6 +1087,13 @@ def resolve_session_rail(
     """
     shape = _shapes()
     try:
+        state = authenticate_retained_state(retained_state, public_keys, network_authority)
+        if (state["jobId"] != job_id or state["session"] != session
+                or claim_identity(state["steward"]) != claim_identity(steward)
+                or state["registryWriter"] != registry_writer):
+            raise Invalid("rail authority differs from retained session/registry state")
+        session = state["session"]
+        steward, registry_writer = state["steward"], state["registryWriter"]
         if not all(isinstance(value, dict) for value in (session, rail_ref, rail)):
             raise Invalid("session pins, rail reference and rail definition must be objects")
         started_at = session["startedAt"]
@@ -1120,4 +1176,75 @@ def resolve_session_rail(
     except Unknown as exc:
         return "indeterminate", str(exc)
     except (Invalid, ValueError, TypeError, KeyError) as exc:
+        return "rejected", str(exc)
+
+
+@dataclass(frozen=True)
+class ResolvedSessionRail:
+    """Immutable exact resolution retained by the enclosing session store."""
+    snapshot_hash: str
+    definition_hash: str
+    binding_bytes: bytes
+
+    def fixture_projection(self):
+        # A new copy for persistence; callers cannot mutate the retained bytes.
+        return {**json.loads(self.binding_bytes), "snapshotHash": self.snapshot_hash,
+                "definitionHash": self.definition_hash}
+
+
+def resolve_session_rail_state(session, rail_ref, rail, authority, **pins):
+    """Resolve first, then retain the exact authenticated snapshot and rail.
+
+    No unresolved result produces session authority. Later consumers rerun the
+    original proofs instead of trusting a saved status.
+    """
+    status, reason = resolve_session_rail(session, rail_ref, rail, authority, **pins)
+    if status != "verified":
+        return status, reason, None
+    binding = {"retainedStateText": pins["retained_state"].decode("utf-8"),
+               "railRef": rail_ref, "rail": rail, "authority": authority}
+    retained = ResolvedSessionRail(
+        sha256_hex(jcs_bytes(authority["railRegistryIndex"])), content_hash(rail),
+        jcs_bytes(binding))
+    return status, reason, retained
+
+
+def verify_retained_rail(binding, candidate, reference, job_id, policy):
+    """FV/DACS-5 reuses exact session rail authority, rechecking its proofs.
+
+    The retained bundle includes the authenticated numeric snapshot, selected
+    definition and both receipt histories. A saved success flag is never used.
+    """
+    if not isinstance(binding, dict) or not isinstance(policy, dict):
+        return "indeterminate", "retained session rail authority unavailable"
+    try:
+        if not all(isinstance(binding.get(member), dict) for member in ("rail", "railRef", "authority")):
+            raise Invalid("retained rail binding is malformed")
+        text = binding["retainedStateText"]
+        if not isinstance(text, str) or len(text) > MAX_ARTIFACT_BYTES:
+            raise Invalid("retained session state text malformed or oversized")
+        raw = text.encode("utf-8")
+        state = authenticate_retained_state(raw, policy["public_keys"], policy["network_authority"])
+        if (binding["snapshotHash"] != sha256_hex(jcs_bytes(binding["authority"]["railRegistryIndex"]))
+                or binding["definitionHash"] != content_hash(binding["rail"])):
+            raise Invalid("retained snapshot or definition differs from the original resolution")
+        status, reason = resolve_session_rail(
+            state["session"], binding["railRef"], binding["rail"], binding["authority"],
+            retained_state=raw, job_id=job_id, steward=state["steward"],
+            registry_writer=state["registryWriter"], **policy)
+        if status != "verified":
+            return status, reason
+        if content_hash(candidate) != content_hash(binding["rail"]):
+            raise Invalid("caller rail differs from the retained session definition")
+        index = binding["authority"]["railRegistryIndex"]
+        entry = next(entry for entry in index["entries"]
+                     if entry["contentHash"] == content_hash(candidate)
+                     and entry["version"] == candidate["railVersion"]
+                     and _nfc(entry["id"]) == _nfc(candidate["railId"]))
+        if reference["anchor"] != entry["anchor"]:
+            raise Invalid("rail reference differs from the retained snapshot locator")
+        return "verified", "exact session rail reauthenticated"
+    except Unknown as exc:
+        return "indeterminate", str(exc)
+    except (Invalid, ValueError, TypeError, KeyError, StopIteration, UnicodeError) as exc:
         return "rejected", str(exc)

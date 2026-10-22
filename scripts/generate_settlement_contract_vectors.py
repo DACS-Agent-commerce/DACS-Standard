@@ -72,6 +72,19 @@ ECDSA_PUBLIC_KEYS = {CLAIMS["orchestrator"]: ec.derive_private_key(ECDSA_PRIVATE
                                                 serialization.PublicFormat.CompressedPoint).hex()}
 
 
+def retained_state(session=None, *, job_id=JOB_ID, orchestrator=None, steward=None):
+    """Independent fixture root's authenticated session/registry snapshot."""
+    return sign({
+        "jobId": job_id,
+        "session": session if session is not None else {
+            "startedAt": SESSION_STARTED_AT, "railRegistryVersion": 1},
+        "orchestrator": orchestrator or CLAIMS["orchestrator"],
+        "writer": ORCHESTRATOR_WRITER,
+        "steward": steward or CLAIMS["steward"],
+        "registryWriter": REGISTRY_WRITER,
+    }, "network", ref.RETAINED_STATE_DOMAIN)
+
+
 def ecdsa_sign(message: bytes) -> bytes:
     """RFC 6979 secp256k1/SHA-256 with canonical DER and low-S output."""
     digest_bytes = hashlib.sha256(message).digest()
@@ -801,6 +814,7 @@ def build_fixture():
     return {"fixtureVersion": "1", "publicKeys": PUBLIC_KEYS, "ecdsaPublicKeys": ECDSA_PUBLIC_KEYS,
             "verifierProfile": {"signatureAlgorithms": ["ed25519"]},
             "orchestrator": CLAIMS["orchestrator"], "orchestratorWriter": ORCHESTRATOR_WRITER,
+            "retainedState": retained_state(),
             "inputModel": (
                 "Bindings, the orchestrator, its native receipt writer and the finality-proof "
                 "pins are verifier-owned. Receipt blockRef.timestamp is CORE SR2-6 consensus "
@@ -873,6 +887,7 @@ def build_rail_fixture():
         cases.append({
             "name": name, "ruleRefs": ["RTB-1"],
             "session": case_session or session, "railRef": case_ref or rail_ref,
+            "retainedState": retained_state(case_session or session),
             "rail": value, "authority": authority if authority is not None else rail_authority(value),
             "expected": expected,
         })

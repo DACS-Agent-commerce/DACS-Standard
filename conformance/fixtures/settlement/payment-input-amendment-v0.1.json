@@ -18,6 +18,22 @@
   },
   "orchestrator": "did:dacs:test:orchestrator",
   "orchestratorWriter": "native:orchestrator-writer-1",
+  "retainedState": {
+    "jobId": "01K1DPA0000000000000000000",
+    "session": {
+      "startedAt": 1799999800000,
+      "railRegistryVersion": 1
+    },
+    "orchestrator": "did:dacs:test:orchestrator",
+    "writer": "native:orchestrator-writer-1",
+    "steward": "did:dacs:test:steward",
+    "registryWriter": "native:registry-steward-writer-1",
+    "signature": {
+      "algorithm": "ed25519",
+      "signer": "did:dacs:test:network",
+      "value": "CPM5mINzFuWj7EHnt4lXcR29v6v0zo96jrkriboIl-VX-Chn8Z6jSA-R-d5ssrG3Bf5l0HOp-lBOyUryCSzdBw"
+    }
+  },
   "inputModel": "Bindings, the orchestrator, its native receipt writer and the finality-proof pins are verifier-owned. Receipt blockRef.timestamp is CORE SR2-6 consensus time in unix ms. The verifier implements the verifierProfile signature algorithms (ed25519); ecdsa-secp256k1 (a genuine signature under the orchestrator's ecdsaPublicKeys entry) and sr1-aggregate are registered but not implemented by it, so they are indeterminate here. An identity-bound case's identityBinding is the verifier-owned IBH-1..IBH-5 rerun outcome over its placeholder companions; without one the rerun authority is missing. An amendment or resolved artifact is received as its UTF-8 JSON text (json.dumps, ensure_ascii false) unless amendmentText or artifactText gives the exact received text. resolved.anchorReceipts lists every carrier the resolver found for the reference's locator.",
   "phaseInputs": [
     {

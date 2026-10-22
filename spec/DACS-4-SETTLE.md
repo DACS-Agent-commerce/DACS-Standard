@@ -407,6 +407,14 @@ check or a DACS-5 current-use consumer, uses the rail so resolved as
 verifier-owned session state and MUST NOT substitute a caller-supplied rail
 for it.
 
+That retained state identifies the authenticated snapshot's exact content hash
+and the selected entry's locator and definition content hash, in addition to
+the numeric registry and rail versions. Later FV-1 and DACS-5 consumers
+reauthenticate the retained snapshot, definition and anchor bindings and compare
+the candidate with this exact selection. Matching only `railId`/`railVersion`,
+or trusting a saved resolution verdict, is insufficient. This is verifier
+state; it adds no member to a signed DACS artifact or `SessionContext`.
+
 For DACS-1 listing validation, every advertised `PaymentRailRef` is resolved
 before session creation under §6.3.4 LRR-1..LRR-6, including references not
 used by a particular pay phase. That listing-time check uses the same canonical
@@ -510,9 +518,11 @@ array of objects, each carrying an `identityBundle` or `compositeRecord`
 member, is a PC-1 rejection on either path, as IBH makes it `error`. Each
 companion's members are decided by the §9.5.1 IBH-1..IBH-5 rerun (a companion
 without its `identityBundle` is IBH `indeterminate`), which completes before
-any rail call. The serialized
-`SessionContext` omits the runtime `signer`. No handler may add, drop or rename
-a member to make an input fit its shape. A PC-1 rejection is `rejected` before
+any rail call. The wire context is CORE §B.5 `SerializedSessionContext`, which excludes
+`signer`. After PC-1 and the applicable IBH rerun, the orchestrator hydrates
+a separate runtime `SessionContext` with its trusted signer as CORE §B.5
+requires. No handler may add, drop or rename a serialized member to make an
+input fit its shape. A PC-1 rejection is `rejected` before
 any rail call and maps to `ok: false` with `errorClass: "permanent"`.
 
 **(PC-2)** produce the applicable settlement-evidence record anchored via SR-2 at `dacs4:payment:{jobId}:{railId}:{phaseIndex}[:resolved]` (or substrate equivalent). Segment rules:
@@ -597,6 +607,14 @@ type IdentityBoundPaymentPhaseInput = PaymentPhaseInput & {
   agreement: IdentityBoundAgreementArtifact
   identityBindingCompanions: IdentityBoundAgreementCompanion[]
 }
+
+type SerializedPaymentPhaseInput = Omit<PaymentPhaseInput, "sessionContext"> & {
+  sessionContext: SerializedSessionContext
+}
+type SerializedIdentityBoundPaymentPhaseInput =
+  Omit<IdentityBoundPaymentPhaseInput, "sessionContext"> & {
+    sessionContext: SerializedSessionContext
+  }
 ```
 
 `PaymentPhaseInput` and both nested party shapes retain their existing wire

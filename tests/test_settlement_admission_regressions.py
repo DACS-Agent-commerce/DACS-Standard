@@ -99,7 +99,7 @@ class SettlementAdmissionRegressions(unittest.TestCase):
             before = copy.deepcopy(phase_input)
             handler = mock.Mock(return_value={"status": "accepted", "ok": True})
             self.assertEqual(ref.dispatch_payment(vectors.BINDINGS["ordinary"], phase_input, handler)["status"], "accepted")
-            handler.assert_called_once_with(before)
+            handler.assert_called_once_with(vectors.runtime_input(before))
             self.assertEqual(phase_input, before)
         for key in ("payer", "payee"):
             phase_input = copy.deepcopy(base)

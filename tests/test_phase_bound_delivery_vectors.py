@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import copy
 import hashlib
 import json
@@ -16,8 +17,11 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
+if str(ROOT / "tests") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tests"))
 import jcs  # noqa: E402
 import dacs5_reference as R  # noqa: E402
+import guard_witness  # noqa: E402
 import generate_phase_bound_delivery_vectors as G  # noqa: E402
 from validate_artifact_shapes import parse_type_fields, check_attestation_ref  # noqa: E402
 
@@ -96,6 +100,27 @@ def authenticated_evidence_type(artifact):
     except ValueError:
         return None
     return R._authenticated_evidence_wire_type(artifact, pubkeys)
+
+
+@contextlib.contextmanager
+def without_delivery_signature_check():
+    """Wrong implementation: authenticate DeliveryEvidence by its selector and
+    skip the PDE-2 delivery-signature check; every other guard runs."""
+    module = sys.modules[__name__]
+    real_verify = module.verify_signature
+    real_type = module.authenticated_evidence_type
+
+    def unchecked_verify(artifact, domain):
+        return domain == DELIVERY_DOMAIN or real_verify(artifact, domain)
+
+    def unchecked_type(artifact):
+        if isinstance(artifact, dict) and "deliveryEvidenceVersion" in artifact:
+            return "delivery"
+        return real_type(artifact)
+
+    with mock.patch.object(module, "verify_signature", unchecked_verify), \
+            mock.patch.object(module, "authenticated_evidence_type", unchecked_type):
+        yield
 
 
 def verify_bundle_signatures(bundle):
@@ -2811,20 +2836,6 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                 self.assertEqual(evaluate(case), outcome)
 
     def test_credential_field_vectors_reject_delivery_signature_bypass(self):
-        # Wrong implementation: authenticate DeliveryEvidence by its selector
-        # and skip the PDE-2 delivery-signature check; every other guard runs.
-        module = sys.modules[__name__]
-        real_verify = module.verify_signature
-        real_type = module.authenticated_evidence_type
-
-        def unchecked_verify(artifact, domain):
-            return domain == DELIVERY_DOMAIN or real_verify(artifact, domain)
-
-        def unchecked_type(artifact):
-            if isinstance(artifact, dict) and "deliveryEvidenceVersion" in artifact:
-                return "delivery"
-            return real_type(artifact)
-
         cases = {
             f"credential-{name}-signature-mutation": coherent
             for name, (_, _, coherent) in self.CREDENTIAL_FIELD_MUTATIONS.items()
@@ -2834,8 +2845,7 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
         }
         for name in (*cases, *controls, "delivery-signature-mutation"):
             self.assertEqual(evaluate(self._vector(name)), self._vector(name)["expected"])
-        with mock.patch.object(module, "verify_signature", unchecked_verify), \
-                mock.patch.object(module, "authenticated_evidence_type", unchecked_type):
+        with without_delivery_signature_check():
             for name in controls:
                 with self.subTest(control=name):
                     self.assertEqual(evaluate(self._vector(name)), "pass")
@@ -2949,6 +2959,33 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
         ]:
             self.assertIn(address, core)
         self.assertIn("Exact current delivery mapping (PDE-8)", dacs5)
+
+
+_FIELD_MUTATIONS = PhaseBoundDeliveryVectorTests.CREDENTIAL_FIELD_MUTATIONS
+GUARD_WITNESSES = guard_witness.CorpusWitnesses(
+    corpus="phase-bound-delivery-evidence-v0.7",
+    path=VECTORS,
+    evaluate=evaluate,
+    guards={"PDE-2 delivery signature": without_delivery_signature_check},
+    cases={
+        "delivery-signature-mutation": "PDE-2 delivery signature",
+        **{
+            f"credential-{name}-signature-mutation": "PDE-2 delivery signature"
+            for name, (_, _, coherent) in _FIELD_MUTATIONS.items()
+            if coherent
+        },
+    },
+    # Passing controls keep passing, and the binding-only cases still fail
+    # at PDE-5, so the removal drops the signature check and nothing else.
+    controls={"PDE-2 delivery signature": (
+        *sorted({control for control, _, _ in _FIELD_MUTATIONS.values()}),
+        *(
+            f"credential-{name}-signature-mutation"
+            for name, (_, _, coherent) in _FIELD_MUTATIONS.items()
+            if not coherent
+        ),
+    )},
+)
 
 
 if __name__ == "__main__":

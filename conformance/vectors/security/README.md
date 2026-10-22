@@ -1950,6 +1950,7 @@ write-input BundleBinding and deterministic pure-mapping arms; their legacy
 copies are also re-anchored under the same role after the checkpoint, so they
 are the passing LAB-5 re-anchor controls. Five named non-passing cases each
 isolate one LAB guard:
+<!-- guard-witness-claim: corpus=current-use-reputation-v1 cases=buyer-seller-role-rebinding,seller-buyer-role-rebinding,fresh-post-checkpoint-legacy-creation,post-checkpoint-anchor-without-pre-checkpoint-proof,missing-era-proof -->
 
 - `buyer-seller-role-rebinding` and `seller-buyer-role-rebinding` (LAB-3,
   `fail`): one role's historical abort is presented, one-sided, as the other
@@ -1967,6 +1968,7 @@ isolate one LAB guard:
 
 Each negative carries otherwise valid signed bundles, bindings and finalized
 receipts: a verifier that omits only its named guard accepts it.
+<!-- guard-witness-claim: corpus=current-use-reputation-v1 cases=buyer-seller-role-rebinding,seller-buyer-role-rebinding,fresh-post-checkpoint-legacy-creation,post-checkpoint-anchor-without-pre-checkpoint-proof,missing-era-proof -->
 
 Every vector embeds the complete executable replay input: the exact request, its
 full authenticated dependency closure, the verifier configuration with public
@@ -1985,6 +1987,7 @@ boundary directly, and replay each negative against a verifier missing only its
 named LAB guard. Native anchor
 and settlement-binding proofs are independently pinned signed synthetic fixtures
 for offline testing only; they do not define a production Demos proof codec.
+<!-- guard-witness-claim: corpus=current-use-reputation-v1 cases=buyer-seller-role-rebinding,seller-buyer-role-rebinding,fresh-post-checkpoint-legacy-creation,post-checkpoint-anchor-without-pre-checkpoint-proof,missing-era-proof -->
 
 Regenerate and execute from the repository root:
 

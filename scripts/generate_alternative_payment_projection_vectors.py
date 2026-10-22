@@ -16,7 +16,7 @@ from jcs import canonicalize as jcs_canonicalize
 # payer's Demos binding entry for its network, as the pay-dem corpus builds them.
 from generate_pay_dem_execution_vectors import (
     FINALITY_PROFILE, FINALITY, NETWORK, FV5_POLICY, PAYER_KEY, OTHER_NETWORK, OTHER_TX_HASH,
-    binding_entry, failure_proof, retained, claim,
+    binding_entry, failure_proof, retained, claim, nonce_exhaustion_proof,
 )
 
 
@@ -759,7 +759,24 @@ def build_cases() -> list[dict]:
              "a proof-backed terminal reconciliation disposition permits the replacement",
              conclusive_no_settlement, base="x402")
 
+    def nonce_terminal(v, string_nonce=False):
+        attach_prior_payment_context(v, "closed-cannot-settle")
+        context = v["runtime"]["priorPaymentContext"]
+        transfer = context["disposition"]["retainedPayDemTransfer"]
+        proof = nonce_exhaustion_proof(transfer)
+        context["resolution"]["payDemFailureProof"] = proof
+        context["disposition"]["reconciliationEvidenceRefs"][0]["contentHash"] = digest(proof)
+        v["runtime"]["payDemReconciliationTrust"]["nonceEnforcement"] = binding_entry()["nonceEnforcement"]
+        if string_nonce:
+            transfer["nonce"] = str(transfer["nonce"])
+    add_case(cases, "fresh-job-after-nonce-exhaustion-number-nonce", "pass", "APR-6/DEM-4",
+             "The signed carrier uses DEM-1's numeric nonce projection for an authenticated nonce terminal.",
+             nonce_terminal, base="x402")
+    add_case(cases, "fresh-job-cannot-settle-nonce-exhaustion-string-nonce", "fail", "APR-6/DEM-4",
+             "A decimal string is not the DEM-1 projected nonce in the signed carrier.",
+             lambda v: nonce_terminal(v, True), base="x402", reason="prior-disposition-proof")
     for name, mutate in (
+        ("string-nonce", lambda c: c["disposition"]["retainedPayDemTransfer"].update(nonce=str(c["disposition"]["retainedPayDemTransfer"]["nonce"]))),
         ("another-transaction", lambda c: c["disposition"]["retainedPayDemTransfer"].update(txHash=OTHER_TX_HASH)),
         ("missing-artifact", lambda c: c["resolution"].pop("payDemFailureProof")),
         ("missing-retention", lambda c: c["disposition"].pop("retainedPayDemTransfer")),

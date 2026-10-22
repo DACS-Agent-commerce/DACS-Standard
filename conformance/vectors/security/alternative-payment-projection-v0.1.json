@@ -313,8 +313,9 @@
             "nonceEnforcement": {
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "nodeCommit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
               "activationHeight": 0,
-              "sealedGenesisHash": "5d0435b3f3ae574f1d6db81b9de3c80f5d6217ac57849622f900e28cce2ce887"
+              "sealedGenesisHash": "a6b140dd38f05558d2319243656d2ff2f93cc5f6ffb16dcd6b13077e10d56184"
             },
             "bftFinalTrust": {
               "networkId": "demos:mainnet",
@@ -818,8 +819,9 @@
             "nonceEnforcement": {
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "nodeCommit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
               "activationHeight": 0,
-              "sealedGenesisHash": "5d0435b3f3ae574f1d6db81b9de3c80f5d6217ac57849622f900e28cce2ce887"
+              "sealedGenesisHash": "a6b140dd38f05558d2319243656d2ff2f93cc5f6ffb16dcd6b13077e10d56184"
             },
             "bftFinalTrust": {
               "networkId": "demos:mainnet",
@@ -1323,8 +1325,9 @@
             "nonceEnforcement": {
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "nodeCommit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
               "activationHeight": 0,
-              "sealedGenesisHash": "5d0435b3f3ae574f1d6db81b9de3c80f5d6217ac57849622f900e28cce2ce887"
+              "sealedGenesisHash": "a6b140dd38f05558d2319243656d2ff2f93cc5f6ffb16dcd6b13077e10d56184"
             },
             "bftFinalTrust": {
               "networkId": "demos:mainnet",
@@ -1720,8 +1723,9 @@
             "nonceEnforcement": {
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "nodeCommit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
               "activationHeight": 0,
-              "sealedGenesisHash": "5d0435b3f3ae574f1d6db81b9de3c80f5d6217ac57849622f900e28cce2ce887"
+              "sealedGenesisHash": "a6b140dd38f05558d2319243656d2ff2f93cc5f6ffb16dcd6b13077e10d56184"
             },
             "bftFinalTrust": {
               "networkId": "demos:mainnet",
@@ -1926,8 +1930,8 @@
       }
     }
   },
-  "count": 74,
-  "hash": "415d32c1bf6054e358206e634120af0b0abe8e5e1e25701012832792485cceee",
+  "count": 77,
+  "hash": "89110c0ffaf78bd6aeffa52a07c1b4629d1dd075bb0e7989903b165222adf5e1",
   "vectors": [
     {
       "name": "select-dem-projects-pay-dem",
@@ -4857,6 +4861,1008 @@
           }
         }
       ]
+    },
+    {
+      "name": "fresh-job-after-nonce-exhaustion-number-nonce",
+      "expected": "pass",
+      "rule": "APR-6/DEM-4",
+      "operation": "execute",
+      "note": "The signed carrier uses DEM-1's numeric nonce projection for an authenticated nonce terminal.",
+      "base": "x402",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "LB---tkikleJLtHb2Q2tyugIWKvZzuTgugP3nVIKOZonxBw5ncrTCtqrXZ_0qHX5hfMw9NAdHsSbht4pM7HAAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "htcuoTho9yVYBWvHiovXCh98aRA6Pr9noPhYGKgnVt4jQkVXgYl9Ag6izCrWQG__T1VDrvYn3mSHSEhfNFhJDQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "priorPaymentDispositionRef"
+          ],
+          "value": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d"
+            },
+            "contentHash": "728baccebca8b1bcb2889fb27e2246b491cab8bb3237e1150ff442ddf0615e0c",
+            "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "agreementRef",
+            "contentHash"
+          ],
+          "value": "ec0a972892b2c4c708d65649b0eb50c5e36267baf1ed88e2071d560e31502690"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "I3m07sJbpb7i6Hw70wSzm3rQqvi7pbMBMvrqVBljxD1LjmksddKXmPaVpeAKVvvoMwqkR2D_0HX4qNqCTV1LBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "76qEhnKI1ZwwK5cFOalzw0--cBDnv_xZ5dDL2LhLeplPhijpcdBy8bzy4M5RCbEvBxkm1OxhgQ462gs1SC7tCw"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "payDemReconciliationTrust",
+            "nonceEnforcement"
+          ],
+          "value": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "nodeCommit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "activationHeight": 0,
+            "sealedGenesisHash": "a6b140dd38f05558d2319243656d2ff2f93cc5f6ffb16dcd6b13077e10d56184"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "priorPaymentContext"
+          ],
+          "value": {
+            "agreement": {
+              "payeeBoundAgreementVersion": "1",
+              "jobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "listingRef": {
+                "listingId": "apr-340",
+                "version": 1,
+                "contentHash": "fd2d8d7559e20504ab1f563a0cbc5a23039aedb70dfd1a3b20de38b2a1360074"
+              },
+              "parties": [
+                {
+                  "role": "buyer",
+                  "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+                  "bundleHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                  "role": "seller",
+                  "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+                  "bundleHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              ],
+              "terms": {
+                "price": {
+                  "amount": "1",
+                  "currency": "DEM"
+                },
+                "rail": {
+                  "railId": "demos-native:DEM",
+                  "railVersion": 1
+                },
+                "payoutBindings": [
+                  {
+                    "railId": "demos-native:DEM",
+                    "phaseIndex": 2,
+                    "payeeAddress": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+                  }
+                ]
+              },
+              "derivedFromPattern": "fixed-price",
+              "generatedAt": 1787616001000,
+              "signatures": [
+                {
+                  "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+                  "algorithm": "ed25519",
+                  "value": "1HHiXbleGLcUletLh9_iMGf6IgE0Tq_EHDRli83YhqGWD4zuwekxtMs70aboTIlnWxMktRW2SpA23tAFIJU6DQ"
+                },
+                {
+                  "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+                  "algorithm": "ed25519",
+                  "value": "7jjWCQP-7IiHGpwB9Vq52vFQk_ZMrHiyxXSEs3jGk_QtTn_m-sISE2Y7o-ictKtduS3QuSVpK3rnvWCu2dW7Dw"
+                }
+              ]
+            },
+            "executionAuthority": {
+              "status": "verified",
+              "phaseOrchestratorClaim": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
+            },
+            "disposition": {
+              "priorPaymentDispositionVersion": "1",
+              "dispositionId": "b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
+              "priorJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "replacementJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PB",
+              "priorAgreementRef": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://buyer.example/agreements/01M0Q4K8X5D9YJKC3VT7H2N6PA"
+                },
+                "contentHash": "b2ae3678db10e54687e56a22a077b81a9e031223bde0de90e00a0672ad20a94b"
+              },
+              "priorSelection": {
+                "railId": "demos-native:DEM",
+                "railVersion": 1
+              },
+              "priorPhaseIndex": 2,
+              "disposition": "closed-cannot-settle",
+              "reconciliationEvidenceRefs": [
+                {
+                  "anchor": {
+                    "kind": "https",
+                    "locator": "https://authority.example/reconciliation/340"
+                  },
+                  "contentHash": "5ee90ec7dcc3a65bf2eaf2300f348c0de16e6586b89d0e01a75a1f560e4a5587",
+                  "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444"
+                }
+              ],
+              "observedAt": 1787616002000,
+              "retainedPayDemTransfer": {
+                "jobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+                "phaseIndex": 2,
+                "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "nonce": 9,
+                "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "amountOs": "1500000000"
+              },
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
+                "value": "l4DMCRip7MBxeQHUJOTPkH-CmP232w-8WO5Pn5y78Yk5ReiJesGNiHkL5bwFb5JYfCCO3zYTJ3-v0eHrUD7VBA"
+              }
+            },
+            "resolution": {
+              "authorityAuthenticated": true,
+              "status": "finalized",
+              "writer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
+              "contentHash": "728baccebca8b1bcb2889fb27e2246b491cab8bb3237e1150ff442ddf0615e0c",
+              "logicalAddress": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
+              "authorizationJournalClosed": false,
+              "reconciliationEvidenceVerified": true,
+              "payDemFailureProof": {
+                "kind": "nonce-exhaustion",
+                "classification": "permanent",
+                "authentication": {
+                  "kind": "fixture-nonce-exhaustion-v1",
+                  "networkId": "demos:mainnet",
+                  "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                  "blockId": "f1a7c1b953054aba6d23fc841af1c1c84bb03351a27165ad4d0768654ee172c4",
+                  "blockNumber": 42,
+                  "retainedTransfer": {
+                    "jobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+                    "phaseIndex": 2,
+                    "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                    "nonce": 9,
+                    "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                    "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "amountOs": "1500000000"
+                  },
+                  "accountNonce": 9,
+                  "recordAbsent": true,
+                  "nonceEnforcement": {
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "nodeCommit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+                    "activationHeight": 0,
+                    "sealedGenesisHash": "a6b140dd38f05558d2319243656d2ff2f93cc5f6ffb16dcd6b13077e10d56184"
+                  },
+                  "attestations": [
+                    {
+                      "authorityRef": "execution-a",
+                      "algorithm": "ed25519",
+                      "value": "fthW_u-ZTEhx99PKWPIugmJ3LMvHTZRsJx_Z1cRq1qZrWl2yoFRdILM14vz8Q57Kx1N4G6UQ2HMfA04eeRv6Ag"
+                    },
+                    {
+                      "authorityRef": "execution-b",
+                      "algorithm": "ed25519",
+                      "value": "dUtJZ4f4A9zDXpz9zeoBjT8fuPVd0zY4RNE5K_YCjPwTZL2L5K36UHSnjHGXxT4-KeHFjwkk6W1g8lhKiO97BA"
+                    }
+                  ]
+                },
+                "inclusionProof": {
+                  "networkId": "demos:mainnet",
+                  "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                  "transactionRef": {
+                    "kind": "demos",
+                    "txHash": "935a9f844685c90ba8c634c2a00bb43b4d55fa4bcb73704cdd4c6b83c7b3fab9",
+                    "blockNumber": 42
+                  },
+                  "transactionInclusionProof": {
+                    "kind": "fixture-transaction-merkle-v1",
+                    "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiI5MzVhOWY4NDQ2ODVjOTBiYThjNjM0YzJhMDBiYjQzYjRkNTVmYTRiY2I3MzcwNGNkZDRjNmI4M2M3YjNmYWI5In0sInR4SGFzaCI6IjkzNWE5Zjg0NDY4NWM5MGJhOGM2MzRjMmEwMGJiNDNiNGQ1NWZhNGJjYjczNzA0Y2RkNGM2YjgzYzdiM2ZhYjkifQ",
+                    "leafHash": "aa7476eada618a574dba6fd35ee76d653c90888d4998515ee2b3b4c17f4271a0",
+                    "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+                    "leafIndex": 0,
+                    "root": "64c2f7328999cd0b58719eb8c54e95647719dc835564d5d585cd7e8ae1644725"
+                  },
+                  "inclusionBlock": {
+                    "id": "f1a7c1b953054aba6d23fc841af1c1c84bb03351a27165ad4d0768654ee172c4",
+                    "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+                    "position": "42",
+                    "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiI2NGMyZjczMjg5OTljZDBiNTg3MTllYjhjNTRlOTU2NDc3MTlkYzgzNTU2NGQ1ZDU4NWNkN2U4YWUxNjQ0NzI1In0"
+                  },
+                  "authenticatedHead": {
+                    "id": "fe67a466ffd01113e84ab0592d4357661802bea4179759b332ddf7011ec0a568",
+                    "position": "43",
+                    "observedAt": 1791649700000,
+                    "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmMWE3YzFiOTUzMDU0YWJhNmQyM2ZjODQxYWYxYzFjODRiYjAzMzUxYTI3MTY1YWQ0ZDA3Njg2NTRlZTE3MmM0IiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+                  },
+                  "ancestryProof": [
+                    {
+                      "childId": "fe67a466ffd01113e84ab0592d4357661802bea4179759b332ddf7011ec0a568",
+                      "parentId": "f1a7c1b953054aba6d23fc841af1c1c84bb03351a27165ad4d0768654ee172c4",
+                      "position": "43",
+                      "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmMWE3YzFiOTUzMDU0YWJhNmQyM2ZjODQxYWYxYzFjODRiYjAzMzUxYTI3MTY1YWQ0ZDA3Njg2NTRlZTE3MmM0IiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+                    }
+                  ],
+                  "authorityEvidence": {
+                    "kind": "fixture-threshold-signature-v1",
+                    "sourceRefs": [
+                      "rpc-a",
+                      "rpc-b",
+                      "rpc-c"
+                    ],
+                    "attestations": [
+                      {
+                        "authorityRef": "rpc-a",
+                        "algorithm": "ed25519",
+                        "value": "wws7mUo45eQu24ORYdl1SfWSMBCxM2IEeFrdeoyxdmYN8Z1kQk6qLhY9sBlIP-nDD8e2__WSNGhIdqfM9_PvDw"
+                      },
+                      {
+                        "authorityRef": "rpc-b",
+                        "algorithm": "ed25519",
+                        "value": "UWEMUswDvDaBmXXgcAsJ_z99El0HwqrbT5K4X1heTQXRoIQc0dTf7jVV--dLM6DFUj5ePW4tjTBPt7Ap3Y_7CQ"
+                      }
+                    ]
+                  },
+                  "finalityCertificate": {
+                    "kind": "fixture-bft-certificate-v1",
+                    "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+                    "blockId": "f1a7c1b953054aba6d23fc841af1c1c84bb03351a27165ad4d0768654ee172c4",
+                    "signatures": [
+                      {
+                        "validatorId": "validator-a",
+                        "algorithm": "ed25519",
+                        "value": "NJpPQKHSf64IyP2NQxgnMHFMGhe-5BvA_AhVfhfV6OokOcJ-X8t4yFWA4Z_ao14FzZw-RGGRIYZL1_w3my5LAg"
+                      },
+                      {
+                        "validatorId": "validator-b",
+                        "algorithm": "ed25519",
+                        "value": "PJKoc8HJa1Z4A4yOFW3yZ-wEu0SrS-78h4-v_TSeVPjsdemvVtO5USyBBhslgvKR3JgFbRQ9BYeVYkQ-f_RXCQ"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fresh-job-cannot-settle-nonce-exhaustion-string-nonce",
+      "expected": "fail",
+      "rule": "APR-6/DEM-4",
+      "operation": "execute",
+      "note": "A decimal string is not the DEM-1 projected nonce in the signed carrier.",
+      "base": "x402",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "OXgJgvGidq8A7mfhTyPoTB_olJpVKJQ38p69KVwJpJnU4RCyBu_TyMO1P5RHl84_Dq3xExpMB1_RxVMSVue-AQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "086LWEKzoyDNeS4qYlJyW-dDVGio_LoQQ6sO21NzZK2GUGkFdkR0f0R7QMd83t6Jqn6JInuZyE9g7tjr1GkHCw"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "priorPaymentDispositionRef"
+          ],
+          "value": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d"
+            },
+            "contentHash": "55bb1b5ffadbdd2e53f1bde59c36d3cc8a797cda836bc3adec821fd74903d78a",
+            "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "agreementRef",
+            "contentHash"
+          ],
+          "value": "57dff3d96d261f3308e01dc8be2acc1dcf1d5f203c76fec5639ffb00d0c68206"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "F5pxZAMrxP12njgBr32Hb9rNja0V2y4sbhQ9TIhu5oSwbTryH_Rbrljuu1MLVvEvd8aUY4Vjqd_TNO4mlO_0AQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "fuPdvSjrT8lYXhdlcl4nv2I0au0Q82qlF9G5LZKQh4h2YwD7qBOyBcCAJgNOjlsy4haBxEUjommh1wgCjAakDQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "payDemReconciliationTrust",
+            "nonceEnforcement"
+          ],
+          "value": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "nodeCommit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "activationHeight": 0,
+            "sealedGenesisHash": "a6b140dd38f05558d2319243656d2ff2f93cc5f6ffb16dcd6b13077e10d56184"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "priorPaymentContext"
+          ],
+          "value": {
+            "agreement": {
+              "payeeBoundAgreementVersion": "1",
+              "jobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "listingRef": {
+                "listingId": "apr-340",
+                "version": 1,
+                "contentHash": "fd2d8d7559e20504ab1f563a0cbc5a23039aedb70dfd1a3b20de38b2a1360074"
+              },
+              "parties": [
+                {
+                  "role": "buyer",
+                  "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+                  "bundleHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                  "role": "seller",
+                  "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+                  "bundleHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              ],
+              "terms": {
+                "price": {
+                  "amount": "1",
+                  "currency": "DEM"
+                },
+                "rail": {
+                  "railId": "demos-native:DEM",
+                  "railVersion": 1
+                },
+                "payoutBindings": [
+                  {
+                    "railId": "demos-native:DEM",
+                    "phaseIndex": 2,
+                    "payeeAddress": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+                  }
+                ]
+              },
+              "derivedFromPattern": "fixed-price",
+              "generatedAt": 1787616001000,
+              "signatures": [
+                {
+                  "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+                  "algorithm": "ed25519",
+                  "value": "1HHiXbleGLcUletLh9_iMGf6IgE0Tq_EHDRli83YhqGWD4zuwekxtMs70aboTIlnWxMktRW2SpA23tAFIJU6DQ"
+                },
+                {
+                  "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+                  "algorithm": "ed25519",
+                  "value": "7jjWCQP-7IiHGpwB9Vq52vFQk_ZMrHiyxXSEs3jGk_QtTn_m-sISE2Y7o-ictKtduS3QuSVpK3rnvWCu2dW7Dw"
+                }
+              ]
+            },
+            "executionAuthority": {
+              "status": "verified",
+              "phaseOrchestratorClaim": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
+            },
+            "disposition": {
+              "priorPaymentDispositionVersion": "1",
+              "dispositionId": "b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
+              "priorJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "replacementJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PB",
+              "priorAgreementRef": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://buyer.example/agreements/01M0Q4K8X5D9YJKC3VT7H2N6PA"
+                },
+                "contentHash": "b2ae3678db10e54687e56a22a077b81a9e031223bde0de90e00a0672ad20a94b"
+              },
+              "priorSelection": {
+                "railId": "demos-native:DEM",
+                "railVersion": 1
+              },
+              "priorPhaseIndex": 2,
+              "disposition": "closed-cannot-settle",
+              "reconciliationEvidenceRefs": [
+                {
+                  "anchor": {
+                    "kind": "https",
+                    "locator": "https://authority.example/reconciliation/340"
+                  },
+                  "contentHash": "5ee90ec7dcc3a65bf2eaf2300f348c0de16e6586b89d0e01a75a1f560e4a5587",
+                  "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444"
+                }
+              ],
+              "observedAt": 1787616002000,
+              "retainedPayDemTransfer": {
+                "jobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+                "phaseIndex": 2,
+                "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "nonce": "9",
+                "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "amountOs": "1500000000"
+              },
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
+                "value": "G_Ve0vuhjunyqyPa7iVzMlM-z3SwELEXTWkdozOYUfqG36hjLc-Qpm5YGJTXjSXiz4AcoHlJhvc8X3qAKNckAQ"
+              }
+            },
+            "resolution": {
+              "authorityAuthenticated": true,
+              "status": "finalized",
+              "writer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
+              "contentHash": "55bb1b5ffadbdd2e53f1bde59c36d3cc8a797cda836bc3adec821fd74903d78a",
+              "logicalAddress": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
+              "authorizationJournalClosed": false,
+              "reconciliationEvidenceVerified": true,
+              "payDemFailureProof": {
+                "kind": "nonce-exhaustion",
+                "classification": "permanent",
+                "authentication": {
+                  "kind": "fixture-nonce-exhaustion-v1",
+                  "networkId": "demos:mainnet",
+                  "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                  "blockId": "f1a7c1b953054aba6d23fc841af1c1c84bb03351a27165ad4d0768654ee172c4",
+                  "blockNumber": 42,
+                  "retainedTransfer": {
+                    "jobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+                    "phaseIndex": 2,
+                    "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                    "nonce": 9,
+                    "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                    "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                    "amountOs": "1500000000"
+                  },
+                  "accountNonce": 9,
+                  "recordAbsent": true,
+                  "nonceEnforcement": {
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "nodeCommit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+                    "activationHeight": 0,
+                    "sealedGenesisHash": "a6b140dd38f05558d2319243656d2ff2f93cc5f6ffb16dcd6b13077e10d56184"
+                  },
+                  "attestations": [
+                    {
+                      "authorityRef": "execution-a",
+                      "algorithm": "ed25519",
+                      "value": "fthW_u-ZTEhx99PKWPIugmJ3LMvHTZRsJx_Z1cRq1qZrWl2yoFRdILM14vz8Q57Kx1N4G6UQ2HMfA04eeRv6Ag"
+                    },
+                    {
+                      "authorityRef": "execution-b",
+                      "algorithm": "ed25519",
+                      "value": "dUtJZ4f4A9zDXpz9zeoBjT8fuPVd0zY4RNE5K_YCjPwTZL2L5K36UHSnjHGXxT4-KeHFjwkk6W1g8lhKiO97BA"
+                    }
+                  ]
+                },
+                "inclusionProof": {
+                  "networkId": "demos:mainnet",
+                  "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                  "transactionRef": {
+                    "kind": "demos",
+                    "txHash": "935a9f844685c90ba8c634c2a00bb43b4d55fa4bcb73704cdd4c6b83c7b3fab9",
+                    "blockNumber": 42
+                  },
+                  "transactionInclusionProof": {
+                    "kind": "fixture-transaction-merkle-v1",
+                    "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiI5MzVhOWY4NDQ2ODVjOTBiYThjNjM0YzJhMDBiYjQzYjRkNTVmYTRiY2I3MzcwNGNkZDRjNmI4M2M3YjNmYWI5In0sInR4SGFzaCI6IjkzNWE5Zjg0NDY4NWM5MGJhOGM2MzRjMmEwMGJiNDNiNGQ1NWZhNGJjYjczNzA0Y2RkNGM2YjgzYzdiM2ZhYjkifQ",
+                    "leafHash": "aa7476eada618a574dba6fd35ee76d653c90888d4998515ee2b3b4c17f4271a0",
+                    "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+                    "leafIndex": 0,
+                    "root": "64c2f7328999cd0b58719eb8c54e95647719dc835564d5d585cd7e8ae1644725"
+                  },
+                  "inclusionBlock": {
+                    "id": "f1a7c1b953054aba6d23fc841af1c1c84bb03351a27165ad4d0768654ee172c4",
+                    "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+                    "position": "42",
+                    "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiI2NGMyZjczMjg5OTljZDBiNTg3MTllYjhjNTRlOTU2NDc3MTlkYzgzNTU2NGQ1ZDU4NWNkN2U4YWUxNjQ0NzI1In0"
+                  },
+                  "authenticatedHead": {
+                    "id": "fe67a466ffd01113e84ab0592d4357661802bea4179759b332ddf7011ec0a568",
+                    "position": "43",
+                    "observedAt": 1791649700000,
+                    "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmMWE3YzFiOTUzMDU0YWJhNmQyM2ZjODQxYWYxYzFjODRiYjAzMzUxYTI3MTY1YWQ0ZDA3Njg2NTRlZTE3MmM0IiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+                  },
+                  "ancestryProof": [
+                    {
+                      "childId": "fe67a466ffd01113e84ab0592d4357661802bea4179759b332ddf7011ec0a568",
+                      "parentId": "f1a7c1b953054aba6d23fc841af1c1c84bb03351a27165ad4d0768654ee172c4",
+                      "position": "43",
+                      "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmMWE3YzFiOTUzMDU0YWJhNmQyM2ZjODQxYWYxYzFjODRiYjAzMzUxYTI3MTY1YWQ0ZDA3Njg2NTRlZTE3MmM0IiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+                    }
+                  ],
+                  "authorityEvidence": {
+                    "kind": "fixture-threshold-signature-v1",
+                    "sourceRefs": [
+                      "rpc-a",
+                      "rpc-b",
+                      "rpc-c"
+                    ],
+                    "attestations": [
+                      {
+                        "authorityRef": "rpc-a",
+                        "algorithm": "ed25519",
+                        "value": "wws7mUo45eQu24ORYdl1SfWSMBCxM2IEeFrdeoyxdmYN8Z1kQk6qLhY9sBlIP-nDD8e2__WSNGhIdqfM9_PvDw"
+                      },
+                      {
+                        "authorityRef": "rpc-b",
+                        "algorithm": "ed25519",
+                        "value": "UWEMUswDvDaBmXXgcAsJ_z99El0HwqrbT5K4X1heTQXRoIQc0dTf7jVV--dLM6DFUj5ePW4tjTBPt7Ap3Y_7CQ"
+                      }
+                    ]
+                  },
+                  "finalityCertificate": {
+                    "kind": "fixture-bft-certificate-v1",
+                    "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+                    "blockId": "f1a7c1b953054aba6d23fc841af1c1c84bb03351a27165ad4d0768654ee172c4",
+                    "signatures": [
+                      {
+                        "validatorId": "validator-a",
+                        "algorithm": "ed25519",
+                        "value": "NJpPQKHSf64IyP2NQxgnMHFMGhe-5BvA_AhVfhfV6OokOcJ-X8t4yFWA4Z_ao14FzZw-RGGRIYZL1_w3my5LAg"
+                      },
+                      {
+                        "validatorId": "validator-b",
+                        "algorithm": "ed25519",
+                        "value": "PJKoc8HJa1Z4A4yOFW3yZ-wEu0SrS-78h4-v_TSeVPjsdemvVtO5USyBBhslgvKR3JgFbRQ9BYeVYkQ-f_RXCQ"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "expectedReason": "prior-disposition-proof"
+    },
+    {
+      "name": "fresh-job-cannot-settle-proof-for-string-nonce",
+      "expected": "fail",
+      "rule": "APR-6/DEM-4",
+      "operation": "execute",
+      "note": "An independently authenticated proof must bind the prior session's retained transfer.",
+      "base": "x402",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "AVuEuqX2A25wZlNro-pNo2T2g8KLx0cRNP_s6JcuTzKr2OXGrxDuAGB7_nr1tCrSETbkjGUir4z2L9-IQmtIAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "c092mPjT1XntCx0lWHIMtUyK1JJP_HghpbBn7wvHry1cmXrJ9NGq0IiSjkiEYsH7xHcoZOrr-tzYLjUIrVOYCA"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "priorPaymentDispositionRef"
+          ],
+          "value": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d"
+            },
+            "contentHash": "85acc9fb3b88eda4df6075c56de64a5d690518d79515e0b77a031a9e7a426cea",
+            "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "agreementRef",
+            "contentHash"
+          ],
+          "value": "8507c481576bc0ae026e7a9b587b143173c2e50e3e9876b34d9a6e2232f9fed6"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "CL3YceFf0wXnUc-u70-tBMtIlyNFz1SV-FsK39Qcd8hYL67aS6MgX1JwsBf_1O9mLcNveH0qc7WBcsgwD9OwAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "LJxdzl5Jpjh95TFZ8MgdWEXoeksViTri9QSoItI5q1-Ny1ltXOGUEC99633PHpTwjqyQtba0I-SPX5Yd3xVZCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "priorPaymentContext"
+          ],
+          "value": {
+            "agreement": {
+              "payeeBoundAgreementVersion": "1",
+              "jobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "listingRef": {
+                "listingId": "apr-340",
+                "version": 1,
+                "contentHash": "fd2d8d7559e20504ab1f563a0cbc5a23039aedb70dfd1a3b20de38b2a1360074"
+              },
+              "parties": [
+                {
+                  "role": "buyer",
+                  "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+                  "bundleHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                  "role": "seller",
+                  "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+                  "bundleHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              ],
+              "terms": {
+                "price": {
+                  "amount": "1",
+                  "currency": "DEM"
+                },
+                "rail": {
+                  "railId": "demos-native:DEM",
+                  "railVersion": 1
+                },
+                "payoutBindings": [
+                  {
+                    "railId": "demos-native:DEM",
+                    "phaseIndex": 2,
+                    "payeeAddress": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+                  }
+                ]
+              },
+              "derivedFromPattern": "fixed-price",
+              "generatedAt": 1787616001000,
+              "signatures": [
+                {
+                  "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+                  "algorithm": "ed25519",
+                  "value": "1HHiXbleGLcUletLh9_iMGf6IgE0Tq_EHDRli83YhqGWD4zuwekxtMs70aboTIlnWxMktRW2SpA23tAFIJU6DQ"
+                },
+                {
+                  "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+                  "algorithm": "ed25519",
+                  "value": "7jjWCQP-7IiHGpwB9Vq52vFQk_ZMrHiyxXSEs3jGk_QtTn_m-sISE2Y7o-ictKtduS3QuSVpK3rnvWCu2dW7Dw"
+                }
+              ]
+            },
+            "executionAuthority": {
+              "status": "verified",
+              "phaseOrchestratorClaim": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
+            },
+            "disposition": {
+              "priorPaymentDispositionVersion": "1",
+              "dispositionId": "b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
+              "priorJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "replacementJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PB",
+              "priorAgreementRef": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://buyer.example/agreements/01M0Q4K8X5D9YJKC3VT7H2N6PA"
+                },
+                "contentHash": "b2ae3678db10e54687e56a22a077b81a9e031223bde0de90e00a0672ad20a94b"
+              },
+              "priorSelection": {
+                "railId": "demos-native:DEM",
+                "railVersion": 1
+              },
+              "priorPhaseIndex": 2,
+              "disposition": "closed-cannot-settle",
+              "reconciliationEvidenceRefs": [
+                {
+                  "anchor": {
+                    "kind": "https",
+                    "locator": "https://authority.example/reconciliation/340"
+                  },
+                  "contentHash": "e583fe3432bb4fea9a2a03e0d4db00c11d3118bef0fe63386b662e7db1797957",
+                  "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444"
+                }
+              ],
+              "observedAt": 1787616002000,
+              "retainedPayDemTransfer": {
+                "jobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+                "phaseIndex": 2,
+                "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                "nonce": "9",
+                "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                "amountOs": "1500000000"
+              },
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
+                "value": "U6yJujpTo-oyFN9XRcAUlednWeIPQNMWR2bK7KmMYYcE-H2o1K6KN924HXDNoCKRHFwOnsU4RmIf3B0eAe5jDg"
+              }
+            },
+            "resolution": {
+              "authorityAuthenticated": true,
+              "status": "finalized",
+              "writer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
+              "contentHash": "85acc9fb3b88eda4df6075c56de64a5d690518d79515e0b77a031a9e7a426cea",
+              "logicalAddress": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
+              "authorizationJournalClosed": false,
+              "reconciliationEvidenceVerified": true,
+              "payDemFailureProof": {
+                "networkId": "demos:mainnet",
+                "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                "transactionRef": {
+                  "kind": "demos",
+                  "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                  "blockNumber": 42
+                },
+                "transactionInclusionProof": {
+                  "kind": "fixture-transaction-merkle-v1",
+                  "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+                  "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+                  "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+                  "leafIndex": 0,
+                  "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+                },
+                "inclusionBlock": {
+                  "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                  "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+                  "position": "42",
+                  "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+                },
+                "authenticatedHead": {
+                  "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                  "position": "43",
+                  "observedAt": 1791649700000,
+                  "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+                },
+                "ancestryProof": [
+                  {
+                    "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                    "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                    "position": "43",
+                    "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+                  }
+                ],
+                "authorityEvidence": {
+                  "kind": "fixture-threshold-signature-v1",
+                  "sourceRefs": [
+                    "rpc-a",
+                    "rpc-b",
+                    "rpc-c"
+                  ],
+                  "attestations": [
+                    {
+                      "authorityRef": "rpc-a",
+                      "algorithm": "ed25519",
+                      "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                    },
+                    {
+                      "authorityRef": "rpc-b",
+                      "algorithm": "ed25519",
+                      "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                    }
+                  ]
+                },
+                "finalityCertificate": {
+                  "kind": "fixture-bft-certificate-v1",
+                  "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+                  "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                  "signatures": [
+                    {
+                      "validatorId": "validator-a",
+                      "algorithm": "ed25519",
+                      "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                    },
+                    {
+                      "validatorId": "validator-b",
+                      "algorithm": "ed25519",
+                      "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                    }
+                  ]
+                },
+                "executionResult": {
+                  "kind": "fixture-independent-results-v1",
+                  "networkId": "demos:mainnet",
+                  "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                  "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                  "transactionRef": {
+                    "kind": "demos",
+                    "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                    "blockNumber": 42
+                  },
+                  "record": {
+                    "hash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+                    "blockNumber": 42,
+                    "status": "failed",
+                    "content": {
+                      "type": "native",
+                      "from": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "from_ed25519_address": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                      "to": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                      "amount": 1500000000,
+                      "nonce": "9",
+                      "data": [
+                        "native",
+                        {
+                          "nativeOperation": "send",
+                          "args": [
+                            "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                            "1500000000"
+                          ]
+                        }
+                      ],
+                      "timestamp": "1791649642726",
+                      "transaction_fee": {
+                        "network_fee": 1000000000,
+                        "rpc_fee": 1000000000,
+                        "additional_fee": 0,
+                        "rpc_address": null
+                      },
+                      "gcr_edits": [
+                        {
+                          "type": "balance",
+                          "operation": "remove",
+                          "isRollback": false,
+                          "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                          "txhash": "",
+                          "amount": "1500000000"
+                        },
+                        {
+                          "type": "balance",
+                          "operation": "add",
+                          "isRollback": false,
+                          "account": "0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+                          "txhash": "",
+                          "amount": "1500000000"
+                        },
+                        {
+                          "type": "balance",
+                          "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                          "operation": "remove",
+                          "amount": "1000000000",
+                          "txhash": "",
+                          "isRollback": false
+                        },
+                        {
+                          "type": "nonce",
+                          "operation": "add",
+                          "account": "0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+                          "amount": 1,
+                          "txhash": "",
+                          "isRollback": false
+                        }
+                      ]
+                    }
+                  },
+                  "attestations": [
+                    {
+                      "authorityRef": "execution-a",
+                      "algorithm": "ed25519",
+                      "value": "yTMCAZ904yQToviK8nIsNbswF5mQoYMh4B29Nj1yFcCx8QcW8qgQqY-ofMGkOH_zXNS3PIZrHra3n7YnVHHRBg"
+                    },
+                    {
+                      "authorityRef": "execution-b",
+                      "algorithm": "ed25519",
+                      "value": "BioVsuPNfUn80JnYaSnrSLcpLcc-ceeseCkIiWEiBqlQJSwAx5guzh4rYXHTgvmO7xpmd-P8wweUoc8dh8fADw"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ],
+      "expectedReason": "prior-disposition-proof"
     },
     {
       "name": "fresh-job-cannot-settle-proof-for-another-transaction",

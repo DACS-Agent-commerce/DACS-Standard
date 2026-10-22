@@ -43,6 +43,8 @@ WORKFLOW = ROOT / ".github/workflows/validate.yml"
 GUARDS = frozenset({
     "completion-same-node", "completion-reference-window",
     "recovery-requires-all-conditions", "nonce-exhaustion-proof-valid",
+    "recovery-fork-active", "nonce-exhaustion-fork-active",
+    "recovery-attempt-is-possibly-sent", "nonce-exhaustion-witness-excludes-retained",
     # DEM-1
     "sign-allowed-when-configured",
     # DEM-1: an unprojectable party address is refused before signing
@@ -399,7 +401,7 @@ def _retained(transfer, field):
     integer and the OS amount a canonical decimal string."""
     value = transfer.get(field)
     if field == "nonce":
-        return str(value) if _safe_integer(value) and isinstance(value, int) else None
+        return str(int(value)) if _safe_integer(value) else None
     if field == "amountOs":
         return _canonical(value)
     return value
@@ -946,7 +948,7 @@ def proven_failure(read, protocol_input: dict, off) -> bool:
         read.get("inclusionProof"), read.get("record"), read.get("executionResult"), protocol_input, off)
 
 
-def nonce_exhaustion_valid(proof, protocol_input):
+def nonce_exhaustion_valid(proof, protocol_input, off=frozenset()):
     """DEM-4 nonce terminal: quorum-signed absence and consumed nonce at one
     finalized block, under verifier-owned fork and execution-policy trust."""
     from settlement_finality_reference import _verify_ed25519, DEMOS_EXECUTION_DOMAIN, hash_value
@@ -970,10 +972,12 @@ def nonce_exhaustion_valid(proof, protocol_input):
             and isinstance(result["attestations"], list) and len(result["attestations"]) <= 128):
         return False
     fork = protocol_input.get("nonceEnforcement")
-    if not (isinstance(fork, dict) and set(fork) == {"networkId", "genesisHash", "activationHeight", "sealedGenesisHash"}
+    if not (isinstance(fork, dict) and set(fork) == {"networkId", "genesisHash", "nodeCommit", "activationHeight", "sealedGenesisHash"}
             and {k: fork[k] for k in NETWORK} == protocol_input.get("railNetwork")
+            and fork["nodeCommit"] == generator.NODE_COMMIT
             and _jcs_equal(result["nonceEnforcement"], fork)
-            and _safe_integer(fork["activationHeight"]) and fork["activationHeight"] <= result["blockNumber"]
+            and _safe_integer(fork["activationHeight"])
+            and ("nonce-exhaustion-fork-active" in off or fork["activationHeight"] <= result["blockNumber"])
             and isinstance(fork["sealedGenesisHash"], str) and HASH.fullmatch(fork["sealedGenesisHash"])):
         return False
     policy = protocol_input.get("fv5Policy")
@@ -994,6 +998,7 @@ def nonce_exhaustion_valid(proof, protocol_input):
     observation = proof["inclusionProof"]
     reference = observation.get("transactionRef") if isinstance(observation, dict) else None
     return (isinstance(reference, dict) and reference.get("blockNumber") == result["blockNumber"]
+            and ("nonce-exhaustion-witness-excludes-retained" in off or reference.get("txHash") != transfer["txHash"])
             and bft_final(observation, reference, result["blockId"], protocol_input, frozenset()))
 
 
@@ -1007,7 +1012,7 @@ def authenticated_proof(proof, protocol_input: dict, off) -> bool:
     if not isinstance(proof, dict):
         return False
     if proof.get("kind") == "nonce-exhaustion":
-        return "nonce-exhaustion-proof-valid" in off or nonce_exhaustion_valid(proof, protocol_input)
+        return "nonce-exhaustion-proof-valid" in off or nonce_exhaustion_valid(proof, protocol_input, off)
     if "fv5-authentication-is-a-signed-result" in off and proof.get("authentication") == "fv5-bft-final":
         # The wrong implementation takes the handler's label for FV-5.
         return True
@@ -1062,9 +1067,7 @@ def complete_transfer(transfer) -> bool:
         and isinstance(transfer["jobId"], str)
         and transfer["jobId"] != ""
         and _safe_integer(transfer["phaseIndex"])
-        and isinstance(transfer["phaseIndex"], int)
         and _safe_integer(transfer["nonce"])
-        and isinstance(transfer["nonce"], int)
         and all(
             isinstance(transfer[field], str) and HASH.fullmatch(transfer[field])
             for field in ("txHash", "sender", "recipient")
@@ -1320,7 +1323,7 @@ def pre_sign_gate(protocol_input: dict, off) -> tuple[str, dict]:
     return "pass", {"signPermitted": True, "ok": None, "errorClass": None}
 
 
-def recovery_conditions(value):
+def recovery_conditions(value, off=frozenset()):
     """Abstract reads and verifier-owned provisioning source for corpus recovery.
     The storage-backed handler derives authorization under its submission lock."""
     check = value.get("recoveryCheck")
@@ -1337,9 +1340,11 @@ def recovery_conditions(value):
     read = check.get("recordRead")
     return (isinstance(fork, dict) and _jcs_equal(fork, source)
             and {k: fork.get(k) for k in NETWORK} == network
+            and fork.get("nodeCommit") == generator.NODE_COMMIT
             and _safe_integer(fork.get("activationHeight"))
             and isinstance(fork.get("sealedGenesisHash"), str) and HASH.fullmatch(fork["sealedGenesisHash"])
-            and _safe_integer(value.get("currentBlock")) and fork["activationHeight"] <= value["currentBlock"]
+            and _safe_integer(value.get("currentBlock"))
+            and ("recovery-fork-active" in off or fork["activationHeight"] <= value["currentBlock"])
             and isinstance(read, dict) and read.get("state") == "not-found"
             and check.get("mempool") == "absent" and check.get("serialized") is True
             and check.get("terminal") is False and value.get("confirmResponse") is None
@@ -1371,7 +1376,7 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
         # call the crash kept from being journaled, whatever state was recorded.
         state = "maybe-broadcast"
     if state == "recovery-attempt" and "recoveryCheck" in protocol_input:
-        if "recovery-requires-all-conditions" not in off and not recovery_conditions(protocol_input):
+        if "recovery-requires-all-conditions" not in off and not recovery_conditions(protocol_input, off):
             return refused
         if protocol_input.get("restartedSinceRetention") is False and request == "confirm-retained":
             state = "never-broadcast"
@@ -1491,6 +1496,8 @@ def egress_outcome(protocol_input: dict, off) -> tuple[str, dict]:
     if protocol_input.get("restartedSinceRetention") is not False and "restart-is-maybe-broadcast" not in off:
         state = "maybe-broadcast"
     if state == "confirm-sent-interrupted" and "confirm-egress-may-broadcast" in off:
+        state = "never-broadcast"
+    if state == "recovery-attempt" and "recovery-attempt-is-possibly-sent" in off:
         state = "never-broadcast"
     # Any call, including an unrecognized one, may have carried the bytes.
     sent = call != "pre-egress-check" or state != "never-broadcast"
@@ -1873,8 +1880,12 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             root = Path(scratch)
             (root / "scripts").mkdir()
             for name in ("generate_pay_dem_execution_vectors.py", "jcs.py", "demos_json.py",
-                         "settlement_finality_reference.py", "demos_identity.py", "dacs_reference.py"):
+                         "settlement_finality_reference.py", "demos_identity.py", "dacs_reference.py",
+                         "demos_fork_profile.py", "raw_json_profile.py"):
                 shutil.copy(ROOT / "scripts" / name, root / "scripts" / name)
+            fixture = root / "conformance/fixtures/settlement/demos-pinned-genesis.json"
+            fixture.parent.mkdir(parents=True)
+            shutil.copy(ROOT / fixture.relative_to(root), fixture)
             output = root / "conformance/vectors/security/pay-dem-execution-v0.1.json"
             output.parent.mkdir(parents=True)
             output.write_text(VECTORS.read_text(encoding="utf-8").replace('"pass"', '"fail"', 1), encoding="utf-8")

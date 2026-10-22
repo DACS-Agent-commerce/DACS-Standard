@@ -52,11 +52,15 @@ raw transaction body shape is now `error`; native inclusion bodies carry
 `txHash` rather than an execution `status`. Existing
 agreements and evidence keep their signature domains; the optional disposition
 retention carrier is required for new pay-dem `closed-cannot-settle` records.
+Nonce-enforcement attestations carry `nodeCommit` with the complete-file digest;
+provisioners and reference-proof producers regenerate earlier synthetic attestations.
 No production Demos applied-payment proof codec or result authority is registered
 by the synthetic fixtures.
 
 Recovery preserves possibly-sent history through retries and crashes. The binding
-explicitly pins the complete sealed genesis for nonce-enforcement activation.
+pins both the complete sealed-genesis bytes and the clean node build for
+effective nonce-enforcement activation. An absent genesis override uses the
+pinned build default; explicit unscheduled and future activations permit no retry.
 A quorum-authenticated consumed nonce and cumulative record absence at a finalized
 block can close an unexecuted transfer; APR independently verifies that proof
 against the signed prior retention before a compensating job.
@@ -64,9 +68,9 @@ against the signed prior retention before a compensating job.
 PB-2 corpus migration: 30 cases, with tier 3 for the historical pay-dem
 case and two tier-2 controls.
 
-Conformance: 575 pay-dem vectors (71 pass, 176 fail, 247 indeterminate, 81 error)
-and 150 guards; settlement-finality cases grow from 86 at the merge base to 246,
-and alternative-payment cases from 45 to 74. Crash/restart, delivery idempotence,
+Conformance: 582 pay-dem vectors (71 pass, 180 fail, 250 indeterminate, 81 error)
+and 154 guards; settlement-finality cases grow from 86 at the merge base to 246,
+and alternative-payment cases from 45 to 77. Crash/restart, delivery idempotence,
 finality composition and serialized invariant witnesses cover the changes.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)

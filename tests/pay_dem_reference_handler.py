@@ -410,21 +410,26 @@ def binding_network(entry: dict[str, Any]) -> dict[str, str]:
 
 
 class RecoveryAuthority:
-    """Fixture sealed-genesis trust root, independently configured by the binding
-    operator. The digest covers the complete sealed genesis including forks;
-    genesisHash alone and a node's fork flag cannot establish this premise."""
+    """Fixture provisioning source: exact genesis plus the pinned build default.
+    The operator pins the complete file digest independently of genesisHash."""
 
-    def __init__(self, network: dict[str, str], *, nonce_active: bool = True):
+    def __init__(self, network: dict[str, str], *, nonce_active: bool = True,
+                 sealed_genesis: bytes | None = None, pinned_digest=generator.PINNED_GENESIS_HASH,
+                 node_commit=generator.NODE_COMMIT):
+        if sealed_genesis is None:
+            sealed_genesis = (generator.ROOT / "conformance/fixtures/settlement/demos-pinned-genesis.json").read_bytes()
+        profile = generator.nonce_enforcement(network, sealed_genesis, pinned_digest, node_commit)
         self.network, self.nonce_active = dict(network), nonce_active
-        self.sealed_genesis_hash = generator._hex("sealed-genesis")
-        self.activation_height = 0
+        self.node_commit = profile["nodeCommit"]
+        self.sealed_genesis_hash = profile["sealedGenesisHash"]
+        self.activation_height = profile["activationHeight"]
         self.account_nonce = None
         self.proof_fault = None
 
     def permits(self, network, attestation, block) -> bool:
         return (self.network == network and self.nonce_active is True
                 and isinstance(attestation, dict)
-                and attestation == dict(network, activationHeight=self.activation_height,
+                and attestation == dict(network, nodeCommit=self.node_commit, activationHeight=self.activation_height,
                                         sealedGenesisHash=self.sealed_genesis_hash)
                 and oracle._safe_integer(attestation.get("activationHeight"))
                 and oracle._safe_integer(block) and self.activation_height <= block)
@@ -434,7 +439,9 @@ class RecoveryAuthority:
         if self.account_nonce is None:
             return None
         return generator.nonce_exhaustion_proof(transfer, account_nonce=self.account_nonce,
-                                                fault=self.proof_fault)
+                                                fault=self.proof_fault, nonce_fork=dict(self.network, nodeCommit=self.node_commit,
+                                                    activationHeight=self.activation_height,
+                                                    sealedGenesisHash=self.sealed_genesis_hash))
 
 
 class PayerHandler:

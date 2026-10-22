@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 
 from jcs import canonicalize  # noqa: E402
+from demos_fork_profile import nonce_enforcement, PINNED_GENESIS_HASH, NODE_COMMIT  # noqa: E402
 from demos_json import stringify  # noqa: E402
 from settlement_finality_reference import (  # noqa: E402
     BFT_CERTIFICATE_DOMAIN, CHAIN_AUTHORITY_DOMAIN, DEMOS_EXECUTION_DOMAIN, hash_value,
@@ -263,7 +264,6 @@ def execution_result(
 # DEMOS-MAPPING §A.2 node pin. A read's `nodeBuild` is the build attestation
 # that the Demos binding configuration holds for the node that served it; the
 # node's own self-report is not one.
-NODE_COMMIT = "61b8e75aa8db5e408c49e1c3a89db4d673f45578"
 TESTNET_COMMIT = "ac8f45f02fc9c25082ce9b83595c2e3916b49c5a"
 PINNED_BUILD = {"source": "binding-attestation", "commit": NODE_COMMIT, "tree": "clean"}
 SELF_REPORTED_BUILD = dict(PINNED_BUILD, source="self-reported")
@@ -326,7 +326,9 @@ def binding_entry(network: dict[str, str] = NETWORK, **members: Any) -> dict[str
             "pinnedNodes": dict(network),
             "appliedPaymentAuthority": dict(network),
             "gasFeeSeparation": dict(network, activationHeight=None),
-            "nonceEnforcement": dict(network, activationHeight=0, sealedGenesisHash=_hex("sealed-genesis")),
+            "nonceEnforcement": nonce_enforcement(
+                network, (ROOT / "conformance/fixtures/settlement/demos-pinned-genesis.json").read_bytes(),
+                PINNED_GENESIS_HASH),
             "bftFinalTrust": dict(network, **copy.deepcopy({
                 key: FINALITY_TRUST[key] for key in ("validatorSets", "observationAuthorityKeys")})),
             "executionResultPolicy": dict(network, **copy.deepcopy(FV5_POLICY)),
@@ -3335,7 +3337,7 @@ def build_vectors() -> list[dict[str, Any]]:
                             ["completion-reference-window"] if label == "expired-window" else
                             ["first-broadcast-allowed", "submission-completes-own-confirm"])
         vectors.append(vector)
-    for fault in (None, "record", "mempool", "unavailable", "fork", "network", "digest", "serialized", "terminal", "old-response"):
+    for fault in (None, "record", "mempool", "unavailable", "fork", "network", "digest", "serialized", "terminal", "old-response", "future-activation", "missing-attestation", "node-build"):
         vector = gate("recovery-gate-" + (fault or "allowed"), "pass" if fault is None else "fail",
                       "DEM-6", [], "Only a serialized fresh retained-byte attempt under every recovery condition is permitted.",
                       request="confirm-retained", broadcast_state="recovery-attempt")
@@ -3348,24 +3350,44 @@ def build_vectors() -> list[dict[str, Any]]:
         if fault == "fork": check["forkAuthority"]["activationHeight"] = BLOCK + 100
         if fault == "network": check["forkAuthority"]["networkId"] = OTHER_NETWORK["networkId"]
         if fault == "digest": check["forkAuthority"]["sealedGenesisHash"] = _hex("wrong-sealed-genesis")
+        if fault == "future-activation":
+            check["forkAuthority"]["activationHeight"] = value["currentBlock"] + 1
+            value["demosBinding"][0]["nonceEnforcement"]["activationHeight"] = value["currentBlock"] + 1
+        if fault == "missing-attestation": value["demosBinding"][0].pop("nonceEnforcement")
+        if fault == "node-build":
+            check["forkAuthority"]["nodeCommit"] = "0" * 40
+            value["demosBinding"][0]["nonceEnforcement"]["nodeCommit"] = "0" * 40
         if fault == "serialized": check["serialized"] = False
         if fault == "terminal": check["terminal"] = True
         if fault == "old-response": value["confirmResponse"] = validity_response(signed())
         value["recoveryCheck"] = check
         vector["guards"] = (["first-broadcast-allowed"] if fault is None else
                             ["recovery-requires-all-conditions", "retention-before-first-egress"])
+        if fault == "future-activation": vector["guards"] = sorted(vector["guards"] + ["recovery-fork-active"])
         vectors.append(vector)
-    for fault in (None, "signature", "network", "genesis", "retention", "nonce", "present", "unfinalized", "block", "fork"):
+    vectors.append(egress(
+        "egress-recovery-attempt-pre-egress-insufficient-balance", "indeterminate", "DEM-5/DEM-6",
+        ["post-egress-refusal-is-unresolved", "recovery-attempt-is-possibly-sent"],
+        "A retry's balance check preserves the possibly-sent history of the retained transfer.",
+        call="pre-egress-check", outcome="insufficient-balance", broadcast_state="recovery-attempt"))
+    vectors.append(gate(
+        "recovery-arm-without-authorization", "fail", "DEM-6", ["no-rebroadcast", "retention-before-first-egress"],
+        "A saved retry arm permits no call without fresh recovery authorization.",
+        request="confirm-retained", broadcast_state="recovery-attempt"))
+    for fault in (None, "signature", "network", "genesis", "retention", "nonce", "present", "unfinalized", "block", "fork", "future-activation", "contradictory-witness"):
         expected = "pass" if fault is None else "indeterminate"
         vectors.append(_vector(
             "nonce-exhaustion-" + (fault or "authenticated"), "apr-reconciliation-evidence",
             {"railNetwork": NETWORK, **FINALITY, "fv5Policy": FV5_POLICY, "retainedTransfer": retained(),
-             "nonceEnforcement": binding_entry()["nonceEnforcement"],
+             "nonceEnforcement": dict(binding_entry()["nonceEnforcement"], activationHeight=BLOCK + 1)
+                if fault == "future-activation" else binding_entry()["nonceEnforcement"],
              "retainedFailureProof": nonce_exhaustion_proof(retained(), fault=fault)},
             expected, {"reconciliationEvidence": fault is None}, "DEM-4/DEM-6",
             ["apr-evidence-from-authenticated-failure"] if fault is None else
             ["nonce-exhaustion-proof-valid"] if fault == "retention" else
-            ["apr-evidence-requires-authenticated-failure", "nonce-exhaustion-proof-valid"],
+            ["apr-evidence-requires-authenticated-failure", "nonce-exhaustion-proof-valid"]
+            + (["nonce-exhaustion-fork-active"] if fault == "future-activation" else
+               ["nonce-exhaustion-witness-excludes-retained"] if fault == "contradictory-witness" else []),
             "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."))
     return vectors
 
@@ -3436,6 +3458,7 @@ def document() -> dict[str, Any]:
         "demosProfile": {
             "profile": "DEMOS-MAPPING §A.2 native-send record profile",
             "nodeSource": "kynesyslabs/node@" + NODE_COMMIT + " (stabilisation)",
+            "sealedGenesisSource": "conformance/fixtures/settlement/demos-pinned-genesis.json (exact data/genesis.json at nodeSource; SHA-256 " + PINNED_GENESIS_HASH + "; absent nonceEnforcement uses pinned build default 0)",
             "nodeBuild": PINNED_BUILD,
             "sdk": "@kynesyslabs/demosdk@4.0.16 sha512-nVhp1uC+tFGzhew9c8XIajTMmELopx7gd0joqqzDd2XyUuFDcqrda51NYqvX5C8+L3Xgnie/mRf7JRqZ7r3tHA==",
             "liveObservations": "node2-* vectors copy read-only node2.demos.sh getTxByHash responses of 2026-10-17; the node reported 61b8e75 with a dirty tree, so they are historical observations, not the source pin; node2 no longer serves these records as of 2026-10-22",
@@ -3478,6 +3501,7 @@ def document() -> dict[str, Any]:
             "confirmNode": "broadcast-gate: identity of the pinned node that returned this attempt's confirm response",
             "broadcastNode": "broadcast-gate: identity of the pinned node receiving the completing broadcast; must equal confirmNode",
             "currentBlock": "broadcast-gate: safe integer block at completion; from confirm reference_block through reference_block + 1",
+            "recoveryAuthorized": "handler-internal boolean derived under the submission lock after every fresh recovery check; never an external caller or persisted authorization. Corpus recovery inputs use recoveryCheck instead",
             "guards": "checks whose removal makes this vector fail",
         },
         "count": len(vectors),
@@ -3486,17 +3510,17 @@ def document() -> dict[str, Any]:
     }
 
 
-def nonce_exhaustion_proof(transfer, *, account_nonce=NONCE, fault=None):
+def nonce_exhaustion_proof(transfer, *, account_nonce=NONCE, fault=None, nonce_fork=None):
     """Reference codec for independent nonce-state/nonmembership attestations.
     The final block witness authenticates the block, not retained-tx inclusion."""
-    observation = inclusion_proof(tx_hash=OTHER_TX_HASH, certified=fault != "unfinalized")
+    observation = inclusion_proof(tx_hash=transfer["txHash"] if fault == "contradictory-witness" else OTHER_TX_HASH, certified=fault != "unfinalized")
     result = {
         "kind": "fixture-nonce-exhaustion-v1", **NETWORK,
         "blockId": observation["inclusionBlock"]["id"],
         "blockNumber": observation["transactionRef"]["blockNumber"],
         "retainedTransfer": copy.deepcopy(transfer), "accountNonce": account_nonce,
         "recordAbsent": True,
-        "nonceEnforcement": copy.deepcopy(binding_entry()["nonceEnforcement"]),
+        "nonceEnforcement": copy.deepcopy(nonce_fork if nonce_fork is not None else binding_entry()["nonceEnforcement"]),
     }
     if fault == "network": result["networkId"] = OTHER_NETWORK["networkId"]
     if fault == "genesis": result["genesisHash"] = OTHER_GENESIS["genesisHash"]
@@ -3504,7 +3528,7 @@ def nonce_exhaustion_proof(transfer, *, account_nonce=NONCE, fault=None):
     if fault == "nonce": result["accountNonce"] = NONCE - 1
     if fault == "present": result["recordAbsent"] = False
     if fault == "block": result["blockId"] = _hex("another-final-block")
-    if fault == "fork": result["nonceEnforcement"]["activationHeight"] = BLOCK + 1
+    if fault in ("fork", "future-activation"): result["nonceEnforcement"]["activationHeight"] = BLOCK + 1
     keys = FORGED_FV5_SIGNERS if fault == "signature" else FV5_SIGNERS
     result["attestations"] = [
         {"authorityRef": signer, "algorithm": "ed25519",

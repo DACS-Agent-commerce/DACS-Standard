@@ -336,12 +336,24 @@ class AtomicColdReviewRegressions(unittest.TestCase):
         a={'amendmentVersion':'1','jobId':ev['jobId'],'amendsEvidenceRef':{'anchor':{'kind':'storage-program','locator':entry['evidenceAddress']},'contentHash':digest},'amendmentType':'correction','reason':'audit','observedAt':1800000050000}
         a=R.sign_embedded(a,G.CLAIMS['seller'],G.SEEDS['seller'],R._AMENDMENT_DOMAIN)
         a=json.dumps(a).encode('utf-8')
-        kwargs=dict(amendment_address=f"dacs4:amendment:{ev['jobId']}:{digest}:0",orchestrator=G.CLAIMS['orchestrator'],writer=G.CLAIMS['orchestrator'],public_keys=G.PUBLIC_KEYS,network_authority=G.CLAIMS['network'],network_id=ev['networkId'],proof_profile=PINS['expectedProofProfile'],validator_set_id='test-validator-set-1')
+        # AMEND-1 now authenticates the enclosing session before resolving the
+        # target. Supply the same fixture root and retained authority as the
+        # actual Atomic publication, rather than bare caller-selected pins.
+        source=self.audit['authorizationAuthority']['sessionContextSource']
+        state=R.sign_embedded({
+            'jobId':ev['jobId'],
+            'session':{key:source[key] for key in ('startedAt','railRegistryVersion')},
+            'orchestrator':G.CLAIMS['orchestrator'],'writer':G.CLAIMS['orchestrator'],
+            'steward':G.CLAIMS['network'],'registryWriter':G.CLAIMS['network'],
+        },G.CLAIMS['network'],G.SEEDS['network'],PC.RETAINED_STATE_DOMAIN)
+        kwargs=dict(amendment_address=f"dacs4:amendment:{ev['jobId']}:{digest}:0",orchestrator=G.CLAIMS['orchestrator'],writer=G.CLAIMS['orchestrator'],public_keys=G.PUBLIC_KEYS,network_authority=G.CLAIMS['network'],network_id=ev['networkId'],proof_profile=PINS['expectedProofProfile'],validator_set_id='test-validator-set-1',retained_state=json.dumps(state).encode('utf-8'))
         resolved={'artifact':json.dumps(ev).encode('utf-8'),'anchorReceipts':[entry['publication']['anchorReceipt']],'publication':entry['publication']}
         self.assertEqual(PC.consume_amendment_target(a,lambda _:resolved,**kwargs)[0],'valid')
         bad=copy.deepcopy(resolved);bad['anchorReceipts'][0]['contentHash']='00'*32
         self.assertNotEqual(PC.consume_amendment_target(a,lambda _:bad,**kwargs)[0],'valid')
-        self.assertEqual(PC.consume_amendment_target(a,lambda _:resolved,**{**kwargs,'writer':'native:outsider'})[0],'indeterminate')
+        self.assertEqual(PC.consume_amendment_target(a,lambda _:resolved,**{**kwargs,'retained_state':None})[0],'indeterminate')
+        self.assertEqual(PC.consume_amendment_target(a,lambda _:resolved,**{**kwargs,'writer':'native:outsider'}),
+                         ('violation','amendment authority differs from retained session state'))
         # The base's carrier selection also applies to actual Atomic proofs:
         # equal copies collapse; two authenticated unequal receipts do not.
         duplicate={**resolved,'anchorReceipts':resolved['anchorReceipts']*2}

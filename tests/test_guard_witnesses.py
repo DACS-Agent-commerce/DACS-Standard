@@ -27,8 +27,12 @@ WITNESS_MODULES = (
     "test_phase_bound_delivery_vectors",
 )
 CLAIM_DOCUMENTS = (
-    ROOT / "CHANGELOG.md",
-    *sorted((ROOT / "conformance").rglob("README.md")),
+    *(ROOT / name for name in (
+        "CHANGELOG.md", "CONTRIBUTING.md", "IMPLEMENTATION_READINESS.md",
+        "PRIMER.md", "README.md", "ROADMAP.md", "SECURITY.md", "SPEC-STYLE.md",
+    )),
+    *sorted((ROOT / "docs").rglob("*.md")),
+    *sorted((ROOT / "conformance").rglob("*.md")),
 )
 
 
@@ -245,6 +249,17 @@ class GuardWitnessTests(unittest.TestCase):
              "or narrow the claim" % binding_only],
             guard_witness.claim_problems({"X.md": controlled}, reg),
         )
+        # Unrelated uses of "control" do not declare these cases to be controls.
+        for misleading in (
+            controlled.replace("seven `", "seven access-control `"),
+            controlled.replace("cases.", "cases (under version control)."),
+            controlled.replace("cases.", "cases, controls included."),
+            controlled.replace("Each keeps", "Each is a control and keeps"),
+        ):
+            with self.subTest(prose=misleading):
+                problems = guard_witness.claim_problems({"X.md": misleading}, reg)
+                self.assertEqual(1, len(problems))
+                self.assertIn("without calling them controls", problems[0])
         # The narrowed paragraph that says which cases are controls is backed:
         # the harness shows the PDE-2 removal leaves them `fail`.
         narrowed = (
@@ -285,7 +300,7 @@ class GuardWitnessTests(unittest.TestCase):
                 {"rule": ("control",), "shape": ("rule-violation",)},
             )
             reg = {"toy-v1": witnesses}
-            text = ("Each case is rejected only by its guard; `%s` is a control.\n"
+            text = ("Each case is rejected only by its guard. `%s` is a control.\n"
                     "<!-- guard-witness-claim: corpus=toy-v1 cases=%s controls=%s -->")
             self.assertEqual([], guard_witness.claim_problems(
                 {"X.md": text % ("control", "rule-violation", "control")}, reg
@@ -326,13 +341,28 @@ class GuardWitnessTests(unittest.TestCase):
             "Each added case is rejected by exactly one guard; removing that "
             "guard makes it pass.",
             "All five negatives catch their rule.",
+            "Every forged signature case succeeds if the signature check is disabled.",
+            "All forged signature cases pass when the guard is removed.",
+            "Each negative passes if the check is skipped.",
         ):
             with self.subTest(text=text):
                 self.assertTrue(guard_witness.is_witness_claim(text))
+                self.assertEqual(1, len(guard_witness.claim_problems({"X.md": text}, {})))
+
+    def test_claim_document_scope_includes_contributor_and_general_docs(self):
+        paths = {path.relative_to(ROOT).as_posix() for path in CLAIM_DOCUMENTS}
+        self.assertLessEqual({"README.md", "CONTRIBUTING.md", "PRIMER.md"}, paths)
+        for directory in ("docs", "conformance"):
+            self.assertLessEqual(
+                {path.relative_to(ROOT).as_posix()
+                 for path in (ROOT / directory).rglob("*.md")}, paths,
+            )
 
     def test_claim_detector_ignores_ordinary_prose_and_code(self):
         for text in (
             "Each vector carries an `expected` disposition.",
+            "Every witness entry documents what happens if a guard is removed.",
+            "Each corpus documents how the check is disabled.",
             "A verifier without the key returns indeterminate.",
             "```\neach case is one a verifier ignoring its rule gets wrong\n```",
         ):

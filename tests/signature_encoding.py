@@ -19,7 +19,10 @@ stages, which decide the verdicts a case may expect:
     ``1 <= r < n`` and low-S ``1 <= s <= n/2`` (n from SEC 2 §2.4.1), checked
     only in a corpus that pins it on an ``ecdsa-secp256k1`` key fixture
     (``signatureEncoding: canonical-DER-low-S``, today only the channel
-    corpus).  No spec text states one ECDSA format for every envelope, so
+    corpus). A pin anywhere in the document applies to every signature of
+    that algorithm in the file; these are corpus-wide fixture profiles,
+    not per-key or per-case format declarations.
+    No spec text states one ECDSA format for every envelope, so
     elsewhere only the wire stage is checked; a corpus pinning another
     ``signatureEncoding`` fails until it has a checker.  Under the pin, a
     64-byte fixed-width ``r || s`` value is not DER and is a format defect;
@@ -87,7 +90,8 @@ def pinned_formats(document):
     """Return the algorithms whose signature format ``document`` checks.
 
     That is ``UNIVERSAL_FORMATS`` plus every algorithm the document pins with
-    a known ``signatureEncoding``; an unknown pin raises ``ValueError``.
+    a known ``signatureEncoding`` anywhere, including inside cases. Each pin
+    applies file-wide; an unknown pin raises ``ValueError``.
     """
     formats = set(UNIVERSAL_FORMATS)
 

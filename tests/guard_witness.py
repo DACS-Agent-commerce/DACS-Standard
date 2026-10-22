@@ -20,9 +20,9 @@ its committed verdict), then with the guard removed: every witness case must
 give a different verdict and every control must keep its own, so a removal
 that breaks the reference wholesale does not count.
 
-A CHANGELOG or corpus README paragraph that says each/every/all of its cases
-catch their rule must carry a marker naming the corpus and the witnessed
-cases::
+The documentation paths in ``test_guard_witnesses.CLAIM_DOCUMENTS`` are
+scanned for the quantified witness phrasings in ``CLAIM_PHRASE``. A matching
+paragraph must carry a marker naming the corpus and the witnessed cases::
 
     <!-- guard-witness-claim: corpus=<set> cases=<a>,<b> [controls=<c>] -->
 
@@ -30,9 +30,10 @@ Every listed case needs a witness entry, every ``controls`` case must be a
 declared control of a guard the listed cases witness (so the harness shows
 that guard's removal leaves it unchanged), and every backticked case name (or
 ``*`` glob) in that paragraph must appear in ``cases`` or ``controls``.  A
-claiming paragraph that lists ``controls`` must also call them controls in
-its prose (the word "control" or "controls"), so the claim visibly excludes
-them; the check is lexical and cannot tell what a sentence says about them.
+claiming paragraph that lists ``controls`` must declare them to be controls
+(e.g. "they are controls") in a separate sentence that makes no witness claim.
+Unrelated uses such as "access-control" or "version control" do not qualify.
+The phrase matching is lexical, not a proof of arbitrary natural-language claims.
 ``unwitnessed=<d>`` covers a named case in a paragraph that makes no such
 claim; in a claiming paragraph it contradicts the claim and is refused, so
 narrow the claim or add the witness.
@@ -121,10 +122,14 @@ CLAIM_PHRASE = re.compile(
     r"(?:its|their|one|exactly\s+one)\s+" + _GUARD + r"\b"
     r"|\bonly\s+by\s+(?:its|their)\s+" + _GUARD + r"\b"
     r"|\bby\s+exactly\s+one\s+(?:rule|guard|check)\b"
+    r"|\b(?:pass(?:es)?|succeeds?|accept(?:s|ed)?)`?\s+(?:if|when)\b[^.;]{0,60}?"
+    r"\b(?:rule|guard|check)\s+(?:is|are)\s+(?:removed|dropped|skipped|disabled|ignored)\b"
     r"|\bonly\s+when\s+(?:its|their)\s+" + _GUARD + r"\s+(?:is|are)\s+(?:removed|dropped|skipped|disabled)\b",
     re.IGNORECASE,
 )
-CONTROL_WORD = re.compile(r"\bcontrols?\b", re.IGNORECASE)
+CONTROL_DECLARATION = re.compile(
+    r"\b(?:are|is|as|stay|remain)\s+(?:the\s+|a\s+)?controls?\b", re.IGNORECASE,
+)
 MARKER = re.compile(r"<!--\s*guard-witness-claim:(.*?)-->", re.DOTALL)
 LIST_ITEM = re.compile(r"^ {0,3}(?:[-*+]|\d+\.)\s")
 BACKTICKED = re.compile(r"`([^`\s]+)`")
@@ -159,6 +164,14 @@ def is_witness_claim(block):
     prose = MARKER.sub(" ", block)
     flat = " ".join(prose.split())
     return bool(CLAIM_QUANTIFIER.search(flat) and CLAIM_PHRASE.search(flat))
+
+
+def declares_controls(block):
+    prose = " ".join(MARKER.sub(" ", block).split())
+    return any(
+        CONTROL_DECLARATION.search(sentence) and not CLAIM_PHRASE.search(sentence)
+        for sentence in re.split(r"[.!?](?:\s+|$)", prose)
+    )
 
 
 def parse_marker(body):
@@ -225,7 +238,7 @@ def claim_problems(documents, registry):
                             "%s: control %s is declared only for %s, not for a guard "
                             "the listed cases witness" % (where, case, ", ".join(sorted(guards)))
                         )
-                if claim and controls and not CONTROL_WORD.search(MARKER.sub(" ", block)):
+                if claim and controls and not declares_controls(block):
                     problems.append(
                         "%s: claims each case catches its rule but lists controls %s "
                         "without calling them controls; say which cases are controls, "

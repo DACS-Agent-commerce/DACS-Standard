@@ -20,6 +20,9 @@ must be one that the value's defect gives for every verifier:
 Where a corpus's spec fixes the verdict of each stage, ``VERDICT_CONTRACTS``
 holds exactly that verdict (DACS-3 §8.3.3: malformed encoding is ``error``);
 any other corpus may expect any rejection of the stage (``STAGE_VERDICTS``).
+RSC-7 gives authenticated revocation precedence over unrelated signature
+defects: the recorded-policy evaluator must independently establish ``revoked``
+before its corpus verdict ``fail`` replaces the default ``indeterminate``.
 
 Neither rule can see a well-encoded value whose signer claim names another
 algorithm's key, so every case where a ``key:`` (Ed25519) claim signs under a
@@ -76,9 +79,8 @@ VERDICT_CONTRACTS = {
     ),
     "conformance/vectors/security/revocation-state-completeness-v0.8.json": (
         {WIRE: frozenset({"indeterminate"}), FORMAT: frozenset({"indeterminate"})},
-        "DACS-1 RSC-7: any RSC failure returns indeterminate, so a listing, "
-        "head or marker signature that any verifier rejects or cannot check "
-        "gives indeterminate",
+        "DACS-1 RSC-7: RSC failure returns indeterminate unless independently "
+        "authenticated revocation takes precedence (corpus verdict fail)",
     ),
     "conformance/vectors/security/signature-value-encoding-v0.1.json": (
         {WIRE: frozenset({"reject"}), FORMAT: frozenset({"reject"})},
@@ -225,6 +227,7 @@ class Case:
     node: object
     path: str
     formats: frozenset
+    verified_revocation: bool = False
 
 
 @dataclass(frozen=True)
@@ -299,13 +302,29 @@ def cases_of(path, document):
     formats = pinned_formats(document)
     found = []
 
+    def verified_revocation(node):
+        if file != "conformance/vectors/security/revocation-state-completeness-v0.8.json":
+            return False
+        # Recheck the exact input, including profile admission, Listing and
+        # marker signatures and references. Neither `expected` nor saved `want`
+        # establishes RSC-7 precedence. Use the corpus's retained v1 policy,
+        # rather than promote this archival fixture to current admission.
+        from test_revocation_state_completeness_vectors import evaluate_recorded_policy
+
+        verdict, want = evaluate_recorded_policy(
+            node.get("input"), document.get("publicKeys", {}),
+            node.get("trustedProfileAdmission"),
+        )
+        return verdict == "fail" and want.get("revocationCheck") == "revoked"
+
     def visit(node, where):
         if _is_case(node):
             case_id = next(
                 (node[f] for f in CASE_ID_MEMBERS if isinstance(node.get(f), str)),
                 where or "/",
             )
-            found.append(Case(file, case_id, _verdict(node), node, where, formats))
+            found.append(Case(file, case_id, _verdict(node), node, where, formats,
+                              verified_revocation(node)))
         elif isinstance(node, dict):
             for key, child in node.items():
                 visit(child, "%s/%s" % (where, key))
@@ -328,7 +347,7 @@ def cases_of(path, document):
                 if name in entries:
                     referenced.add(name)
                     yield Case(file, case.case_id, case.verdict, entries[name],
-                               "/%s/%s" % (shared, name), formats)
+                               "/%s/%s" % (shared, name), formats, case.verified_revocation)
         # An entry no case references stays in the remainder, which declares
         # no verdict.
         remainder[shared] = {k: v for k, v in entries.items() if k not in referenced}
@@ -348,7 +367,24 @@ def signature_objects(node, path=""):
             yield from signature_objects(child, "%s/%d" % (path, index))
 
 
-def accepted_verdicts(file, stage):
+def requires_channel_contract(node, registered):
+    """Find current channel signatures by content, independent of spec prose."""
+    if isinstance(node, dict):
+        signature = node.get("signature")
+        if "canonicalChannelMessageVersion" in node and isinstance(signature, dict):
+            algorithm = signature.get("algorithm")
+            if isinstance(algorithm, str) and algorithm in registered and "value" in signature:
+                return True
+        return any(requires_channel_contract(child, registered) for child in node.values())
+    if isinstance(node, list):
+        return any(requires_channel_contract(child, registered) for child in node)
+    return False
+
+
+def accepted_verdicts(file, stage, verified_revocation=False):
+    if (verified_revocation
+            and file == "conformance/vectors/security/revocation-state-completeness-v0.8.json"):
+        return frozenset({"fail"})
     contract = VERDICT_CONTRACTS.get(file)
     return contract[0][stage] if contract is not None else STAGE_VERDICTS[stage]
 
@@ -362,7 +398,7 @@ def case_offenders(case, registered):
         if defect is None:
             continue
         stage, why = defect
-        accepted = accepted_verdicts(case.file, stage)
+        accepted = accepted_verdicts(case.file, stage, case.verified_revocation)
         if verdict in accepted:
             continue
         expects = "declares no verdict" if verdict is None else "expects %r" % case.verdict
@@ -549,6 +585,8 @@ class SignatureEncodingHelperTests(unittest.TestCase):
         )
         pinned = pinned_formats({"keys": [dict(ECDSA_PIN)]})
         self.assertEqual(frozenset({"ed25519", "ecdsa-secp256k1"}), pinned)
+        # A pin inside one case is still a file-wide fixture profile (R4).
+        self.assertEqual(pinned, pinned_formats({"vectors": [{"input": dict(ECDSA_PIN)}]}))
         self.assertEqual(
             FORMAT, signature_value_defect("ecdsa-secp256k1", FIXED_WIDTH_64, pinned)[0]
         )
@@ -717,6 +755,16 @@ class SignatureVectorConsistencyTests(unittest.TestCase):
         self.assertEqual({"channel-relabel", "party-relabel"}, found)
         self.assertEqual([], self.offenders_in(document))
 
+        # A rejection under RSC is still a rejection, even though its default
+        # signature-failure verdict is indeterminate (the REJECTIONS union).
+        rsc = ROOT / "conformance/vectors/security/revocation-state-completeness-v0.8.json"
+        rejected = _document(_vector(
+            "rsc-key-confusion-fail", "fail", "",
+            {"algorithm": "sr1-aggregate", "signer": key, "value": ED25519_64},
+        ))
+        self.assertEqual([], [p for case in cases_of(rsc, rejected)
+                              for p in key_claim_relabels(case, self.registered)])
+
     def test_verdict_contracts_name_committed_corpora(self):
         for file, (stages, reason) in VERDICT_CONTRACTS.items():
             with self.subTest(file=file):
@@ -726,22 +774,29 @@ class SignatureVectorConsistencyTests(unittest.TestCase):
                 for verdicts in stages.values():
                     self.assertTrue(verdicts)
                     self.assertLessEqual(verdicts, STAGE_VERDICTS[WIRE] | {"indeterminate"})
-        # Every committed corpus that holds a DACS-3 §8.3.3 channel-message
-        # signature is under the DACS-3 contract (a version bump renames the
-        # file and must carry the contract along).
+        # Every committed corpus with a current channel-message signature is
+        # under the DACS-3 contract, independent of citation wording (a version
+        # bump renames the file and must carry the contract along).
         for path in self.files:
             document = json.loads(path.read_text(encoding="utf-8"))
-            spec = document.get("spec", "") if isinstance(document, dict) else ""
-            if "DACS-3 §8.3.3" in spec and any(
-                algorithm in self.registered
-                for case in cases_of(path, document)
-                for _, algorithm, _ in signature_objects(case.node, case.path)
-            ):
+            if requires_channel_contract(document, self.registered):
                 with self.subTest(file=_relative(path)):
+                    self.assertIn(_relative(path), VERDICT_CONTRACTS)
                     self.assertEqual(
                         {WIRE: {"error"}, FORMAT: {"fail"}},
                         VERDICT_CONTRACTS[_relative(path)][0],
                     )
+
+    def test_channel_contract_detection_uses_message_content(self):
+        for spec in ("DACS-3 §8.3.3", "DACS-3 8.3.3", "renamed citation", None):
+            with self.subTest(spec=spec):
+                document = {"spec": spec, "vectors": [{"message": {
+                    "canonicalChannelMessageVersion": "1",
+                    "signature": _ed25519(ED25519_64),
+                }}]}
+                self.assertTrue(requires_channel_contract(document, self.registered))
+                del document["vectors"][0]["message"]["canonicalChannelMessageVersion"]
+                self.assertFalse(requires_channel_contract(document, self.registered))
 
     def test_contracted_corpora_accept_only_their_verdict(self):
         # DACS-3 §8.3.3 makes malformed encoding `error`: a channel case with
@@ -768,7 +823,8 @@ class SignatureVectorConsistencyTests(unittest.TestCase):
             {"fixed-width-error": FORMAT},
             {o.case_id: o.rule for o in self.offenders_in(document)},
         )
-        # RSC-7: only `indeterminate`; the encoding corpus: only `reject`.
+        # Without authenticated revocation, RSC-7 requires `indeterminate`;
+        # the encoding corpus requires `reject`.
         rsc = "conformance/vectors/security/revocation-state-completeness-v0.8.json"
         encoding = "conformance/vectors/security/signature-value-encoding-v0.1.json"
         for path, good, bad in ((rsc, "indeterminate", "fail"), (encoding, "reject", "error")):
@@ -782,6 +838,10 @@ class SignatureVectorConsistencyTests(unittest.TestCase):
         # ECDSA format, expected `pass`: no rule in force makes it a defect.
         document = _document(
             _vector("fixed-width-pass", "pass", "", _ecdsa(FIXED_WIDTH_64)),
+            # The real unpinned #426 eb5cb3d rail shape: a known format gap,
+            # unlike the pinned copy in the format-defect regression below.
+            _vector("fv-rail-signature-envelope-malformed", "error", "",
+                    _ecdsa(FIXED_WIDTH_64)),
             _vector("padded-pass", "pass", "", _ecdsa(CANONICAL_ECDSA + "=")),
             pin=False,
         )
@@ -789,6 +849,35 @@ class SignatureVectorConsistencyTests(unittest.TestCase):
             [("padded-pass", WIRE)],
             [(o.case_id, o.rule) for o in self.offenders_in(document)],
         )
+
+    def test_rsc_verified_revocation_precedes_unrelated_signature_defects(self):
+        from test_revocation_state_completeness_vectors import evaluate_recorded_policy
+
+        path = "conformance/vectors/security/revocation-state-completeness-v0.8.json"
+        original = json.loads((ROOT / path).read_text(encoding="utf-8"))
+        vector = next(v for v in original["vectors"]
+                      if v["name"] == "rsc-rb4-discovered-marker-precedes-nonmembership")
+        for value in ("AA=", "AA"):
+            for broken in (None, "marker", "listing"):
+                with self.subTest(value=value, broken=broken):
+                    case = json.loads(json.dumps(vector))
+                    data = case["input"]
+                    data["resolutionContext"]["headHistory"][0]["head"]["signature"]["value"] = value
+                    if broken == "marker":
+                        data["resolutionContext"]["resolvedMarkers"][-1]["marker"]["signature"]["value"] = "AA="
+                    elif broken == "listing":
+                        data["listing"]["signature"]["value"] = "AA="
+                    verdict, want = evaluate_recorded_policy(
+                        data, original["publicKeys"], case["trustedProfileAdmission"],
+                    )
+                    self.assertEqual("indeterminate" if broken else "revoked", want["revocationCheck"])
+                    self.assertEqual("indeterminate" if broken else "fail", verdict)
+                    document = {**original, "vectors": [case]}
+                    # Do not trust the expected verdict or the saved `want`:
+                    # only independently authenticated revocation permits fail.
+                    self.assertEqual(bool(broken), bool(self.offenders_in(document, path)))
+                    case["expected"] = "indeterminate"
+                    self.assertEqual(not bool(broken), bool(self.offenders_in(document, path)))
 
     def test_verdicts_by_defect_stage(self):
         # Each row: expected verdict, signature, offending rule or None.
@@ -836,8 +925,8 @@ class SignatureVectorConsistencyTests(unittest.TestCase):
         self.assertEqual([], self.offenders_in(document))
 
     def test_format_defects_are_reported_whatever_the_wording(self):
-        # A fixed-width 64-byte ecdsa-secp256k1 value is a format defect: a
-        # verifier implementing the algorithm answers `fail`, so `error` or
+        # Under a corpus pin, a fixed-width 64-byte ecdsa-secp256k1 value is a
+        # format defect: a verifier implementing the algorithm answers `fail`, so `error` or
         # `indeterminate` is never consistent, however the case is worded.
         notes = (
             "names an unsupported algorithm",

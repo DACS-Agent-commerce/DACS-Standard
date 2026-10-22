@@ -129,12 +129,18 @@ defect with the verdict the case expects and never reads case wording:
   corpus that pins `signatureEncoding: canonical-DER-low-S` on an
   `ecdsa-secp256k1` key fixture (an unknown pin fails). `sr1-aggregate`, and
   `ecdsa-secp256k1` without a pin, are checked at the wire stage only.
+  A pin anywhere in the document, including inside one case, applies to every
+  signature of that algorithm in the file; this is a corpus-wide fixture profile.
 
 A corpus whose spec fixes the verdict of each stage declares exactly that in
 `VERDICT_CONTRACTS`: the DACS-3 §8.3.3 channel corpus (`error` for a wire
-defect, `fail` for a format defect), DACS-1 RSC-7 (`indeterminate`) and the
-binary encoding corpus (`reject`); a corpus whose `spec` cites DACS-3 §8.3.3
-and that holds signature objects must be listed under the DACS-3 contract. A case where a `key:` claim signs under another
+defect, `fail` for a format defect), DACS-1 RSC-7 (`indeterminate` unless
+independently authenticated revocation takes precedence, giving corpus verdict
+`fail`) and the binary encoding corpus (`reject`). The RSC exception reruns the
+corpus's recorded-policy evaluator on the exact input and public keys; it never
+trusts the expected verdict or a saved `want` result. A corpus holding current
+channel-message signatures must be listed under the DACS-3 contract, regardless
+of how its `spec` citation is worded. A case where a `key:` claim signs under another
 registered algorithm without expecting a rejection must be listed, with its
 reason, in `KEY_CLAIM_RELABELS`. Each offender is reported with file, case,
 path and reason. The rules do not model a verdict decided before the signature
@@ -149,15 +155,26 @@ algorithm and values, and a stale entry fails.
 `GUARD_WITNESSES` in its test module (case → guard, a context manager that
 removes that guard from the reference, and control cases) and is listed in
 `tests/test_guard_witnesses.py`. Each case must keep its committed verdict with
-the guard and change without it, while the controls keep theirs. A CHANGELOG or
-corpus README paragraph saying each, every or all of its cases catch their rule
-must carry
-`<!-- guard-witness-claim: corpus=<set> cases=<a>,<b> [controls=<c>] -->`
-inside the paragraph. Every listed case needs a witness entry, every `controls`
+the guard and change without it, while the controls keep theirs.
+
+The gate scans the root documentation files listed in `CLAIM_DOCUMENTS` in
+`tests/test_guard_witnesses.py`, plus all Markdown under `docs/` and
+`conformance/`. It recognizes the quantified phrases in `CLAIM_PHRASE`, including
+passive wording such as "the signature check is disabled". A matching paragraph
+must carry this marker inside the paragraph:
+
+```html
+<!-- guard-witness-claim: corpus=<set> cases=<a>,<b> [controls=<c>] -->
+```
+
+Every listed case needs a witness entry, every `controls`
 case must be a declared control of a guard the listed cases witness, and every
 case the paragraph names must be in one of the two. A claiming paragraph that
-lists `controls` must call them controls in its prose, so the claim visibly
-excludes them (the check is lexical). `unwitnessed=<d>` only covers a named
+lists `controls` must declare them to be controls (for example, "they are
+controls") in a separate sentence without a witness claim. "Access-control",
+"version control", and "controls included" do not qualify. The phrase matching
+is lexical; it does not establish arbitrary natural-language claims, and files
+outside the documented scan scope are not checked. `unwitnessed=<d>` only covers a named
 case in a paragraph that makes no such claim; in a claiming paragraph it is
 refused, so either add the witness or narrow the claim.
 

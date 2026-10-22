@@ -45,7 +45,8 @@ The format used per release:
   the wire stage only. Where the spec fixes the verdict, only that verdict is
   accepted: in `canonical-channel-message-v0.6` a wire defect is `error`
   (DACS-3 §8.3.3) and a format defect `fail`; in
-  `revocation-state-completeness-v0.8` both are `indeterminate` (DACS-1 RSC-7);
+  `revocation-state-completeness-v0.8` both are `indeterminate` unless
+  independently authenticated revocation takes precedence (`fail`, RSC-7);
   in `signature-value-encoding-v0.1` both are `reject`. Elsewhere a wire defect
   may expect `error`, `fail`, `reject` or `rejected`. A case is any object
   carrying `expected` or `verdict`, whatever list or map holds it; an
@@ -64,13 +65,17 @@ The format used per release:
   the reference guard the case witnesses; CI removes that guard and requires
   the case's verdict to change while declared controls keep theirs. The LAB
   (`current-use-reputation-v1`) and PDE credential signature-bypass witnesses
-  use it. A witness claim in the CHANGELOG or a corpus README now has to name
+  use it. A recognized witness claim in the scanned documentation has to name
   its witnessed cases in a `guard-witness-claim` marker: every listed case
   needs a witness entry, a case the paragraph names but does not witness must
   be a declared control of a guard the listed cases witness, and a claiming
   paragraph cannot leave a case unwitnessed. A claiming paragraph that lists
-  controls must call them controls in its prose; that check is lexical. See
-  CONTRIBUTING "Validation".
+  controls must declare them to be controls in a separate sentence without a
+  witness claim. The lexical scan covers the root documentation listed in the
+  test, plus Markdown under `docs/` and `conformance/`, including passive
+  "check is disabled" wording. RSC signature consistency rechecks authenticated
+  revocation precedence under RSC-7 before requiring `indeterminate` for an
+  unrelated signature defect. See CONTRIBUTING "Validation".
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

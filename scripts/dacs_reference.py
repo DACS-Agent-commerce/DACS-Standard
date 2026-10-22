@@ -18,7 +18,10 @@ import unicodedata
 from typing import Any, Iterable
 from urllib.parse import quote, unquote_to_bytes
 
-import jcs
+try:
+    from scripts import jcs
+except ImportError:  # direct script entry point
+    import jcs
 
 
 SAFE_INTEGER = 2**53 - 1

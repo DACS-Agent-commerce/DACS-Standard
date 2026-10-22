@@ -33,11 +33,22 @@ class DemosIdentityTests(unittest.TestCase):
 
     def test_unresolved_inclusion_and_malformed_claim_have_one_verdict(self):
         import json
-        from scripts.settlement_finality_reference import verify_finality
-        from test_settlement_finality_verification_vectors import merge
+        from scripts.settlement_finality_reference import _verify_inclusion_path, verify_finality
         fv = json.loads((pay_dem.ROOT / "conformance/vectors/security/settlement-finality-verification.json").read_text())
         case = next(v for v in fv["vectors"] if v["name"] == "fv-bft-final-malformed-claim-inclusion-below-threshold")
-        fv_decision = verify_finality(case["input"], merge(fv["trustedFixturePolicy"], case["trustedOverrides"]))["decision"]
+        # Corpus overrides replace complete policy members. Deep-merging an
+        # empty authority map would leave the default authorities trusted and
+        # make this test pass without the DEM-7 verdict-order check.
+        trust = dict(copy.deepcopy(fv["trustedFixturePolicy"]), **copy.deepcopy(case["trustedOverrides"]))
+        inputs = case["input"]
+        self.assertEqual({}, trust["observationAuthorityKeys"])
+        self.assertEqual("indeterminate", _verify_inclusion_path(
+            inputs["context"]["observation"], inputs["rail"]["consumerFinalityProfile"]["settlement"],
+            inputs["evidence"]["paymentTxRefs"][0], trust,
+        )[0])
+        fv_decision = verify_finality(inputs, trust)["decision"]
+        valid_claims = dict(trust, demosPayerKeyClaims=fv["trustedFixturePolicy"]["demosPayerKeyClaims"])
+        self.assertEqual("indeterminate", verify_finality(inputs, valid_claims)["decision"])
         data = pay_dem.generator.load_vectors(pay_dem.VECTORS.read_text())
         consumer = next(v for v in data["vectors"] if v["name"] == "consumer-malformed-claim-inclusion-below-threshold")
         self.assertEqual("error", fv_decision)

@@ -43,7 +43,8 @@ class RetainedAuthorityTests(unittest.TestCase):
                 with self.subTest(path=name, signer=type(signer).__name__):
                     handler = mock.Mock(return_value={"status": "accepted", "ok": True})
                     binding = vectors.ref.PhaseBinding(
-                        "pay-dem", identity_bound, vectors.ibh("verified"), signer)
+                        "pay-dem", identity_bound=identity_bound,
+                        identity_binding=vectors.ibh("verified"), signer=signer)
                     result = vectors.ref.dispatch_payment(binding, value, handler)
                     self.assertEqual((result["status"], result["ok"], result.get("errorClass")),
                                      ("indeterminate", False, "substrate"))
@@ -60,7 +61,9 @@ class RetainedAuthorityTests(unittest.TestCase):
                     signer.is_available.return_value = readiness
                 with self.subTest(path=name, readiness=readiness):
                     handler = mock.Mock()
-                    binding = vectors.ref.PhaseBinding("pay-dem", identity_bound, vectors.ibh("verified"), signer)
+                    binding = vectors.ref.PhaseBinding(
+                        "pay-dem", identity_bound=identity_bound,
+                        identity_binding=vectors.ibh("verified"), signer=signer)
                     result = vectors.ref.dispatch_payment(binding, value, handler)
                     self.assertEqual((result["status"], result["ok"], result.get("errorClass")),
                                      ("indeterminate", False, "substrate"))
@@ -76,7 +79,9 @@ class RetainedAuthorityTests(unittest.TestCase):
             for label in ("first-runtime-fixture", "second-runtime-fixture"):
                 signer = vectors.FixtureSigner(label)
                 handler = mock.Mock(return_value={"status": "accepted", "ok": True})
-                binding = vectors.ref.PhaseBinding("pay-dem", identity_bound, vectors.ibh("verified"), signer)
+                binding = vectors.ref.PhaseBinding(
+                    "pay-dem", identity_bound=identity_bound,
+                    identity_binding=vectors.ibh("verified"), signer=signer)
                 self.assertEqual(vectors.ref.dispatch_payment(binding, value, handler)["status"], "accepted")
                 self.assertEqual(signer.sign_calls, 0)
                 self.assertIs(handler.call_args.args[0]["sessionContext"]["signer"], signer)

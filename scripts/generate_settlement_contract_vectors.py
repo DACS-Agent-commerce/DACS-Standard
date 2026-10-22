@@ -19,7 +19,10 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-import settlement_contract_reference as ref
+try:
+    from scripts import settlement_contract_reference as ref
+except ImportError:
+    import settlement_contract_reference as ref
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "conformance/fixtures/settlement/payment-input-amendment-v0.1.json"

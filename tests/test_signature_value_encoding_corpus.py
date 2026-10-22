@@ -44,6 +44,16 @@ NONCANONICAL_ECDSA_CASES = {
     ("settlement-finality-verification.json", "fv-agreement-signature-ecdsa-high-s-party-keys-unavailable"),
 }
 
+# Portable typed-authorization cases deliberately carrying invalid DER.
+NONCANONICAL_ECDSA_CASES.update(
+    ("signature-authorization-v0.1.json", typ + "-" + variant)
+    for typ in ("ListingSignature", "RevocationSignature", "AgreementSignature",
+                "ComponentSignature", "RailSignature", "BundleSignature",
+                "ChannelMessageSignature", "RecipeSignature", "VerifyResultSignature")
+    for variant in ("ecdsa-r-zero", "ecdsa-s-zero", "ecdsa-r-order", "ecdsa-s-order",
+                    "ecdsa-trailing-bytes", "ecdsa-nonminimal-integer")
+)
+
 # Cases about a registered algorithm the fixture resolver does not implement.
 UNAVAILABLE_ECDSA_CASES = {
     ("reputation-participation-admission-v0.7.json", "spa-supported-channel-algorithm-unavailable",
@@ -116,7 +126,7 @@ class SignatureValueEncodingCorpusTests(unittest.TestCase):
         for file_name, name, label, domain in UNAVAILABLE_ECDSA_CASES:
             with self.subTest(case=name):
                 case = by_name[(file_name, name)]
-                self.assertIn(case["expected"], {"indeterminate", "pass"})
+                self.assertIn(case["expected"], {"fail", "indeterminate", "pass"})
                 public_key = ec.derive_private_key(
                     fixture_private_value(label), ec.SECP256K1()
                 ).public_key()
@@ -204,6 +214,7 @@ SIG7_CORPORA = {
     "settlement-finality-verification.json",
     "finality-resolution-context-v1.json",
     "canonical-channel-message-v0.6.json",
+    "signature-authorization-v0.1.json",
 }
 SIG7_VERDICT = {"algorithm": "error", "wire": "error", "format": "fail"}
 BASE64URL = re.compile(r"[A-Za-z0-9_-]+\Z")

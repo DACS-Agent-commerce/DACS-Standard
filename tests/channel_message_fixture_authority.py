@@ -7,10 +7,10 @@ issuer, persisted replay store, or authority derived from received metadata.
 
 import copy
 
-# An immutable merge commit on `next` whose spec/PROFILE.md coordinated tuple
+# An immutable specification commit containing SIG-7 whose coordinated tuple
 # and module front matter carry exactly CURRENT_MODULE_VERSIONS; the channel
 # suite reads both at this commit.
-CURRENT_RELEASE_PIN = "df7bc202ebdc179a59d61a8221072f33f482b933"
+CURRENT_RELEASE_PIN = "55c783790b3d288c3defdf3e6b3377399cf2aafe"
 CURRENT_MODULE_VERSIONS = {
     "core": "0.3", "dacs1": "0.8", "dacs2": "0.6",
     "dacs3": "0.6", "dacs4": "0.8", "dacs5": "0.7",

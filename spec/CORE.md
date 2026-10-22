@@ -935,10 +935,15 @@ classify the envelope's own defects as follows, in this order, in every module:
    length, residual bits, exact re-encoding) is malformed encoding: `error`.
 3. An authenticated algorithm-metadata mismatch (the envelope names an
    algorithm the signer's authenticated key metadata contradicts) is `fail`.
+   Authenticated key metadata is the algorithm bound by the key's source:
+   a `key:<64hex>` claim binds Ed25519; a verifier-owned typed key map or
+   authenticated channel membership record binds its declared key algorithm.
+   The envelope's own algorithm label cannot establish this metadata.
 4. A canonical value whose decoded length or internal format is invalid for
    its algorithm (an `ed25519` value that is not 64 bytes; an
    `ecdsa-secp256k1` value that is not canonical low-S DER) can never verify:
-   `fail`.
+   `fail`. CORE defines no decoded internal format for `sr1-aggregate`;
+   its binding supplies that check, when implemented.
 5. A signer key the verifier does not hold, or a registered algorithm in the
    set that the verifier does not implement, is `indeterminate`, unless
    another check establishes `error` or `fail`.

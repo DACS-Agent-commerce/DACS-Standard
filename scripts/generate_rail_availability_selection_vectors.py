@@ -169,7 +169,9 @@ def build() -> dict:
     # operator policy records that the pinned node completes the handler.
     tank_fields = {
         "railType": "cross-chain-liquidity-tank",
-        "asset": {"kind": "stablecoin-cross-chain", "symbol": "USDC", "decimals": 6},
+        "asset": {"kind": "stablecoin-cross-chain", "canonicalSymbol": "USDC",
+                  "routes": [{"sourceChainId": 11155111, "destChainId": 80002,
+                              "liquidityTankIds": ["fixture-tank-source", "fixture-tank-destination"]}]},
         "network": {"kind": "cross-chain", "mechanism": "liquidity-tank"},
         "phaseHandler": "pay-cross-chain-liquidity-tank",
         "parameters": {"sourceChainId": 11155111, "destChainId": 80002},

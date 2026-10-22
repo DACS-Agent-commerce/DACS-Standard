@@ -94,6 +94,8 @@ SEEDS = {
     "rpc-d": "54" * 32,
     "rpc-other": "55" * 32,
     "provider-unconfigured": "62" * 32,
+    "buyer-unconfigured": "23" * 32,
+    "seller-unconfigured": "34" * 32,
 }
 CLAIMS = {
     "steward": "did:demos:steward",
@@ -103,6 +105,8 @@ CLAIMS = {
     "orchestrator-unconfigured": "did:demos:orchestrator-unconfigured",
     "provider": "provider:example",
     "provider-unconfigured": "provider:unconfigured",
+    "buyer-unconfigured": "did:demos:buyer-unconfigured",
+    "seller-unconfigured": "did:demos:seller-unconfigured",
 }
 # The AP2 wire version the fixtures carry; it is the one version the
 # reference implements (AP2_PROTOCOL_VERSIONS).
@@ -2077,6 +2081,33 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
         unconfigured_session, trusted_overrides=unconfigured_authority,
     ))
 
+    # Exercise the Agreement-stage deferral independently of the orchestrator.
+    # Each new party really signs; only its verifier-owned key is unavailable.
+    for party, other in (("buyer", "seller"), ("seller", "buyer")):
+        value = factory.model_input("block-depth")
+        claim = CLAIMS[party + "-unconfigured"]
+        agreement = value["agreement"]
+        for entry in agreement["parties"]:
+            if entry["role"] == party:
+                entry["primaryClaim"] = claim
+        factory.resign_agreement(agreement, signers=tuple(
+            role + "-unconfigured" if role == party else role
+            for role in ("buyer", "seller")
+        ))
+        session = copy.deepcopy(factory.trusted["sessionAuthorityByJob"][agreement["jobId"]])
+        session["partyClaims"][party] = claim
+        session["payer" if party == "buyer" else "payee"] = claim
+        session["agreementHash"] = artifact_hash(agreement, "signatures")
+        factory.rebuild_observation_event(value, ("observation",), lambda event:
+            event.__setitem__("payer" if party == "buyer" else "payee", claim))
+        authority = {"sessionAuthorityByJob": {agreement["jobId"]: session}}
+        name = "fv-trusted-party-key-for-" + party + "-absent"
+        vectors.append(case(name, "indeterminate", "the authenticated session party genuinely signs, but its key is absent from the usable party map", value, trusted_overrides=authority))
+        invalid = copy.deepcopy(value)
+        signatures = invalid["agreement"]["signatures"]
+        signatures[0 if other == "buyer" else 1]["value"] = signatures[0 if party == "buyer" else 1]["value"]
+        vectors.append(case(name + "-" + other + "-signature-invalid", "fail", "a missing party key cannot hide the other party's invalid Agreement signature", invalid, trusted_overrides=authority))
+
     # FV-10: an absent key in one stage is deferred, so a later signature
     # checked against an available key still decides the verdict. Both
     # signatures are outside the hashes they sign, so nothing else changes.
@@ -2489,6 +2520,27 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
         "an absent provider attestation cannot hide a proved noncapture in the response bytes",
         copy.deepcopy(provider_not_captured), trusted_overrides={"providerAttestations": None},
     ))
+    # FRC-8 closure extends below each observed arm, including references.
+    for model, path in (
+        ("block-depth", ("observation",)),
+        ("block-depth", ("observation", "authenticatedHead")),
+        ("block-depth", ("observation", "inclusionBlock")),
+        ("block-depth", ("observation", "authorityEvidence")),
+        ("block-depth", ("observation", "transactionRef")),
+        ("bft-final", ("observation", "finalityCertificate")),
+        ("htlc-reveal", ("sourceLock", "transactionRef")),
+        ("provider-receipt", ("responseAttestation",)),
+        ("provider-receipt", ("responseAttestation", "anchor")),
+    ):
+        value = factory.model_input(model)
+        node = value["context"]
+        for part in path:
+            node = node[part]
+        node["unexpectedMember"] = 1
+        vectors.append(case("fv-frc8-extra-member-" + model + "-" + "-".join(path), "error", "an extra member below an observed arm violates FRC-8 closure", value))
+    value = factory.provider_sr3_value()
+    value["context"]["receiptTransactionObservation"]["transactionRef"]["unexpectedMember"] = 1
+    vectors.append(case("fv-frc8-extra-member-sr3-transaction-ref", "error", "the SR-3 native reference is closed at depth", value))
     return vectors
 
 
@@ -2515,6 +2567,7 @@ def document() -> dict:
             "scope": "synthetic-conformance-only",
             "registeredLiveSubstratePolicy": False,
             "privateSeedsAreTestMaterialOnly": True,
+            "implementedAP2ProtocolVersions": [AP2_PROTOCOL_VERSION],
             "seeds": SEEDS,
         },
         "trustedFixturePolicy": factory.trusted,

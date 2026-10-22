@@ -70,6 +70,26 @@ def evaluate(vector):
         return "error"
     if type(rail.get("railVersion")) is not int or rail["railVersion"] <= 0:
         return "error"
+    # DACS-4 AssetSpec/NetworkSpec: validate the tank fixture before selection.
+    if rail.get("railType") == "cross-chain-liquidity-tank":
+        asset = rail.get("asset")
+        if (not isinstance(asset, dict)
+                or not {"kind", "canonicalSymbol", "routes"} <= set(asset)
+                or asset.get("kind") != "stablecoin-cross-chain"
+                or not isinstance(asset.get("canonicalSymbol"), str)
+                or not isinstance(asset.get("routes"), list)
+                or not isinstance(rail.get("network"), dict)
+                or rail["network"].get("kind") != "cross-chain"
+                or rail["network"].get("mechanism") != "liquidity-tank"):
+            return "error"
+        for route in asset["routes"]:
+            if (not isinstance(route, dict)
+                    or not {"sourceChainId", "destChainId"} <= set(route)
+                    or any(type(route[k]) not in (str, int, float) for k in ("sourceChainId", "destChainId"))
+                    or ("liquidityTankIds" in route and (
+                        not isinstance(route["liquidityTankIds"], list)
+                        or any(not isinstance(t, str) for t in route["liquidityTankIds"])))):
+                return "error"
 
     steward_claim = ctx.get("stewardClaim")
     steward_pub = ctx.get("stewardPublicKey")
@@ -251,6 +271,13 @@ class RailAvailabilitySelectionVectorTests(unittest.TestCase):
         self.assertEqual("live", unsigned["rail"]["availability"])
         self.assertNotIn("signature", unsigned["rail"])
         self.assertEqual("fail", evaluate(unsigned))
+
+    def test_tank_asset_uses_the_declared_cross_chain_schema(self):
+        positive = self.by_name["tank-live-signed-node-completes"]
+        self.assertEqual("pass", evaluate(positive))
+        broken = copy.deepcopy(positive)
+        broken["rail"]["asset"] = {"kind": "stablecoin-cross-chain", "symbol": "USDC", "decimals": 6}
+        self.assertEqual("error", evaluate(broken))
 
     def test_signed_live_tank_rail_needs_a_node_that_completes_it(self):
         # DACS-4 §9.4: a steward-signed, pinned live tank rail is selectable

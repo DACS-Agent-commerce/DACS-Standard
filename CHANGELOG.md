@@ -80,6 +80,26 @@ These additions change no normative text unless a bullet is marked
 case is a committed vector that a verifier ignoring its rule gets wrong,
 except where a bullet names the earlier check that decides it.
 
+- **Portable signature and HTLC handler boundaries** (CORE §B.7 SIG-7;
+  DACS-4 HTLC-8; **(normative clarification)**) — adds typed signature-gate
+  vectors for Listing, revocation, Agreement, component, rail, bundle, channel,
+  recipe and VerifyResult envelopes, with genuine Ed448 out-of-set negatives,
+  allowed Ed25519/ECDSA and a second seller claim. The separate HTLC handler
+  corpus requires an authenticated exact source-lock observation before
+  destination submission; elapsed estimated finality alone never permits it.
+  This is separate from the settlement evidence schedule bound. CORE defines
+  authenticated key metadata and leaves SR-1 internal format to its binding.
+  DACS-2 defines RecipeSignature and VerifyResultSignature as ComponentSignature
+  and states the composite-reliance invalid-signature mapping as `error`.
+  Compatibility: the three SPA channel, proposed-Agreement and rating cases
+  whose labels contradict a `key:` Ed25519 signer now report `fail`, before
+  algorithm availability. Well-formed unsupported algorithms without such a
+  contradiction remain `indeterminate`; signed artifact shapes are unchanged.
+  FV grows 312 → 326 (both session-party missing keys and nested closure),
+  FRC grows 49 → 54 (signed nested closure). The tank fixture now uses the
+  declared cross-chain AssetSpec; its positive completion record simulates a
+  future capability and grants no production capability claim.
+
 - **One verdict per signature defect** (CORE §B.7 SIG-7; DACS-3 §8.3.3;
   DACS-4 §9.7.0 FV entry, FV-10; DACS-5 SPA-1; **(normative)**) — CORE §B.7
   now orders the verdicts for a signature envelope's own defects, the same in
@@ -108,8 +128,8 @@ except where a bullet names the earlier check that decides it.
   - `tests/test_signature_value_encoding_corpus.py` checks every envelope in
     the FV, FRC and channel corpora against the SIG-7 stage verdicts.
 
-  Compatibility: no verdict at the merge base changes. Every moved verdict
-  belongs to a case this entry adds. A verifier that answered `fail` for a
+  Compatibility: the three SPA key-metadata mismatches described above
+  change from `indeterminate` to `fail`; other merge-base verdicts are unchanged. A verifier that answered `fail` for a
   wire-stage failure on an FV or FRC envelope now answers `error`, and a
   certificate or attestation that names an algorithm other than `ed25519` is
   `error` rather than `fail`.
@@ -263,8 +283,8 @@ except where a bullet names the earlier check that decides it.
   checks. A pinned witness shows each of the six named cases passes a
   verifier that skips only that guard. Reach is measured by line-tracing
   every committed vector through `verify_finality`, as the corpus test calls
-  it. With the cases below, 34 of the reference's 342 `return` statements
-  stay unreached; the base was 161 of 304.
+  it. This is branch-level conformance evidence, not a claim that every
+  reference return is covered.
 - **Pre-review gate self-tests** (`scripts/pre_review_gate.py`) — the gate's
   own tests now reject a manifest missing a code-pinned regression, a matrix
   case whose verdict drifts while its control still matches, and a registry
@@ -415,8 +435,9 @@ except where a bullet names the earlier check that decides it.
     `spa-rfq-unrelated-malformed-and-unavailable-sources-ignored`
     (`reputation-participation-admission-v0.7`), and
     `rsc-wrong-signature-algorithm` (`revocation-state-completeness-v0.8`),
-    keep their verdicts. Each still asks whether a registered algorithm the
-    resolver lacks is unavailable.
+    carry genuine canonical DER. The channel key-metadata mismatch is
+    `fail`; the unrelated-source and RSC cases keep their enclosing procedure
+    dispositions.
   - `tests/test_signature_value_encoding_corpus.py` requires every committed
     `ecdsa-secp256k1` value to be canonical, except four
     `canonical-channel-message-v0.6` cases, which expect `fail`. Those are
@@ -425,8 +446,9 @@ except where a bullet names the earlier check that decides it.
 - **Channel release pin, ECDSA encoding and SDK wire bytes** (CORE §11.1.2,
   §B.7; DACS-3 §8.3.3) — `canonical-channel-message-v0.6` (63 → 67):
   - The fixture release pin moves from `0d92f664`, whose `spec/PROFILE.md`
-    tuple names DACS-5 0.6, to `df7bc202`, the #420 merge on `next`, whose
-    tuple and module front matter equal the fixture's module versions. A test
+    tuple names DACS-5 0.6, to immutable specification commit `55c7837`,
+    which includes SIG-7 and whose tuple and module front matter equal the
+    fixture's module versions. A test
     reads both at the pinned commit.
   - `current-profile-wrong-module-version` (`fail`) pairs the exact pin with
     one wrong module version.

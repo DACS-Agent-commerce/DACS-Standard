@@ -16,7 +16,7 @@
     "nodeCompletedHandlers": "trusted local-operator-policy list of handlers the pinned node completes; required before any operational pay-cross-chain-liquidity-tank availability is selectable (DEMOS-MAPPING A.5)",
     "generator": "scripts/generate_rail_availability_selection_vectors.py"
   },
-  "hash": "9a4999d0d675252033e2c89b9b77e109a5be2dd1fda196f40aa41303e0b941b0",
+  "hash": "84fbde801c50f2c2a962a71b537ee140e09a2010bfa5ae20ba987463940c9e69",
   "count": 36,
   "vectors": [
     {
@@ -1281,8 +1281,17 @@
         "railType": "cross-chain-liquidity-tank",
         "asset": {
           "kind": "stablecoin-cross-chain",
-          "symbol": "USDC",
-          "decimals": 6
+          "canonicalSymbol": "USDC",
+          "routes": [
+            {
+              "sourceChainId": 11155111,
+              "destChainId": 80002,
+              "liquidityTankIds": [
+                "fixture-tank-source",
+                "fixture-tank-destination"
+              ]
+            }
+          ]
         },
         "network": {
           "kind": "cross-chain",
@@ -1302,14 +1311,14 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
-          "value": "iT_7gWyDXqrJaX9dF_h-XOyGyIJSgGaPWW2UC-vbn6ZVTX_Ka4QrdUu7n9e-KlP4Bou9D8aqLv8YLRrD3-_sBg"
+          "value": "BbY1_t51CwuaAsdlOk4VKijCJ9UtS17ytxD2xgOhlbtLPwB0kfOFYoGcYWmwr9iBlS-6yI3PcWyz80RtXkt_AA"
         }
       },
       "ctx": {
         "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
         "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "eccd3f98f920dc05128bc84667043d811bfb04437b6071831d01d7df0c86ee02",
+        "pinnedRailDigest": "ff2854b3acdfdb195aa231b356bed69feade1c40c388c8787d3936e0124c4d86",
         "sessionState": "new",
         "operatorContext": {
           "source": "local-operator-policy",
@@ -1328,8 +1337,17 @@
         "railType": "cross-chain-liquidity-tank",
         "asset": {
           "kind": "stablecoin-cross-chain",
-          "symbol": "USDC",
-          "decimals": 6
+          "canonicalSymbol": "USDC",
+          "routes": [
+            {
+              "sourceChainId": 11155111,
+              "destChainId": 80002,
+              "liquidityTankIds": [
+                "fixture-tank-source",
+                "fixture-tank-destination"
+              ]
+            }
+          ]
         },
         "network": {
           "kind": "cross-chain",
@@ -1351,7 +1369,7 @@
         "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
         "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "67e7580a28a8f36babbff001b08694efb5c66ae8091b5c28806516011264f8b2",
+        "pinnedRailDigest": "1adb71fd836f1f1f9c0c15e61be83f71680c01910657ba1f62218326c4c25339",
         "sessionState": "new",
         "operatorContext": {
           "source": "local-operator-policy",
@@ -1369,8 +1387,17 @@
         "railType": "cross-chain-liquidity-tank",
         "asset": {
           "kind": "stablecoin-cross-chain",
-          "symbol": "USDC",
-          "decimals": 6
+          "canonicalSymbol": "USDC",
+          "routes": [
+            {
+              "sourceChainId": 11155111,
+              "destChainId": 80002,
+              "liquidityTankIds": [
+                "fixture-tank-source",
+                "fixture-tank-destination"
+              ]
+            }
+          ]
         },
         "network": {
           "kind": "cross-chain",
@@ -1390,14 +1417,14 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
-          "value": "hGljohRupEuPGEJaSCMHFZkonEoy12gDUOaJjSqzQoPf0GAyb3dB1Xpipexg2-dSePiNKr4KZiNmkAjxq-C0CA"
+          "value": "3sfeZaQsXZASUGvE7s1HMwoiKU40xCJSuTbmkQqHX-3YYzGLjJ8rhvq4vUbqhHpy5Nadz3MyChz3dphgDvZrCQ"
         }
       },
       "ctx": {
         "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
         "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "67e7580a28a8f36babbff001b08694efb5c66ae8091b5c28806516011264f8b2",
+        "pinnedRailDigest": "1adb71fd836f1f1f9c0c15e61be83f71680c01910657ba1f62218326c4c25339",
         "sessionState": "new",
         "operatorContext": {
           "source": "local-operator-policy",
@@ -1415,8 +1442,17 @@
         "railType": "cross-chain-liquidity-tank",
         "asset": {
           "kind": "stablecoin-cross-chain",
-          "symbol": "USDC",
-          "decimals": 6
+          "canonicalSymbol": "USDC",
+          "routes": [
+            {
+              "sourceChainId": 11155111,
+              "destChainId": 80002,
+              "liquidityTankIds": [
+                "fixture-tank-source",
+                "fixture-tank-destination"
+              ]
+            }
+          ]
         },
         "network": {
           "kind": "cross-chain",
@@ -1436,14 +1472,14 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
-          "value": "hGljohRupEuPGEJaSCMHFZkonEoy12gDUOaJjSqzQoPf0GAyb3dB1Xpipexg2-dSePiNKr4KZiNmkAjxq-C0CA"
+          "value": "3sfeZaQsXZASUGvE7s1HMwoiKU40xCJSuTbmkQqHX-3YYzGLjJ8rhvq4vUbqhHpy5Nadz3MyChz3dphgDvZrCQ"
         }
       },
       "ctx": {
         "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
         "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "67e7580a28a8f36babbff001b08694efb5c66ae8091b5c28806516011264f8b2",
+        "pinnedRailDigest": "1adb71fd836f1f1f9c0c15e61be83f71680c01910657ba1f62218326c4c25339",
         "sessionState": "new",
         "operatorContext": {
           "source": "local-operator-policy",
@@ -1464,8 +1500,17 @@
         "railType": "cross-chain-liquidity-tank",
         "asset": {
           "kind": "stablecoin-cross-chain",
-          "symbol": "USDC",
-          "decimals": 6
+          "canonicalSymbol": "USDC",
+          "routes": [
+            {
+              "sourceChainId": 11155111,
+              "destChainId": 80002,
+              "liquidityTankIds": [
+                "fixture-tank-source",
+                "fixture-tank-destination"
+              ]
+            }
+          ]
         },
         "network": {
           "kind": "cross-chain",
@@ -1485,14 +1530,14 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
-          "value": "hGljohRupEuPGEJaSCMHFZkonEoy12gDUOaJjSqzQoPf0GAyb3dB1Xpipexg2-dSePiNKr4KZiNmkAjxq-C0CA"
+          "value": "3sfeZaQsXZASUGvE7s1HMwoiKU40xCJSuTbmkQqHX-3YYzGLjJ8rhvq4vUbqhHpy5Nadz3MyChz3dphgDvZrCQ"
         }
       },
       "ctx": {
         "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
         "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "67e7580a28a8f36babbff001b08694efb5c66ae8091b5c28806516011264f8b2",
+        "pinnedRailDigest": "1adb71fd836f1f1f9c0c15e61be83f71680c01910657ba1f62218326c4c25339",
         "sessionState": "new",
         "operatorContext": {
           "source": "local-operator-policy",
@@ -1577,8 +1622,17 @@
         "railType": "cross-chain-liquidity-tank",
         "asset": {
           "kind": "stablecoin-cross-chain",
-          "symbol": "USDC",
-          "decimals": 6
+          "canonicalSymbol": "USDC",
+          "routes": [
+            {
+              "sourceChainId": 11155111,
+              "destChainId": 80002,
+              "liquidityTankIds": [
+                "fixture-tank-source",
+                "fixture-tank-destination"
+              ]
+            }
+          ]
         },
         "network": {
           "kind": "cross-chain",
@@ -1598,14 +1652,14 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
-          "value": "_a8Chnujv7PyBfTkLpQHRP0wZ3vJIdMAnkCnl4nubO9fvoXClKInFLXMaFBQOhx8ilr7WXSXTOyejF1Hl_mfAg"
+          "value": "TnnCSy6nwRJLX1qeMZvlO9_Nt6fRhM9nsas-4lfiKQInwCGi_9XzlLfJJ-Xqj5ye09h93V3aYzJEKZDtsf0jDg"
         }
       },
       "ctx": {
         "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
         "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": true,
-        "pinnedRailDigest": "64015b3b60cff8c9381a1d547ef2aa9ab1c0314fc2fcac7ada75347435843580",
+        "pinnedRailDigest": "b4466b522687be8a4abc37a24a0b4009e48bea7d9bc60cbf78dbdff22d5a6a37",
         "sessionState": "new",
         "operatorContext": {
           "source": "local-operator-policy",
@@ -1623,8 +1677,17 @@
         "railType": "cross-chain-liquidity-tank",
         "asset": {
           "kind": "stablecoin-cross-chain",
-          "symbol": "USDC",
-          "decimals": 6
+          "canonicalSymbol": "USDC",
+          "routes": [
+            {
+              "sourceChainId": 11155111,
+              "destChainId": 80002,
+              "liquidityTankIds": [
+                "fixture-tank-source",
+                "fixture-tank-destination"
+              ]
+            }
+          ]
         },
         "network": {
           "kind": "cross-chain",
@@ -1644,14 +1707,14 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
-          "value": "GZHTfMVP5YyqqYC-YIyzDb8wiYK3TE7aoTrCZAidUpmszyEZTW1pFfUDk8rRpVts19O0qP1zuHCQAaS-RZzoBA"
+          "value": "Bq9p8VNuSjwZQ2PYE2JyfUDXWoXeOhdULtun_WkPFV5YMjCpMM2e_MV6WXXnylbLbg9FRFFQEiU6pCrzykaWCg"
         }
       },
       "ctx": {
         "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
         "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": true,
-        "pinnedRailDigest": "d881c9d6c539b160729c6a7c90072a8d3b2f35cedab999d290aca5af4f079ab3",
+        "pinnedRailDigest": "6803d9c1fdbfad88ca07603539e4b47505483572d5fb9e5ce606f567df162392",
         "sessionState": "new",
         "operatorContext": {
           "source": "local-operator-policy",
@@ -1669,8 +1732,17 @@
         "railType": "cross-chain-liquidity-tank",
         "asset": {
           "kind": "stablecoin-cross-chain",
-          "symbol": "USDC",
-          "decimals": 6
+          "canonicalSymbol": "USDC",
+          "routes": [
+            {
+              "sourceChainId": 11155111,
+              "destChainId": 80002,
+              "liquidityTankIds": [
+                "fixture-tank-source",
+                "fixture-tank-destination"
+              ]
+            }
+          ]
         },
         "network": {
           "kind": "cross-chain",
@@ -1690,14 +1762,14 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
-          "value": "GIem2XO8uR3YUA-YTBgdLHYTN9rVMypQf9lYUnN3ZYNiwjlEy4_7lB7sG9xZWzbdZwHS3S8gMRJRGkMXW-o1Cw"
+          "value": "ny606JFGDhD_DowlnwABOQhbO35rZs4SJb6-wdbXg4oIH_V20oc5i5LJUKyc5SnQAfhbzSq3dJzCG7amYtCeBw"
         }
       },
       "ctx": {
         "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
         "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": true,
-        "pinnedRailDigest": "386eb8a5952b1859eb781f6e0e27715d056e9600bd0198ea8e551766f7ba74f5",
+        "pinnedRailDigest": "f9ff1e0de58a0b83930832178c49cd9963d82b1726ad0b2d38088a6fb6f09aba",
         "sessionState": "new",
         "operatorContext": {
           "source": "local-operator-policy",

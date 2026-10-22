@@ -55,7 +55,8 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
-| [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 49 | `error` / `fail` / `indeterminate` / `pass` |
+| [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 54 | `error` / `fail` / `indeterminate` / `pass` |
+| [`htlc-submission-safety-v0.1.json`](htlc-submission-safety-v0.1.json) | DACS-4 §9.5.4 HTLC-8 payee submission gate | 10 | `error` / `fail` / `indeterminate` / `pass` |
 | [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 398 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
 | [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 166 | `error` / `fail` / `indeterminate` / `pass` |
@@ -91,8 +92,9 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 312 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 326 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
+| [`signature-authorization-v0.1.json`](signature-authorization-v0.1.json) | CORE §B.7 SIG-7; DACS-1 §6.3.4; DACS-2 §7.4/§7.5; DACS-3 §8.3.3/§8.5; DACS-4 §9.4/§9.7; DACS-5 §10.4.1 | 144 | `error` / `fail` / `indeterminate` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
 | [`sr2-logical-native-resolution-v0.1.json`](sr2-logical-native-resolution-v0.1.json) | CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2 | 39 | `fail` / `indeterminate` / `pass` |
@@ -1590,7 +1592,7 @@ claims: the Ed25519 members carry `key:<64 lowercase hex>` primary-key
 references and the non-Ed25519 algorithm fixtures carry `did:` references.
 Before issuing current live state, the harness requires verifier-owned exact
 release-pin, complete module-tuple, session, and authenticated-participant
-admission. The pin is the immutable `next` merge `df7bc202`, whose
+admission. The pin is the immutable specification commit `55c7837` containing SIG-7, whose
 `spec/PROFILE.md` tuple and module front matter the suite reads and compares
 with the fixture's module versions. The corpus covers missing, partial,
 wrong-pin, wrong-module-version, duplicate-participant, session-mismatch,
@@ -1931,7 +1933,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
 
-297 candidate cases execute consumer-verifiable settlement finality for
+326 candidate cases execute consumer-verifiable settlement finality for
 block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
 liquidity-tank profiles. The consumer derives the model and strength from the
 exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
@@ -2468,3 +2470,28 @@ reproduction for this fixture profile.
 ### RSC policy compatibility
 
 The retained `revocation-state-completeness-v0.8.json` corpus records the earlier reference policy; its RSC case outcomes and signed inputs remain unchanged, while trusted profile-admission tuples track the current composed release. `tests/test_rsc_current_admission_v2.py` exercises the unsigned common-state comparison and independent content/native capacity checks, not authentication of those fixture labels. `tests/test_listing_admission_bridge.py` demonstrates that partial checks and caller-supplied new-session or committed-session labels cannot issue a direct capability. The pinned IBH test fixture separately verifies its committed chain before installing a retained historical capability. Full ordered DACS-1 and authenticated committed-session evaluators remain required for general positive admission; historical replay results are not fresh admission authority.
+
+### Signature authorization and HTLC submission boundaries
+
+`signature-authorization-v0.1.json` supplies signature-gate inputs for nine
+DACS-owned envelope types. `scripts/signature_authorization_reference.py`
+reports the envelope verdict separately from the containing artifact's signature
+authorization gate. Full lifecycle, identity presentation and current-state
+admission remain the enclosing operation's responsibility. The Listing control
+uses a second authorized seller claim. Genuine signed Ed448 artifacts are
+`error` outside the declared set, while registered Ed25519 and ECDSA controls
+pass. Invalid DER range, trailing bytes and nonminimal INTEGERs are `fail`.
+
+`htlc-submission-safety-v0.1.json` exercises the separate HTLC-8 handler gate
+in `scripts/htlc_submission_reference.py`. The harness constructs authority
+from `trustedFixtureAuthority` outside the candidate observation: authenticated
+source profile, exact lock reference, retained session economics and lock terms,
+authority keys and verifier clock. Actual authenticated finality is required;
+elapsed `sourceFinalitySec` with insufficient chain depth refuses submission.
+Only `maySubmit: true` permits the next handler step. No transaction is sent,
+and this synthetic codec establishes no production finality capability.
+
+FV AP2 cases run under the explicit `implementedAP2ProtocolVersions: ["0.2"]`
+fixture policy. A verifier supporting additional versions selects this fixture
+policy when reproducing the unsupported-version cases. The field is harness
+metadata, not candidate-supplied version authority.

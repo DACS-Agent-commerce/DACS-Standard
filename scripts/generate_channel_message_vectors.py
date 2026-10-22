@@ -99,7 +99,7 @@ UNRESOLVED_REF = "did:example:unresolved"
 # the generated corpus only inside explicit legacy-import compatibility
 # cases and the current-read refusal regression; the current arm refuses it.
 HISTORICAL_ALICE_REF = f"cci:{public_hex(ALICE)}"
-CURRENT_RELEASE_PIN = "df7bc202ebdc179a59d61a8221072f33f482b933"
+CURRENT_RELEASE_PIN = "55c783790b3d288c3defdf3e6b3377399cf2aafe"
 CURRENT_MODULE_VERSIONS = {
     "core": "0.3", "dacs1": "0.8", "dacs2": "0.6",
     "dacs3": "0.6", "dacs4": "0.8", "dacs5": "0.7",

@@ -1296,6 +1296,22 @@ def document() -> dict:
                  "that is not a 32-byte Base64URL value",
          "input": malformed_leg_input},
     ]
+    for path in (
+        ("observation",), ("observation", "transactionRef"),
+        ("observation", "inclusionBlock"), ("observation", "authenticatedHead"),
+        ("observation", "authorityEvidence"),
+    ):
+        nested = copy.deepcopy(observation)
+        node = nested
+        for part in path:
+            node = node[part]
+        node["unexpectedMember"] = 1
+        vectors.append({
+            "name": "response-nested-extra-member-" + "-".join(path),
+            "expected": "error", "operation": "verify",
+            "note": "a genuinely signed and acquired observed response retains an extra member below its arm",
+            "input": closed_member_input("observer-a", {"status": "observed", "observation": nested}),
+        })
     vectors.extend(
         {"name": name, "expected": "error", "operation": "verify", "note": note,
          "input": malformed_policy(mutate)}

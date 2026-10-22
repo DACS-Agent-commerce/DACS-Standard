@@ -1486,6 +1486,10 @@ type SerializedSessionContext = {
   priorPhaseOutputs: Record<string, unknown> // accumulated contextDelta from completed phases
   startedAt: number                         // unix ms
 }
+type SubstrateSigner = {
+  isAvailable(): boolean                   // immediate, side-effect-free readiness check
+  sign(payload: Uint8Array): Uint8Array | Promise<Uint8Array>
+}
 type SessionContext = SerializedSessionContext & {
   signer: SubstrateSigner                   // trusted runtime capability, never serialized
 }
@@ -1508,6 +1512,19 @@ member MUST be refused; input bytes never supply a signing capability. If the
 runtime capability is unavailable, dispatch is `indeterminate` with
 `ok: false`, `errorClass: "substrate"`, and no rail call. Hydration preserves
 all serialized members and does not mutate the received input.
+
+`SubstrateSigner` is a verifier-owned runtime interface, implemented directly
+or by an adapter to the substrate's signing API. `sign` signs the exact supplied
+payload bytes. Before dispatch the orchestrator MUST require both operations
+to be callable and `isAvailable()` to return the boolean `true`. The readiness
+check MUST return immediately from local runtime state without signing,
+broadcasting, or network access. A missing operation, a non-boolean readiness
+result, `false`, or a readiness exception means the capability is unavailable
+and takes the `indeterminate` result above. A readiness exception retains its
+cause in the failure reason. The admission check MUST NOT call `sign`; a
+signing failure during handler execution follows the handler's substrate
+failure policy. This interface adds no restriction on the substrate's key
+encoding or authorized signing identities.
 
 Conformance: phase handlers MUST accept a SessionContext and return a PhaseHandlerResult. On ok: true the orchestrator merges contextDelta into the corresponding PhaseEntry and records txRefs in the session event log; on ok: false the orchestrator classifies the failure per errorClass and applies the retry policy in chapter 10.
 

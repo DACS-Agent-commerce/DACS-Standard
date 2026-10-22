@@ -650,6 +650,15 @@ type ListingTerms = {
 }
 ```
 
+**Rule-reference locations.** In `conflictOfLawsRule` and the auction
+`selectionRule` (§8.4.3, §9.3), `<uri>` is a nonempty RFC 3986 URI-reference:
+an absolute URI or a relative reference, including a substrate storage identifier
+such as `stor-rule`. URI syntax uses ASCII characters and `%` followed by two
+hexadecimal digits for each percent escape. The auction form additionally
+requires the authoritative lowercase 64-hex SHA-256 `<contentHash>` before the
+location: `rule-ref:<contentHash>:<uri>`. A relative location does not replace
+that content-hash binding or establish that the referenced rule is available.
+
 **Listing publisher and counterparty roles.** The `seller` field is the **listing publisher and listing signer** for all listing kinds; the field name is retained for wire compatibility with v0.1 listings. For ordinary listings — fixed-price, RFQ, and sealed-envelope demand (`negotiate-sealed-envelope` or `negotiate-sealed-envelope-complete`, absent or `"demand"` `auctionMode`) — the listing publisher is also the agreement `seller`, and `buyerRequirement` gates the buyer / bidders. For sealed-envelope procurement (`negotiate-sealed-envelope-procurement` or `negotiate-sealed-envelope-procurement-complete`, DACS-3 §8.4.3 SE-8 / §8.4.4 SAC-9), the listing publisher is the prospective agreement `buyer`, the winning bidder is the agreement `seller`, and `buyerRequirement` gates the bidders / suppliers eligible to submit bids. Implementations MUST NOT infer final AgreementArtifact roles from the DACS-1 field names alone; DACS-3 assigns agreement roles from the negotiation pattern and pinned mode. Logical-address variables named `sellerPrimaryClaim` and revocation markers continue to use the listing publisher's primary claim.
 
 **`cancellationPolicy` semantics.** The field MAY be advertised. A signed listing advertising **`pre-commit`** grants a reputation-neutral cancellation right: a party that withdraws while the session is still pre-commit (a `vet-pending` / `negotiate-pending` state, before `commit-completed`) MAY mark the resulting `aborted-by-self` as a policy-permitted cancellation, which a verifier honours as reputation-neutral after resolving this **signed** listing and confirming the policy and the pre-commit timing (DACS-5 §10.3.1 ST-10). The neutrality derives from the *signed, advertised* policy — the mutual notice is what earns it; an unannounced withdrawal (no advertised policy, or a `none` policy) remains an ordinary `aborted-by-self` per §10.3.1 ST-3, and a withdrawal whose listing cannot be resolved is treated as indeterminate, never as a free neutral exit (ST-10 trichotomy).

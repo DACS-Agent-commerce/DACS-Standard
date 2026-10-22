@@ -62,7 +62,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 13 | `fail` / `indeterminate` / `pass` |
-| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 398 | `error` / `fail` / `indeterminate` / `pass` |
+| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 401 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
 | [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 166 | `error` / `fail` / `indeterminate` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
@@ -93,7 +93,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | Historical DACS v0.1 §9.5.8 (SB-2); SB-1 key only | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-binding-required-v0.8.json`](sb3-binding-required-v0.8.json) | DACS-4 §9.5.8 SB-3 required-binding four-value gate | 22 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
-| [`sealed-auction-completeness-v0.6.json`](sealed-auction-completeness-v0.6.json) | DACS-3 §8.4.4 SAC-1..SAC-12 | 82 | `fail` / `indeterminate` / `pass` |
+| [`sealed-auction-completeness-v0.6.json`](sealed-auction-completeness-v0.6.json) | DACS-3 §8.4.4 SAC-1..SAC-12 | 85 | `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
@@ -219,7 +219,7 @@ this Work-result closure.
 
 ### `sealed-auction-completeness-v0.6.json` — §8.4.4 SAC-1..SAC-12
 
-82 deterministic cases exercise the structurally distinct complete
+85 deterministic cases exercise the structurally distinct complete
 sealed-envelope profile. Real Ed25519 signatures cover bidder commit/reveal
 records, the selection receipt, its modeled candidate-set binding proof, and
 the publisher/winner agreement. Each commit/reveal record carries a
@@ -240,9 +240,10 @@ verifier projection of the listing-derived currency. They are not a new
 `PricingSpec` wire member, a full signed reserve-free Listing fixture, or a
 native listing-resolution claim.
 
-An independent Node.js evaluator separately executes 59 named controls from the
-82-case corpus and reproduces the exact candidate-set
-root, receipt content hash, demand/mode/role checks, reveal-deadline boundary,
+An independent Node.js evaluator separately executes 62 named controls from the
+85-case corpus and reproduces the exact candidate-set
+root, receipt content hash, demand/mode/role checks, receipt and pricing
+selection-rule equality with the signed phase rule, reveal-deadline boundary,
 non-USD filtering, exact record-shape refusal, exact arbitrary-length ordering,
 inclusive reserve result, context-bound commitment recomputation, early-reveal
 refusal, and winner for the selected controls,

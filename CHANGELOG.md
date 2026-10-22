@@ -73,6 +73,20 @@ The format used per release:
   signed top-level `sessionNonce`; SIWD uses its signed message `Nonce`; and the
   receiving phase orchestrator issues the verifier-identity challenge.
 
+### Changed — Listing rule-reference locations
+
+- **Rule-reference location syntax** (DACS-1 §6.3.4; DACS-3 §8.4.3; DACS-4
+  §9.3) — DACS-1 now states that `<uri>` in `conflictOfLawsRule` and the
+  auction `selectionRule` is a nonempty RFC 3986 URI-reference: an absolute URI
+  or a relative reference, including a substrate storage identifier such as
+  `stor-rule`, written in ASCII with `%` plus two hexadecimal digits for each
+  escape. The auction form `rule-ref:<contentHash>:<uri>` requires the
+  authoritative lowercase 64-hex SHA-256 before the location. A relative
+  location does not replace the DACS-3 §8.4.3 content-hash binding or establish
+  that the referenced rule is available. The reference Listing shape check
+  (`scripts/listing_artifact.py`) now refuses other spellings. No signed
+  artifact shape or signature domain changes.
+
 ### Changed — current-delivery admission corrective boundary
 
 - **Breaking pre-v1 correction** (CORE v0.3 §11.1.2, DACS-4 v0.8 PDE-7/PDE-8,
@@ -1602,7 +1616,12 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   empty array or a companion that is not an object carrying `identityBundle` or
   `compositeRecord` is a PC-1 rejection on either path, matching IBH `error`.
   The IBH-1..IBH-5 rerun decides each companion's members before any rail
-  call.
+  call. CORE §B.5 separates serialized context from the runtime signer and
+  defines its callable signing and local readiness operations. Dispatch requires
+  boolean-true readiness without signing; an unavailable capability returns
+  `indeterminate` with `errorClass: "substrate"` before any rail call. The IBH
+  corpus carries serialized contexts and its evaluator supplies runtime
+  authority separately, submitting the exact payment input to PC-1.
 - **Amendment target** (DACS-4 §9.7.1 AMEND-1) — an amendment consumer MUST
   resolve `amendsEvidenceRef` and recompute its content hash before reading any
   target member, admitting the amendment and the target from their exact

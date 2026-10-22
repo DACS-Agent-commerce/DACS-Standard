@@ -52,7 +52,7 @@ import sys
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Protocol
 from urllib.parse import unquote
 
 from cryptography.exceptions import InvalidSignature
@@ -182,6 +182,14 @@ def _shapes():
     return dacs5_reference
 
 
+class SubstrateSigner(Protocol):
+    """CORE B.5 runtime adapter; is_available never signs or uses the network."""
+
+    def is_available(self) -> bool: ...
+
+    def sign(self, payload: bytes) -> bytes: ...
+
+
 @dataclass(frozen=True)
 class PhaseBinding:
     """Authenticated invocation metadata supplied by the enclosing verifier.
@@ -199,7 +207,7 @@ class PhaseBinding:
     capability_gated: bool = False
     identity_bound: bool = False
     identity_binding: Callable[[dict], str] | None = None
-    signer: Any = None
+    signer: SubstrateSigner | None = None
 
     @property
     def atomic(self) -> bool:
@@ -606,6 +614,21 @@ def _require_identity_binding(binding: PhaseBinding, phase_input: dict) -> None:
         raise InputAuthorityUnavailable(f"IBH-1..IBH-5 rerun did not verify ({verdict!r})")
 
 
+def _require_runtime_signer(signer: SubstrateSigner | None) -> None:
+    """Validate CORE B.5 capability/readiness without a signing operation."""
+    try:
+        if not (callable(getattr(signer, "sign", None))
+                and callable(getattr(signer, "is_available", None))):
+            raise InputAuthorityUnavailable("runtime SubstrateSigner operations unavailable")
+        if signer.is_available() is not True:
+            raise InputAuthorityUnavailable("runtime SubstrateSigner unavailable")
+    except InputAuthorityUnavailable:
+        raise
+    except Exception as exc:  # readiness failures keep their substrate cause
+        raise InputAuthorityUnavailable(
+            f"runtime SubstrateSigner unavailable ({type(exc).__name__}: {exc})") from exc
+
+
 def dispatch_payment(binding: PhaseBinding, phase_input: Any, handler: Callable) -> dict:
     """Run the PC-1 input gate and, on the identity-bound path, the verifier's
     IBH-1..IBH-5 rerun before the enclosing handler can call a rail."""
@@ -613,8 +636,7 @@ def dispatch_payment(binding: PhaseBinding, phase_input: Any, handler: Callable)
         check_payment_input(binding, phase_input)
         if binding.identity_bound and not binding.atomic:
             _require_identity_binding(binding, phase_input)
-        if binding.signer is None:
-            raise InputAuthorityUnavailable("runtime SubstrateSigner unavailable")
+        _require_runtime_signer(binding.signer)
     except InputArmError as exc:
         return {"status": "rejected", "ok": False, "errorClass": "permanent",
                 "reason": str(exc)}

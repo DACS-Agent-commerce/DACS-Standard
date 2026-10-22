@@ -19,8 +19,10 @@ Native `pay-dem` settlement requires a bound, exactly `confirmed` native-send
 record, its four send edits, independently authenticated committed payment
 balances, and verified `bft-final` inclusion. Inclusion or a status label alone
 does not establish payment. DEM-1..DEM-7 define durable retention before the
-first egress, one uninterrupted confirm/broadcast submission, re-read-only
-recovery, proof-backed failure and consumer admission. A possibly submitted
+first egress, confirm/broadcast submission, guarded retained-byte recovery,
+proof-backed failure and consumer admission. Recovery requires record/mempool
+re-reads and independently authenticated active nonce enforcement; replacements
+remain forbidden. A possibly submitted
 unresolved transfer remains non-terminal through ST-7 pause expiry until success
 is anchored or DEM-4 proves failure; elapsed time never authorizes another
 payment. The Demos mapping pins the node/SDK semantics and the one-block window
@@ -45,7 +47,9 @@ the failed execution and its finalized inclusion before replacement.
 
 Compatibility: these rules form part of the existing unreleased DACS-4 v0.8
 candidate. Earlier inclusion-only Demos FV fixtures need independently
-authenticated execution results and an explicit destination authority. Existing
+authenticated execution results and an explicit destination authority. The old
+raw transaction body shape is now `error`; native inclusion bodies carry
+`txHash` rather than an execution `status`. Existing
 agreements and evidence keep their signature domains; the optional disposition
 retention carrier is required for new pay-dem `closed-cannot-settle` records.
 No production Demos applied-payment proof codec or result authority is registered

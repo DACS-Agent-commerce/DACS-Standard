@@ -93,7 +93,7 @@ defines no SB-3 binding for `pay-dem`.
 The `pay-dem-rfq-*` and `verifier-indexer.json` examples predate this scoping
 and are not narrowed by it. They pin `9a1ca62`, whose conformance manifest is
 byte-identical to v0.4's. On the same single candidate case,
-`pb2-tier1-pay-dem-intrinsic-matches`, both `pay-dem-rfq-*` examples claim
+`pb2-tier1-pay-dem-intrinsic-matches` (a historical identifier whose current vector uses tier 3), both `pay-dem-rfq-*` examples claim
 `pay-dem` as `conformance-tested` with test status `passed`, and claim the
 DEM rail against RD-1..RD-5; the seller also names PB-1..PB-3.
 `verifier-indexer.json` claims `derive-reputation` as `conformance-tested`

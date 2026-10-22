@@ -1072,7 +1072,8 @@ class PayDemCrashRestartTests(unittest.TestCase):
         writer.store.write(JOURNAL, {
             "start": writer.start, "progress": "confirm-returned",
             "retainedTransfer": generator.retained(), "signedTransaction": generator.signed(),
-            "confirmResponse": generator.validity_response(generator.signed()), "result": None,
+            "confirmResponse": generator.validity_response(generator.signed()), "confirmNode": writer.node.identity,
+            "result": None,
         })
         entry = writer.store.read(JOURNAL)
         self.assertTrue(writer._permits("broadcast-retained", entry))

@@ -122,7 +122,7 @@ def validate_set(path: str) -> tuple[list[str], int]:
             "status": "superseded",
             "currentCollisionAuthority": False,
             "normativeScope": (
-                "settlement-tx-id-canonicalisation-and-same-tuple-idempotency-only"
+                "non-demos-settlement-tx-id-canonicalisation-and-same-tuple-idempotency-only"
             ),
             "supersededBy": CURRENT_SB2_SET,
         }

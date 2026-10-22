@@ -2098,6 +2098,10 @@ def _verify(value: Any, trusted: Any) -> dict:
         refs = value["evidence"].get("paymentTxRefs")
         if not isinstance(refs, list) or len(refs) != 1:
             return _result("error", "single-chain evidence requires exactly one transaction reference")
+        # This codec's BFT-native rail is pay-dem (RD-5, DEM-7, FV-5).
+        # Another reference kind must never bypass native execution checks.
+        if model == "bft-final" and (not isinstance(refs[0], dict) or refs[0].get("kind") != "demos"):
+            return _result("error", "bft-final native payment requires a Demos transaction reference")
         result, event = _verify_chain_observation(
             context.get("observation"), profile["settlement"], refs[0], expected, trusted,
             native_send=model == "bft-final",

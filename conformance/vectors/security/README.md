@@ -67,7 +67,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
 | [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 552 | `error` / `fail` / `indeterminate` / `pass` |
-| [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
+| [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 30 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
@@ -1493,8 +1493,8 @@ record and the FV, SB-1 and PB verdicts pass, and when the payee has not
 already admitted the same `demos:{txHash}` for another `(jobId, phaseIndex)`
 (SB-2; `pay-dem` has no settlement-side job binding). The payee's delivery
 check presents its own admissions (`consumerAdmissions`) with the evidence,
-and they are projected through SB-1 first: a verified legacy spelling of the
-same hash collides, and an admitted reference that cannot be projected is
+and they are projected through SB-1 first: the same canonical hash collides;
+Demos has no legacy hash spelling, and an admitted reference that cannot be projected is
 `error`. Those admissions are the snapshot of the payee's durable admission
 index (`admissionIndex`: `revision` and `admissions`), and the presented list
 must equal it as a multiset of exact JCS bytes. A presented history that omits
@@ -1509,7 +1509,7 @@ step returns: `call` is its `pre-egress-check` (a balance read before any
 `confirm` or broadcast carried the signed bytes), `confirm` or `broadcast`,
 `outcome` what it returned, and `broadcastState` and `restartedSinceRetention`
 what the handler reads back from its journal. Once the bytes may have left,
-every outcome is `substrate` with the retained hash kept and no further call:
+every outcome is `substrate` with the retained hash kept; a further submission requires every DEM-6 recovery condition:
 a `confirm` refused for insufficient balance or otherwise not valid, a
 transport error, a timeout, an unrecognized reply, a broadcast refused by the
 node or by the handler's own DEM-1 check after a valid `confirm`, and an
@@ -1532,7 +1532,7 @@ one; the caller's `--boot` only labels its egress, so a restart that repeats
 it is still a restart. The payer's first retention is a create-if-absent under
 the journal lock, it journals each call as possibly sent before making it,
 and its later journal saves and the payee's index writes are conditional on
-the state they were read as. After a restart no signed effect leaves, every
+the state they were read as. With no DEM-6 recovery authority configured, after a restart no signed effect leaves; every
 egress carried the bytes the stored journal already held, the journal file,
 its directory and each directory the store created (in its parent) were
 fsynced before the first egress, a new delivery record and then its directory
@@ -2673,3 +2673,13 @@ reproduction for this fixture profile.
 ### RSC policy compatibility
 
 The retained `revocation-state-completeness-v0.8.json` corpus records the earlier reference policy; its RSC case outcomes and signed inputs remain unchanged, while trusted profile-admission tuples track the current composed release. `tests/test_rsc_current_admission_v2.py` exercises the unsigned common-state comparison and independent content/native capacity checks, not authentication of those fixture labels. `tests/test_listing_admission_bridge.py` demonstrates that partial checks and caller-supplied new-session or committed-session labels cannot issue a direct capability. The pinned IBH test fixture separately verifies its committed chain before installing a retained historical capability. Full ordered DACS-1 and authenticated committed-session evaluators remain required for general positive admission; historical replay results are not fresh admission authority.
+
+The native-payment reference also exposes explicit DEM-6 `recover`: after record
+and mempool re-reads find no transaction, an independently configured source
+must establish active nonce enforcement for the rail's exact network/genesis.
+Only then may the serialized, journaled attempt send the original retained
+bytes through a fresh same-node confirm/broadcast pair. The native-payment contract and
+recovery regression tests cover this optional path, malformed JSON numbers,
+verifier-owned applied-payment authentication, and consistently upper-case
+FV evidence. A presented applied-transfer authentication flag is only an
+abstract oracle input; the reference payee replaces it using its own source.

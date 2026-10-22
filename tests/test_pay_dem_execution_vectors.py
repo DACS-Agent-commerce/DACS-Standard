@@ -348,8 +348,8 @@ def _safe_integer(value) -> bool:
     return (
         isinstance(value, (int, float))
         and not isinstance(value, bool)
-        and value == int(value)
         and 0 <= value <= SAFE_MAX
+        and value == int(value)
     )
 
 
@@ -2802,9 +2802,9 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             trusted = {
                 "demosExecutionPolicy": value.get("fv5Policy"),
                 "demosRecordProfile": DEMOS_RECORD_PROFILE,
-                "demosPayerKeyClaims": {"payer": phase.get("payerKeyClaims") or [{
+                "demosPayerKeyClaims": {"payer": phase.get("payerKeyClaims", [{
                     "claim": "key:" + str(party_address(phase.get("payerPayingKey", transfer.get("sender")),
-                                                        frozenset())), "control": "presentation-signature"}]},
+                                                        frozenset())), "control": "presentation-signature"}])},
                 "partyKeys": {"payee": base64.urlsafe_b64encode(bytes.fromhex(payee)).decode().rstrip("=")},
             }
             expected = {"jobId": job, "phaseIndex": index, "payer": "payer", "payee": "payee",
@@ -2821,6 +2821,14 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             if applied is None and isinstance(read.get("appliedTransfer"), dict):
                 applied = {k: v for k, v in read["appliedTransfer"].items() if k in FV5_APPLIED_TRANSFER}
             return _verify_demos_record(verified["record"], reference, expected, trusted, applied)[0]
+
+        # An explicitly empty controlled-claim list is malformed, never the
+        # default party claim. Keep the FV cross-check's input faithful too.
+        empty_claims = json.loads(json.dumps(self.cases["delivery-fv-form-result"]["protocolInput"]))
+        read = empty_claims["recordRead"]
+        self.assertEqual("pass", fv_record(read["executionResult"], empty_claims["signedEvidence"]["txRef"], empty_claims, read))
+        empty_claims["phase"]["payerKeyClaims"] = []
+        self.assertEqual("error", fv_record(read["executionResult"], empty_claims["signedEvidence"]["txRef"], empty_claims, read))
 
         checked = {"consumer": 0, "handler": 0, "apr": 0}
         for vector in self.data["vectors"]:
@@ -3308,13 +3316,12 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         handler recorded, and a missing entry never shows that nothing left.
         The liveness cost is stated beside the rule."""
         spec = SPEC.read_text(encoding="utf-8")
-        self.assertIn("A transfer the handler finds retained when it starts or restarts MUST therefore be treated "
-                      "as possibly broadcast, whatever progress its journal records, and the handler MUST NOT "
-                      "conclude from a missing entry that nothing left.", spec)
+        self.assertIn("A transfer found after a restart is possibly broadcast, whatever progress its journal records", spec)
+        self.assertIn("neither a missing journal entry nor a fresh start proves that nothing left", spec)
         self.assertNotIn("A crash can fall between a call that carried the signed transaction and the journal entry", spec)
-        self.assertIn("A start or restart between the retention and the first `confirm` leaves the handler with a "
-                      "retained transfer it must treat as possibly broadcast", spec)
-        self.assertIn("the phase stays non-terminal `substrate` under the ST-7 pay-dem exception", spec)
+        self.assertIn("Recovery can complete a deliver-first pipeline (PIPE-4)", spec)
+        self.assertIn("byte-identical retained signed transaction", spec)
+        self.assertIn("DEM-5 open payments still have no wall-clock end", spec)
         for name in ("confirm-after-restart-refused", "replacement-after-restart-refused",
                      "broadcast-after-restart-from-confirm-returned-refused", "broadcast-gate-restart-unstated"):
             with self.subTest(name=name):
@@ -3765,7 +3772,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         demos = DEMOS.read_text(encoding="utf-8")
         workflow = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("status is exactly `confirmed`", spec)
-        self.assertIn("MUST NOT broadcast it again or broadcast a replacement transfer", spec)
+        self.assertIn("MUST NOT sign, retain or send a replacement transfer", spec)
         self.assertIn("verify the included\n  transaction record under §9.5.9 DEM-7", spec)
         self.assertIn('`errorClass: "substrate"`', spec)
         self.assertIn("(`pay-evm-erc20`, `pay-solana-spl`, `pay-ap2`, `pay-x402`, `pay-dem`)", spec)
@@ -3862,7 +3869,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                       "applied-payment authority that contradicts them is `fail`", spec)
         self.assertNotIn("a resume after `failed-substrate`", spec)
         self.assertNotIn("any resume after DEM-4", spec)
-        self.assertIn("is a post-terminal read that changes no session state", spec)
+        self.assertIn("its later proof verification or re-read changes no session state", spec)
         self.assertIn("the signed transaction itself and its hash, signed nonce", spec)
         consumer = self.cases["consumer-fee-separated-edits-uncommitted-payment"]
         handler = self.cases["confirmed-fee-separated-edits-uncommitted-payment"]

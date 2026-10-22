@@ -34,7 +34,7 @@ CORPUS = (
     / "security"
     / "identity-bundle-hash-binding-v0.1.json"
 )
-CORPUS_SHA256 = "2c4ac948bcab663257fc50cd545773075a11c56952d88c709b92ade7cccff8bb"
+CORPUS_SHA256 = "617710f2ef45f19eef8f776466de7bf0fbddaa8f374df89a3ce59ab5cb02b404"
 COMMITTED_BOUNDARY = "past-authenticated-agreement-commitment"
 
 

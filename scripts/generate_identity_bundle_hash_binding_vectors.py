@@ -3266,6 +3266,26 @@ def build_vectors() -> list[dict[str, Any]]:
         ],
         reason="sealed-deadline-too-soon",
     ))
+    # PS-1/PS-2 at session admission: the complete sealed phase and its adjacent
+    # selection-bound commitment stay intact, so only the pipeline-wide
+    # cardinality check can refuse a second negotiation or commitment.
+    for label, kind, reason in (
+        ("second-negotiation", "negotiate-fixed-price", "negotiate-phase-cardinality-invalid"),
+        ("second-commitment", "commit-agreement", "commitment-phase-cardinality-invalid"),
+        ("second-selection-bound-commitment", SELECTION_BOUND_PHASE,
+         "commitment-phase-cardinality-invalid"),
+    ):
+        vectors.append(vector(
+            f"sealed-session-admission-{label}-refused", "fail",
+            scenario_name="selectionBoundDemand",
+            stage="session-admission",
+            operation="validate-selection-bound-session-admission",
+            mutations=[
+                set_mutation(sealed_deadline_path, NOW + 40_000),
+                append_mutation(["listing", "pipeline"], {"kind": kind}),
+            ],
+            reason=reason,
+        ))
     for artifact in ARTIFACTS:
         vectors.append(vector(
             f"modeled-old-reader-{artifact}",

@@ -33,6 +33,9 @@ class PayDemSweepContractTests(unittest.TestCase):
         case = next(v for v in data['vectors'] if v['name'] == 'fresh-job-after-conclusive-no-settlement')
         base = apr.materialize(data, case)
         self.assertEqual(('pass', None), apr.evaluate(base))
+        unknown_policy = copy.deepcopy(base)
+        unknown_policy['runtime']['payDemReconciliationTrust']['fv5Policy']['kind'] = 'unregistered-result-policy'
+        self.assertEqual(('indeterminate', 'prior-disposition-proof'), apr.evaluate(unknown_policy))
         for label in ('empty', 'attestations', 'unknown', 'record', 'kind'):
             value = copy.deepcopy(base)
             context = value['runtime']['priorPaymentContext']

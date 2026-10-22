@@ -344,7 +344,7 @@ def verify_prior_payment_context(vector, resolved=None):
                 if (result is not None and not pay_dem.demos_execution_result_shape(result)):
                     return "error", "prior-disposition-proof"
                 policy_verdict = pay_dem.demos_execution_policy(policy)[0]
-                if policy_verdict == "error" or (isinstance(result, dict) and isinstance(policy, dict)
+                if policy_verdict == "error" or (policy_verdict == "pass" and isinstance(result, dict)
                                                 and result.get("kind") != policy.get("kind")):
                     return "error", "prior-disposition-proof"
                 if not isinstance(result, dict) or not isinstance(reference, dict):

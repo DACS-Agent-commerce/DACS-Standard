@@ -41,6 +41,8 @@ WORKFLOW = ROOT / ".github/workflows/validate.yml"
 # corresponding wrong implementation; every vector names the guards whose
 # removal must change its result.
 GUARDS = frozenset({
+    "completion-same-node", "completion-reference-window",
+    "recovery-requires-all-conditions", "nonce-exhaustion-proof-valid",
     # DEM-1
     "sign-allowed-when-configured",
     # DEM-1: an unprojectable party address is refused before signing
@@ -737,6 +739,13 @@ def classify(protocol_input: dict, off) -> tuple[str, dict]:
 def valid_failure_proof(proof, transfer, off) -> bool:
     if not (isinstance(proof, dict) and proof.get("classification") == "permanent"):
         return False
+    if proof.get("kind") == "nonce-exhaustion":
+        if "nonce-exhaustion-proof-valid" in off:
+            return True
+        result = proof.get("authentication")
+        return (complete_transfer(transfer) and isinstance(result, dict)
+                and complete_transfer(result.get("retainedTransfer"))
+                and _jcs_equal(result.get("retainedTransfer"), transfer))
     projection = decode(proof.get("record"), off)
     return (
         projection is not None
@@ -937,6 +946,57 @@ def proven_failure(read, protocol_input: dict, off) -> bool:
         read.get("inclusionProof"), read.get("record"), read.get("executionResult"), protocol_input, off)
 
 
+def nonce_exhaustion_valid(proof, protocol_input):
+    """DEM-4 nonce terminal: quorum-signed absence and consumed nonce at one
+    finalized block, under verifier-owned fork and execution-policy trust."""
+    from settlement_finality_reference import _verify_ed25519, DEMOS_EXECUTION_DOMAIN, hash_value
+    if not isinstance(proof, dict) or set(proof) != {"kind", "classification", "authentication", "inclusionProof"}:
+        return False
+    if proof["kind"] != "nonce-exhaustion" or proof["classification"] != "permanent":
+        return False
+    result = proof["authentication"]
+    fields = {"kind", "networkId", "genesisHash", "blockId", "blockNumber", "retainedTransfer",
+              "accountNonce", "recordAbsent", "nonceEnforcement", "attestations"}
+    transfer = protocol_input.get("retainedTransfer")
+    if not (isinstance(result, dict) and set(result) == fields and complete_transfer(transfer)
+            and result["kind"] == "fixture-nonce-exhaustion-v1"
+            and complete_transfer(result["retainedTransfer"])
+            and _jcs_equal(result["retainedTransfer"], transfer)
+            and {k: result[k] for k in NETWORK} == _network(protocol_input.get("railNetwork"))
+            and isinstance(result["blockId"], str) and HASH.fullmatch(result["blockId"])
+            and _safe_integer(result["accountNonce"])
+            and result["accountNonce"] >= transfer["nonce"] and result["recordAbsent"] is True
+            and _safe_integer(result["blockNumber"])
+            and isinstance(result["attestations"], list) and len(result["attestations"]) <= 128):
+        return False
+    fork = protocol_input.get("nonceEnforcement")
+    if not (isinstance(fork, dict) and set(fork) == {"networkId", "genesisHash", "activationHeight", "sealedGenesisHash"}
+            and {k: fork[k] for k in NETWORK} == protocol_input.get("railNetwork")
+            and _jcs_equal(result["nonceEnforcement"], fork)
+            and _safe_integer(fork["activationHeight"]) and fork["activationHeight"] <= result["blockNumber"]
+            and isinstance(fork["sealedGenesisHash"], str) and HASH.fullmatch(fork["sealedGenesisHash"])):
+        return False
+    policy = protocol_input.get("fv5Policy")
+    if demos_execution_policy(policy)[0] != "pass":
+        return False
+    payload = {k: v for k, v in result.items() if k != "attestations"}
+    digest, counted = hash_value(payload), set()
+    for attestation in result["attestations"]:
+        if not (isinstance(attestation, dict) and set(attestation) == {"authorityRef", "algorithm", "value"}):
+            continue
+        signer = attestation["authorityRef"]
+        if (isinstance(signer, str) and signer not in counted and signer in policy["authorityKeys"]
+                and attestation["algorithm"] == "ed25519"
+                and _verify_ed25519(policy["authorityKeys"], signer, DEMOS_EXECUTION_DOMAIN, digest, attestation["value"])):
+            counted.add(signer)
+    if len(counted) < policy["threshold"]:
+        return False
+    observation = proof["inclusionProof"]
+    reference = observation.get("transactionRef") if isinstance(observation, dict) else None
+    return (isinstance(reference, dict) and reference.get("blockNumber") == result["blockNumber"]
+            and bft_final(observation, reference, result["blockId"], protocol_input, frozenset()))
+
+
 def authenticated_proof(proof, protocol_input: dict, off) -> bool:
     """The proof carries FV-5's signed execution result for its own failed
     record, on the rail's network, and FV's bft-final inclusion of its
@@ -946,6 +1006,8 @@ def authenticated_proof(proof, protocol_input: dict, off) -> bool:
     itself and never trusts the handler that stored them."""
     if not isinstance(proof, dict):
         return False
+    if proof.get("kind") == "nonce-exhaustion":
+        return "nonce-exhaustion-proof-valid" in off or nonce_exhaustion_valid(proof, protocol_input)
     if "fv5-authentication-is-a-signed-result" in off and proof.get("authentication") == "fv5-bft-final":
         # The wrong implementation takes the handler's label for FV-5.
         return True
@@ -983,7 +1045,8 @@ def apr_evidence(protocol_input: dict, off) -> tuple[str, dict]:
             and not valid_failure_proof(proof, protocol_input["retainedTransfer"], off)):
         return refused
     if not (isinstance(proof, dict) and proof.get("classification") == "permanent"
-            and (decode(proof.get("record"), off) or {}).get("status") == "failed"):
+            and (proof.get("kind") == "nonce-exhaustion"
+                 or (decode(proof.get("record"), off) or {}).get("status") == "failed")):
         return refused
     authenticated = authenticated_proof(proof, protocol_input, off)
     if authenticated or "apr-evidence-requires-authenticated-failure" in off:
@@ -1257,6 +1320,32 @@ def pre_sign_gate(protocol_input: dict, off) -> tuple[str, dict]:
     return "pass", {"signPermitted": True, "ok": None, "errorClass": None}
 
 
+def recovery_conditions(value):
+    """Abstract reads and verifier-owned provisioning source for corpus recovery.
+    The storage-backed handler derives authorization under its submission lock."""
+    check = value.get("recoveryCheck")
+    if not isinstance(check, dict):
+        return False
+    network = value.get("railNetwork")
+    bindings = value.get("demosBinding")
+    if not isinstance(bindings, list):
+        return False
+    binding = next((b for b in bindings if isinstance(b, dict)
+                    and {k: b.get(k) for k in NETWORK} == network), {})
+    fork = binding.get("nonceEnforcement")
+    source = check.get("forkAuthority")
+    read = check.get("recordRead")
+    return (isinstance(fork, dict) and _jcs_equal(fork, source)
+            and {k: fork.get(k) for k in NETWORK} == network
+            and _safe_integer(fork.get("activationHeight"))
+            and isinstance(fork.get("sealedGenesisHash"), str) and HASH.fullmatch(fork["sealedGenesisHash"])
+            and _safe_integer(value.get("currentBlock")) and fork["activationHeight"] <= value["currentBlock"]
+            and isinstance(read, dict) and read.get("state") == "not-found"
+            and check.get("mempool") == "absent" and check.get("serialized") is True
+            and check.get("terminal") is False and value.get("confirmResponse") is None
+            and value.get("validityResponse") is None)
+
+
 def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
     """DEM-1 at the first egress of the signed transaction (a `confirm`
     request or the broadcast) for the authenticated phase, then DEM-6."""
@@ -1281,6 +1370,14 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
         # DEM-6: a transfer retained before a (re)start may have left in a
         # call the crash kept from being journaled, whatever state was recorded.
         state = "maybe-broadcast"
+    if state == "recovery-attempt" and "recoveryCheck" in protocol_input:
+        if "recovery-requires-all-conditions" not in off and not recovery_conditions(protocol_input):
+            return refused
+        if protocol_input.get("restartedSinceRetention") is False and request == "confirm-retained":
+            state = "never-broadcast"
+    if (state == "recovery-attempt" and protocol_input.get("recoveryAuthorized") is True
+            and protocol_input.get("restartedSinceRetention") is False and request == "confirm-retained"):
+        state = "never-broadcast"
     if state == "confirm-sent-interrupted" and "confirm-egress-may-broadcast" in off:
         # The wrong implementation counts only a recorded broadcast.
         state = "never-broadcast"
@@ -1295,6 +1392,17 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
         elif "no-rebroadcast" not in off:
             return refused
     if request != "confirm-retained":
+        if "completion-same-node" not in off and (not isinstance(protocol_input.get("confirmNode"), str)
+                or protocol_input.get("confirmNode") != protocol_input.get("broadcastNode")):
+            return refused
+        if "completion-reference-window" not in off:
+            response = protocol_input.get("confirmResponse")
+            envelope = response.get("response") if isinstance(response, dict) else None
+            data = envelope.get("data") if isinstance(envelope, dict) else None
+            reference = data.get("reference_block") if isinstance(data, dict) else None
+            current = protocol_input.get("currentBlock")
+            if not (_safe_integer(reference) and _safe_integer(current) and 0 <= current - reference <= 1):
+                return refused
         # demosdk broadcast(validationData) carries the confirm result, not the
         # retained transaction, and the pinned node executes the copy embedded
         # in it. Only this submission's own response may complete it.
@@ -1375,7 +1483,7 @@ def egress_outcome(protocol_input: dict, off) -> tuple[str, dict]:
     """The PC-4 class once the handler's own pre-egress check, `confirm` or
     `broadcast` returns. From the first egress on a node may hold the signed
     bytes, so every outcome is DEM-5 substrate with the retained hash kept and
-    no further call; only a refusal found before it is permanent."""
+    no further call without fresh DEM-6 authorization; only a refusal found before it is permanent."""
     call, outcome = protocol_input["call"], protocol_input["outcome"]
     cause = f"{call}:{outcome}"
     unresolved = ("indeterminate", dict(HANDLER_WANT["indeterminate"], cause=cause))
@@ -1980,7 +2088,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                           "broadcast-completes-own-confirm"]
                          + [action + "-claim-read-" + label for label in
                             ("upper-key", "mixed-key", "upper-did", "unknown-parameters")
-                            for action in ("confirm", "broadcast")], permitted)
+                            for action in ("confirm", "broadcast")]
+                         + ["completing-broadcast-same-node-next-block", "recovery-gate-allowed"], permitted)
         for name in permitted:
             with self.subTest(name=name):
                 signed_content = self.cases[name]["protocolInput"]["signedTransaction"]["content"]
@@ -2148,7 +2257,10 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 continue
             with self.subTest(payload=vector["name"]):
                 inputs = vector["protocolInput"]
-                if not inputs["request"].startswith("broadcast-"):
+                if vector["name"] == "recovery-gate-old-response":
+                    self.assertIsInstance(inputs["confirmResponse"], dict)
+                    self.assertEqual(("fail", {"broadcastPermitted": False}), evaluate(vector))
+                elif not inputs["request"].startswith("broadcast-"):
                     self.assertEqual((None, None), (inputs["confirmResponse"], inputs["validityResponse"]))
                 elif vector["name"] != "broadcast-validity-response-missing":
                     self.assertIsInstance(inputs["validityResponse"], dict)
@@ -2510,7 +2622,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         # of the handler: a refusal at broadcast is the same refusal at the
         # demosdk confirm request that precedes it.
         # The validity-response refusals concern the broadcast payload only.
-        payload = {"broadcast-carries-own-validity-response", "validity-response-binds-retained-transfer"}
+        payload = {"broadcast-carries-own-validity-response", "validity-response-binds-retained-transfer",
+                   "completion-same-node", "completion-reference-window"}
         refusals = [
             vector for vector in self.data["vectors"]
             if vector["operation"] == "broadcast-gate" and vector["expected"] != "pass"
@@ -2680,6 +2793,13 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     continue
                 with self.subTest(name=vector["name"]):
                     network = value["railNetwork"]
+                    if not isinstance(record, dict):
+                        # A nonce-state statement is never an FV-5 executed-record result.
+                        self.assertEqual("fixture-nonce-exhaustion-v1", result.get("kind"))
+                        self.assertEqual("error", _verify_demos_execution(
+                            {**network, "executionResult": result}, None,
+                            {"demosExecutionPolicy": value["fv5Policy"]})[0])
+                        continue
                     observation = {**network, "executionResult": result, "inclusionBlock": {
                         "id": result.get("blockId") if block is _PROOF_BLOCK else block}}
                     reference = {"kind": "demos", "txHash": record.get("hash"), "blockNumber": record.get("blockNumber")}
@@ -3181,7 +3301,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("consumer-failed-fails", consumer)
         self.assertIn("delivery-dem7-pending", consumer)
 
-    def test_handler_never_permits_a_second_or_replacement_broadcast(self):
+    def test_handler_only_permits_guarded_retries_without_replacements(self):
         for vector in self.data["vectors"]:
             with self.subTest(name=vector["name"]):
                 want = vector["want"]
@@ -3196,17 +3316,21 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     state = vector["protocolInput"]["broadcastState"]
                     request = vector["protocolInput"]["request"]
                     self.assertIs(False, vector["protocolInput"]["restartedSinceRetention"])
+                    if state == "recovery-attempt":
+                        self.assertEqual("confirm-retained", request)
+                        self.assertTrue(recovery_conditions(vector["protocolInput"]))
+                        continue
                     self.assertIn((state, request), {
                         ("never-broadcast", "confirm-retained"),
                         ("confirm-returned", "broadcast-retained"),
                     })
-        # DEM-6 "never repeat a call": a confirm after the first egress is
-        # refused in every later state, each by its own corpus vector.
+        # Without a separately authorized recovery attempt, a confirm after
+        # the first egress remains refused in every later state.
         repeated = {
             (vector["protocolInput"]["broadcastState"], vector["name"])
             for vector in self.data["vectors"]
             if vector["operation"] == "broadcast-gate" and vector["protocolInput"]["request"] == "confirm-retained"
-            and vector["protocolInput"]["broadcastState"] != "never-broadcast"
+            and vector["protocolInput"]["broadcastState"] not in ("never-broadcast", "recovery-attempt")
         }
         self.assertEqual({("confirm-sent-interrupted", "confirm-after-interrupted-confirm-refused"),
                           ("maybe-broadcast", "confirm-after-maybe-broadcast-refused"),
@@ -3347,7 +3471,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         """PC-4 for pay-dem: once a confirm or broadcast may have carried the
         signed bytes, a refusal (insufficient balance included), a transport
         error, a timeout, an unrecognized reply and an accepted broadcast are
-        each DEM-5 substrate with the retained hash kept and no further call.
+        each DEM-5 substrate with the retained hash kept and no automatic further call.
         Only a refusal found before any egress, on a journal that has not
         restarted, is permanent."""
         spec = SPEC.read_text(encoding="utf-8")

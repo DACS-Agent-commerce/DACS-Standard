@@ -310,6 +310,12 @@
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
               "activationHeight": null
             },
+            "nonceEnforcement": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "activationHeight": 0,
+              "sealedGenesisHash": "5d0435b3f3ae574f1d6db81b9de3c80f5d6217ac57849622f900e28cce2ce887"
+            },
             "bftFinalTrust": {
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
@@ -808,6 +814,12 @@
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
               "activationHeight": null
+            },
+            "nonceEnforcement": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "activationHeight": 0,
+              "sealedGenesisHash": "5d0435b3f3ae574f1d6db81b9de3c80f5d6217ac57849622f900e28cce2ce887"
             },
             "bftFinalTrust": {
               "networkId": "demos:mainnet",
@@ -1308,6 +1320,12 @@
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
               "activationHeight": null
             },
+            "nonceEnforcement": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "activationHeight": 0,
+              "sealedGenesisHash": "5d0435b3f3ae574f1d6db81b9de3c80f5d6217ac57849622f900e28cce2ce887"
+            },
             "bftFinalTrust": {
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
@@ -1699,6 +1717,12 @@
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
               "activationHeight": null
             },
+            "nonceEnforcement": {
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "activationHeight": 0,
+              "sealedGenesisHash": "5d0435b3f3ae574f1d6db81b9de3c80f5d6217ac57849622f900e28cce2ce887"
+            },
             "bftFinalTrust": {
               "networkId": "demos:mainnet",
               "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
@@ -1903,7 +1927,7 @@
     }
   },
   "count": 74,
-  "hash": "2c61de4ea4fd4c33b471dcebc20980708b1fe125c9ed49416f9fa868f69d2937",
+  "hash": "415d32c1bf6054e358206e634120af0b0abe8e5e1e25701012832792485cceee",
   "vectors": [
     {
       "name": "select-dem-projects-pay-dem",
@@ -3658,6 +3682,28 @@
             "runtime",
             "payDemBinding",
             0,
+            "networkId"
+          ],
+          "value": "demos:testnet"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "nonceEnforcement",
+            "genesisHash"
+          ],
+          "value": "810343e2f007d36ec9d02b488c9571c5adca6fd0af994f5392e34aa9021d0836"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payDemBinding",
+            0,
+            "nonceEnforcement",
             "networkId"
           ],
           "value": "demos:testnet"

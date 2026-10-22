@@ -338,6 +338,12 @@ def verify_prior_payment_context(vector, resolved=None):
                 return "indeterminate", "prior-disposition-proof"
             try:
                 artifact = proof
+                if artifact.get("kind") == "nonce-exhaustion":
+                    if not pay_dem.valid_failure_proof(artifact, transfer, frozenset()):
+                        return "fail", "prior-disposition-proof"
+                    verdict, _ = pay_dem.apr_evidence({**trust, "retainedTransfer": transfer,
+                        "retainedFailureProof": artifact}, frozenset())
+                    return ("pass", None) if verdict == "pass" else (verdict, "prior-disposition-proof")
                 result = artifact.get("executionResult")
                 reference = artifact.get("transactionRef")
                 policy = trust.get("fv5Policy")

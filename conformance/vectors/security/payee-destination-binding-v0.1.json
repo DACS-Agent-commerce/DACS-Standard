@@ -17,7 +17,7 @@
     "cci-lei:984500PBSELLER000010": "BuwkmF-v_71CiQrUMIDkQHwQlKiJPWch4F_Q_DmHhNY",
     "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111": "yra4qKH2-KfQGZVE9e1w-c7fVuKT50z9cHUTdYQWaEE"
   },
-  "hash": "91dfb2ed740c12941559dde102a6d8f6721263259ec8eb077a93d75c3c0789bd",
+  "hash": "ba7599e4ba282dcc3c5f12809079c58d025afa2c4a379b4ae6ef49ccaf649ef4",
   "count": 30,
   "vectors": [
     {
@@ -3554,5 +3554,6 @@
         "mustNotUseTier3": true
       }
     }
-  ]
+  ],
+  "provenanceNote": "#432 corrects pay-dem tiers and adds controlled-claim cases"
 }

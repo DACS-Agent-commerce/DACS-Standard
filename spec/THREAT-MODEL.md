@@ -164,7 +164,10 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 
 A retained native payment may already have executed while verification sources
 are unavailable. DEM-5 and DACS-5 ST-7 keep that payment non-terminal until
-success evidence is anchored or DEM-4 proves failure. The remaining liveness
+success evidence is anchored or DEM-4 proves failure, including authenticated
+nonce exhaustion and cumulative record absence at a finalized block. Recovery
+uses the binding operator's independently pinned complete sealed genesis; the
+block genesis hash does not commit to that fork schedule. The remaining liveness
 cost is indefinite waiting when neither DEM-6 recovery nor proof
 sources become available; no wall-clock interval proves non-execution or authorizes a
 replacement.

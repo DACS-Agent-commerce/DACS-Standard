@@ -333,7 +333,7 @@ class Node:
 
     def mempool(self, tx_hash: str) -> str:
         """Fixture pending-hash read; unavailable or present never permits retry."""
-        return "absent"
+        return getattr(self, "pending_state", "absent")
 
     def read(self, tx_hash: str) -> dict[str, Any]:
         """getTxByHash, a plain RPC read: the executed record once a
@@ -410,14 +410,31 @@ def binding_network(entry: dict[str, Any]) -> dict[str, str]:
 
 
 class RecoveryAuthority:
-    """Independent fixture fork-state source for a network. Production recovery
-    needs its binding's authenticated activation checkpoint, never a node flag."""
+    """Fixture sealed-genesis trust root, independently configured by the binding
+    operator. The digest covers the complete sealed genesis including forks;
+    genesisHash alone and a node's fork flag cannot establish this premise."""
 
     def __init__(self, network: dict[str, str], *, nonce_active: bool = True):
         self.network, self.nonce_active = dict(network), nonce_active
+        self.sealed_genesis_hash = generator._hex("sealed-genesis")
+        self.activation_height = 0
+        self.account_nonce = None
+        self.proof_fault = None
 
-    def permits(self, network: dict[str, str]) -> bool:
-        return self.network == network and self.nonce_active is True
+    def permits(self, network, attestation, block) -> bool:
+        return (self.network == network and self.nonce_active is True
+                and isinstance(attestation, dict)
+                and attestation == dict(network, activationHeight=self.activation_height,
+                                        sealedGenesisHash=self.sealed_genesis_hash)
+                and oracle._safe_integer(attestation.get("activationHeight"))
+                and oracle._safe_integer(block) and self.activation_height <= block)
+
+    def exhaustion(self, transfer):
+        """Independent fixture state source, never node account/RPC labels."""
+        if self.account_nonce is None:
+            return None
+        return generator.nonce_exhaustion_proof(transfer, account_nonce=self.account_nonce,
+                                                fault=self.proof_fault)
 
 
 class PayerHandler:
@@ -558,7 +575,7 @@ class PayerHandler:
             "broadcastState": entry["progress"],
         }
 
-    def _permits(self, request: str, entry: dict[str, Any]) -> bool:
+    def _permits(self, request: str, entry: dict[str, Any], *, recovery_attempt: bool = False) -> bool:
         confirm_response = entry.get("confirmResponse") if request != "confirm-retained" else None
         if request == "broadcast-retained":
             envelope = confirm_response.get("response") if isinstance(confirm_response, dict) else None
@@ -576,9 +593,12 @@ class PayerHandler:
             "retainedTransfer": entry["retainedTransfer"],
             "hashRetainedForOtherPhases": self._retained_elsewhere(entry["retainedTransfer"]["txHash"]),
             **self._state(entry),
+            "recoveryAuthorized": recovery_attempt,
             "confirmResponse": confirm_response,
             "request": request,
             "validityResponse": confirm_response,
+            "confirmNode": entry.get("confirmNode"), "broadcastNode": self.node.identity,
+            "currentBlock": self.node.current_block,
         }
         return oracle.broadcast_gate(protocol_input, NO_GUARD_REMOVED)[0] == "pass"
 
@@ -634,6 +654,8 @@ class PayerHandler:
             "statusIndex": "included" if seen else "unknown",
             "inclusionObservation": generator.INCLUDED_AT_BLOCK if seen else None,
             "recordRead": read,
+            "nonceEnforcement": next((b.get("nonceEnforcement") for b in self.bindings
+                                       if binding_network(b) == self.rail_network), None),
         }
 
     def _classify(self, entry: dict[str, Any]) -> dict[str, Any]:
@@ -746,21 +768,37 @@ class PayerHandler:
             if result["expected"] != "indeterminate":
                 return result
             tx_hash = entry["retainedTransfer"]["txHash"]
+            binding = next((b for b in self.bindings if binding_network(b) == self.rail_network), {})
+            if (self.recovery is None or not self.recovery.permits(
+                    self.rail_network, binding.get("nonceEnforcement"), self.node.current_block)):
+                return result
+            proof = self.recovery.exhaustion(entry["retainedTransfer"])
+            protocol_input = dict(self._classify_input(entry, {"state": "not-found"}),
+                                  nonceEnforcement=binding.get("nonceEnforcement"))
+            if oracle.nonce_exhaustion_valid(proof, protocol_input):
+                expected, want = oracle.handler_result("fail", protocol_input, self.off)
+                result = {"expected": expected, **want}
+                self._crash("before-failure-proof")
+                self._save(entry, result=result, failureProof=proof)
+                self._crash("after-failure-proof")
+                return result
             observed = self.node.read(tx_hash)
-            if (self.recovery is None or not self.recovery.permits(self.rail_network)
+            if (not self.recovery.permits(self.rail_network, binding.get("nonceEnforcement"), self.node.current_block)
                     or not isinstance(observed, dict) or observed.get("state") != "not-found"
                     or self.node.mempool(tx_hash) != "absent"):
                 return result
             # Fresh attempt, fresh validity response. A crash before egress
             # leaves the retained transfer possibly sent, just as before.
-            self._save(entry, start=self.start, progress="never-broadcast", confirmResponse=None)
-            return self._advance()
+            self._crash("before-recovery-journal")
+            self._save(entry, start=self.start, progress="recovery-attempt", confirmResponse=None)
+            self._crash("after-recovery-journal")
+            return self._advance(recovery_attempt=True)
 
     def advance(self) -> dict[str, Any]:
         with self.store.locked(self.journal + ".submission"):
             return self._advance()
 
-    def _advance(self) -> dict[str, Any]:
+    def _advance(self, *, recovery_attempt: bool = False) -> dict[str, Any]:
         """Continue from the journal; restart is read-only unless `recover`
         has independently authorized and journaled a fresh retained-byte attempt."""
         entry = self.store.read(self.journal)
@@ -770,8 +808,11 @@ class PayerHandler:
             # A terminal session is never reopened: a refusal before any
             # egress stands, and a DEM-4 failure stands on its proof.
             return entry["result"] if entry.get("failureProof") is None else self._resume(entry)
-        if entry["progress"] == "never-broadcast":
-            if not self._permits("confirm-retained", entry):
+        if entry["progress"] == "recovery-attempt" and not recovery_attempt:
+            # A saved arm is uncertain history, never reusable authorization.
+            return self._classify(entry)
+        if entry["progress"] in ("never-broadcast", "recovery-attempt"):
+            if not self._permits("confirm-retained", entry, recovery_attempt=recovery_attempt):
                 return self._classify(entry)
             if self.node.check_balance() != "sufficient":
                 return self._outcome("pre-egress-check", "insufficient-balance", entry)

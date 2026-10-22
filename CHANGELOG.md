@@ -55,8 +55,17 @@ retention carrier is required for new pay-dem `closed-cannot-settle` records.
 No production Demos applied-payment proof codec or result authority is registered
 by the synthetic fixtures.
 
-Conformance: 552 pay-dem vectors (68 pass, 165 fail, 238 indeterminate, 81 error)
-and 146 guards; settlement-finality cases grow from 86 at the merge base to 246,
+Recovery preserves possibly-sent history through retries and crashes. The binding
+explicitly pins the complete sealed genesis for nonce-enforcement activation.
+A quorum-authenticated consumed nonce and cumulative record absence at a finalized
+block can close an unexecuted transfer; APR independently verifies that proof
+against the signed prior retention before a compensating job.
+
+PB-2 corpus migration: 30 cases, with tier 3 for the historical pay-dem
+case and two tier-2 controls.
+
+Conformance: 575 pay-dem vectors (71 pass, 176 fail, 247 indeterminate, 81 error)
+and 150 guards; settlement-finality cases grow from 86 at the merge base to 246,
 and alternative-payment cases from 45 to 74. Crash/restart, delivery idempotence,
 finality composition and serialized invariant witnesses cover the changes.
 

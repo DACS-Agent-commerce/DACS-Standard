@@ -23977,8 +23977,8 @@
       }
     }
   },
-  "count": 398,
-  "hash": "b66edaf98b24176a6ad322b325445361c332341f5034666e3fe47824a2d7358e",
+  "count": 401,
+  "hash": "d14db438490d57b20cbb5bf77a45cfefbfceaf9de607f6ef9a6195a407724be0",
   "vectors": [
     {
       "name": "dispatch-agreement-under-commit-agreement",
@@ -29337,6 +29337,120 @@
         "verdict": "fail",
         "authorizedAction": false,
         "reason": "sealed-deadline-too-soon"
+      }
+    },
+    {
+      "name": "sealed-session-admission-second-negotiation-refused",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundDemand",
+      "stage": "session-admission",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "pipeline",
+            1,
+            "parameters",
+            "commitDeadline"
+          ],
+          "value": 1900000040000
+        },
+        {
+          "op": "append-value",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": {
+            "kind": "negotiate-fixed-price"
+          }
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "negotiate-phase-cardinality-invalid"
+      }
+    },
+    {
+      "name": "sealed-session-admission-second-commitment-refused",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundDemand",
+      "stage": "session-admission",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "pipeline",
+            1,
+            "parameters",
+            "commitDeadline"
+          ],
+          "value": 1900000040000
+        },
+        {
+          "op": "append-value",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": {
+            "kind": "commit-agreement"
+          }
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "commitment-phase-cardinality-invalid"
+      }
+    },
+    {
+      "name": "sealed-session-admission-second-selection-bound-commitment-refused",
+      "operation": "validate-selection-bound-session-admission",
+      "scenario": "selectionBoundDemand",
+      "stage": "session-admission",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "listing",
+            "pipeline",
+            1,
+            "parameters",
+            "commitDeadline"
+          ],
+          "value": 1900000040000
+        },
+        {
+          "op": "append-value",
+          "path": [
+            "listing",
+            "pipeline"
+          ],
+          "value": {
+            "kind": "commit-selection-bound-agreement"
+          }
+        }
+      ],
+      "resign": [],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "commitment-phase-cardinality-invalid"
       }
     },
     {

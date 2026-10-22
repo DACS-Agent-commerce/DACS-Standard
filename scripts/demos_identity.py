@@ -5,11 +5,15 @@ identifier bytes stay case sensitive and unknown well-formed qualifiers do not
 participate in identity (DACS-1 §6.3.1, CORE §B.1 CF-2/CF-3).
 """
 import re
+import sys
+from pathlib import Path
 
-try:
-    from scripts.dacs_reference import _parse_parameters
-except ImportError:  # direct script entry point
-    from dacs_reference import _parse_parameters
+# The adapter-pinned reference uses sibling imports. Resolve them here for
+# fresh package consumers as well as direct script entry points.
+SCRIPTS = str(Path(__file__).resolve().parent)
+if SCRIPTS not in sys.path:
+    sys.path.insert(0, SCRIPTS)
+from dacs_reference import _parse_parameters  # noqa: E402
 
 _KEY_CLAIM = re.compile(r"(?P<scheme>(?ai:key|did)):(?P<identifier>[0-9a-f]{64}|demos:agent:[0-9a-f]{64})\Z")
 _ADDRESS = re.compile(r"(?:0x)?([0-9a-f]{64})\Z")

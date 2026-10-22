@@ -2455,6 +2455,10 @@ def _seb_unplaced_candidate_failure(record, ref, phase_key, summary_entry, resol
         if (
             not isinstance(execution, dict)
             or execution.get("jobId") != bundle.get("jobId")
+            # Verifier-owned execution indices use the same native integer
+            # contract as _resolve_authenticated_evidence_binding, not the
+            # wire-shape guard's integer-valued JSON number contract.
+            or not isinstance(execution.get("phaseIndex"), int)
             or not _safe_nonnegative_integer(execution.get("phaseIndex"))
             or execution.get("phaseIndex") != int(phase_index)
             or execution.get("phaseKind") != phase_kind

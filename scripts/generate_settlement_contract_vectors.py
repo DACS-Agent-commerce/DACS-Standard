@@ -11,9 +11,12 @@ import argparse
 import base64
 import copy
 import hashlib
+import hmac
 import json
 from pathlib import Path
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec, utils
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 import generate_atomic_work_vectors as atomic
@@ -40,6 +43,11 @@ NETWORK_ID = "demos:testnet"
 PROOF_PROFILE = "demos-bft-proof/test-1"
 VALIDATOR_SET_ID = "test-validator-set-1"
 SESSION_STARTED_AT = 1_799_999_800_000
+# Verifier-owned native receipt writers (CORE SR2-11): the orchestrator writes
+# its payment evidence and the registry steward writes the index and rails.
+ORCHESTRATOR_WRITER = "native:orchestrator-writer-1"
+REGISTRY_WRITER = "native:registry-steward-writer-1"
+OUTSIDER_WRITER = "native:outsider-writer-1"
 AGREEMENT_DOMAIN = b"dacs-agreement:v1:"
 EVIDENCE_DOMAIN = b"dacs-evidence:v1:"
 LEGACY_DOMAIN = b"dacs-legacy-transition-evidence:v1:"
@@ -56,6 +64,42 @@ def _key(role: str) -> Ed25519PrivateKey:
 
 
 PUBLIC_KEYS = {CLAIMS[role]: b64u(_key(role).public_key().public_bytes_raw()) for role in SEEDS}
+# A public, deterministic secp256k1 test key for the orchestrator, so the
+# registered-but-unimplemented ecdsa-secp256k1 case carries a genuine value.
+SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+ECDSA_PRIVATE_VALUE = (int.from_bytes(hashlib.sha256(b"settlement-contract-orchestrator-ecdsa").digest(), "big")
+                       % (SECP256K1_ORDER - 1)) + 1
+ECDSA_PUBLIC_KEYS = {CLAIMS["orchestrator"]: ec.derive_private_key(ECDSA_PRIVATE_VALUE, ec.SECP256K1())
+                     .public_key().public_bytes(serialization.Encoding.X962,
+                                                serialization.PublicFormat.CompressedPoint).hex()}
+
+
+def ecdsa_sign(message: bytes) -> bytes:
+    """RFC 6979 secp256k1/SHA-256 with canonical DER and low-S output."""
+    digest_bytes = hashlib.sha256(message).digest()
+    private_bytes = ECDSA_PRIVATE_VALUE.to_bytes(32, "big")
+    reduced = (int.from_bytes(digest_bytes, "big") % SECP256K1_ORDER).to_bytes(32, "big")
+    value, key = b"\x01" * 32, b"\x00" * 32
+    key = hmac.new(key, value + b"\x00" + private_bytes + reduced, hashlib.sha256).digest()
+    value = hmac.new(key, value, hashlib.sha256).digest()
+    key = hmac.new(key, value + b"\x01" + private_bytes + reduced, hashlib.sha256).digest()
+    value = hmac.new(key, value, hashlib.sha256).digest()
+    while True:
+        value = hmac.new(key, value, hashlib.sha256).digest()
+        nonce = int.from_bytes(value, "big")
+        if 1 <= nonce < SECP256K1_ORDER:
+            break
+        key = hmac.new(key, value + b"\x00", hashlib.sha256).digest()
+        value = hmac.new(key, value, hashlib.sha256).digest()
+    r = ec.derive_private_key(nonce, ec.SECP256K1()).public_key().public_numbers().x % SECP256K1_ORDER
+    s = (pow(nonce, -1, SECP256K1_ORDER)
+         * (int.from_bytes(digest_bytes, "big") + r * ECDSA_PRIVATE_VALUE)) % SECP256K1_ORDER
+    return utils.encode_dss_signature(r, min(s, SECP256K1_ORDER - s))
+
+
+def duplicate_job_id(value: dict) -> str:
+    """JSON text of `value` with a leading second `jobId` member (CORE CF-5 refuses it)."""
+    return '{"jobId":"01K1DPA0000000000000000009",' + json.dumps(value, ensure_ascii=False)[1:]
 
 
 def hashed(label: str) -> str:
@@ -74,39 +118,53 @@ def sign(value: dict, role: str, domain: bytes) -> dict:
     return out
 
 
+def sign_ecdsa(value: dict, domain: bytes) -> dict:
+    """A copy carrying the orchestrator's genuine ecdsa-secp256k1 signature."""
+    out = copy.deepcopy(value)
+    digest = ref.content_hash(out)
+    out["signature"] = {
+        "algorithm": "ecdsa-secp256k1", "signer": CLAIMS["orchestrator"],
+        "value": b64u(ecdsa_sign(domain + digest.encode("ascii"))),
+    }
+    return out
+
+
+def native_address(label: str) -> str:
+    return "stor-" + ref.sha256_hex(label.encode("utf-8"))[:40]
+
+
 def anchor_receipt(logical_address: str, content_hash: str, *, label: str, nonce: str,
-                   block_timestamp: int = 1_799_999_750_000, state: str = "finalized") -> dict:
-    """An AnchorReceipt whose synthetic proof binds its own fields, `state` included."""
+                   writer: str, block_timestamp: int = 1_799_999_750_000,
+                   state: str = "finalized", native: str | None = None,
+                   disposition: str = "established") -> dict:
+    """An AnchorReceipt whose synthetic proof binds every member but `evidence`.
+
+    `blockRef.timestamp` is CORE SR2-6 consensus time in unix milliseconds.
+    """
     receipt = {
         "receiptVersion": "1",
         "substrate": NETWORK_ID,
         "finalityProfile": PROOF_PROFILE,
         "logicalAddress": logical_address,
-        "nativeAddress": "stor-" + ref.sha256_hex(logical_address.encode("utf-8"))[:40],
+        "nativeAddress": native or native_address(logical_address),
         "contentHash": content_hash,
         "transactionRef": {"kind": "demos-transaction", "value": f"tx-{label}"},
-        "writer": "native:registry-relay-1",
+        "writer": writer,
         "nonce": nonce,
         "state": state,
-        "observationDisposition": "established",
+        "observationDisposition": disposition,
         "observedAt": block_timestamp + 1_000,
         "blockRef": {"id": f"block-{label}-750", "height": "750", "timestamp": block_timestamp},
     }
+    if disposition == "indeterminate":
+        receipt["preservedReceiptHash"] = hashed(f"preserved-receipt:{label}")
     proof = sign({
-        "logicalAddress": receipt["logicalAddress"],
-        "nativeAddress": receipt["nativeAddress"],
-        "contentHash": receipt["contentHash"],
-        "transactionRef": receipt["transactionRef"],
-        "writer": receipt["writer"],
-        "nonce": receipt["nonce"],
-        "state": receipt["state"],
-        "blockRef": receipt["blockRef"],
+        "receipt": receipt,
         "networkId": NETWORK_ID,
         "proofProfile": PROOF_PROFILE,
         "validatorSetId": VALIDATOR_SET_ID,
     }, "network", ref.ANCHOR_TEST_DOMAIN)
-    receipt["evidence"] = {"kind": ref.ANCHOR_TEST_KIND, "value": b64u(ref.jcs_bytes(proof))}
-    return receipt
+    return {**receipt, "evidence": {"kind": ref.ANCHOR_TEST_KIND, "value": b64u(ref.jcs_bytes(proof))}}
 
 
 def steward_rail(**change) -> dict:
@@ -206,8 +264,11 @@ def build_fixture():
     atomic_input = atomic_payment_input(ordinary_input)
     inputs = []
 
-    def phase(name, binding, value, expected):
+    def phase(name, binding, value, expected, identity_binding=None):
+        # `identityBinding` is the verifier-owned IBH-1..IBH-5 rerun outcome;
+        # an identity-bound case without one has no rerun authority.
         inputs.append({"name": name, "ruleRefs": ["PC-1"], "binding": binding,
+                       **({"identityBinding": identity_binding} if identity_binding else {}),
                        "input": value, "expected": expected})
 
     phase("ordinary-input", "ordinary", ordinary_input, "accepted")
@@ -225,6 +286,12 @@ def build_fixture():
           {**ordinary_input, "paymentAuthorization": {"opaque": True}}, "accepted")
     phase("atomic-rejects-unknown-member", "atomic",
           {**atomic_input, "paymentAuthorization": {}}, "rejected")
+    # PriceTerm's optional `unit` is a non-empty string when present.
+    for binding, value in (("ordinary", ordinary_input), ("atomic", atomic_input)):
+        phase(binding + "-amount-unit", binding,
+              {**value, "amount": {**value["amount"], "unit": "token"}}, "accepted")
+        phase(binding + "-amount-unit-empty", binding,
+              {**value, "amount": {**value["amount"], "unit": ""}}, "rejected")
     missing = copy.deepcopy(ordinary_input)
     missing.pop("sessionContext")
     phase("ordinary-context-missing", "ordinary", missing, "rejected")
@@ -305,6 +372,17 @@ def build_fixture():
     # Nested ordinary members stay open under SIG-5, as top-level ones do.
     phase("ordinary-session-listing-ref-extra-member", "ordinary",
           {**ordinary_input, **listing_ref(note="x")}, "accepted")
+    vet = agreement["parties"][0]["vetRecordRef"]
+    for label, change in (
+        ("ordinary-amount-extra-member", {"amount": {**ordinary_input["amount"], "note": "x"}}),
+        ("ordinary-agreement-price-extra-member",
+         agreement_terms(price={**agreement["terms"]["price"], "note": "x"})),
+        ("ordinary-agreement-vet-record-ref-extra-member",
+         agreement_party(vetRecordRef={**vet, "note": "x", "anchor": {**vet["anchor"], "note": "x"}})),
+        ("ordinary-payer-extra-member", {"payer": {**ordinary_input["payer"], "note": "x"}}),
+        ("ordinary-payee-extra-member", {"payee": {**ordinary_input["payee"], "note": "x"}}),
+    ):
+        phase(label, "ordinary", {**ordinary_input, **change}, "accepted")
     for label, change in (
         ("ordinary-sealed-selection-agreement-fixed-price",
          {"agreement": {**sealed, "derivedFromPattern": "fixed-price"}}),
@@ -526,6 +604,56 @@ def build_fixture():
     phase("atomic-context-listing-ref-not-object", "atomic", {
         **atomic_input, **atomic_context(listingRef=1)}, "rejected")
 
+    # §9.5.1 IdentityBoundPaymentPhaseInput: PC-1 types the companion member
+    # as a non-empty array of objects carrying `identityBundle` or
+    # `compositeRecord`; the verifier-owned IBH-1..IBH-5 rerun decides their
+    # members, so each case declares that rerun's outcome and the companions
+    # are placeholders.
+    identity_agreement = {"identityBoundAgreementVersion": "1", **{
+        k: v for k, v in agreement.items() if k != "agreementVersion"}}
+    companions = [{"identityBundle": {"bundleHash": hashed("bundle:" + role)},
+                   "compositeRecord": {"subject": CLAIMS[role]}} for role in ("buyer", "seller")]
+    identity_input = {**ordinary_input, "agreement": identity_agreement,
+                      "identityBindingCompanions": companions}
+    without_companions = {k: v for k, v in identity_input.items() if k != "identityBindingCompanions"}
+    phase("identity-bound-input", "identity-bound", identity_input, "accepted", "verified")
+    # Only a verified rerun reaches the rail; without one nothing is paid.
+    phase("identity-bound-ibh-rejected", "identity-bound", identity_input, "rejected", "rejected")
+    phase("identity-bound-ibh-indeterminate", "identity-bound", identity_input,
+          "indeterminate", "indeterminate")
+    phase("identity-bound-ibh-unavailable", "identity-bound", identity_input, "indeterminate")
+    # An absent companion member is missing authority (IBH `indeterminate`);
+    # an empty or malformed one is a type rejection (IBH `error`).
+    phase("identity-bound-companions-missing", "identity-bound", without_companions,
+          "indeterminate", "verified")
+    phase("identity-bound-companions-empty", "identity-bound",
+          {**identity_input, "identityBindingCompanions": []}, "rejected", "verified")
+    phase("identity-bound-companion-empty-object", "identity-bound",
+          {**identity_input, "identityBindingCompanions": [{}]}, "rejected", "verified")
+    phase("identity-bound-companion-without-members", "identity-bound",
+          {**identity_input, "identityBindingCompanions": [{"note": "x"}, companions[1]]},
+          "rejected", "verified")
+    # A companion's own members are the rerun's: one lacking its bundle is
+    # IBH `indeterminate`, which PC-1 does not turn into a rejection.
+    phase("identity-bound-companion-without-identity-bundle", "identity-bound",
+          {**identity_input, "identityBindingCompanions": [
+              {"compositeRecord": companions[0]["compositeRecord"]}, companions[1]]},
+          "indeterminate", "indeterminate")
+    phase("identity-bound-companions-not-array", "identity-bound",
+          {**identity_input, "identityBindingCompanions": companions[0]}, "rejected", "verified")
+    # The authenticated Listing alone selects the path: an agreement of the
+    # other kind contradicts it in either direction.
+    phase("identity-bound-listing-ordinary-agreement", "identity-bound",
+          {**ordinary_input, "identityBindingCompanions": companions}, "rejected", "verified")
+    phase("ordinary-binding-identity-bound-agreement", "ordinary", identity_input, "rejected")
+    phase("ordinary-binding-identity-bound-agreement-without-companions", "ordinary",
+          without_companions, "rejected")
+    # A present companion member is typed on the ordinary path too.
+    phase("ordinary-companions-empty", "ordinary",
+          {**ordinary_input, "identityBindingCompanions": []}, "rejected")
+    phase("ordinary-companion-empty-object", "ordinary",
+          {**ordinary_input, "identityBindingCompanions": [{}]}, "rejected")
+
     # Atomic payment and delivery evidence from the Atomic Purchase/Completion fixtures.
     purchase = atomic.purchase_intent(JOB_ID)
     receipt = atomic.final_receipt(purchase)
@@ -567,30 +695,45 @@ def build_fixture():
     targets = []
 
     def target_case(name, target, domain, expected, *, edit=None, resolution="finalized",
-                    signer="orchestrator", address=None, anchored=None):
-        target = sign(target, signer, domain)
+                    signer="orchestrator", address=None, anchored=None, writer=ORCHESTRATOR_WRITER,
+                    native_locator=False, disposition="established", amendment_edit=None,
+                    algorithm="ed25519", carriers=None, ref_edit=None, amendment_text=None,
+                    artifact_text=None):
+        target = sign_ecdsa(target, domain) if algorithm == "ecdsa-secp256k1" else sign(target, signer, domain)
         digest = ref.content_hash(target)
-        locator = f"dacs4:payment:{JOB_ID}:fixture-{name}:2"
+        logical = f"dacs4:payment:{JOB_ID}:fixture-{name}:2"
+        # An authentic anchor may bind content other than the reference names,
+        # come from another writer, or prove a lifecycle state short of finalized.
+        anchor = anchor_receipt(logical, ref.content_hash(anchored) if anchored else digest,
+                                label=name, nonce="300", writer=writer, disposition=disposition,
+                                state="included" if resolution == "included" else "finalized")
+        # The locator is the receipt's logical PC-2 address or its native address.
+        locator = anchor["nativeAddress"] if native_locator else logical
         target_ref = {"anchor": {"kind": "storage-program", "locator": locator},
                       "contentHash": digest}
-        # An authentic anchor may bind content other than the reference names,
-        # or an authentic lifecycle state short of finalized.
-        anchor = anchor_receipt(locator, ref.content_hash(anchored) if anchored else digest,
-                                label=name, nonce="300",
-                                state="included" if resolution == "included" else "finalized")
-        amendment = sign({
+        if ref_edit:
+            ref_edit(target_ref)
+        amendment = {
             "amendmentVersion": "1", "jobId": JOB_ID,
             "amendsEvidenceRef": target_ref, "amendmentType": "correction",
             "reason": "fixture correction", "observedAt": 1_800_000_040_000,
-        }, "seller", ref.AMENDMENT_DOMAIN)
-        resolved = {"artifact": target, "anchorReceipt": anchor}
+        }
+        amendment = sign(amendment, "seller", ref.AMENDMENT_DOMAIN)
+        if amendment_edit:
+            amendment_edit(amendment)
+        # The resolver lists every carrier it found for the reference's locator.
+        resolved = {"artifact": target,
+                    "anchorReceipts": [anchor, *(carriers(anchor, logical) if carriers else ())]}
+        if artifact_text:
+            resolved["artifactText"] = artifact_text(target)
         if resolution == "unavailable":
             resolved = None
         elif resolution == "unanchored":
-            resolved.pop("anchorReceipt")
+            resolved.pop("anchorReceipts")
         if edit:
             edit(resolved)
         targets.append({"name": name, "ruleRefs": ["AMEND-1"], "amendment": amendment,
+                        **({"amendmentText": amendment_text(amendment)} if amendment_text else {}),
                         "resolved": resolved, "expected": expected,
                         "amendmentAddress": address(digest) if address else
                         f"dacs4:amendment:{JOB_ID}:{digest}:0"})
@@ -602,10 +745,10 @@ def build_fixture():
         ("finality-bound", finality_target, FINALITY_DOMAIN, "finalityBoundEvidenceVersion", LEGACY_DOMAIN),
     ):
         target_case(label + "-target", base, domain, "valid")
-        # The DACS-4 v0.x arms are closed; the Atomic schema keeps unknown
-        # signed members under SIG-5.
+        # Ordinary and Atomic evidence keep unknown optional members (CORE
+        # SIG-5); the transition and finality-bound arms are closed.
         target_case(label + "-unknown-member", {**base, "futureMember": {"note": "preserve signed bytes"}},
-                    domain, "valid" if label == "atomic" else "violation")
+                    domain, "valid" if label in {"ordinary", "atomic"} else "violation")
         target_case(label + "-unsupported-version", {**base, selector: "2"}, domain, "violation")
         target_case(label + "-wrong-domain", base, other, "violation")
         target_case(label + "-wrong-job", {**base, "jobId": "01K1DPA0000000000000000009"}, domain, "violation")
@@ -664,47 +807,150 @@ def build_fixture():
     # Receipt fields are assertions until its proof binds them (CORE SR2-4): an
     # inauthentic receipt is discarded and the target stays pending.
     target_case("anchor-content-mismatch", ordinary_target, EVIDENCE_DOMAIN, "indeterminate",
-                edit=lambda r: r["anchorReceipt"].update(contentHash="00" * 32))
+                edit=lambda r: r["anchorReceipts"][0].update(contentHash="00" * 32))
 
     def corrupt_proof(resolved):
-        evidence = resolved["anchorReceipt"]["evidence"]
+        evidence = resolved["anchorReceipts"][0]["evidence"]
         proof = json.loads(ref.b64u_decode(evidence["value"]))
         proof["signature"]["value"] = b64u(b"\0" * 64)
         evidence["value"] = b64u(ref.jcs_bytes(proof))
     target_case("anchor-proof-signature-invalid", ordinary_target, EVIDENCE_DOMAIN,
                 "indeterminate", edit=corrupt_proof)
     target_case("anchor-without-evidence", ordinary_target, EVIDENCE_DOMAIN, "indeterminate",
-                edit=lambda r: r["anchorReceipt"].pop("evidence"))
+                edit=lambda r: r["anchorReceipts"][0].pop("evidence"))
     target_case("signature-invalid", ordinary_target, EVIDENCE_DOMAIN, "violation",
                 edit=lambda r: r["artifact"]["signature"].update(value=b64u(b"\0" * 64)))
     target_case("signature-missing", ordinary_target, EVIDENCE_DOMAIN, "violation",
                 edit=lambda r: r["artifact"].pop("signature"))
-    return {"fixtureVersion": "1", "publicKeys": PUBLIC_KEYS,
-            "orchestrator": CLAIMS["orchestrator"],
+    # The amendment's own malformation is a violation, not pending authority.
+    target_case("amendment-signature-missing", ordinary_target, EVIDENCE_DOMAIN, "violation",
+                amendment_edit=lambda a: a.pop("signature"))
+    # Registered ComponentSignature algorithms this verifier does not implement
+    # leave the decision to a verifier that does; an unregistered one violates.
+    # The ecdsa-secp256k1 value is a genuine canonical low-S DER signature, so
+    # only the implementation question is open. CORE registers no internal
+    # format for sr1-aggregate, so its relabelled value is not malformed.
+    target_case("ordinary-target-algorithm-ecdsa-secp256k1", ordinary_target, EVIDENCE_DOMAIN,
+                "indeterminate", algorithm="ecdsa-secp256k1")
+    for algorithm, expected in (("sr1-aggregate", "indeterminate"), ("rsa", "violation")):
+        target_case(f"ordinary-target-algorithm-{algorithm}", ordinary_target, EVIDENCE_DOMAIN,
+                    expected, edit=lambda r, a=algorithm: r["artifact"]["signature"].update(algorithm=a))
+    # CORE SR2-11: only the orchestrator's writer has authority over the
+    # payment address; an outsider's authentic receipt is discarded.
+    target_case("ordinary-target-outsider-writer", ordinary_target, EVIDENCE_DOMAIN,
+                "indeterminate", writer=OUTSIDER_WRITER)
+    target_case("anchor-binds-other-content-outsider-writer", ordinary_target, EVIDENCE_DOMAIN,
+                "indeterminate", anchored=legacy_target, writer=OUTSIDER_WRITER)
+    # CORE SR2-4: an indeterminate observation cannot establish finality, and
+    # its disposition is bound by the proof like every other receipt member.
+    target_case("anchor-disposition-edited", ordinary_target, EVIDENCE_DOMAIN, "indeterminate",
+                disposition="indeterminate",
+                edit=lambda r: r["anchorReceipts"][0].update(observationDisposition="established"))
+    target_case("anchor-indeterminate-disposition", ordinary_target, EVIDENCE_DOMAIN,
+                "indeterminate", disposition="indeterminate")
+    # SEB-3 bundle references carry the native address as their locator.
+    target_case("ordinary-target-native-locator", ordinary_target, EVIDENCE_DOMAIN, "valid",
+                native_locator=True)
+    # CORE §B.2: fractional numbers are admitted, string values are hashed
+    # under values-only NFC, and member names keep their exact spelling.
+    target_case("ordinary-target-fractional-member", {**ordinary_target, "futureRatio": 0.5},
+                EVIDENCE_DOMAIN, "valid")
+    target_case("ordinary-target-nfd-value-and-member-name",
+                {**ordinary_target, "futureNote": "café", "café": 1}, EVIDENCE_DOMAIN, "valid")
+    # A failure record carries its reason; a success record may not.
+    target_case("ordinary-failure-target",
+                {**{k: v for k, v in ordinary_target.items()
+                    if k not in ("paymentAmount", "settlementFinality", "paymentTxRefs")},
+                 "outcome": "failure", "reason": "rail refused the transfer"},
+                EVIDENCE_DOMAIN, "valid")
+    target_case("ordinary-success-with-reason", {**ordinary_target, "reason": "not a failure"},
+                EVIDENCE_DOMAIN, "violation")
+    # The signed reference keeps unknown members under CORE SIG-5.
+    target_case("amendment-reference-extra-member", ordinary_target, EVIDENCE_DOMAIN, "valid",
+                ref_edit=lambda r: r.update(future="x", anchor={**r["anchor"], "future": "x"}))
+    # CORE §5: every carrier the resolver found counts. Two canonically
+    # unequal authorized carriers are an equivocation; an equal copy or an
+    # outsider's carrier changes nothing.
+    target_case("anchor-equivocation", ordinary_target, EVIDENCE_DOMAIN, "indeterminate",
+                carriers=lambda anchor, logical: [anchor_receipt(
+                    logical, anchor["contentHash"], label="equivocation-2", nonce="301",
+                    writer=ORCHESTRATOR_WRITER, native=native_address(logical + ":second"))])
+    target_case("anchor-equivocation-other-content", ordinary_target, EVIDENCE_DOMAIN,
+                "indeterminate", carriers=lambda anchor, logical: [anchor_receipt(
+                    logical, ref.content_hash(legacy_target), label="equivocation-2", nonce="301",
+                    writer=ORCHESTRATOR_WRITER)])
+    target_case("anchor-duplicate-carrier", ordinary_target, EVIDENCE_DOMAIN, "valid",
+                carriers=lambda anchor, logical: [copy.deepcopy(anchor)])
+    target_case("anchor-outsider-second-carrier", ordinary_target, EVIDENCE_DOMAIN, "valid",
+                carriers=lambda anchor, logical: [anchor_receipt(
+                    logical, ref.content_hash(legacy_target), label="outsider-2", nonce="301",
+                    writer=OUTSIDER_WRITER)])
+    # CORE CF-5 admits each artifact from its exact received bytes: refused
+    # amendment bytes violate, refused target bytes are a substituted resolution.
+    target_case("amendment-duplicate-member", ordinary_target, EVIDENCE_DOMAIN, "violation",
+                amendment_text=duplicate_job_id)
+    target_case("target-duplicate-member", ordinary_target, EVIDENCE_DOMAIN, "indeterminate",
+                artifact_text=duplicate_job_id)
+    return {"fixtureVersion": "1", "publicKeys": PUBLIC_KEYS, "ecdsaPublicKeys": ECDSA_PUBLIC_KEYS,
+            "verifierProfile": {"signatureAlgorithms": ["ed25519"]},
+            "orchestrator": CLAIMS["orchestrator"], "orchestratorWriter": ORCHESTRATOR_WRITER,
+            "inputModel": (
+                "Bindings, the orchestrator, its native receipt writer and the finality-proof "
+                "pins are verifier-owned. Receipt blockRef.timestamp is CORE SR2-6 consensus "
+                "time in unix ms. The verifier implements the verifierProfile signature "
+                "algorithms (ed25519); ecdsa-secp256k1 (a genuine signature under the "
+                "orchestrator's ecdsaPublicKeys entry) and sr1-aggregate are registered but "
+                "not implemented by it, so they are indeterminate here. An identity-bound "
+                "case's identityBinding is the verifier-owned IBH-1..IBH-5 rerun outcome over "
+                "its placeholder companions; without one the rerun authority is missing. "
+                "An amendment or resolved artifact is received as its UTF-8 JSON text "
+                "(json.dumps, ensure_ascii false) unless amendmentText or artifactText gives "
+                "the exact received text. resolved.anchorReceipts lists every carrier the "
+                "resolver found for the reference's locator."),
             "phaseInputs": inputs, "amendmentTargets": targets}
 
 
-def rail_authority(rail: dict, *, registry_version: int = 1, index_time: int = 1_799_999_750_000,
-                   rail_time: int = 1_799_999_740_000, entries: list | None = None) -> dict:
-    """The pinned registry index plus its finalized index and definition receipts."""
-    address = ref.rail_address(rail)
+def rail_locator(rail: dict) -> str:
+    """The native storage locator a registry index entry gives a definition."""
+    return native_address(f"rail-definition:{rail['railId']}:{rail['railVersion']}")
+
+
+def index_entry(rail: dict, **change) -> dict:
+    """A CORE RegistryIndexEntry for a definition (SR2-10 content reference)."""
+    return {"id": rail["railId"], "version": rail["railVersion"],
+            "anchor": {"kind": "storage-program", "locator": rail_locator(rail)},
+            "contentHash": ref.content_hash(rail), **change}
+
+
+def rail_authority(rail: dict, *, revision: int = 1, index_time: int = 1_799_999_750_000,
+                   rail_time: int = 1_799_999_740_000, entries: list | None = None,
+                   index_writer: str = REGISTRY_WRITER, rail_writer: str = REGISTRY_WRITER,
+                   **index_change) -> dict:
+    """The pinned registry index snapshot plus every finalized index and definition receipt.
+
+    The snapshot uses CORE's RegistryIndexSnapshot/RegistryIndexEntry shape,
+    with `revision` equal to the session's numeric railRegistryVersion. DACS-4
+    defines no canonical rail logical address (RD-2), so the definition receipt
+    is matched by its native address to the entry's anchor locator; its
+    logicalAddress repeats that locator and is not interpreted. Each binding
+    lists every carrier found for it (one here).
+    """
     index = {
-        "registryVersion": registry_version,
-        "logicalAddress": ref.REGISTRY_INDEX_ADDRESS,
-        "entries": entries if entries is not None else [{
-            "railId": rail["railId"], "latestVersion": rail["railVersion"],
-            "versions": [{"railVersion": rail["railVersion"], "logicalAddress": address,
-                          "contentHash": ref.content_hash(rail)}],
-        }],
+        "registryIndexVersion": "1", "registryKind": "rail", "revision": revision,
+        "entries": entries if entries is not None else [index_entry(rail)],
+        **index_change,
     }
+    locator = rail_locator(rail)
     return {
         "railRegistryIndex": index,
-        "railRegistryIndexReceipt": anchor_receipt(
+        "railRegistryIndexReceipts": [anchor_receipt(
             ref.REGISTRY_INDEX_ADDRESS, ref.sha256_hex(ref.jcs_bytes(index)),
-            label=f"rail-index-{registry_version}", nonce="200", block_timestamp=index_time),
-        "railDefinitionReceipt": anchor_receipt(
-            address, ref.content_hash(rail),
-            label=f"rail-definition-{rail['railVersion']}", nonce="201", block_timestamp=rail_time),
+            label=f"rail-index-{revision}", nonce="200", block_timestamp=index_time,
+            writer=index_writer)],
+        "railDefinitionReceipts": [anchor_receipt(
+            locator, ref.content_hash(rail), native=locator,
+            label=f"rail-definition-{rail['railVersion']}", nonce="201", block_timestamp=rail_time,
+            writer=rail_writer)],
     }
 
 
@@ -742,8 +988,9 @@ def build_rail_fixture():
     # but cannot rewrite the pinned rail authority of an existing one.
     later = steward_rail(railVersion=2, governance={
         **rail["governance"], "acceptedAt": SESSION_STARTED_AT + 100, "supersedes": 1})
-    later_authority = rail_authority(later, registry_version=2, index_time=SESSION_STARTED_AT + 200,
-                                     rail_time=SESSION_STARTED_AT + 150)
+    later_authority = rail_authority(later, revision=2, index_time=SESSION_STARTED_AT + 200,
+                                     rail_time=SESSION_STARTED_AT + 150,
+                                     entries=[index_entry(rail), index_entry(later)])
     case("later-index-for-existing-session", "rejected", rail_value=later, authority=later_authority)
     case("later-index-for-new-session", "verified", rail_value=later, authority=later_authority,
          case_session={"startedAt": SESSION_STARTED_AT + 1_000, "railRegistryVersion": 2})
@@ -751,43 +998,117 @@ def build_rail_fixture():
     # unless it is the snapshot the session pinned.
     other_snapshot = steward_rail(railVersion=2, governance={**rail["governance"], "supersedes": 1})
     case("index-not-session-snapshot", "rejected", rail_value=other_snapshot,
-         authority=rail_authority(other_snapshot, registry_version=2))
+         authority=rail_authority(other_snapshot, revision=2))
+    # §9.4.3 step 2: without a pin, the unique greatest listed version is the
+    # session's rail; an advertised hint member cannot select another one.
+    both = [index_entry(rail), index_entry(other_snapshot)]
+    case("unpinned-selects-greatest-version", "verified", rail_value=other_snapshot,
+         authority=rail_authority(other_snapshot, entries=both))
+    case("unpinned-older-version-rejected", "rejected",
+         authority=rail_authority(rail, entries=both))
+    case("latest-hint-is-inert", "rejected",
+         authority=rail_authority(rail, entries=both, latestVersion=1))
+    case("pinned-older-version", "verified", case_ref={"railId": RAIL_ID, "railVersion": 1},
+         authority=rail_authority(rail, entries=both))
+    case("railref-other-rail-id", "rejected", case_ref={"railId": "evm-erc20:1:USDC"})
+    # Two entries for one (id, version) leave the snapshot internally inconsistent.
+    case("index-duplicate-version", "indeterminate", authority=rail_authority(
+        rail, entries=[index_entry(rail), index_entry(rail, contentHash=hashed("other rail definition"))]))
+    case("index-entry-not-object", "rejected", authority=rail_authority(
+        rail, entries=[index_entry(rail), "demos-native:DEM"]))
     # A steward-signed definition alone does not resolve a rail.
+    usdc = {"railId": "evm-erc20:1:USDC", "railVersion": 1}
     case("definition-without-index-membership", "rejected",
          authority=rail_authority(rail, entries=[{
-             "railId": "evm-erc20:1:USDC", "latestVersion": 1,
-             "versions": [{"railVersion": 1, "logicalAddress": "dacs4:rail:evm-erc20%3A1%3AUSDC:1",
-                           "contentHash": hashed("rail:evm-erc20:1:USDC")}]}]))
+             "id": usdc["railId"], "version": 1,
+             "anchor": {"kind": "storage-program", "locator": rail_locator(usdc)},
+             "contentHash": hashed("rail:evm-erc20:1:USDC")}]))
     case("index-missing", "indeterminate", authority=without("railRegistryIndex"))
-    case("index-receipt-missing", "indeterminate", authority=without("railRegistryIndexReceipt"))
-    case("definition-receipt-missing", "indeterminate", authority=without("railDefinitionReceipt"))
+    case("index-receipt-missing", "indeterminate", authority=without("railRegistryIndexReceipts"))
+    case("definition-receipt-missing", "indeterminate", authority=without("railDefinitionReceipts"))
+    # CORE SR2-11: receipts by a writer other than the registry's are discarded.
+    case("index-receipt-outsider-writer", "indeterminate",
+         authority=rail_authority(rail, index_writer=OUTSIDER_WRITER))
+    case("definition-receipt-outsider-writer", "indeterminate",
+         authority=rail_authority(rail, rail_writer=OUTSIDER_WRITER))
     # An authentic receipt whose proven state is short of finalized.
     unfinalized = rail_authority(rail)
-    unfinalized["railDefinitionReceipt"] = anchor_receipt(
-        ref.rail_address(rail), ref.content_hash(rail), label="rail-definition-1", nonce="201",
-        block_timestamp=1_799_999_740_000, state="included")
+    unfinalized["railDefinitionReceipts"] = [anchor_receipt(
+        rail_locator(rail), ref.content_hash(rail), native=rail_locator(rail),
+        label="rail-definition-1", nonce="201", block_timestamp=1_799_999_740_000,
+        state="included", writer=REGISTRY_WRITER)]
     case("definition-receipt-not-finalized", "indeterminate", authority=unfinalized)
     forged = rail_authority(rail)
-    evidence = forged["railRegistryIndexReceipt"]["evidence"]
+    evidence = forged["railRegistryIndexReceipts"][0]["evidence"]
     proof = json.loads(ref.b64u_decode(evidence["value"]))
     proof["signature"]["value"] = b64u(b"\0" * 64)
     evidence["value"] = b64u(ref.jcs_bytes(proof))
     case("index-receipt-proof-invalid", "indeterminate", authority=forged)
-    case("index-pins-other-content", "rejected", authority=rail_authority(rail, entries=[{
-        "railId": RAIL_ID, "latestVersion": 1,
-        "versions": [{"railVersion": 1, "logicalAddress": ref.rail_address(rail),
-                      "contentHash": hashed("other rail definition")}]}]))
+    case("index-pins-other-content", "rejected", authority=rail_authority(
+        rail, entries=[index_entry(rail, contentHash=hashed("other rail definition"))]))
     other_content = rail_authority(rail)
-    other_content["railDefinitionReceipt"] = anchor_receipt(
-        ref.rail_address(rail), hashed("other rail definition"),
-        label="rail-definition-1", nonce="201", block_timestamp=1_799_999_740_000)
+    other_content["railDefinitionReceipts"] = [anchor_receipt(
+        rail_locator(rail), hashed("other rail definition"), native=rail_locator(rail),
+        label="rail-definition-1", nonce="201", block_timestamp=1_799_999_740_000,
+        writer=REGISTRY_WRITER)]
     case("definition-anchor-binds-other-content", "rejected", authority=other_content)
     bad_signature = copy.deepcopy(rail)
     bad_signature["signature"]["value"] = b64u(b"\0" * 64)
     case("steward-signature-invalid", "rejected", rail_value=bad_signature,
          authority=rail_authority(rail))
     case("agreement-pins-other-version", "rejected", case_ref={"railId": RAIL_ID, "railVersion": 2})
+    # CORE RegistryIndexEntry: every registered anchor kind; closed entries
+    # with positive versions; a positive JSON-safe revision.
+    other_rails = [{"id": f"evm-erc20:1:{symbol}", "version": 1,
+                    "anchor": {"kind": kind, "locator": f"{kind}-locator-{symbol}"},
+                    "contentHash": hashed(f"rail:{symbol}")}
+                   for kind, symbol in (("ipfs", "USDC"), ("https", "USDT"))]
+    case("index-lists-ipfs-and-https-entries", "verified",
+         authority=rail_authority(rail, entries=[index_entry(rail), *other_rails]))
+    case("index-entry-version-zero", "rejected",
+         authority=rail_authority(rail, entries=[index_entry(rail), {**other_rails[0], "version": 0}]))
+    case("index-entry-extra-member", "rejected",
+         authority=rail_authority(rail, entries=[index_entry(rail, note="x")]))
+    case("index-entry-anchor-extra-member", "rejected", authority=rail_authority(rail, entries=[
+        index_entry(rail, anchor={**index_entry(rail)["anchor"], "note": "x"})]))
+    for label, version in (("zero", 0), ("negative", -1)):
+        case(f"session-registry-version-{label}", "rejected",
+             case_session={**session, "railRegistryVersion": version},
+             authority=rail_authority(rail, revision=version))
+    case("index-revision-boolean", "rejected", authority=rail_authority(rail, revision=True))
+    # RTB-1 also covers PA-3; this verifier does not implement a multisig
+    # steward signature (or PA-1 in-code authority), so it verifies neither.
+    for anchoring, label in (("multisig", "pa3-multisig"), ("in-code", "pa1-in-code")):
+        other = steward_rail(governance={**rail["governance"], "anchoring": anchoring})
+        case(f"{label}-rail-not-implemented", "indeterminate", rail_value=other)
+    # CORE §5: two canonically unequal authorized carriers for one binding are
+    # an equivocation; an equal copy or an outsider's carrier changes nothing.
+    for member, label, address, content, native, time in (
+            ("railRegistryIndexReceipts", "index", ref.REGISTRY_INDEX_ADDRESS,
+             ref.sha256_hex(ref.jcs_bytes(rail_authority(rail)["railRegistryIndex"])),
+             None, 1_799_999_750_000),
+            ("railDefinitionReceipts", "definition", rail_locator(rail), ref.content_hash(rail),
+             rail_locator(rail), 1_799_999_740_000)):
+        for name, expected, writer, nonce in (("equivocation", "indeterminate", REGISTRY_WRITER, "202"),
+                                              ("outsider-second-carrier", "verified", OUTSIDER_WRITER, "202"),
+                                              ("duplicate-carrier", "verified", None, None)):
+            authority = rail_authority(rail)
+            authority[member].append(copy.deepcopy(authority[member][0]) if writer is None else anchor_receipt(
+                address, content, native=native, label=f"rail-{label}-second", nonce=nonce,
+                block_timestamp=time, writer=writer))
+            case(f"{label}-receipt-{name}", expected, authority=authority)
     return {"fixtureVersion": "1", "publicKeys": PUBLIC_KEYS, "steward": CLAIMS["steward"],
+            "registryWriter": REGISTRY_WRITER,
+            "inputModel": (
+                "The session pins, steward, registry writer and finality-proof pins are "
+                "verifier-owned. railRegistryIndex uses CORE's RegistryIndexSnapshot and "
+                "RegistryIndexEntry shape as a projection of the DACS-4 numeric snapshot; its "
+                "revision is the session's railRegistryVersion. railRegistryIndexReceipts and "
+                "railDefinitionReceipts list every carrier found for each binding. The "
+                "definition receipt is matched by nativeAddress to the selected entry's anchor "
+                "locator. Receipt blockRef.timestamp is CORE SR2-6 consensus time in unix ms. "
+                "The verifier implements PA-2 single-signer rails only; PA-1 in-code and PA-3 "
+                "multisig rails are indeterminate here."),
             "cases": cases}
 
 

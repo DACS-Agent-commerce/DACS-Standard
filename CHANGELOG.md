@@ -1473,9 +1473,9 @@ The format used per release:
   not bind their own fields, and resolved bytes that differ from an authentic
   anchor remain indeterminate; AMEND-4 continues to allow rejection or flagging.
   A separate deterministic fixture and non-normative reference pin these
-  choices. The three DACS-4 v0.x target arms reject unknown members; Atomic
-  targets follow the open normative schema (§9.7.3) and preserve unknown signed
-  members under CORE SIG-5.
+  choices. The transition and finality-bound target arms reject unknown members;
+  ordinary `SettlementEvidence` and Atomic targets preserve unknown signed members under
+  CORE SIG-5, with Atomic targets following the open normative schema (§9.7.3).
 - **Focused Atomic profile time and candidate fixtures** — the focused sequential
   profile verifies the commitment AnchorReceipt and reads its consensus time for
   Listing checks. Unsupported revocation-state reference versions remain
@@ -1552,13 +1552,22 @@ These are general normative changes, not Atomic-only rules: they bind every
 rail consumer, pay-* handler, and amendment consumer whether or not
 `AtomicWorkCapabilityV1` is ever enabled.
 
-- **Rail resolution** (DACS-4 §9.4.3 RTB-1) — for PA-2 or PA-3, the
-  registry-index and definition receipts' finalized timestamps and the
+- **Rail resolution** (DACS-4 §9.4.3 RTB-1) — when a consumer resolves a
+  session's PA-2 or PA-3 rail, the registry-index and definition receipts'
+  `blockRef.timestamp` (CORE SR2-6 consensus time, unix ms) and the
   definition's authenticated `governance.acceptedAt` MUST each be no later than
-  the authenticated session `startedAt`, and a later
+  the authenticated session `startedAt`, both receipts MUST be authentic
+  finalized receipts by the registry's authorized writer, and a later
   index or definition MUST NOT rewrite the rail authority of an existing
   session. A steward-signed definition without the pinned index membership and
-  both finalized anchor bindings does not resolve a rail.
+  both finalized anchor bindings does not resolve a rail. A binding whose block
+  time is not unix ms converts it first; the authorized writer is the one the
+  consumer pins for the rail phase's anchoring authority; two canonically
+  unequal authorized receipts for one binding are an equivocation, and a phase
+  signature the consumer does not implement (such as PA-3 multisig) leaves the
+  rail unresolved (`indeterminate`). Later consumers of that session's rail
+  (FV-1 `railDefinitionRef`, DACS-5 current use) use the rail so resolved as
+  verifier-owned session state.
 - **Payment input arm** (DACS-4 §9.5.1 PC-1) — every pay-* handler MUST select
   the `PaymentPhaseInput` or `AtomicPaymentPhaseInputV1` arm from the
   authenticated phase binding before it reads any input member, and MUST NOT
@@ -1566,8 +1575,10 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   and rejects `atomicSessionContext`; the Atomic arm is closed. A missing
   required member or one of the wrong type, including the `AgreementArtifact`
   and `RailDefinition` discriminators and members, the nested party,
-  `PriceTerm` and session-context shapes, is rejected. A PC-1 rejection is
-  permanent (`ok: false`, `errorClass: "permanent"`) and precedes any rail call.
+  `PriceTerm` and session-context shapes, is rejected.
+  Other unknown members of the ordinary arm, top-level or nested, stay open
+  under CORE SIG-5. A PC-1 rejection is permanent (`ok: false`,
+  `errorClass: "permanent"`) and precedes any rail call.
   The checks include complete AssetSpec and NetworkSpec arms, governance
   optionals, DeliverableRef, PaymentRailRef, payout binding entries, bare
   lowercase identity-bound party hashes, and each agreement kind's forbidden
@@ -1580,22 +1591,39 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   These are declared-type checks: a profile's further value domains (an exact
   HTTPS `statusEndpointOrigin`, duplicate-free `authorityRefs` and
   `captureStatuses`, the quorum ratio) stay with FV-1, which makes a malformed
-  profile `error`.
+  profile `error`. Within these checks a declared `string` is non-empty NFC and
+  a digest member is 64 lowercase hex characters. The authenticated Listing
+  alone selects the identity-bound path, and an agreement of the other kind is
+  a PC-1 rejection. On that path an absent `identityBindingCompanions` keeps the
+  §9.5.1 `indeterminate` result (`errorClass: "substrate"`, no rail call); an
+  empty array or a companion that is not an object carrying `identityBundle` or
+  `compositeRecord` is a PC-1 rejection on either path, matching IBH `error`.
+  The IBH-1..IBH-5 rerun decides each companion's members before any rail
+  call.
 - **Amendment target** (DACS-4 §9.7.1 AMEND-1) — an amendment consumer MUST
   resolve `amendsEvidenceRef` and recompute its content hash before reading any
-  target member. The target may now be `SettlementEvidence`,
+  target member, admitting the amendment and the target from their exact
+  received bytes under CORE CF-5 first. The target may now be `SettlementEvidence`,
   `LegacyTransitionSettlementEvidence`, `FinalityBoundSettlementEvidence` or
   `AtomicSettlementEvidenceV1`, selected by exactly one discriminator and
-  verified under that arm's signature domain; `DeliveryEvidence` is not a
-  target. The signer MUST be the session's phase orchestrator, the target MUST
-  be a complete record of its arm, and the amendment address's `{evidenceHash}`
-  segment MUST equal the target's content hash. An unavailable, unanchored or
+  verified under that arm's
+  signature domain; `DeliveryEvidence` is not a target. The signer MUST be the
+  session's phase orchestrator, the target MUST be a complete record of its
+  arm, and the amendment address's `{evidenceHash}` segment MUST equal the
+  target's content hash. The reference's locator may be the PC-2 logical
+  payment address or the receipt's native address. An unavailable, unanchored or
   unfinalized target, or resolved bytes that differ from an authentic anchor,
-  leaves the amendment `indeterminate`, as does an anchor receipt whose proof
-  does not bind its own fields. Only an authentic anchor that binds another
-  content hash is a violation. The three DACS-4 v0.x target arms use closed
-  shapes and reject unknown members; Atomic targets use the open normative
-  schema (§9.7.3), preserving unknown signed members under CORE SIG-5.
+  leaves the amendment `indeterminate`. This also covers resolved bytes that
+  CF-5 refuses, an anchor receipt whose proof does not bind its own fields
+  (including `observationDisposition`), a receipt from a writer other than the
+  orchestrator's, an equivocation, or a registered signature algorithm the
+  consumer does not implement. Only an authentic anchor that binds another
+  content hash is a violation; that anchor must be written by the orchestrator's
+  authorized writer. The transition and finality-bound target arms use
+  closed shapes and reject unknown members; ordinary `SettlementEvidence` keeps
+  unknown optional members under CORE SIG-5.
+  Atomic targets use the open normative schema (§9.7.3), preserving unknown
+  signed members under CORE SIG-5.
 - **Evidence selectors** (DACS-4 §9.7) — the exclusive-discriminator rule
   counts `atomicEvidenceVersion` with the four existing selectors and lists the
   `dacs-atomic-evidence:v1:` domain, so every consumer, not only an Atomic
@@ -1606,8 +1634,14 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   `conformance/fixtures/settlement/payment-input-amendment-v0.1.json` (PC-1
   inputs and AMEND-1 targets) and `rail-authority-time-bound-v0.1.json`
   (RTB-1) pin these rules; CONFORMANCE-PLAN maps each MUST to its cases. The
-  golden `settlement-evidence-payment-success.json` payment input is
-  illustrative, not a PC-1 handler input.
+  RTB-1 fixture's index uses CORE's closed `RegistryIndexEntry` shape and a
+  positive revision, and selects an exact pin or the unique greatest listed
+  version. The fixture verifier implements only `ed25519` and PA-2
+  single-signer rails; its ecdsa-secp256k1 case carries a genuine canonical
+  low-S DER signature. Resolvers list every carrier found for an address, and
+  the identity-bound cases declare the verifier's IBH rerun outcome. The golden
+  `settlement-evidence-payment-success.json` payment input is illustrative,
+  not a PC-1 handler input, and a test pins that the reference rejects it.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

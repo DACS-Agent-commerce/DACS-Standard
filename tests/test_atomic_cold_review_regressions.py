@@ -335,11 +335,37 @@ class AtomicColdReviewRegressions(unittest.TestCase):
         ev=entry['evidence'];digest=R.atomic_evidence_hash(ev)
         a={'amendmentVersion':'1','jobId':ev['jobId'],'amendsEvidenceRef':{'anchor':{'kind':'storage-program','locator':entry['evidenceAddress']},'contentHash':digest},'amendmentType':'correction','reason':'audit','observedAt':1800000050000}
         a=R.sign_embedded(a,G.CLAIMS['seller'],G.SEEDS['seller'],R._AMENDMENT_DOMAIN)
-        kwargs=dict(amendment_address=f"dacs4:amendment:{ev['jobId']}:{digest}:0",orchestrator=G.CLAIMS['orchestrator'],public_keys=G.PUBLIC_KEYS,network_authority=G.CLAIMS['network'],network_id=ev['networkId'],proof_profile=PINS['expectedProofProfile'],validator_set_id='test-validator-set-1')
-        resolved={'artifact':ev,'anchorReceipt':entry['publication']['anchorReceipt'],'publication':entry['publication']}
+        a=json.dumps(a).encode('utf-8')
+        kwargs=dict(amendment_address=f"dacs4:amendment:{ev['jobId']}:{digest}:0",orchestrator=G.CLAIMS['orchestrator'],writer=G.CLAIMS['orchestrator'],public_keys=G.PUBLIC_KEYS,network_authority=G.CLAIMS['network'],network_id=ev['networkId'],proof_profile=PINS['expectedProofProfile'],validator_set_id='test-validator-set-1')
+        resolved={'artifact':json.dumps(ev).encode('utf-8'),'anchorReceipts':[entry['publication']['anchorReceipt']],'publication':entry['publication']}
         self.assertEqual(PC.consume_amendment_target(a,lambda _:resolved,**kwargs)[0],'valid')
-        bad=copy.deepcopy(resolved);bad['anchorReceipt']['contentHash']='00'*32
+        bad=copy.deepcopy(resolved);bad['anchorReceipts'][0]['contentHash']='00'*32
         self.assertNotEqual(PC.consume_amendment_target(a,lambda _:bad,**kwargs)[0],'valid')
+        self.assertEqual(PC.consume_amendment_target(a,lambda _:resolved,**{**kwargs,'writer':'native:outsider'})[0],'indeterminate')
+        # The base's carrier selection also applies to actual Atomic proofs:
+        # equal copies collapse; two authenticated unequal receipts do not.
+        duplicate={**resolved,'anchorReceipts':resolved['anchorReceipts']*2}
+        self.assertEqual(PC.consume_amendment_target(a,lambda _:duplicate,**kwargs)[0],'valid')
+        other=copy.deepcopy(entry['publication'])
+        other['anchorReceipt']['nonce']='951'
+        proof=json.loads(R.b64u_decode(other['anchorReceipt']['evidence']['value']))
+        proof.pop('signature');proof['nonce']='951'
+        other['anchorReceipt']['evidence']=G.encoded_evidence('test-anchor-publication',proof,'network',R._PUBLICATION_TEST_DOMAIN)
+        equivocal={**resolved,'anchorReceipts':[*resolved['anchorReceipts'],other['anchorReceipt']],
+                   'publications':[entry['publication'],other]}
+        status,reason=PC.consume_amendment_target(a,lambda _:equivocal,**kwargs)
+        self.assertEqual(status,'indeterminate')
+        self.assertIn('equivocation',reason)
+        changed=R.sign_embedded({**ev,'observedAt':ev['observedAt']+1},G.CLAIMS['orchestrator'],G.SEEDS['orchestrator'],R.EVIDENCE_DOMAIN)
+        other=G.atomic_publication(changed,entry['evidenceAddress'])
+        equivocal={**resolved,'anchorReceipts':[*resolved['anchorReceipts'],other['anchorReceipt']],
+                   'publications':[entry['publication'],other]}
+        status,reason=PC.consume_amendment_target(a,lambda _:equivocal,**kwargs)
+        self.assertEqual(status,'indeterminate')
+        self.assertIn('equivocation',reason)
+        contradiction={**resolved,'anchorReceipts':[other['anchorReceipt']],'publication':other}
+        self.assertEqual(PC.consume_amendment_target(a,lambda _:contradiction,**kwargs),
+                         ('violation','authentic amendment target anchor binds another content hash'))
 
     def test_seb_uses_actual_publication_and_checks_all_member_orders(self):
         authority=BG.make_atomic_authority()

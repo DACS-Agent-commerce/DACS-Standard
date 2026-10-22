@@ -122,6 +122,34 @@ class StorageSoftLimitTests(unittest.TestCase):
                 self.assertEqual("did:demos:seller", record["signature"]["signer"])
                 verify_pointer_signature(record, seller, R.FAULT_POINTER_DOMAIN)
 
+    def test_deliverable_pointer_itself_must_fit_exact_canonical_byte_limit(self):
+        payload = b"x" * (SOFT_LIMIT_BYTES + 1)
+        record = package_deliverable(payload, URL)["record"]
+        for extra, allowed in ((0, True), (1, False)):
+            for character in ("x", "é"):
+                count = (SOFT_LIMIT_BYTES - len(payload_bytes(record))) // len(character.encode())
+                url = URL + character * count
+                # Use ASCII to reach the exact byte boundary in either case.
+                url += "x" * (SOFT_LIMIT_BYTES - len(payload_bytes(dict(record, externalUrl=url))) + extra)
+                with self.subTest(extra=extra, character=character):
+                    if allowed:
+                        pointer = package_deliverable(payload, url)["record"]
+                        self.assertEqual(SOFT_LIMIT_BYTES, len(payload_bytes(pointer)))
+                    else:
+                        with self.assertRaisesRegex(ValueError, "pointer exceeds"):
+                            package_deliverable(payload, url)
+
+    def test_signed_bundle_pointer_itself_must_fit_with_signature(self):
+        bundle, _, seller = committed_fab_case()
+        bundle = padded(bundle, SOFT_LIMIT_BYTES + 1)
+        record = extended_bundle_pointer(bundle, URL, seller)
+        url = URL + "x" * (SOFT_LIMIT_BYTES - len(payload_bytes(record)))
+        pointer = package_bundle(bundle, url, seller)["record"]
+        self.assertEqual(SOFT_LIMIT_BYTES, len(payload_bytes(pointer)))
+        verify_pointer_signature(pointer, seller, R.FAULT_POINTER_DOMAIN)
+        with self.assertRaisesRegex(ValueError, "pointer exceeds"):
+            package_bundle(bundle, url + "x", seller)
+
     def test_pointer_reproduces_each_committed_typed_pointer(self):
         """The producer emits exactly the signed pointer each consumer corpus accepts."""
         fab, fab_pointer, seller = committed_fab_case()

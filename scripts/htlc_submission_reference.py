@@ -7,9 +7,9 @@ an observation. This fixture codec is not a registered production binding.
 from dataclasses import dataclass
 
 try:
-    from .settlement_finality_reference import _verify_chain_observation
+    from .settlement_finality_reference import _htlc_lock_timing, _verify_chain_observation
 except ImportError:
-    from settlement_finality_reference import _verify_chain_observation
+    from settlement_finality_reference import _htlc_lock_timing, _verify_chain_observation
 
 
 @dataclass(frozen=True)
@@ -33,6 +33,10 @@ def verify_htlc_submission(observation, *, authority):
         result, event = _verify_chain_observation(
             observation, authority.source_profile, authority.source_lock_ref,
             authority.expected_economics, authority.trusted)
+        if event is not None and event.get('eventType') == 'htlc-lock':
+            timing = _htlc_lock_timing(observation, event)
+            if timing is not None and (result['decision'] != 'error' or timing['decision'] == 'error'):
+                result = timing
     except (ValueError, TypeError, KeyError, IndexError, OverflowError, RecursionError):
         return {'decision': 'error', 'maySubmit': False,
                 'reason': 'malformed HTLC submission observation or authority'}

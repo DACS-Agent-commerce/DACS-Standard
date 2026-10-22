@@ -58,13 +58,13 @@ def package_deliverable(payload: Any, external_url: str) -> dict:
     data = payload_bytes(payload)
     if fits_soft_limit(data):
         return {"kind": "direct", "payload": data}
-    return {
-        "kind": "extended-pointer",
-        "record": {
-            "externalUrl": external_url,
-            "externalContentHash": hashlib.sha256(data).hexdigest(),
-        },
+    record = {
+        "externalUrl": external_url,
+        "externalContentHash": hashlib.sha256(data).hexdigest(),
     }
+    if not fits_soft_limit(record):
+        raise ValueError("extended pointer exceeds the DACS storage soft limit")
+    return {"kind": "extended-pointer", "record": record}
 
 
 def attestation_bundle_hash(bundle: dict) -> str:
@@ -113,6 +113,8 @@ def extended_bundle_pointer(bundle: dict, full_bundle_url: str, signing_key: Any
         "algorithm": "ed25519",
         "value": base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii"),
     }
+    if not fits_soft_limit(pointer):
+        raise ValueError("extended pointer exceeds the DACS storage soft limit")
     return pointer
 
 

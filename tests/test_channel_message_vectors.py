@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import copy
+import fcntl
 import hashlib
 import json
 import os
@@ -13,6 +14,7 @@ import tempfile
 import threading
 
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest import mock
 
@@ -365,21 +367,37 @@ class DurableChannelIdStore:
         return channel_ids
 
     def record(self, channel_id):
-        channel_ids = self.load()
-        if channel_id in channel_ids:
-            raise ReusedChannelIdError("channel identifier was already used")
-        pending = self._path.with_name(self._path.name + ".pending")
-        with open(pending, "w", encoding="utf-8") as handle:
-            json.dump(channel_ids + [channel_id], handle)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(pending, self._path)
-        # The rename is durable only once its directory entry is synced.
-        directory = os.open(self._path.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory)
-        finally:
-            os.close(directory)
+        self._update([channel_id], reject_used=True)
+
+    def retain(self, channel_ids):
+        """Persist imported used identifiers before granting CH-6 authority."""
+        return self._update(channel_ids, reject_used=False)
+
+    def _update(self, incoming, *, reject_used):
+        # Lock a stable sidecar, never the data inode replaced by rename.
+        # Each instance/process must serialize the entire read/check/write.
+        with open(self._path.with_name(self._path.name + ".lock"), "a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            channel_ids = self.load()
+            if reject_used and any(item in channel_ids for item in incoming):
+                raise ReusedChannelIdError("channel identifier was already used")
+            added = [item for item in incoming if item not in channel_ids]
+            if not added:
+                return channel_ids
+            channel_ids += added
+            pending = self._path.with_name(self._path.name + ".pending")
+            with open(pending, "w", encoding="utf-8") as handle:
+                json.dump(channel_ids, handle)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(pending, self._path)
+            # The rename is durable only once its directory entry is synced.
+            directory = os.open(self._path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+            return channel_ids
 
 
 class RetainedChannelRegistry:
@@ -401,7 +419,7 @@ class RetainedChannelRegistry:
             raise TypeError("a durable channel identifier store is required")
         self._lock = threading.RLock()
         self._store = store
-        self._used_channel_ids = set(used_channel_ids) | set(store.load() if store else ())
+        self._used_channel_ids = set(store.retain(used_channel_ids) if store else used_channel_ids)
         self._issued_states = {}
 
         self._state_type = None
@@ -1376,6 +1394,63 @@ class ChannelMessageVectorTests(unittest.TestCase):
         for registry in (None, RetainedChannelRegistry([channel_id])):
             with self.subTest(registry=registry), self.assertRaises(TypeError):
                 ch6_live_issuer(registry, channel_id)
+
+    def test_ch6_concurrent_stores_retain_every_admitted_identifier(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "used.json"
+            registries = [RetainedChannelRegistry(store=DurableChannelIdStore(path)) for _ in range(2)]
+            start = threading.Barrier(2)
+
+            def issue(index):
+                start.wait(timeout=5)
+                for sequence in range(12):
+                    channel_id = f"concurrent-{index}-{sequence}"
+                    ch6_live_issuer(registries[index], channel_id).issue(channel_id)
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = [pool.submit(issue, index) for index in range(2)]
+                for future in futures:
+                    future.result(timeout=10)
+            restarted = RetainedChannelRegistry(store=DurableChannelIdStore(path))
+            for index in range(2):
+                for sequence in range(12):
+                    with self.assertRaises(ReusedChannelIdError):
+                        channel_id = f"concurrent-{index}-{sequence}"
+                        ch6_live_issuer(restarted, channel_id).issue(channel_id)
+            ch6_live_issuer(restarted, "new-after-restart").issue("new-after-restart")
+
+    def test_ch6_two_registries_cannot_both_admit_the_same_identifier(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "used.json"
+            issuers = [ch6_live_issuer(RetainedChannelRegistry(store=DurableChannelIdStore(path)),
+                                      "same-channel") for _ in range(2)]
+            start = threading.Barrier(2)
+
+            def issue(issuer):
+                start.wait(timeout=5)
+                try:
+                    issuer.issue("same-channel")
+                    return "admitted"
+                except ReusedChannelIdError:
+                    return "reused"
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                self.assertCountEqual(["admitted", "reused"], list(pool.map(issue, issuers)))
+
+    def test_ch6_preloaded_identifiers_are_durable_before_new_issuance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "used.json"
+            imported = ["imported-a", "imported-b"]
+            registry = RetainedChannelRegistry(imported, store=DurableChannelIdStore(path))
+            # A restart even before the first issuance must retain the imports.
+            self.assertCountEqual(imported, DurableChannelIdStore(path).load())
+            ch6_live_issuer(registry, "new-b").issue("new-b")
+            # Re-importing trusted history is idempotent and preserves new IDs.
+            restarted = RetainedChannelRegistry(imported, store=DurableChannelIdStore(path))
+            for channel_id in imported + ["new-b"]:
+                with self.assertRaises(ReusedChannelIdError):
+                    ch6_live_issuer(restarted, channel_id).issue(channel_id)
+            ch6_live_issuer(restarted, "new-c").issue("new-c")
 
     def test_historical_import_uses_an_independent_audit_cursor(self):
         by_name = {item["name"]: item for item in self.legacy["vectors"]}

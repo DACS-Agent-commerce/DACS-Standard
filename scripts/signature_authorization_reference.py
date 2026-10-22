@@ -52,8 +52,17 @@ def digest(artifact, signature_type):
 
 
 def verify_envelope(envelope, message, keys, *, signer_field='signer', allowed=ALGORITHMS,
-                    implemented=ALGORITHMS):
+                    implemented=ALGORITHMS, signature_type=None):
     if not isinstance(envelope, dict):
+        return 'error'
+    members = {signer_field, 'algorithm', 'value'}
+    if signature_type == 'ChannelMessageSignature':
+        members.add('signatureVersion')
+        if envelope.get('signatureVersion') != '1':
+            return 'error'
+    if not members.issubset(envelope):
+        return 'error'
+    if signature_type == 'ChannelMessageSignature' and set(envelope) != members:
         return 'error'
     algorithm = envelope.get('algorithm')
     if not isinstance(algorithm, str) or algorithm not in allowed:
@@ -93,21 +102,31 @@ def verify_envelope(envelope, message, keys, *, signer_field='signer', allowed=A
     return 'pass'
 
 
-def authorize_signatures(artifact, signature_type, keys, authorized_claims, *, implemented=ALGORITHMS):
-    """Return envelope verdict and containing artifact's signature-gate verdict."""
+def authorize_signatures(artifact, signature_type, keys, authorized_claims, *, implemented=ALGORITHMS,
+                         required_claims=None):
+    """Return envelope and artifact signature verdicts using verifier-owned claims.
+
+    ``authorized_claims`` permits signers; ``required_claims`` names the exact
+    session roster that must co-sign agreements and non-abort bundles. It
+    defaults to the authorized roster. DACS-5 §10.4.1 allows one-signed aborts.
+    """
     domain, member, field, _ = TYPES[signature_type]
     signatures = artifact.get(member)
     signatures = signatures if member == 'signatures' else [signatures]
     if not isinstance(signatures, list) or not signatures:
         return {'envelope': 'error', 'artifact': 'error'}
     message = (domain + digest(artifact, signature_type)).encode('ascii')
-    results = [verify_envelope(s, message, keys, signer_field=field, implemented=implemented)
+    results = [verify_envelope(s, message, keys, signer_field=field, implemented=implemented,
+                               signature_type=signature_type)
                for s in signatures]
     decision = next((v for v in ('error', 'fail', 'indeterminate') if v in results), 'pass')
     signers = [s.get(field) for s in signatures if isinstance(s, dict)]
     if decision != 'error' and (len(signers) != len(set(signers)) or any(s not in authorized_claims for s in signers)):
         decision = 'fail'
-    if decision == 'pass' and member == 'signatures' and set(signers) != set(authorized_claims):
-        decision = 'fail'
+    abort = signature_type == 'BundleSignature' and artifact.get('outcome') in {'aborted-by-self', 'aborted-by-other'}
+    if decision != 'error' and member == 'signatures' and not abort:
+        required = set(authorized_claims if required_claims is None else required_claims)
+        if not required.issubset(signers):
+            decision = 'fail'
     return {'envelope': next((v for v in ('error', 'fail', 'indeterminate') if v in results), 'pass'),
             'artifact': decision}

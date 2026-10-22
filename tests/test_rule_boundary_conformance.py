@@ -1,10 +1,12 @@
 """Portable witnesses for signature admission, missing authority and HTLC submission."""
 import json
 import copy
+import os
 import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PublicKey
 
@@ -63,6 +65,32 @@ class RuleBoundaryCoverageTests(unittest.TestCase):
                 Ed448PublicKey.from_public_bytes(decode(public)).verify(
                     decode(signature["value"]), (domain + digest(case["input"], typ)).encode("ascii"))
 
+    def test_required_signers_are_distinct_from_authorized_signers(self):
+        data = json.loads((SECURITY / "signature-authorization-v0.1.json").read_text())
+        for typ in ("AgreementSignature", "BundleSignature"):
+            case = next(v for v in data["vectors"] if v["name"] == typ + "-ed25519-valid")
+            trusted = case["trusted"]
+            result = authorize_signatures(case["input"], typ, trusted["keys"],
+                                          trusted["authorizedClaims"] + ["did:example:optional"],
+                                          required_claims=trusted["authorizedClaims"])
+            self.assertEqual({"envelope": "pass", "artifact": "pass"}, result)
+
+    def test_missing_required_signatures_still_refuse_without_keys(self):
+        data = json.loads((SECURITY / "signature-authorization-v0.1.json").read_text())
+        for typ in ("AgreementSignature", "BundleSignature"):
+            for suffix in ("required-signature-missing", "required-signature-missing-key-unavailable"):
+                case = next(v for v in data["vectors"] if v["name"] == typ + "-" + suffix)
+                self.assertEqual("fail", case["want"]["artifact"])
+        for outcome in ("self", "other"):
+            case = next(v for v in data["vectors"] if v["name"] == "BundleSignature-abort-" + outcome + "-single-signed")
+            self.assertEqual({"envelope": "pass", "artifact": "pass"}, case["want"])
+
+    def test_channel_signature_version_is_required_under_the_selected_type(self):
+        data = json.loads((SECURITY / "signature-authorization-v0.1.json").read_text())
+        for suffix in ("missing", "unsupported", "nonstring"):
+            case = next(v for v in data["vectors"] if v["name"] == "ChannelMessageSignature-signature-version-" + suffix)
+            self.assertEqual({"envelope": "error", "artifact": "error"}, case["want"])
+
     def test_existing_listing_revocation_and_terminal_bundle_consumers(self):
         from scripts.listing_admission import _verify_listing_signature
         from test_revocation_state_completeness_vectors import verify_artifact
@@ -115,13 +143,34 @@ class RuleBoundaryCoverageTests(unittest.TestCase):
         envelope["value"] = "AA"
         self.assertEqual("fail", verify_detached_signature_status(envelope, **args))
 
-    def test_signature_type_aliases_and_channel_pin_include_sig7(self):
+    def test_signature_type_aliases(self):
         vet = (ROOT / "spec/DACS-2-VET.md").read_text()
         for typ in ("VerifyResultSignature", "RecipeSignature"):
             self.assertIn("type " + typ + " = ComponentSignature", vet)
+
+    def test_channel_pin_includes_sig7(self):
         from channel_message_fixture_authority import CURRENT_RELEASE_PIN
-        core = subprocess.check_output(["git", "show", CURRENT_RELEASE_PIN + ":spec/CORE.md"], cwd=ROOT, text=True)
+        env = {**os.environ, "GIT_NO_LAZY_FETCH": "1"}
+        try:
+            available = subprocess.run(
+                ["git", "cat-file", "-e", CURRENT_RELEASE_PIN + "^{commit}"],
+                cwd=ROOT, capture_output=True, env=env)
+        except FileNotFoundError:
+            self.skipTest("release-pin history check requires git and the pinned commit locally")
+        if available.returncode:
+            self.skipTest("release pin unavailable locally; source archives and shallow clones may omit history")
+        core = subprocess.check_output(["git", "show", CURRENT_RELEASE_PIN + ":spec/CORE.md"], cwd=ROOT, text=True, env=env)
         self.assertIn("(SIG-7)", core)
+
+    def test_channel_pin_history_check_skips_only_when_history_is_unavailable(self):
+        for unavailable in (FileNotFoundError("git unavailable"), subprocess.CompletedProcess([], 1)):
+            with self.subTest(unavailable=type(unavailable).__name__):
+                kwargs = {"side_effect": unavailable} if isinstance(unavailable, Exception) else {"return_value": unavailable}
+                with mock.patch.object(subprocess, "run", **kwargs), mock.patch.object(subprocess, "check_output") as show:
+                    with self.assertRaises(unittest.SkipTest):
+                        self.test_channel_pin_includes_sig7()
+                    show.assert_not_called()
+                self.test_signature_type_aliases()
 
     def test_ap2_unsupported_cases_have_an_explicit_implemented_set(self):
         data = json.loads((SECURITY / "settlement-finality-verification.json").read_text())

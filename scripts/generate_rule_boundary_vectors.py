@@ -59,7 +59,7 @@ def signature_document():
                  'VerifyResultSignature': load('verifyresult-acceptance-v0.1.json')['vectors'][0]['verifyResult']}
     vectors = []
     for typ, (domain, member, field, _) in TYPES.items():
-        for variant, expected in (
+        variants = [
             ('ed25519-valid', 'pass'), ('ecdsa-valid', 'pass'), ('ed448-outside-set', 'error'),
             ('wire-padding', 'error'), ('decoded-length', 'fail'), ('invalid-signature', 'fail'),
             ('key-unavailable', 'indeterminate'), ('algorithm-unimplemented', 'indeterminate'),
@@ -67,7 +67,23 @@ def signature_document():
             ('ecdsa-r-zero', 'fail'), ('ecdsa-s-zero', 'fail'),
             ('ecdsa-r-order', 'fail'), ('ecdsa-s-order', 'fail'),
             ('ecdsa-trailing-bytes', 'fail'), ('ecdsa-nonminimal-integer', 'fail'),
-        ):
+        ]
+        if member == 'signatures':
+            variants += [('required-signature-missing', 'fail'),
+                         ('required-signature-missing-key-unavailable', 'fail')]
+        if typ == 'BundleSignature':
+            variants += [('abort-self-single-signed', 'pass'),
+                         ('abort-other-single-signed', 'pass'),
+                         ('abort-single-signed-key-unavailable', 'indeterminate'),
+                         ('failed-perm-single-signed', 'fail'),
+                         ('failed-counterparty-single-signed', 'fail'),
+                         ('failed-substrate-single-signed', 'fail')]
+        if typ == 'ChannelMessageSignature':
+            variants += [('signature-version-missing', 'error'),
+                         ('signature-version-unsupported', 'error'),
+                         ('signature-version-nonstring', 'error'),
+                         ('signature-extra-member', 'error')]
+        for variant, expected in variants:
             algorithm = 'ecdsa-secp256k1' if (variant.startswith('ecdsa-') or variant in {'algorithm-unimplemented', 'key-metadata-mismatch'}) else 'ed448' if variant == 'ed448-outside-set' else 'ed25519'
             artifact = copy.deepcopy(templates[typ])
             claims = ['did:example:signature-primary', 'did:example:signature-secondary']
@@ -79,6 +95,14 @@ def signature_document():
                 artifact['parties'] = [dict(p, primaryClaim=claims[i]) for i, p in enumerate(artifact['parties'])]
             # Listings intentionally use the second seller claim as an allowed control.
             signers = claims if member == 'signatures' else [claims[1]]
+            partial = variant.startswith(('required-signature-missing', 'abort-')) or variant.endswith('-single-signed')
+            if partial:
+                signers = signers[:1]
+            if typ == 'BundleSignature':
+                if variant.startswith('abort-'):
+                    artifact['outcome'] = 'aborted-by-other' if variant.startswith('abort-other') else 'aborted-by-self'
+                elif variant.startswith('failed-'):
+                    artifact['outcome'] = variant.removesuffix('-single-signed')
             signatures, keys = [], {}
             for signer in signers:
                 label = ('DACS signature gate public test fixture ' + signer).encode()
@@ -105,7 +129,14 @@ def signature_document():
                     value = ed25519.Ed25519PrivateKey.from_private_bytes(hashlib.sha256(label).digest()).sign(message)
                 signature['value'] = b64(value)
             first = signatures[0]
-            envelope = expected
+            envelope = 'pass' if partial else expected
+            if variant.endswith('key-unavailable'):
+                keys.pop(first[field])
+                envelope = 'indeterminate'
+            if variant == 'signature-version-missing': first.pop('signatureVersion')
+            if variant == 'signature-version-unsupported': first['signatureVersion'] = '2'
+            if variant == 'signature-version-nonstring': first['signatureVersion'] = 1
+            if variant == 'signature-extra-member': first['extra'] = True
             if variant in {'ecdsa-r-zero', 'ecdsa-s-zero', 'ecdsa-r-order', 'ecdsa-s-order', 'ecdsa-trailing-bytes', 'ecdsa-nonminimal-integer'}:
                 der = raw(first['value'])
                 r, s = utils.decode_dss_signature(der)
@@ -122,7 +153,6 @@ def signature_document():
             if variant == 'decoded-length': first['value'] = b64(raw(first['value'])[:-1])
             if variant == 'invalid-signature':
                 damaged = bytearray(raw(first['value'])); damaged[0] ^= 1; first['value'] = b64(damaged)
-            if variant == 'key-unavailable': keys.pop(first[field])
             if variant == 'key-metadata-mismatch': keys[first[field]]['algorithm'] = 'ed25519'
             if variant == 'unauthorized-signer': authorized = ['did:example:another-owner']; envelope = 'pass'
             vectors.append({'name': typ + '-' + variant, 'signatureType': typ, 'input': artifact,
@@ -156,6 +186,13 @@ def htlc_document():
     slow = factory.chain_observation(profile, reference, event, 'htlc:slow-source', head_position=110)
     add('estimated-delay-elapsed-source-not-final', slow, 'fail', note='Pinned delay elapsed; authenticated source depth is 11, below required 12. No destination submission.')
     add('actual-finality-at-required-depth', factory.chain_observation(profile, reference, event, 'htlc:exact-finality', head_position=111), 'pass')
+    for suffix, timestamp, expected in (
+        ('missing', None, 'error'), ('noninteger', str(event['minedAt']), 'error'),
+        ('boolean', True, 'error'), ('mismatch', event['minedAt'] + 1, 'fail'),
+    ):
+        add('source-inclusion-timestamp-' + suffix,
+            factory.chain_observation(profile, reference, event, 'htlc:timestamp:' + suffix,
+                                      block_timestamp=timestamp), expected)
     add('source-observation-unavailable', None, 'indeterminate')
     forged = copy.deepcopy(observation)
     forged['authorityEvidence']['attestations'][0]['value'] = forged['authorityEvidence']['attestations'][1]['value']

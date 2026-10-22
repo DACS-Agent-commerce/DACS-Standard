@@ -177,6 +177,14 @@ A cross-cutting test category that every conforming implementation runs once:
 - **SIG-7 (typed signature authorization).** Run `conformance/vectors/security/signature-authorization-v0.1.json` through `scripts/signature_authorization_reference.py` and the Listing, revocation and bundle fixture consumers. Assert the envelope verdict separately from the containing artifact signature gate. Genuine Ed448 signatures are `error` outside the declared set even if implemented; registered ECDSA remains allowed, wire defects are `error`, decoded-format/key-metadata defects and invalid signatures are `fail`, and absent keys or unimplemented registered algorithms are `indeterminate`. The Listing positive uses an authorized second seller claim. These are signature gates, not complete lifecycle admission.
 - **HTLC-8 (handler submission).** Run `conformance/vectors/security/htlc-submission-safety-v0.1.json`: a fresh authenticated source lock at required depth permits submission; elapsed estimated delay with insufficient actual depth refuses. Check the exact lock/profile/session binding, unavailable/stale and future observations, and invalid authority signatures.
 
+  SIG-7 also covers claim-bound Ed25519 metadata without resolver keys in FV,
+  current channel signature versions, single-signed abort acceptance, and missing
+  required Agreement/non-abort bundle co-signatures despite unavailable keys.
+  HTLC-8 handler cases include missing, noninteger and contradictory authenticated
+  inclusion timestamps. Storage-limit tests measure the completed pointer,
+  including signatures, at 131,072 and 131,073 bytes; CH-6 tests retain imported
+  identifiers and serialize concurrent store instances across restarts.
+
 ### 14.7 Governance (GOV-1..GOV-3)
 
 - **GOV-1 steward disclosure.** A registry consumer surfaces which signing key it treats as authoritative and does not present the single steward as a constituted multi-party body.

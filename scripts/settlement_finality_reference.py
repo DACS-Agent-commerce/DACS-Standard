@@ -287,7 +287,8 @@ def _envelope_verdict(envelope: dict, signer: str, keys: dict | None, domain: st
     does not implement the registered algorithm), which the caller defers."""
     algorithm = envelope["algorithm"]
     keyed = keys is not None and signer in keys
-    if keyed and algorithm != "ed25519":
+    claim_binds_ed25519 = re.fullmatch(r"key:[0-9a-f]{64}", signer) is not None
+    if (keyed or claim_binds_ed25519) and algorithm != "ed25519":
         return "fail"
     if not _signature_encoding(envelope["value"], algorithm):
         return "fail"
@@ -1675,6 +1676,20 @@ def _inclusion_timestamp(observation: dict) -> int | None:
     return timestamp if _safe_integer(timestamp) else None
 
 
+def _htlc_lock_timing(observation: dict, event: dict) -> dict | None:
+    """HTLC-8 timing checks shared by settlement and pre-submission gates.
+
+    Call only with an event returned by the chain-observation verifier.
+    """
+    mined = _inclusion_timestamp(observation)
+    if mined is None:
+        return _result("error", "HTLC lock inclusion block yields no authenticated mined instant")
+    # The observation verifier has already checked integer expiry/minedAt.
+    if event["minedAt"] != mined:
+        return _result("fail", "HTLC lock event minedAt differs from its inclusion block timestamp")
+    return None
+
+
 def _htlc_hash_selection(profile: dict, parameters: dict) -> dict | None:
     """HTLC-6 on the signed rail alone. A selection the leg chain cannot
     compute is a structural impossibility (error), never a mismatch."""
@@ -1759,15 +1774,10 @@ def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, t
     # must agree with it; it is never the source of the instant.
     source_mined = _inclusion_timestamp(context["sourceLock"])
     destination_mined = _inclusion_timestamp(context["destinationLock"])
-    if source_mined is None or destination_mined is None:
-        return _result("error", "HTLC lock inclusion block yields no authenticated mined instant")
-    if any(not _safe_integer(value) for value in (source_expiry, destination_expiry)):
-        return _result("error", "HTLC authenticated timing fields are malformed")
-    if (
-        events["sourceLock"].get("minedAt") != source_mined
-        or events["destinationLock"].get("minedAt") != destination_mined
-    ):
-        return _result("fail", "HTLC lock event minedAt differs from its inclusion block timestamp")
+    for name in ("sourceLock", "destinationLock"):
+        timing = _htlc_lock_timing(context[name], events[name])
+        if timing is not None:
+            return timing
     if (
         source_expiry != source_mined + parameters["timelockSourceSec"] * 1000
         or destination_expiry != destination_mined + parameters["timelockDestSec"] * 1000

@@ -81,6 +81,16 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         trust = merge(self.trust, case.get("trustedOverrides"))
         return verify_finality(case["input"], trust)
 
+    def test_claim_bound_signature_algorithm_precedes_key_availability(self):
+        for carrier in ("evidence", "agreement", "rail"):
+            for algorithm, available, expected in (
+                ("ed25519", False, "indeterminate"), ("ed25519", True, "pass"),
+                ("ecdsa-secp256k1", False, "fail"), ("sr1-aggregate", False, "fail"),
+            ):
+                name = "fv-" + carrier + "-key-claim-" + algorithm + ("-key-available" if available else "-key-absent")
+                with self.subTest(name=name):
+                    self.assertEqual(expected, self.evaluate_case(self.cases[name])["decision"])
+
     def strong_result(self, case, *, authority=None, trust=None):
         authority = authority or case["authority"]
         return validate_finality_bound_ebfab(
@@ -170,7 +180,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(326, self.data["count"])
+        self.assertEqual(338, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -483,11 +493,17 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             # SIG-7 step 3 precedes step 5: a verifier that reports an
             # unimplemented algorithm before consulting the signer's
             # authenticated Ed25519 key never reaches the mismatch.
-            ('    if keyed and algorithm != "ed25519":\n        return "fail"\n',
+            ('    if (keyed or claim_binds_ed25519) and algorithm != "ed25519":\n        return "fail"\n',
              '    if algorithm != "ed25519":\n        return "unavailable"\n', 1, None, [
                 "fv-rail-signature-ecdsa-steward-key-ed25519",
                 "fv-evidence-signature-ecdsa-orchestrator-key-ed25519",
                 "fv-agreement-signature-ecdsa-buyer-key-ed25519",
+                "fv-evidence-key-claim-ecdsa-secp256k1-key-absent",
+                "fv-evidence-key-claim-sr1-aggregate-key-absent",
+                "fv-agreement-key-claim-ecdsa-secp256k1-key-absent",
+                "fv-agreement-key-claim-sr1-aggregate-key-absent",
+                "fv-rail-key-claim-ecdsa-secp256k1-key-absent",
+                "fv-rail-key-claim-sr1-aggregate-key-absent",
             ]),
             # FV entry: a rail signer outside a configured steward map is not
             # a trusted steward; deferring it as an absent key reaches the
@@ -497,8 +513,10 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ]),
             # HTLC-8 timing inputs: trusting the lock event's minedAt instead
             # of the inclusion header's timestamp passes both cases.
-            ('    source_mined = _inclusion_timestamp(context["sourceLock"])\n    destination_mined = _inclusion_timestamp(context["destinationLock"])\n',
-             '    source_mined = events["sourceLock"].get("minedAt")\n    destination_mined = events["destinationLock"].get("minedAt")\n', 1, "pass", [
+            (('    source_mined = _inclusion_timestamp(context["sourceLock"])\n    destination_mined = _inclusion_timestamp(context["destinationLock"])\n',
+              '    mined = _inclusion_timestamp(observation)\n'),
+             ('    source_mined = events["sourceLock"].get("minedAt")\n    destination_mined = events["destinationLock"].get("minedAt")\n',
+              '    mined = event.get("minedAt")\n'), 1, "pass", [
                 "fv-htlc-lock-inclusion-timestamp-missing",
                 "fv-htlc-lock-mined-at-differs-from-inclusion-timestamp",
             ]),

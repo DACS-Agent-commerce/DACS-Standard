@@ -56,7 +56,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 54 | `error` / `fail` / `indeterminate` / `pass` |
-| [`htlc-submission-safety-v0.1.json`](htlc-submission-safety-v0.1.json) | DACS-4 §9.5.4 HTLC-8 payee submission gate | 10 | `error` / `fail` / `indeterminate` / `pass` |
+| [`htlc-submission-safety-v0.1.json`](htlc-submission-safety-v0.1.json) | DACS-4 §9.5.4 HTLC-8 payee submission gate | 14 | `error` / `fail` / `indeterminate` / `pass` |
 | [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 401 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
 | [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 166 | `error` / `fail` / `indeterminate` / `pass` |
@@ -92,9 +92,9 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 326 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 338 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
-| [`signature-authorization-v0.1.json`](signature-authorization-v0.1.json) | CORE §B.7 SIG-7; DACS-1 §6.3.4; DACS-2 §7.4/§7.5; DACS-3 §8.3.3/§8.5; DACS-4 §9.4/§9.7; DACS-5 §10.4.1 | 144 | `error` / `fail` / `indeterminate` / `pass` |
+| [`signature-authorization-v0.1.json`](signature-authorization-v0.1.json) | CORE §B.7 SIG-7; DACS-1 §6.3.4; DACS-2 §7.4/§7.5; DACS-3 §8.3.3/§8.5; DACS-4 §9.4/§9.7; DACS-5 §10.4.1 | 158 | `error` / `fail` / `indeterminate` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
 | [`sr2-logical-native-resolution-v0.1.json`](sr2-logical-native-resolution-v0.1.json) | CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2 | 39 | `fail` / `indeterminate` / `pass` |
@@ -1934,7 +1934,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
 
-326 candidate cases execute consumer-verifiable settlement finality for
+338 candidate cases execute consumer-verifiable settlement finality for
 block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
 liquidity-tank profiles. The consumer derives the model and strength from the
 exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
@@ -2482,6 +2482,9 @@ admission remain the enclosing operation's responsibility. The Listing control
 uses a second authorized seller claim. Genuine signed Ed448 artifacts are
 `error` outside the declared set, while registered Ed25519 and ECDSA controls
 pass. Invalid DER range, trailing bytes and nonminimal INTEGERs are `fail`.
+Single-signed abort controls remain valid, while missing required Agreement or
+non-abort bundle signatures refuse even when another signer's key is unavailable.
+Current channel signatures require the selected version-1 envelope.
 
 `htlc-submission-safety-v0.1.json` exercises the separate HTLC-8 handler gate
 in `scripts/htlc_submission_reference.py`. The harness constructs authority
@@ -2489,6 +2492,8 @@ from `trustedFixtureAuthority` outside the candidate observation: authenticated
 source profile, exact lock reference, retained session economics and lock terms,
 authority keys and verifier clock. Actual authenticated finality is required;
 elapsed `sourceFinalitySec` with insufficient chain depth refuses submission.
+The authenticated inclusion timestamp must be an integer and agree with the
+lock event's mined instant; missing or invalid timing refuses submission.
 Only `maySubmit: true` permits the next handler step. No transaction is sent,
 and this synthetic codec establishes no production finality capability.
 

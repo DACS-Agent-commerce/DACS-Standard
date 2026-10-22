@@ -13,6 +13,22 @@ The format used per release:
 
 ## [Unreleased]
 
+### Conformance reference boundary coverage
+
+- Pin claim-bound Ed25519 algorithm metadata in FV evidence, Agreement and rail
+  cases even when resolver keys are unavailable (CORE §B.7 SIG-7).
+- Separate authorized signers from required co-signers, retain single-signed
+  aborts, and check current channel signature versions. The signature gate
+  corpus grows 144 → 158; the FV corpus grows 326 → 338.
+- Share HTLC-8 authenticated inclusion-timing checks between settlement and
+  handler submission. The handler corpus grows 10 → 14, with missing, invalid
+  and contradictory timestamp cases alongside actual-finality controls.
+- Check the final canonical pointer size, including its signature when present,
+  against the 131,072-byte storage limit. Serialize durable channel-ID updates
+  across store instances and retain imported history before CH-6 admission.
+- Keep local signature-alias checks executable in source archives; only the
+  immutable release-pin assertion requires local Git history.
+
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
 - **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened

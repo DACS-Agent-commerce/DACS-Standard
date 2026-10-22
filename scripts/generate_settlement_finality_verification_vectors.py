@@ -2404,6 +2404,54 @@ def build_guard_isolation_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-agreement-signature-ecdsa-buyer-key-ed25519", "fail", "the buyer's trusted key is Ed25519, and the buyer's agreement signature names ecdsa-secp256k1", changed("block-depth", ecdsa_agreement())),
     ])
 
+    # SIG-7 step 3: key: claims bind Ed25519 without a resolver entry.
+    for carrier, role in (("evidence", "orchestrator"), ("agreement", "buyer"), ("rail", "steward")):
+        for algorithm, available, expected in (
+            ("ed25519", False, "indeterminate"), ("ed25519", True, "pass"),
+            ("ecdsa-secp256k1", False, "fail"), ("sr1-aggregate", False, "fail"),
+        ):
+            value = factory.model_input("block-depth")
+            claim = "key:" + factory.keys[role].public_key().public_bytes_raw().hex()
+            session = copy.deepcopy(factory.trusted["sessionAuthorityByJob"][value["evidence"]["jobId"]])
+            overrides = {"sessionAuthorityByJob": {session["jobId"]: session}}
+            if carrier == "evidence":
+                session["phaseOrchestrator"] = claim
+                signature = value["evidence"]["signature"]
+                signature["signer"] = claim
+                domain = EVIDENCE_DOMAIN
+                digest = artifact_hash(value["evidence"], "signature")
+            elif carrier == "agreement":
+                agreement = value["agreement"]
+                agreement["parties"][0]["primaryClaim"] = claim
+                factory.resign_agreement(agreement)
+                signature = agreement["signatures"][0]
+                signature["party"] = claim
+                session["partyClaims"]["buyer"] = claim
+                session["payer"] = claim
+                session["agreementHash"] = artifact_hash(agreement, "signatures")
+                factory.rebuild_observation_event(value, ("observation",), lambda event: event.update(payer=claim))
+                domain, digest = AGREEMENT_DOMAIN, session["agreementHash"]
+            else:
+                rail_value = value["rail"]
+                rail_value["governance"]["proposedBy"] = claim
+                factory.resign_rail(rail_value, signer=claim)
+                signature = rail_value["signature"]
+                domain, digest = RAIL_DOMAIN, artifact_hash(rail_value, "signature")
+                value["evidence"]["railDefinitionRef"]["contentHash"] = digest
+                factory.resign_evidence(value["evidence"])
+                overrides["stewardKeys"] = None
+            signature["algorithm"] = algorithm
+            if algorithm == "ecdsa-secp256k1":
+                signature["value"] = factory.sign_ecdsa(role, domain, digest)
+            if available:
+                overrides["stewardKeys" if carrier == "rail" else "partyKeys"] = {
+                    claim: b64u(factory.keys[role].public_key().public_bytes_raw())}
+            vectors.append(case(
+                "fv-" + carrier + "-key-claim-" + algorithm + ("-key-available" if available else "-key-absent"),
+                expected, "the authenticated key: claim binds Ed25519 independently of resolver availability",
+                value, trusted_overrides=overrides,
+            ))
+
     # §9.5.6 step 6: the AP2 protocolVersion selects the rules of its era; a
     # version whose rules the verifier does not implement is error.
     def other_ap2_version(value):

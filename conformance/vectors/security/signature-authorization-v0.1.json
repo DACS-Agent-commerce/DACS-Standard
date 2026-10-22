@@ -6,8 +6,8 @@
   "provenance": {
     "generator": "scripts/generate_rule_boundary_vectors.py"
   },
-  "count": 144,
-  "hash": "ef8b941b2711c5dba9a054a9af5e9329104e92325e717673794782b72b6646d4",
+  "count": 158,
+  "hash": "c007a876d699f50a1b8363dd60c6504baa64922cdf2676cc4b5bdef0c8a9fa58",
   "vectors": [
     {
       "name": "ListingSignature-ed25519-valid",
@@ -3875,6 +3875,169 @@
       }
     },
     {
+      "name": "AgreementSignature-required-signature-missing",
+      "signatureType": "AgreementSignature",
+      "input": {
+        "agreementVersion": "1",
+        "jobId": "FV-392-block-depth",
+        "listingRef": {
+          "listingId": "listing-finality-fixture",
+          "version": 1,
+          "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+            "primaryClaim": "did:example:signature-primary",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+              },
+              "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+            }
+          },
+          {
+            "role": "seller",
+            "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+            "primaryClaim": "did:example:signature-secondary",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+              },
+              "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+            }
+          }
+        ],
+        "terms": {
+          "deliverable": {
+            "deliverableType": "entitlement",
+            "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+          },
+          "price": {
+            "amount": "5",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "fixture:block-depth",
+            "railVersion": 1
+          },
+          "deadline": 1900100000000
+        },
+        "derivedFromPattern": "fixed-price",
+        "generatedAt": 1899000000000,
+        "signatures": [
+          {
+            "party": "did:example:signature-primary",
+            "algorithm": "ed25519",
+            "value": "zz4QtyCy93X0cxtTUkLqadEEU-R1692YbQ2c9WrJDIxwn42TzxpRXO14asOoqpA_pKvvW-ug3VT2FZTyCcZmAg"
+          }
+        ]
+      },
+      "trusted": {
+        "keys": {
+          "did:example:signature-primary": {
+            "algorithm": "ed25519",
+            "publicKey": "N1H9JXQ9gxSCQtKxGbKC9bWZqZIMy6C9tIclTHW4hnM"
+          }
+        },
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "fail",
+      "want": {
+        "envelope": "pass",
+        "artifact": "fail"
+      }
+    },
+    {
+      "name": "AgreementSignature-required-signature-missing-key-unavailable",
+      "signatureType": "AgreementSignature",
+      "input": {
+        "agreementVersion": "1",
+        "jobId": "FV-392-block-depth",
+        "listingRef": {
+          "listingId": "listing-finality-fixture",
+          "version": 1,
+          "contentHash": "4c6d410d6858bcd051a7bcefa4466971576ebdbe131856cca5ec4854d1ffa5b4"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+            "primaryClaim": "did:example:signature-primary",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+              },
+              "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+            }
+          },
+          {
+            "role": "seller",
+            "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+            "primaryClaim": "did:example:signature-secondary",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+              },
+              "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+            }
+          }
+        ],
+        "terms": {
+          "deliverable": {
+            "deliverableType": "entitlement",
+            "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+          },
+          "price": {
+            "amount": "5",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "fixture:block-depth",
+            "railVersion": 1
+          },
+          "deadline": 1900100000000
+        },
+        "derivedFromPattern": "fixed-price",
+        "generatedAt": 1899000000000,
+        "signatures": [
+          {
+            "party": "did:example:signature-primary",
+            "algorithm": "ed25519",
+            "value": "zz4QtyCy93X0cxtTUkLqadEEU-R1692YbQ2c9WrJDIxwn42TzxpRXO14asOoqpA_pKvvW-ug3VT2FZTyCcZmAg"
+          }
+        ]
+      },
+      "trusted": {
+        "keys": {},
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "fail",
+      "want": {
+        "envelope": "indeterminate",
+        "artifact": "fail"
+      }
+    },
+    {
       "name": "ComponentSignature-ed25519-valid",
       "signatureType": "ComponentSignature",
       "input": {
@@ -7388,6 +7551,572 @@
       }
     },
     {
+      "name": "BundleSignature-required-signature-missing",
+      "signatureType": "BundleSignature",
+      "input": {
+        "bundleVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "outcome": "completed",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "lst-regen-0001",
+          "version": 1,
+          "contentHash": "fa8f61b621e5c45c8cf226f3c67bc7b3042f06afaf9998f11639b15ba52b5569"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+            "primaryClaim": "did:example:signature-primary"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "2658a2496f3c9d39cd4bf3bb1e4c632f3d9fdd8e93b54a46a05e396d94a19828",
+            "primaryClaim": "did:example:signature-secondary"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "settle",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1767225600000,
+        "signatures": [
+          {
+            "party": "did:example:signature-primary",
+            "algorithm": "ed25519",
+            "value": "PxjcRaedl21b4hRECZZi55Aec_C5kKji10aRzsNM0x3v8VPUgDh7yebwhywVyK6v9IOB8_9eeqsriVMUL_JXCg"
+          }
+        ]
+      },
+      "trusted": {
+        "keys": {
+          "did:example:signature-primary": {
+            "algorithm": "ed25519",
+            "publicKey": "N1H9JXQ9gxSCQtKxGbKC9bWZqZIMy6C9tIclTHW4hnM"
+          }
+        },
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "fail",
+      "want": {
+        "envelope": "pass",
+        "artifact": "fail"
+      }
+    },
+    {
+      "name": "BundleSignature-required-signature-missing-key-unavailable",
+      "signatureType": "BundleSignature",
+      "input": {
+        "bundleVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "outcome": "completed",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "lst-regen-0001",
+          "version": 1,
+          "contentHash": "fa8f61b621e5c45c8cf226f3c67bc7b3042f06afaf9998f11639b15ba52b5569"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+            "primaryClaim": "did:example:signature-primary"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "2658a2496f3c9d39cd4bf3bb1e4c632f3d9fdd8e93b54a46a05e396d94a19828",
+            "primaryClaim": "did:example:signature-secondary"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "settle",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1767225600000,
+        "signatures": [
+          {
+            "party": "did:example:signature-primary",
+            "algorithm": "ed25519",
+            "value": "PxjcRaedl21b4hRECZZi55Aec_C5kKji10aRzsNM0x3v8VPUgDh7yebwhywVyK6v9IOB8_9eeqsriVMUL_JXCg"
+          }
+        ]
+      },
+      "trusted": {
+        "keys": {},
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "fail",
+      "want": {
+        "envelope": "indeterminate",
+        "artifact": "fail"
+      }
+    },
+    {
+      "name": "BundleSignature-abort-self-single-signed",
+      "signatureType": "BundleSignature",
+      "input": {
+        "bundleVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "outcome": "aborted-by-self",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "lst-regen-0001",
+          "version": 1,
+          "contentHash": "fa8f61b621e5c45c8cf226f3c67bc7b3042f06afaf9998f11639b15ba52b5569"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+            "primaryClaim": "did:example:signature-primary"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "2658a2496f3c9d39cd4bf3bb1e4c632f3d9fdd8e93b54a46a05e396d94a19828",
+            "primaryClaim": "did:example:signature-secondary"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "settle",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1767225600000,
+        "signatures": [
+          {
+            "party": "did:example:signature-primary",
+            "algorithm": "ed25519",
+            "value": "k_GbcZ4ySzH1_MmQfVn90CFmR5ERifv6IvIsVaUO-s00uEHWXC810pIqxAYqA5FCmKlNJHncm8UUTkeK0gpwCQ"
+          }
+        ]
+      },
+      "trusted": {
+        "keys": {
+          "did:example:signature-primary": {
+            "algorithm": "ed25519",
+            "publicKey": "N1H9JXQ9gxSCQtKxGbKC9bWZqZIMy6C9tIclTHW4hnM"
+          }
+        },
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "pass",
+      "want": {
+        "envelope": "pass",
+        "artifact": "pass"
+      }
+    },
+    {
+      "name": "BundleSignature-abort-other-single-signed",
+      "signatureType": "BundleSignature",
+      "input": {
+        "bundleVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "outcome": "aborted-by-other",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "lst-regen-0001",
+          "version": 1,
+          "contentHash": "fa8f61b621e5c45c8cf226f3c67bc7b3042f06afaf9998f11639b15ba52b5569"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+            "primaryClaim": "did:example:signature-primary"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "2658a2496f3c9d39cd4bf3bb1e4c632f3d9fdd8e93b54a46a05e396d94a19828",
+            "primaryClaim": "did:example:signature-secondary"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "settle",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1767225600000,
+        "signatures": [
+          {
+            "party": "did:example:signature-primary",
+            "algorithm": "ed25519",
+            "value": "J4t4hQNJvR8pm5mg9K3yrynwCMO5pyEVz207SbEoGSrTmJMMcnf0As5AeceIxxFXYvY2_MxmV1NfjSBGoHOABQ"
+          }
+        ]
+      },
+      "trusted": {
+        "keys": {
+          "did:example:signature-primary": {
+            "algorithm": "ed25519",
+            "publicKey": "N1H9JXQ9gxSCQtKxGbKC9bWZqZIMy6C9tIclTHW4hnM"
+          }
+        },
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "pass",
+      "want": {
+        "envelope": "pass",
+        "artifact": "pass"
+      }
+    },
+    {
+      "name": "BundleSignature-abort-single-signed-key-unavailable",
+      "signatureType": "BundleSignature",
+      "input": {
+        "bundleVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "outcome": "aborted-by-self",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "lst-regen-0001",
+          "version": 1,
+          "contentHash": "fa8f61b621e5c45c8cf226f3c67bc7b3042f06afaf9998f11639b15ba52b5569"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+            "primaryClaim": "did:example:signature-primary"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "2658a2496f3c9d39cd4bf3bb1e4c632f3d9fdd8e93b54a46a05e396d94a19828",
+            "primaryClaim": "did:example:signature-secondary"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "settle",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1767225600000,
+        "signatures": [
+          {
+            "party": "did:example:signature-primary",
+            "algorithm": "ed25519",
+            "value": "k_GbcZ4ySzH1_MmQfVn90CFmR5ERifv6IvIsVaUO-s00uEHWXC810pIqxAYqA5FCmKlNJHncm8UUTkeK0gpwCQ"
+          }
+        ]
+      },
+      "trusted": {
+        "keys": {},
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "indeterminate",
+      "want": {
+        "envelope": "indeterminate",
+        "artifact": "indeterminate"
+      }
+    },
+    {
+      "name": "BundleSignature-failed-perm-single-signed",
+      "signatureType": "BundleSignature",
+      "input": {
+        "bundleVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "outcome": "failed-perm",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "lst-regen-0001",
+          "version": 1,
+          "contentHash": "fa8f61b621e5c45c8cf226f3c67bc7b3042f06afaf9998f11639b15ba52b5569"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+            "primaryClaim": "did:example:signature-primary"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "2658a2496f3c9d39cd4bf3bb1e4c632f3d9fdd8e93b54a46a05e396d94a19828",
+            "primaryClaim": "did:example:signature-secondary"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "settle",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1767225600000,
+        "signatures": [
+          {
+            "party": "did:example:signature-primary",
+            "algorithm": "ed25519",
+            "value": "i1lOmBVOimzAmkeZHONQ4OWbwYvr9Y6i21TVvqxGnIVdQIOhQgnq4T4G2Yy-W_hgEGE6HocnrNRTHp0xQNy9DA"
+          }
+        ]
+      },
+      "trusted": {
+        "keys": {
+          "did:example:signature-primary": {
+            "algorithm": "ed25519",
+            "publicKey": "N1H9JXQ9gxSCQtKxGbKC9bWZqZIMy6C9tIclTHW4hnM"
+          }
+        },
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "fail",
+      "want": {
+        "envelope": "pass",
+        "artifact": "fail"
+      }
+    },
+    {
+      "name": "BundleSignature-failed-counterparty-single-signed",
+      "signatureType": "BundleSignature",
+      "input": {
+        "bundleVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "outcome": "failed-counterparty",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "lst-regen-0001",
+          "version": 1,
+          "contentHash": "fa8f61b621e5c45c8cf226f3c67bc7b3042f06afaf9998f11639b15ba52b5569"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+            "primaryClaim": "did:example:signature-primary"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "2658a2496f3c9d39cd4bf3bb1e4c632f3d9fdd8e93b54a46a05e396d94a19828",
+            "primaryClaim": "did:example:signature-secondary"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "settle",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1767225600000,
+        "signatures": [
+          {
+            "party": "did:example:signature-primary",
+            "algorithm": "ed25519",
+            "value": "7kR0CufoA5GMu3_VnM-0dt0gZnE-ayBXpqRX21IEt3qLDtopabglo26Msvt3FXjSYjX_qf-Rv7ab9mIydKZWBA"
+          }
+        ]
+      },
+      "trusted": {
+        "keys": {
+          "did:example:signature-primary": {
+            "algorithm": "ed25519",
+            "publicKey": "N1H9JXQ9gxSCQtKxGbKC9bWZqZIMy6C9tIclTHW4hnM"
+          }
+        },
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "fail",
+      "want": {
+        "envelope": "pass",
+        "artifact": "fail"
+      }
+    },
+    {
+      "name": "BundleSignature-failed-substrate-single-signed",
+      "signatureType": "BundleSignature",
+      "input": {
+        "bundleVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "outcome": "failed-substrate",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "lst-regen-0001",
+          "version": 1,
+          "contentHash": "fa8f61b621e5c45c8cf226f3c67bc7b3042f06afaf9998f11639b15ba52b5569"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+            "primaryClaim": "did:example:signature-primary"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "2658a2496f3c9d39cd4bf3bb1e4c632f3d9fdd8e93b54a46a05e396d94a19828",
+            "primaryClaim": "did:example:signature-secondary"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "settle",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1767225600000,
+        "signatures": [
+          {
+            "party": "did:example:signature-primary",
+            "algorithm": "ed25519",
+            "value": "s-XtXKQR9uHUHkaVvsbg-kwcNggq7coaO5-gVmQuMdD7MgTVCq34XiYIbvb-qnu5tPmK-X1vm0C46RFxg59ZBQ"
+          }
+        ]
+      },
+      "trusted": {
+        "keys": {
+          "did:example:signature-primary": {
+            "algorithm": "ed25519",
+            "publicKey": "N1H9JXQ9gxSCQtKxGbKC9bWZqZIMy6C9tIclTHW4hnM"
+          }
+        },
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "fail",
+      "want": {
+        "envelope": "pass",
+        "artifact": "fail"
+      }
+    },
+    {
       "name": "ChannelMessageSignature-ed25519-valid",
       "signatureType": "ChannelMessageSignature",
       "input": {
@@ -8065,6 +8794,178 @@
       "want": {
         "envelope": "fail",
         "artifact": "fail"
+      }
+    },
+    {
+      "name": "ChannelMessageSignature-signature-version-missing",
+      "signatureType": "ChannelMessageSignature",
+      "input": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signer": "did:example:signature-secondary",
+          "algorithm": "ed25519",
+          "value": "SS_Gl38FgLGZSP8jmHJSdbfo_or3JQ-LKv6MQAO_fS6soCxtqxA9PyvQzD-HiLaixSfEHq5CyNGwi_yKrOjtBw"
+        }
+      },
+      "trusted": {
+        "keys": {
+          "did:example:signature-secondary": {
+            "algorithm": "ed25519",
+            "publicKey": "b0THcW-VjtXrGa5RG-Vv5FcNhVzyQ9TcnlNG7BbqirA"
+          }
+        },
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "error",
+      "want": {
+        "envelope": "error",
+        "artifact": "error"
+      }
+    },
+    {
+      "name": "ChannelMessageSignature-signature-version-unsupported",
+      "signatureType": "ChannelMessageSignature",
+      "input": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signer": "did:example:signature-secondary",
+          "algorithm": "ed25519",
+          "value": "SS_Gl38FgLGZSP8jmHJSdbfo_or3JQ-LKv6MQAO_fS6soCxtqxA9PyvQzD-HiLaixSfEHq5CyNGwi_yKrOjtBw",
+          "signatureVersion": "2"
+        }
+      },
+      "trusted": {
+        "keys": {
+          "did:example:signature-secondary": {
+            "algorithm": "ed25519",
+            "publicKey": "b0THcW-VjtXrGa5RG-Vv5FcNhVzyQ9TcnlNG7BbqirA"
+          }
+        },
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "error",
+      "want": {
+        "envelope": "error",
+        "artifact": "error"
+      }
+    },
+    {
+      "name": "ChannelMessageSignature-signature-version-nonstring",
+      "signatureType": "ChannelMessageSignature",
+      "input": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signer": "did:example:signature-secondary",
+          "algorithm": "ed25519",
+          "value": "SS_Gl38FgLGZSP8jmHJSdbfo_or3JQ-LKv6MQAO_fS6soCxtqxA9PyvQzD-HiLaixSfEHq5CyNGwi_yKrOjtBw",
+          "signatureVersion": 1
+        }
+      },
+      "trusted": {
+        "keys": {
+          "did:example:signature-secondary": {
+            "algorithm": "ed25519",
+            "publicKey": "b0THcW-VjtXrGa5RG-Vv5FcNhVzyQ9TcnlNG7BbqirA"
+          }
+        },
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "error",
+      "want": {
+        "envelope": "error",
+        "artifact": "error"
+      }
+    },
+    {
+      "name": "ChannelMessageSignature-signature-extra-member",
+      "signatureType": "ChannelMessageSignature",
+      "input": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signer": "did:example:signature-secondary",
+          "algorithm": "ed25519",
+          "value": "SS_Gl38FgLGZSP8jmHJSdbfo_or3JQ-LKv6MQAO_fS6soCxtqxA9PyvQzD-HiLaixSfEHq5CyNGwi_yKrOjtBw",
+          "signatureVersion": "1",
+          "extra": true
+        }
+      },
+      "trusted": {
+        "keys": {
+          "did:example:signature-secondary": {
+            "algorithm": "ed25519",
+            "publicKey": "b0THcW-VjtXrGa5RG-Vv5FcNhVzyQ9TcnlNG7BbqirA"
+          }
+        },
+        "authorizedClaims": [
+          "did:example:signature-primary",
+          "did:example:signature-secondary"
+        ],
+        "implemented": [
+          "ed25519",
+          "ecdsa-secp256k1"
+        ]
+      },
+      "expected": "error",
+      "want": {
+        "envelope": "error",
+        "artifact": "error"
       }
     },
     {

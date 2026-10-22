@@ -27,7 +27,7 @@ from demos_json import stringify  # noqa: E402
 from demos_identity import demos_key_claim, demos_party_address  # noqa: E402
 from settlement_finality_reference import (  # noqa: E402
     DEMOS_RECORD_PROFILE, _demos_committed_change, _demos_native_send, _demos_send_edits_match,
-    _verify_demos_execution, _verify_demos_record, bft_final_trust, demos_applied_transfer_binds_record, demos_execution_policy, verify_transaction_inclusion,
+    _verify_demos_execution, _verify_demos_record, demos_execution_result_shape, bft_final_trust, demos_applied_transfer_binds_record, demos_execution_policy, verify_transaction_inclusion,
 )
 
 
@@ -184,6 +184,7 @@ GUARDS = frozenset({
     "validity-response-binds-retained-transfer",
     # DEM-7
     "consumer-admits-confirmed",
+    "consumer-malformed-result-is-error",
     "consumer-requires-confirmed-record",
     "consumer-binds-hash",
     "consumer-binds-block",
@@ -236,8 +237,8 @@ HANDLER_WANT = {
     },
     "indeterminate": {
         "ok": False, "errorClass": "substrate", "executionState": "indeterminate",
-        "evidence": "none", "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement", "retainedHashKept": True,
+        "evidence": "none", "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only", "retainedHashKept": True,
         "terminalFailureProofRetained": False, "deliveryAuthorized": False,
         "settlementAccounting": False, "broadcastPermitted": False,
         "replacementPermitted": False,
@@ -1212,6 +1213,8 @@ def rail_preflight(protocol_input: dict, off) -> tuple[str, dict]:
     if gated and "preflight-requires-controlled-key-claim" not in off:
         if not payer_claims({"payerKeyClaims": protocol_input.get("payerKeyClaims")}, off):
             return "fail", {"railSelectable": False}
+    if "payeeAddress" in protocol_input and party_address(protocol_input["payeeAddress"], off) is None:
+        return "fail", {"railSelectable": False}
     if "preflight-selects-configured-rail" in off:
         return "fail", {"railSelectable": False}
     return "pass", {"railSelectable": True}
@@ -1415,7 +1418,13 @@ def authority_refutes(read, projection, protocol_input: dict, reference, off) ->
     if "consumer-contradiction-requires-bft-final-inclusion" in off:
         # The wrong implementation refutes on the plain observation alone.
         return True
-    block = read["appliedTransfer"].get("blockId")
+    proof = read["appliedTransfer"]
+    network = _network(protocol_input.get("railNetwork"))
+    if (network is None or any(proof.get(k) != v for k, v in network.items())
+            or proof.get("txHash") != reference.get("txHash")
+            or proof.get("blockNumber") != reference.get("blockNumber")):
+        return False
+    block = proof.get("blockId")
     return bft_final(read.get("inclusionProof"), reference, block, protocol_input, off) and (
         applied(read, projection, protocol_input, off, block) == "fail")
 
@@ -1427,6 +1436,15 @@ def dem7(protocol_input: dict, off) -> str:
         and protocol_input["statusIndex"] == "included"
     ):
         return "pass"
+    read = protocol_input["recordRead"]
+    proof = read.get("executionResult")
+    if proof is not None and "consumer-malformed-result-is-error" not in off:
+        if not demos_execution_result_shape(proof):
+            return "error"
+        policy = protocol_input.get("fv5Policy")
+        decision, _ = demos_execution_policy(policy)
+        if decision == "error" or (decision == "pass" and proof["kind"] != policy["kind"]):
+            return "error"
     phase = protocol_input["phase"]
     payers, payee = payer_claims(phase, off), party_address(phase.get("payeeAddress"), off)
     read = protocol_input["recordRead"]
@@ -1479,6 +1497,11 @@ def dem7(protocol_input: dict, off) -> str:
         decision = applied(read, projection, protocol_input, off)
         if decision == "fail" and not authority_refutes(read, projection, protocol_input, reference, off):
             decision = "indeterminate"
+        if decision == "indeterminate" and signed:
+            result = read.get("executionResult")
+            carried = result.get("appliedTransfer") if isinstance(result, dict) else None
+            if carried is not None and demos_applied_transfer_binds_record(carried, record):
+                decision = "pass"
         if decision != "pass":
             return "indeterminate" if "consumer-authenticated-contradiction-fails" in off else decision
         # A signed result is hashed over JCS bytes, which do not keep member
@@ -2455,7 +2478,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                         # another block than the presented reference's
                         # bft-final inclusion contradicts nothing (DEM-7).
                         self.assertEqual("indeterminate" if differs == {"committedBalances"}
-                                         or (refused == "fail" and differs == {"blockId"}) else refused,
+                                         or (refused == "fail" and differs <= {"txHash", "blockNumber", "networkId", "genesisHash", "blockId"}) else refused,
                                          evaluate(vector)[0])
                         self.assertIn("success-requires-applied-transfer", vector["guards"])
                     witnessed |= differs
@@ -2786,7 +2809,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
             }
             expected = {"jobId": job, "phaseIndex": index, "payer": "payer", "payee": "payee",
                         "amount": generator.dem_spelling(phase.get("amountOs", transfer.get("amountOs"))),
-                        "currency": "DEM"}
+                        "currency": "DEM", "payeeAddress": payee}
             observation = {"networkId": result.get("networkId"), "genesisHash": result.get("genesisHash"),
                            "inclusionBlock": {"id": result.get("blockId")}, "executionResult": result}
             decision, _reason, verified = _verify_demos_execution(observation, reference, trusted)
@@ -2979,7 +3002,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                    if {"success-requires-bft-final-inclusion", "consumer-refutation-requires-bft-final-inclusion",
                        "consumer-contradiction-requires-bft-final-inclusion",
                        "delivery-requires-bft-final-inclusion"} & set(vector["guards"])]
-        self.assertEqual({"classify-execution": 7, "resume-phase": 1, "admit-evidence": 19, "admit-for-delivery": 4},
+        self.assertEqual({"classify-execution": 7, "resume-phase": 1, "admit-evidence": 23, "admit-for-delivery": 4},
                          {op: sum(v["operation"] == op for v in refused) for op in
                           ("classify-execution", "resume-phase", "admit-evidence", "admit-for-delivery")})
         # The inclusions FV itself scores fail (a forged certificate, a
@@ -3291,7 +3314,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertNotIn("A crash can fall between a call that carried the signed transaction and the journal entry", spec)
         self.assertIn("A start or restart between the retention and the first `confirm` leaves the handler with a "
                       "retained transfer it must treat as possibly broadcast", spec)
-        self.assertIn("the phase stays `substrate` and ends `failed-substrate` at ST-7 expiry", spec)
+        self.assertIn("the phase stays non-terminal `substrate` under the ST-7 pay-dem exception", spec)
         for name in ("confirm-after-restart-refused", "replacement-after-restart-refused",
                      "broadcast-after-restart-from-confirm-returned-refused", "broadcast-gate-restart-unstated"):
             with self.subTest(name=name):
@@ -3541,7 +3564,13 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                     if figures is not None:
                         proof["payerDebitOs"], proof["payeeCreditOs"] = figures
                     result = evaluate(mutated)[0]
-                    self.assertNotEqual("pass", result)
+                    signed = mutated["protocolInput"]["recordRead"].get("executionResult", {})
+                    if label == "copied" and "appliedTransfer" in signed:
+                        # A malformed separate figure authenticates nothing;
+                        # the valid signed applied-payment result still counts.
+                        self.assertEqual("pass", result)
+                    else:
+                        self.assertNotEqual("pass", result)
                     if vector["operation"] == "admit-evidence" and figures is not None:
                         self.assertEqual("fail", result)
 
@@ -3828,7 +3857,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertNotIn("is outside this profile and stays `indeterminate` under DEM-3 and DEM-7", demos)
         self.assertNotIn("its records stay `indeterminate`, never a false success", demos)
         self.assertIn("which DEM-7 decides `fail` whatever the record's edits", demos)
-        self.assertIn("binds another genesis than the phase's pinned network decides `fail` under DEM-7", demos)
+        self.assertIn("for another network/genesis, transaction or block authenticates nothing about this payment", demos)
         self.assertIn("For a bound `confirmed` record, whatever its edits, independently authenticated "
                       "applied-payment authority that contradicts them is `fail`", spec)
         self.assertNotIn("a resume after `failed-substrate`", spec)
@@ -3850,7 +3879,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         # A genesis replaced after signing: the authority names another genesis.
         replaced = json.loads(json.dumps(self.cases["consumer-confirmed-gate-passes"]))
         replaced["protocolInput"]["recordRead"]["appliedTransfer"]["genesisHash"] = "f" * 64
-        self.assertEqual("fail", evaluate(replaced)[0])
+        self.assertEqual("indeterminate", evaluate(replaced)[0])
 
     def test_the_payer_signs_only_what_dem7_will_bind(self):
         """The payer side and the consumer side apply one predicate (DEMOS-MAPPING
@@ -3949,7 +3978,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                       "`live` included", spec)
         self.assertIn("and so before Agreement signature and the PIPE-6 commitment, and MUST NOT select the rail for "
                       "the payer, or let the payer sign an Agreement on it, without it", spec)
-        self.assertIn("MAY list, offer or select the rail", spec)
+        self.assertIn("MAY list or offer the rail", spec)
         self.assertIn("holds a controlled Demos key claim (DEMOS-MAPPING §A.2), since DEM-1 signs for no other key", spec)
         self.assertIn("one found missing at settle makes the rail non-operational for this payer under RAV-R4", spec)
         preflights = {name: case for name, case in self.cases.items() if case["operation"] == "rail-preflight"}

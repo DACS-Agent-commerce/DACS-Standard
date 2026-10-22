@@ -162,6 +162,13 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | RFQ session-initiation flooding | malicious counterparty | §8.12 (per-counterparty session-rate limit + optional DACS-2 admission floor) | partial — maxTurns/timeoutSec bound a session, not the initiation rate |
 | Sealed-envelope commit-spam | malicious counterparty | §8.12 (optional bidder stake + commit-anchor rate limit) | partial — v0.1 does not standardise stake or bidder eligibility |
 
+A retained native payment may already have executed while verification sources
+are unavailable. DEM-5 and DACS-5 ST-7 keep that payment non-terminal until
+success evidence is anchored or DEM-4 proves failure. The remaining liveness
+cost is indefinite waiting when the signed transfer never left or no proof
+source recovers; no wall-clock interval proves non-execution or authorizes a
+replacement.
+
 ### 12.5 Composite trust property
 
 A fully required-party-signed DACS-5 bundle that validates against all per-chapter conformance rules and whose contained references all dereference and validate provides the following composite trust property to a consumer. Clauses about agreement and settlement apply only when those authenticated artifacts are present. A single-signed timeout bundle alone is the signer's audit claim: it establishes neither the absent party's participation nor nonresponse. Current-profile blame additionally requires SPA-1..SPA-6 and applicable trusted exact outcome evidence:

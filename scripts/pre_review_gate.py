@@ -725,10 +725,9 @@ PINNED_UNIT_REGRESSIONS = {
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"
-# Registered tests normally finish in seconds. Two minutes leaves substantial
-# room for a slow CI worker while keeping one stalled target from hanging the
-# complete gate indefinitely.
-SELECTED_TEST_TIMEOUT_SECONDS = 120
+# The exhaustive pay-dem guard-removal witness takes about two minutes on
+# slower workers. Five minutes leaves headroom while still bounding a stall.
+SELECTED_TEST_TIMEOUT_SECONDS = 300
 SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS = 5
 EXACT_UNITTEST_SUMMARY = {
     "errors": 0,

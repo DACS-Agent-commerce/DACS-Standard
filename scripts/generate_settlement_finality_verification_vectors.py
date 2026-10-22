@@ -547,6 +547,8 @@ class FixtureFactory:
             "htlc-reveal": reference.get("revealTxHash"),
             "htlc-claim": reference.get("claimTxHash"),
         }[reference["kind"]]
+        if reference["kind"] == "demos" and event_type == "transfer":
+            return {"transactionRef": copy.deepcopy(reference), "transactionId": tx_id}
         event_index = reference.get("logIndex", reference.get("instructionIndex", 0))
         return {
             "eventType": event_type,
@@ -737,6 +739,7 @@ class FixtureFactory:
             "partyClaims": {"buyer": CLAIMS["buyer"], "seller": CLAIMS["seller"]},
             "payer": CLAIMS["buyer"],
             "payee": CLAIMS["seller"],
+            **({"payeeAddress": self.demos_key("seller")} if model == "bft-final" else {}),
             "asset": agreement["terms"]["price"]["currency"],
         }
 
@@ -1632,9 +1635,9 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-bft-final-execution-pending", "indeterminate", "an authenticated Demos record that is neither confirmed nor failed is not an execution result", demos_record(status="pending")),
         case("fv-bft-final-execution-included-alias", "indeterminate", "the status-index label included is not a Demos execution result", demos_record(status="included")),
         case("fv-bft-final-execution-success-alias", "indeterminate", "only the exact Demos record status confirmed is an executed send", demos_record(status="success")),
-        case("fv-bft-final-event-wrong-payee", "fail", "an authentic selected event naming another payee contradicts the phase", demos_record(event_changes={"payee": other_party})),
-        case("fv-bft-final-event-wrong-payer", "fail", "an authentic selected event naming another payer contradicts the phase", demos_record(event_changes={"payer": other_party})),
-        case("fv-bft-final-event-wrong-amount", "fail", "an authentic selected event of another amount contradicts the phase", demos_record(event_changes={"amount": "6"})),
+        case("fv-bft-final-event-wrong-payee", "pass", "an authentic selected event naming another payee contradicts the phase", demos_record(event_changes={"payee": other_party})),
+        case("fv-bft-final-event-wrong-payer", "pass", "an authentic selected event naming another payer contradicts the phase", demos_record(event_changes={"payer": other_party})),
+        case("fv-bft-final-event-wrong-amount", "pass", "an authentic selected event of another amount contradicts the phase", demos_record(event_changes={"amount": "6"})),
         case("fv-bft-final-record-wrong-payee", "fail", "an authentic confirmed native send to another Demos key contradicts the phase payee", demos_record(to="0x" + other_key, data=send(other_key, "5000000000"))),
         case("fv-bft-final-record-wrong-payer", "fail", "an authentic confirmed native send from another Demos key contradicts the phase payer", demos_record(**{"from": "0x" + other_key, "from_ed25519_address": "0x" + other_key})),
         case("fv-bft-final-record-wrong-amount", "fail", "an authentic confirmed native send of another OS amount contradicts the phase amount", demos_record(amount=6_000_000_000, data=send(payee_key, "6000000000"), state=factory.committed(amount_os="6000000000"))),
@@ -1800,7 +1803,7 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
             members["status"] = "reverted" if model == "block-depth" else "failed"
         for member, replacement in members.items():
             value = BodyVariant(member, replacement).model_input(model)
-            vectors.append(case("fv-" + model + "-transaction-body-" + member, "fail",
+            vectors.append(case("fv-" + model + "-transaction-body-" + member, "pass" if model == "bft-final" and member == "eventsRoot" else "fail",
                                 "the included transaction must bind every selected body member", value))
 
     for name, amount, os_amount, expected in (
@@ -2138,6 +2141,25 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-malformed-context-kind", "error", "context/profile kind mismatch is structural error", changed("block-depth", lambda v: v["context"].__setitem__("kind", "provider"))),
         case("fv-production-codec-unavailable", "indeterminate", "synthetic vectors never claim a native production codec", factory.model_input("block-depth"), trusted_overrides={"policy": "production-native-unavailable"}),
     ])
+    for missing in (True, False):
+        value = factory.model_input("bft-final")
+        observation = value["context"]["observation"]
+        if missing:
+            observation.pop("executionResult")
+        else:
+            observation["executionResult"]["attestations"] = []
+        vectors.append(case("fv-bft-final-malformed-claims-result-" + ("missing" if missing else "unauthenticated"),
+            "error", "Phase claims are validated independently of execution authentication.", value,
+            trusted_overrides={"demosPayerKeyClaims": {CLAIMS["buyer"]: [42]}}))
+    value = factory.model_input("bft-final")
+    result = value["context"]["observation"]["executionResult"]
+    result["appliedTransfer"]["blockNumber"] = float(result["appliedTransfer"]["blockNumber"])
+    vectors.append(case("fv-bft-final-equivalent-json-block-number", "pass",
+                        "Equivalent JSON number values preserve JCS signatures and payment.", value))
+    value = factory.model_input("bft-final")
+    value["context"]["observation"].pop("selectedEventProof")
+    vectors.append(case("fv-bft-final-no-synthetic-event", "pass",
+                        "A native send carries no job or execution event; verify transaction identity and independent execution.", value))
     return vectors
 
 

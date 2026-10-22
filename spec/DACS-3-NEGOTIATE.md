@@ -803,7 +803,7 @@ type PayoutBinding = {
 
   phaseIndex: number                   // one entry per phase invocation, so PIPE-5 repeats carry distinct destinations deterministically
 
-  payeeAddress: string                 // the rail-specific destination the payee binds by co-signing
+  payeeAddress: string                 // the rail-specific destination the payee binds by co-signing; for pay-dem MUST project under DEMOS-MAPPING §A.2 before Agreement signature
 
 }
 

@@ -171,7 +171,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(242, self.data["count"])
+        self.assertEqual(246, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -223,9 +223,9 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             "fv-bft-final-execution-pending": ("indeterminate", "not an execution result (DEM-7)"),
             "fv-bft-final-execution-included-alias": ("indeterminate", "not an execution result (DEM-7)"),
             "fv-bft-final-execution-success-alias": ("indeterminate", "not an execution result (DEM-7)"),
-            "fv-bft-final-event-wrong-payee": ("fail", "authenticated economics"),
-            "fv-bft-final-event-wrong-payer": ("fail", "authenticated economics"),
-            "fv-bft-final-event-wrong-amount": ("fail", "authenticated economics"),
+            "fv-bft-final-event-wrong-payee": ("pass", "chain observation verified"),
+            "fv-bft-final-event-wrong-payer": ("pass", "chain observation verified"),
+            "fv-bft-final-event-wrong-amount": ("pass", "chain observation verified"),
             "fv-bft-final-record-wrong-payee": contradicts,
             "fv-bft-final-record-wrong-payer": contradicts,
             "fv-bft-final-record-wrong-amount": contradicts,
@@ -298,8 +298,10 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         for case in cases:
             with self.subTest(case=case["name"]):
                 result = self.evaluate_case(case)
-                self.assertEqual("fail", result["decision"])
-                self.assertIn("raw transaction does not bind", result["reason"])
+                expected = "pass" if case["name"] == "fv-bft-final-transaction-body-eventsRoot" else "fail"
+                self.assertEqual(expected, result["decision"])
+                if expected == "fail":
+                    self.assertIn("raw transaction does not bind", result["reason"])
 
     def test_fractional_dem_conversion_is_exact(self):
         for suffix, expected in (("fractional-amount-binds", "pass"), ("fractional-underpayment", "fail"),

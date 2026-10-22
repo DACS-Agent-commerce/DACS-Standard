@@ -50,8 +50,8 @@
     "admissionIndex": "admit-for-delivery: the snapshot (revision, admissions) of the payee's durable admission index read for this check. consumerAdmissions must equal its admissions as a multiset of exact JCS bytes; a missing or malformed snapshot, or a presented history that omits or adds an admission, is error and authorizes no delivery. The payee adds this phase's admission with a write conditional on that revision",
     "guards": "checks whose removal makes this vector fail"
   },
-  "count": 544,
-  "hash": "9f408d26dae326405712371ad4b139aeb4e67a9d23204ce4aa89819d543353f0",
+  "count": 552,
+  "hash": "e46ea1e2fd4c751e7daa3dae20a7f161b6b35809bf30d215831c24daa0da57ba",
   "vectors": [
     {
       "name": "included-confirmed",
@@ -381,8 +381,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -574,8 +574,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -785,8 +785,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -996,8 +996,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -1207,8 +1207,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -1418,8 +1418,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -1629,8 +1629,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -1821,8 +1821,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -3311,8 +3311,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -3521,8 +3521,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -3732,8 +3732,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -3967,8 +3967,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -4197,8 +4197,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -4432,8 +4432,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -4667,8 +4667,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -4902,8 +4902,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -5112,8 +5112,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -5507,8 +5507,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -5725,8 +5725,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -5961,8 +5961,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -6197,8 +6197,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -6433,8 +6433,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -6669,8 +6669,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -6905,8 +6905,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -7406,8 +7406,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -7617,8 +7617,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -7727,8 +7727,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -7838,8 +7838,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -8047,8 +8047,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -8257,8 +8257,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -8467,8 +8467,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -8677,8 +8677,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -8887,8 +8887,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -9121,8 +9121,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -9332,8 +9332,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -9542,8 +9542,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -9752,8 +9752,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -9961,8 +9961,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -10170,8 +10170,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -10380,8 +10380,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -10590,8 +10590,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -10800,8 +10800,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -11010,8 +11010,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -11219,8 +11219,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -11429,8 +11429,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -11640,8 +11640,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -11850,8 +11850,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -12060,8 +12060,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -12270,8 +12270,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -12480,8 +12480,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -12690,8 +12690,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -12900,8 +12900,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -13110,8 +13110,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -13320,8 +13320,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -13530,8 +13530,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -13740,8 +13740,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -13950,8 +13950,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -14160,8 +14160,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -14370,8 +14370,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -14580,8 +14580,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -14790,8 +14790,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -15000,8 +15000,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -15210,8 +15210,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -15417,8 +15417,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -15649,8 +15649,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -15884,8 +15884,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -16118,8 +16118,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -16351,8 +16351,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -16586,8 +16586,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -16819,8 +16819,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -17054,8 +17054,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -17286,8 +17286,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -17392,8 +17392,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -17818,8 +17818,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -18033,8 +18033,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -18248,8 +18248,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -18462,8 +18462,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -18653,8 +18653,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -18845,8 +18845,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -19061,8 +19061,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -19272,8 +19272,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -19488,8 +19488,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -19704,8 +19704,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -19846,8 +19846,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -20045,8 +20045,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -20262,8 +20262,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -20479,8 +20479,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -20696,8 +20696,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -20913,8 +20913,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -21206,8 +21206,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -21520,8 +21520,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -21631,8 +21631,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -22033,8 +22033,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -50971,8 +50971,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51003,8 +51003,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51035,8 +51035,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51066,8 +51066,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51097,8 +51097,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51128,8 +51128,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51159,8 +51159,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51190,8 +51190,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51221,8 +51221,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51252,8 +51252,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51283,8 +51283,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51314,8 +51314,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51523,8 +51523,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51733,8 +51733,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -51943,8 +51943,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -52154,8 +52154,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -52364,8 +52364,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -52574,8 +52574,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -56292,8 +56292,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -56483,8 +56483,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -56862,8 +56862,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -57241,8 +57241,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -57864,8 +57864,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -58283,8 +58283,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -58839,8 +58839,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -59395,8 +59395,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -59609,14 +59609,14 @@
           }
         }
       },
-      "expected": "fail",
+      "expected": "indeterminate",
       "want": {
         "dem7GatePassed": false,
         "deliveryAuthorized": false
       },
       "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
       "guards": [
-        "consumer-authenticated-contradiction-fails",
+        "consumer-contradiction-requires-bft-final-inclusion",
         "consumer-requires-confirmed-record",
         "success-requires-applied-transfer"
       ],
@@ -59951,8 +59951,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -60165,14 +60165,14 @@
           }
         }
       },
-      "expected": "fail",
+      "expected": "indeterminate",
       "want": {
         "dem7GatePassed": false,
         "deliveryAuthorized": false
       },
       "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
       "guards": [
-        "consumer-authenticated-contradiction-fails",
+        "consumer-contradiction-requires-bft-final-inclusion",
         "consumer-requires-confirmed-record",
         "success-requires-applied-transfer"
       ],
@@ -60507,8 +60507,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -61063,8 +61063,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -61619,8 +61619,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -61834,7 +61834,7 @@
           }
         }
       },
-      "expected": "fail",
+      "expected": "indeterminate",
       "want": {
         "dem7GatePassed": false,
         "deliveryAuthorized": false
@@ -61842,7 +61842,7 @@
       "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
       "guards": [
         "applied-transfer-binds-network",
-        "consumer-authenticated-contradiction-fails",
+        "consumer-contradiction-requires-bft-final-inclusion",
         "consumer-requires-confirmed-record",
         "success-requires-applied-transfer"
       ],
@@ -62178,8 +62178,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -62393,7 +62393,7 @@
           }
         }
       },
-      "expected": "fail",
+      "expected": "indeterminate",
       "want": {
         "dem7GatePassed": false,
         "deliveryAuthorized": false
@@ -62401,7 +62401,7 @@
       "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
       "guards": [
         "applied-transfer-binds-network",
-        "consumer-authenticated-contradiction-fails",
+        "consumer-contradiction-requires-bft-final-inclusion",
         "consumer-requires-confirmed-record",
         "success-requires-applied-transfer"
       ],
@@ -62737,8 +62737,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -63614,8 +63614,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -81520,8 +81520,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -81730,8 +81730,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -81940,8 +81940,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -85145,8 +85145,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -85550,8 +85550,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -85955,8 +85955,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -86360,8 +86360,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -86765,8 +86765,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -87170,8 +87170,8 @@
         "errorClass": "substrate",
         "executionState": "indeterminate",
         "evidence": "none",
-        "nextAction": "st7-pause-re-read-retained-hash",
-        "onPauseExpiry": "failed-substrate-without-replacement",
+        "nextAction": "st7-open-re-read-retained-hash",
+        "onPauseExpiry": "remain-paused-re-read-only",
         "retainedHashKept": true,
         "terminalFailureProofRetained": false,
         "deliveryAuthorized": false,
@@ -94565,6 +94565,1846 @@
         "consumer-requires-confirmed-record"
       ],
       "note": "A claim or control that is not a string is a malformed bundle claim: error, never a crash."
+    },
+    {
+      "name": "consumer-malformed-result-empty",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          },
+          "executionResult": {}
+        }
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-malformed-result-is-error",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "FV-5 malformed results stay error through consumer and delivery composition."
+    },
+    {
+      "name": "delivery-malformed-result-empty",
+      "operation": "admit-for-delivery",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+          "executionResult": {},
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        },
+        "otherGates": {
+          "sb1": "pass",
+          "pb": "pass"
+        },
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-malformed-result-is-error",
+        "consumer-requires-confirmed-record",
+        "delivery-requires-dem7"
+      ],
+      "note": "FV-5 malformed results stay error through consumer and delivery composition."
+    },
+    {
+      "name": "consumer-malformed-result-attestations",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          },
+          "executionResult": {
+            "kind": "fixture-independent-results-v1",
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+            "attestations": "not-an-array"
+          }
+        }
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-malformed-result-is-error",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "FV-5 malformed results stay error through consumer and delivery composition."
+    },
+    {
+      "name": "delivery-malformed-result-attestations",
+      "operation": "admit-for-delivery",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+          "executionResult": {
+            "kind": "fixture-independent-results-v1",
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+            "attestations": "not-an-array"
+          },
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        },
+        "otherGates": {
+          "sb1": "pass",
+          "pb": "pass"
+        },
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-malformed-result-is-error",
+        "consumer-requires-confirmed-record",
+        "delivery-requires-dem7"
+      ],
+      "note": "FV-5 malformed results stay error through consumer and delivery composition."
+    },
+    {
+      "name": "consumer-malformed-result-unknown-member",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          },
+          "executionResult": {
+            "kind": "fixture-independent-results-v1",
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+            "attestations": [
+              {
+                "authorityRef": "execution-a",
+                "algorithm": "ed25519",
+                "value": "mePvWBQ-HlZdktxADNj0PLpk-n-EPlC5KhE7klIvuwLIBtBN6qnEv8MTNmQygeq8YYldzpERxjB6S8A4u9LeCg"
+              },
+              {
+                "authorityRef": "execution-b",
+                "algorithm": "ed25519",
+                "value": "KIOGHt_5Y9yFrvRzZQQHHWd0_4BwjR0PMfSCT8qMd71jlgpI-cSJDvul_pipddnokTUQdbke_f3DDMY4dglsBQ"
+              }
+            ],
+            "extra": 1
+          }
+        }
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-malformed-result-is-error",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "FV-5 malformed results stay error through consumer and delivery composition."
+    },
+    {
+      "name": "delivery-malformed-result-unknown-member",
+      "operation": "admit-for-delivery",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+          "executionResult": {
+            "kind": "fixture-independent-results-v1",
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+            "attestations": [
+              {
+                "authorityRef": "execution-a",
+                "algorithm": "ed25519",
+                "value": "mePvWBQ-HlZdktxADNj0PLpk-n-EPlC5KhE7klIvuwLIBtBN6qnEv8MTNmQygeq8YYldzpERxjB6S8A4u9LeCg"
+              },
+              {
+                "authorityRef": "execution-b",
+                "algorithm": "ed25519",
+                "value": "KIOGHt_5Y9yFrvRzZQQHHWd0_4BwjR0PMfSCT8qMd71jlgpI-cSJDvul_pipddnokTUQdbke_f3DDMY4dglsBQ"
+              }
+            ],
+            "extra": 1
+          },
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        },
+        "otherGates": {
+          "sb1": "pass",
+          "pb": "pass"
+        },
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-malformed-result-is-error",
+        "consumer-requires-confirmed-record",
+        "delivery-requires-dem7"
+      ],
+      "note": "FV-5 malformed results stay error through consumer and delivery composition."
+    },
+    {
+      "name": "consumer-malformed-result-missing-record",
+      "operation": "admit-evidence",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          },
+          "executionResult": {
+            "kind": "fixture-independent-results-v1",
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "attestations": [
+              {
+                "authorityRef": "execution-a",
+                "algorithm": "ed25519",
+                "value": "mePvWBQ-HlZdktxADNj0PLpk-n-EPlC5KhE7klIvuwLIBtBN6qnEv8MTNmQygeq8YYldzpERxjB6S8A4u9LeCg"
+              },
+              {
+                "authorityRef": "execution-b",
+                "algorithm": "ed25519",
+                "value": "KIOGHt_5Y9yFrvRzZQQHHWd0_4BwjR0PMfSCT8qMd71jlgpI-cSJDvul_pipddnokTUQdbke_f3DDMY4dglsBQ"
+              }
+            ]
+          }
+        }
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7",
+      "guards": [
+        "consumer-malformed-result-is-error",
+        "consumer-requires-confirmed-record"
+      ],
+      "note": "FV-5 malformed results stay error through consumer and delivery composition."
+    },
+    {
+      "name": "delivery-malformed-result-missing-record",
+      "operation": "admit-for-delivery",
+      "protocolInput": {
+        "signedEvidence": {
+          "outcome": "success",
+          "txRef": {
+            "kind": "demos",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42
+          }
+        },
+        "phase": {
+          "jobId": "01JA2B3C4D5E6F7G8H9JKMNPQR",
+          "phaseIndex": 1,
+          "payerPayingKey": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+          "payeeAddress": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+          "amountOs": "1500000000",
+          "amount": {
+            "amount": "1.5",
+            "currency": "DEM"
+          }
+        },
+        "railNetwork": {
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3"
+        },
+        "finalityProfile": {
+          "kind": "bft-final",
+          "networkId": "demos:mainnet",
+          "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+          "observation": {
+            "method": "rpc-quorum",
+            "authorityRefs": [
+              "rpc-a",
+              "rpc-b",
+              "rpc-c"
+            ],
+            "threshold": 2,
+            "maxHeadAgeSec": 60
+          },
+          "validatorSetRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+            },
+            "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+          },
+          "quorumNumerator": 2,
+          "quorumDenominator": 3
+        },
+        "finalityTrust": {
+          "validatorSets": {
+            "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc": {
+              "validators": [
+                {
+                  "validatorId": "validator-a",
+                  "weight": 40,
+                  "publicKey": "_sb8Toe5-9zECZZZODtSaW5RuB0kp9V8gWLF_DNmiWc"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "weight": 35,
+                  "publicKey": "njT8xd-wUldxGmO_LDJWcrVjkXwXTbgsJx3p-rHBJXk"
+                },
+                {
+                  "validatorId": "validator-c",
+                  "weight": 25,
+                  "publicKey": "IUd_B1IeH2204aEoAneWh_FArS-42vVLhqFJepZoims"
+                }
+              ]
+            }
+          },
+          "observationAuthorityKeys": {
+            "rpc-a": "qSE9qCriOw7SXUjZn1A5r2pqyB7kpf2GviMWXl9hZpA",
+            "rpc-b": "hLTlxQKUg7nPiyB-U9uB0o80JB3Ci476vUwEJUtmdzk",
+            "rpc-c": "K8xiTCrTJqHZFAVwk1iGkHIf-naQaYgKj_ikSkKkytQ"
+          },
+          "verificationTimeMs": 1791649710000
+        },
+        "fv5Policy": {
+          "kind": "fixture-independent-results-v1",
+          "threshold": 2,
+          "authorityKeys": {
+            "execution-a": "lXDEBpWgkvoC5DLoiTZPiYbbnoM9_x-T6C7mhbOTg6o",
+            "execution-b": "9yaANpteYNS50PBUDC65L9RNCX-BeehNN_93Or4X094",
+            "execution-c": "UlB9UaAv6LAkmXiFd2vVtL_9MqHvKhsdRx9_VKzzdjQ"
+          }
+        },
+        "inclusionObservation": {
+          "blockNumber": 42,
+          "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c"
+        },
+        "statusIndex": "included",
+        "recordRead": {
+          "state": "found",
+          "nodeBuild": {
+            "source": "binding-attestation",
+            "commit": "61b8e75aa8db5e408c49e1c3a89db4d673f45578",
+            "tree": "clean"
+          },
+          "record": "{\"hash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"blockNumber\":42,\"status\":\"confirmed\",\"content\":{\"type\":\"native\",\"from\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"from_ed25519_address\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"to\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"amount\":1500000000,\"nonce\":\"9\",\"data\":[\"native\",{\"nativeOperation\":\"send\",\"args\":[\"6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"1500000000\"]}],\"timestamp\":\"1791649642726\",\"transaction_fee\":{\"network_fee\":1000000000,\"rpc_fee\":1000000000,\"additional_fee\":0,\"rpc_address\":null},\"gcr_edits\":[{\"type\":\"balance\",\"operation\":\"remove\",\"isRollback\":false,\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"operation\":\"add\",\"isRollback\":false,\"account\":\"0x6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"amount\":\"1500000000\"},{\"type\":\"balance\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"operation\":\"remove\",\"amount\":\"1000000000\",\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false},{\"type\":\"nonce\",\"operation\":\"add\",\"account\":\"0xd688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c\",\"amount\":1,\"txhash\":\"2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade\",\"isRollback\":false}]}}",
+          "executionResult": {
+            "kind": "fixture-independent-results-v1",
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "attestations": [
+              {
+                "authorityRef": "execution-a",
+                "algorithm": "ed25519",
+                "value": "mePvWBQ-HlZdktxADNj0PLpk-n-EPlC5KhE7klIvuwLIBtBN6qnEv8MTNmQygeq8YYldzpERxjB6S8A4u9LeCg"
+              },
+              {
+                "authorityRef": "execution-b",
+                "algorithm": "ed25519",
+                "value": "KIOGHt_5Y9yFrvRzZQQHHWd0_4BwjR0PMfSCT8qMd71jlgpI-cSJDvul_pipddnokTUQdbke_f3DDMY4dglsBQ"
+              }
+            ]
+          },
+          "inclusionProof": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+              "blockNumber": 42
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwidHJhbnNhY3Rpb25SZWYiOnsiYmxvY2tOdW1iZXIiOjQyLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiIyZmIyOWFlYTE3ZmZlZDAzODg3NDkxMmZhMDQwYWJlMTI2ZWFmMzEzZmY1MzIyZWZlNGQ5YjU5YjU3MDlkYWRlIn0sInR4SGFzaCI6IjJmYjI5YWVhMTdmZmVkMDM4ODc0OTEyZmEwNDBhYmUxMjZlYWYzMTNmZjUzMjJlZmU0ZDliNTliNTcwOWRhZGUifQ",
+              "leafHash": "cb030fc7202a98e79d4e1b9cfcbc7dced8eb1b4700b54eb202fdc721568d4f68",
+              "siblingHash": "be8f495b2ca9de70aceae060cb6eda06859cf122e79d8a7834240278a703575c",
+              "leafIndex": 0,
+              "root": "bead4702bfcd656a6552f16370ac2e07c4a592fb693258dee7a6f0b6c7160c30"
+            },
+            "inclusionBlock": {
+              "id": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "parentId": "855fc6eaa8c4f8201187b136382b138751ec682e9936dfe7e20aedd72ff0e7d9",
+              "position": "42",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI4NTVmYzZlYWE4YzRmODIwMTE4N2IxMzYzODJiMTM4NzUxZWM2ODJlOTkzNmRmZTdlMjBhZWRkNzJmZjBlN2Q5IiwicG9zaXRpb24iOiI0MiIsInRyYW5zYWN0aW9uc1Jvb3QiOiJiZWFkNDcwMmJmY2Q2NTZhNjU1MmYxNjM3MGFjMmUwN2M0YTU5MmZiNjkzMjU4ZGVlN2E2ZjBiNmM3MTYwYzMwIn0"
+            },
+            "authenticatedHead": {
+              "id": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+              "position": "43",
+              "observedAt": 1791649700000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+            },
+            "ancestryProof": [
+              {
+                "childId": "292b7489479ad3347dbe0ba2433e3ddf90909caad7b2b9d15f0fcef85a859ae8",
+                "parentId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+                "position": "43",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjFiMzJiZTllNGZkOWMxMzNlYzMxNjBlZTgxODE4MDI3MjgyOTE3YjE2M2E5YzM5YTBhOWJjNDIyYThlYjI5ZjMiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJjMGQ3ZjM2MTY2ZTY5OTcwMzM5NjNjZTZlYzg3MGM3NWIzZmFmN2YwNTdlMmY0MTQzYzFhMmRlYmYxMmJjMzZjIiwicG9zaXRpb24iOiI0MyIsInRyYW5zYWN0aW9uc1Jvb3QiOiI0NTNhYTdkN2UyOTA3YTc3MDY4YmZlMDExYjk5YzhmYmY2NDA5NzkxZTAxNWI0YzFmZTgzOTBlYWUwYTQxN2Q4In0"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "sge7ZUt-B3kMp0qRIFOccokBcKxhSsH5TmcIrsT2kTlz8LtAaptxMT66EK-BE5sgFBryn0qnCdA4yM3AazIqCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "ENGyvuKDPJzrj3AvVtm4B9SpinAW8mFYitLqmvyH_aclEmi4Fa-DMGmGQaRnG8FnHQejWSXOK8cJcv7k0Kc0DQ"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc",
+              "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "0S4zKdcLs5T0n49gX2AlopEt7g7MtxqbPgSayed-bMu3D5hOmirvcZGRm74r4o5zGtT3DrlFDdW-gLHRiK2ABA"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "pMDrQdyuuSzajCkmA9adFEpWYzqlz5QY1-WHOSOOJC-PLvE-83EyYKqyHlibeqUyuEjZSlUSyDgQh0uPQ6TpDw"
+                }
+              ]
+            }
+          },
+          "appliedTransferAuthenticated": true,
+          "appliedTransfer": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+            "blockId": "c0d7f36166e6997033963ce6ec870c75b3faf7f057e2f4143c1a2debf12bc36c",
+            "txHash": "2fb29aea17ffed038874912fa040abe126eaf313ff5322efe4d9b59b5709dade",
+            "blockNumber": 42,
+            "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
+            "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
+            "committedBalances": {
+              "payerBeforeOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
+              "payeeBeforeOs": "7000000000000000000000000",
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
+            }
+          }
+        },
+        "otherGates": {
+          "sb1": "pass",
+          "pb": "pass"
+        },
+        "consumerAdmissions": [],
+        "admissionIndex": {
+          "revision": 0,
+          "admissions": []
+        }
+      },
+      "expected": "error",
+      "want": {
+        "dem7GatePassed": false,
+        "deliveryAuthorized": false,
+        "settlementAccounting": false
+      },
+      "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
+      "guards": [
+        "consumer-malformed-result-is-error",
+        "consumer-requires-confirmed-record",
+        "delivery-requires-dem7"
+      ],
+      "note": "FV-5 malformed results stay error through consumer and delivery composition."
     }
   ]
 }

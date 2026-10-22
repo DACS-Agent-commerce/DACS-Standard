@@ -834,6 +834,13 @@ def rail_definition(
             "anchoring": "in-code",
         },
     }
+    if handler == "pay-dem":
+        # RAV-R3: a selectable native rail names its signed BFT network.
+        from generate_pay_dem_execution_vectors import FINALITY_PROFILE
+        value["consumerFinalityProfile"] = {
+            "finalityProfileVersion": "1", "model": "bft-final",
+            "settlement": copy.deepcopy(FINALITY_PROFILE),
+        }
     value["signature"] = component_signature(value, RAIL_DOMAIN, "orchestrator")
     return value
 

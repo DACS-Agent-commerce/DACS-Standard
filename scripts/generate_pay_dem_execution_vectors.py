@@ -671,9 +671,9 @@ def handler_want(expected: str) -> dict[str, Any]:
         ),
         "nextAction": (
             "anchor-success-evidence" if executed
-            else "terminal-failure" if failed else "st7-pause-re-read-retained-hash"
+            else "terminal-failure" if failed else "st7-open-re-read-retained-hash"
         ),
-        "onPauseExpiry": None if executed or failed else "failed-substrate-without-replacement",
+        "onPauseExpiry": None if executed or failed else "remain-paused-re-read-only",
         "retainedHashKept": True,
         "terminalFailureProofRetained": failed,
         # The payer's handler result never authorizes delivery or settlement
@@ -2631,9 +2631,10 @@ def build_vectors() -> list[dict[str, Any]]:
                                  "inclusion contradicts nothing.", read=read))
             continue
         vectors.append(admit("consumer-applied-transfer-" + suffix,
-                             "indeterminate" if suffix == "unauthenticated" else "fail", "DEM-7/FV-5",
+                             "indeterminate" if suffix in {"unauthenticated", "wrong-hash", "wrong-block", "other-network", "other-genesis"} else "fail", "DEM-7/FV-5",
                              ["consumer-requires-confirmed-record", "success-requires-applied-transfer"] + binding
-                             + ([] if suffix == "unauthenticated" else ["consumer-authenticated-contradiction-fails"]),
+                             + (["consumer-contradiction-requires-bft-final-inclusion"] if suffix in {"wrong-hash", "wrong-block", "other-network", "other-genesis"}
+                                else [] if suffix == "unauthenticated" else ["consumer-authenticated-contradiction-fails"]),
                              "Authenticated applied-payment contradictions refute settlement; unavailable authority is indeterminate.", read=read))
         if suffix != "unauthenticated":
             missing = copy.deepcopy(read)
@@ -2699,7 +2700,7 @@ def build_vectors() -> list[dict[str, Any]]:
         # DEM-3 success and a DEM-4 proof each need the bft-final inclusion
         # verified under the handler's own trust, and DEM-4 an FV-5 policy:
         # a binding without either signs a transfer that debits the payer and
-        # can only end unresolved, failed-substrate with no replacement.
+        # stays unresolved and non-terminal, with no replacement.
         pre_sign("sign-without-bft-final-trust", "fail",
                  ["binding-refusal-is-rail-unavailable", "sign-requires-bft-final-trust"],
                  "Without bft-final trust for the rail's network no inclusion verifies: DEM-3 success and a DEM-4 "
@@ -3297,6 +3298,30 @@ def build_vectors() -> list[dict[str, Any]]:
                 + (["sb2-presented-set-only"] if vector["protocolInput"]["consumerAdmissions"] else [])
                 + (["sb1-demos-canonical", "sb1-demos-shape"] if malformed else [])
             )
+    for label in ("empty", "attestations", "unknown-member", "missing-record"):
+        for delivery in (False, True):
+            source = next(v for v in vectors if v["name"] == ("delivery-fv-form-result" if delivery else "consumer-confirmed-gate-passes"))
+            vector = copy.deepcopy(source)
+            vector["name"] = ("delivery" if delivery else "consumer") + "-malformed-result-" + label
+            read = vector["protocolInput"]["recordRead"]
+            result = execution_result(read["record"])
+            if label == "empty":
+                result = {}
+            elif label == "attestations":
+                result["attestations"] = "not-an-array"
+            elif label == "unknown-member":
+                result["extra"] = 1
+            else:
+                result.pop("record")
+            read["executionResult"] = result
+            vector["expected"] = "error"
+            vector["want"] = {"dem7GatePassed": False, "deliveryAuthorized": False}
+            if delivery:
+                vector["want"]["settlementAccounting"] = False
+            vector["guards"] = sorted(["consumer-malformed-result-is-error", "consumer-requires-confirmed-record"]
+                                      + (["delivery-requires-dem7"] if delivery else []))
+            vector["note"] = "FV-5 malformed results stay error through consumer and delivery composition."
+            vectors.append(vector)
     return vectors
 
 

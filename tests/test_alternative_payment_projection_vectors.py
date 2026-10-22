@@ -11,7 +11,10 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from scripts.jcs import canonicalize as jcs_canonicalize
 
-import test_pay_dem_execution_vectors as pay_dem
+try:
+    from tests import test_pay_dem_execution_vectors as pay_dem
+except ImportError:  # unittest discovery with tests/ on sys.path
+    import test_pay_dem_execution_vectors as pay_dem
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -318,7 +321,7 @@ def verify_prior_payment_context(vector, resolved=None):
         ):
             return "fail", "prior-disposition-proof"
         if native_dem:
-            transfer = authority.get("retainedTransfer")
+            transfer = disposition.get("retainedPayDemTransfer")
             proof = resolution.get("payDemFailureProof")
             if (not pay_dem.complete_transfer(transfer)
                     or transfer["jobId"] != prior_agreement.get("jobId")
@@ -332,7 +335,7 @@ def verify_prior_payment_context(vector, resolved=None):
             if (not isinstance(trust, dict) or not isinstance(signed_profile, dict)
                     or trust.get("finalityProfile") != signed_profile
                     or trust.get("railNetwork") != {k: signed_profile.get(k) for k in ("networkId", "genesisHash")}):
-                return "fail", "prior-disposition-proof"
+                return "indeterminate", "prior-disposition-proof"
             try:
                 artifact = proof
                 result = artifact.get("executionResult")
@@ -345,12 +348,14 @@ def verify_prior_payment_context(vector, resolved=None):
                 held = {"classification": "permanent", "authentication": result,
                         "record": result.get("record"), "inclusionProof": inclusion,
                         "inclusionBlock": reference.get("blockNumber")}
+                if not pay_dem.valid_failure_proof(held, transfer, frozenset()):
+                    return "fail", "prior-disposition-proof"
                 verdict, _ = pay_dem.apr_evidence({**trust, "retainedTransfer": transfer,
                     "retainedFailureProof": held}, frozenset())
             except (KeyError, TypeError, ValueError):
                 verdict = "indeterminate"
             if verdict != "pass":
-                return "fail", "prior-disposition-proof"
+                return verdict, "prior-disposition-proof"
         return "pass", None
     return "fail", "prior-disposition-state"
 
@@ -548,6 +553,9 @@ def project_and_bind(vector, resolved, alternative_index):
         for binding in bindings if isinstance(binding, dict)
     )
     if len(actual_bindings) != len(bindings) or actual_bindings != expected_bindings:
+        return "fail", "payout-binding", None
+    if definition.get("phaseHandler") == "pay-dem" and any(
+            pay_dem.party_address(binding.get("payeeAddress"), frozenset()) is None for binding in bindings):
         return "fail", "payout-binding", None
     return "pass", None, effective
 

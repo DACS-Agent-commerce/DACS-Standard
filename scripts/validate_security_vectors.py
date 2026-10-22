@@ -16,7 +16,7 @@ This validator checks each set against its own claims:
 - ``hash`` recomputes as sha256 over the canonical JSON of the ``vectors``
   array. Sets from different authors used slightly different canonical
   encodings (insertion-order vs sorted keys; ASCII-escaped vs raw UTF-8), so
-  any of the four compact-JSON variants is accepted — but the hash MUST match
+  any of the four compact-JSON variants or CORE JCS is accepted — but the hash MUST match
   one of them, so a stale hash after an edit still fails;
 - every vector carries a unique, non-empty ``name``;
 - every vector carries a verdict field (``expected``; legacy sb2 uses
@@ -33,6 +33,11 @@ import hashlib
 import json
 import os
 import sys
+
+try:
+    from scripts.jcs import canonicalize
+except ImportError:  # direct script invocation
+    from jcs import canonicalize
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECURITY_DIR = os.path.join(ROOT, "conformance", "vectors", "security")
@@ -59,7 +64,7 @@ SB1_EVENT_IDENTITY_SET = "settlement-event-identity-v0.6"
 
 def canonical_encodings(vectors: list) -> dict[str, bytes]:
     """The accepted canonical encodings of the vectors array (see docstring)."""
-    return {
+    encodings = {
         "compact insertion-order (ascii)": json.dumps(
             vectors, separators=(",", ":"), ensure_ascii=True).encode(),
         "compact insertion-order (utf-8)": json.dumps(
@@ -69,6 +74,14 @@ def canonical_encodings(vectors: list) -> dict[str, bytes]:
         "compact sorted-keys (utf-8)": json.dumps(
             vectors, separators=(",", ":"), sort_keys=True, ensure_ascii=False).encode("utf-8"),
     }
+    # CORE JCS compares JSON numbers by value: 100 and 100.0 have the
+    # same authenticated bytes. Preserve historical encodings as well.
+    try:
+        encodings["CORE JCS (RFC 8785)"] = canonicalize(vectors).encode("utf-8")
+    except (ValueError, TypeError, OverflowError):
+        # Some historical negative fixtures intentionally exceed JCS limits.
+        pass
+    return encodings
 
 
 def validate_set(path: str) -> tuple[list[str], int]:

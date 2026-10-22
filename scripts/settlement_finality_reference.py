@@ -19,9 +19,9 @@ from typing import Any
 from urllib.parse import urlsplit
 
 try:
-    from scripts.demos_identity import demos_key_claim
+    from scripts.demos_identity import demos_key_claim, demos_party_address
 except ImportError:  # direct script entry point
-    from demos_identity import demos_key_claim
+    from demos_identity import demos_key_claim, demos_party_address
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -251,14 +251,16 @@ def _https_origin(value: Any) -> bool:
 
 
 def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str, str, dict | None]:
+    payee_bound = isinstance(agreement, dict) and "payeeBoundAgreementVersion" in agreement
+    discriminator = "payeeBoundAgreementVersion" if payee_bound else "agreementVersion"
     required = {
-        "agreementVersion", "jobId", "listingRef", "parties", "terms",
+        discriminator, "jobId", "listingRef", "parties", "terms",
         "derivedFromPattern", "generatedAt", "signatures",
     }
     if not _exact_object(agreement, required):
         return "error", "malformed AgreementDocument", None
     if (
-        agreement.get("agreementVersion") != "1"
+        agreement.get(discriminator) != "1"
         or agreement.get("jobId") != session.get("jobId")
         or agreement.get("derivedFromPattern") not in {"fixed-price", "rfq", "sealed-envelope"}
         or not _finite_time(agreement.get("generatedAt"))
@@ -291,7 +293,7 @@ def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str
     if party_claims != session.get("partyClaims"):
         return "fail", "agreement parties differ from authenticated session authority", None
     terms = agreement.get("terms")
-    if not _exact_object(terms, {"deliverable", "price", "rail", "deadline"}):
+    if not _exact_object(terms, {"deliverable", "price", "rail", "deadline"} | ({"payoutBindings"} if payee_bound else set())):
         return "error", "malformed agreement terms", None
     deliverable = terms.get("deliverable")
     rail_ref = terms.get("rail")
@@ -311,6 +313,16 @@ def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str
         or rail_ref.get("railVersion") != session.get("railVersion")
     ):
         return "fail", "agreement rail differs from authenticated session authority", None
+    if payee_bound:
+        bindings = terms.get("payoutBindings")
+        if not (isinstance(bindings, list) and bindings
+                and all(_exact_object(b, {"railId", "phaseIndex", "payeeAddress"})
+                        and _nonempty_string(b["railId"]) and _safe_integer(b["phaseIndex"])
+                        and isinstance(b["payeeAddress"], str) for b in bindings)
+                and len({(b["railId"], b["phaseIndex"]) for b in bindings}) == len(bindings)
+                and sum(b["railId"] == session["railId"] and b["phaseIndex"] == session["phaseIndex"]
+                        for b in bindings) == 1):
+            return "error", "invalid signed payout binding", None
     digest = artifact_hash(agreement, "signatures")
     if digest != session.get("agreementHash"):
         return "fail", "agreement hash differs from authenticated commitment", None
@@ -325,7 +337,7 @@ def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str
         if signer in signed or signer not in party_claims.values():
             return "fail", "agreement signer is duplicate or not a session party", None
         if not _verify_ed25519(
-            trusted.get("partyKeys"), signer, AGREEMENT_DOMAIN, digest, signature["value"]
+            trusted.get("partyKeys"), signer, "dacs-payee-bound-agreement:v1:" if payee_bound else AGREEMENT_DOMAIN, digest, signature["value"]
         ):
             return "fail", "agreement signature does not verify", None
         signed.add(signer)
@@ -680,7 +692,7 @@ def _verify_evidence(evidence: Any, trusted: dict) -> tuple[str, str, dict | Non
         "jobId", "phaseIndex", "phaseKind", "phaseOrchestrator", "railId", "railVersion",
         "agreementHash", "partyClaims", "payer", "payee", "asset",
     }
-    if set(session) != expected_session_fields:
+    if not expected_session_fields <= set(session) <= expected_session_fields | {"payeeAddress"}:
         return "error", "malformed trusted session authority", None
     if (
         session.get("jobId") != evidence.get("jobId")
@@ -1096,7 +1108,8 @@ def _demos_applied_transfer_problem(applied: Any, record: Any) -> str | None:
             and _exact_object(applied["committedBalances"], DEMOS_COMMITTED_BALANCES)
             and all(isinstance(value, str) and POSITION_RE.fullmatch(value)
                     for value in applied["committedBalances"].values())
-            and _safe_integer(applied["blockNumber"])):
+            and not isinstance(applied["blockNumber"], (str, bool))
+            and _demos_decimal(applied["blockNumber"]) is not None):
         return "does not decode"
     if _demos_committed_change(applied["committedBalances"]) != (applied["payerDebitOs"], applied["payeeCreditOs"]):
         return "debit and credit are not the change of its committed balances"
@@ -1147,17 +1160,6 @@ def _demos_send_edits_match(content: dict) -> bool:
             == [{k: _json_value(v) for k, v in edit} for edit in expected])
 
 
-def _party_demos_key(trusted: dict, claim: Any) -> str | None:
-    """The fixture party's Demos key: its pinned Ed25519 party key. FV-5 binds
-    the pay-dem party address projection of `payee.payeeAddress`, which PB-1
-    and PB-2 Tier 1 make the primary claim's key, so this is the same value."""
-    try:
-        raw = b64url_decode((trusted.get("partyKeys") or {}).get(claim))
-    except (ValueError, TypeError, binascii.Error):
-        return None
-    return raw.hex() if len(raw) == 32 else None
-
-
 def demos_execution_policy(policy: Any) -> tuple[str, str]:
     """The FV-5 independent execution-result policy check: `pass` for a
     policy this verifier can apply, `indeterminate` for none it knows, and
@@ -1179,12 +1181,14 @@ def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -
     signature object, names no policy key, repeats a counted key or does not
     verify is not counted, so a relayer or one faulty authority cannot turn
     an authenticated result into `fail` or `error`."""
+    proof = observation.get("executionResult")
+    if proof is not None and not demos_execution_result_shape(proof):
+        return "error", "malformed Demos execution result attestations" if isinstance(proof, dict) and "attestations" in proof and not isinstance(proof["attestations"], list) else "malformed Demos execution result", None
     policy = trusted.get("demosExecutionPolicy")
     decision, reason = demos_execution_policy(policy)
     if decision != "pass":
         return decision, reason, None
     keys, threshold = policy["authorityKeys"], policy["threshold"]
-    proof = observation.get("executionResult")
     if proof is None:
         return "indeterminate", "independent Demos execution result unavailable", None
     if not _exact_object(proof, {"kind", "networkId", "genesisHash", "blockId", "transactionRef", "record", "attestations"}, {"appliedTransfer"}):
@@ -1217,6 +1221,44 @@ def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -
     return "pass", "independent execution result authenticated", proof
 
 
+def demos_execution_result_shape(proof: Any) -> bool:
+    """FV-5 structural validation, independent of policy availability."""
+    return (_exact_object(proof, {"kind", "networkId", "genesisHash", "blockId", "transactionRef", "record", "attestations"}, {"appliedTransfer"})
+            and isinstance(proof["attestations"], list))
+
+
+def _verify_demos_phase(expected: dict, trusted: dict) -> tuple[str, str, Any]:
+    """Validate the phase and claims even when no execution result verifies."""
+    amount_value = expected.get("amount")
+    amount = DEM_AMOUNT_RE.fullmatch(amount_value) if isinstance(amount_value, str) and expected.get("currency") == "DEM" else None
+    payee = demos_party_address(expected.get("payeeAddress"))
+    bundles = trusted.get("demosPayerKeyClaims")
+    if bundles is not None and not isinstance(bundles, dict):
+        return "error", "malformed payer bundle Demos key claims", None
+    claims = None if bundles is None else bundles.get(expected["payer"])
+    if claims is not None and not (isinstance(claims, list) and claims and all(
+            isinstance(claim, dict) and set(claim) == {"claim", "control"}
+            and isinstance(claim["claim"], str) and isinstance(claim["control"], str)
+            and claim["control"] in DEMOS_CLAIM_CONTROLS | {DEMOS_CLAIM_UNCONTROLLED}
+            for claim in claims)):
+        return "error", "malformed payer bundle Demos key claims", None
+    try:
+        matches = [] if claims is None else [demos_key_claim(claim["claim"]) for claim in claims]
+    except ValueError:
+        return "error", "malformed payer bundle ClaimReference parameters", None
+    if amount is None or ("payeeAddress" in expected and payee is None):
+        return "error", "phase lacks a DEM amount or projecting payout address", None
+    if claims is None:
+        return "indeterminate", "payer bundle Demos key claims unavailable", None
+    if "payeeAddress" not in expected:
+        return "indeterminate", "authenticated phase destination unavailable", None
+    payers = {match[1] for match, claim in zip(matches, claims)
+              if match and DEMOS_KEY_CLAIM_CONTROL.get(match[0]) == claim["control"]}
+    if not payers:
+        return "indeterminate", "payer bundle controls no Demos key claim", None
+    return "pass", "phase and claims verified", (amount, payee, payers)
+
+
 def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: dict,
                          applied_transfer: Any = None) -> tuple[str, str]:
     """DACS-4 §9.5.9 DEM-7 under FV-5 for an authenticated `pay-dem` record."""
@@ -1225,40 +1267,10 @@ def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: 
     # the record. (An FV-10 verdict on the inclusion comes before all of them:
     # the caller takes it first.) The record checks below therefore never turn
     # a malformed phase into `indeterminate`.
-    amount = DEM_AMOUNT_RE.match(expected.get("amount") or "") if expected.get("currency") == "DEM" else None
-    # The sender binds the controlled Demos key claims of the payer's party
-    # bundle that the Agreement pins (payer.bundleHash): the claims whose
-    # control the payer proved under DACS-1 §6.3.2 step (6). A claim the
-    # bundle only lists binds nothing, since another payer's key could be
-    # listed in it. The handler's payer.payingKey is such a claim (§9.5.1).
-    # Nothing a consumer receives names the payer's per-phase selection, and a
-    # key the payer's message names is unauthenticated.
-    bundles = trusted.get("demosPayerKeyClaims")
-    if bundles is not None and not isinstance(bundles, dict):
-        return "error", "malformed payer bundle Demos key claims"
-    claims = None if bundles is None else bundles.get(expected["payer"])
-    if claims is not None and not (isinstance(claims, list) and claims and all(
-            isinstance(claim, dict) and set(claim) == {"claim", "control"}
-            and isinstance(claim["claim"], str) and isinstance(claim["control"], str)
-            and claim["control"] in DEMOS_CLAIM_CONTROLS | {DEMOS_CLAIM_UNCONTROLLED}
-            for claim in claims)):
-        return "error", "malformed payer bundle Demos key claims"
-    payee = _party_demos_key(trusted, expected.get("payee"))
-    if amount is None or payee is None:
-        return "error", "phase lacks a DEM amount or Demos party keys"
-    if claims is None:
-        return "indeterminate", "payer bundle Demos key claims unavailable"
-    # A claim that is no Demos key claim (an EVM address, a LEI, a bare hex
-    # string) is skipped, never an error. A Demos key claim is controlled only
-    # by the step (6) mechanism DACS-1 defines for its scheme.
-    try:
-        matches = [demos_key_claim(claim["claim"]) for claim in claims]
-    except ValueError:
-        return "error", "malformed payer bundle ClaimReference parameters"
-    payers = {match[1] for match, claim in zip(matches, claims)
-              if match and DEMOS_KEY_CLAIM_CONTROL.get(match[0]) == claim["control"]}
-    if not payers:
-        return "indeterminate", "payer bundle controls no Demos key claim"
+    decision, reason, phase = _verify_demos_phase(expected, trusted)
+    if decision != "pass":
+        return decision, reason
+    amount, payee, payers = phase
     if trusted.get("demosRecordProfile") != DEMOS_RECORD_PROFILE:
         return "indeterminate", "Demos execution-record semantics are not pinned (DEM-7)"
     projection = _demos_native_send(record)
@@ -1303,21 +1315,30 @@ def _verify_chain_observation(
     *,
     native_send: bool = False,
 ) -> tuple[dict, dict | None]:
+    native_send = native_send and isinstance(reference, dict) and reference.get("kind") == "demos"
     if observation is None:
+        phase_decision, phase_reason, _ = _verify_demos_phase(expected, trusted) if native_send else ("pass", "", None)
+        if phase_decision == "error":
+            return _result(phase_decision, phase_reason), None
         return _result("indeterminate", "required chain observation unavailable"), None
     required = {
         "networkId", "genesisHash", "transactionRef", "transactionInclusionProof",
-        "selectedEventProof", "inclusionBlock", "authenticatedHead", "ancestryProof",
+        "inclusionBlock", "authenticatedHead", "ancestryProof",
         "authorityEvidence",
     }
     # Only a Demos native send carries an execution result; on any other
     # chain model the member is malformed, as before FV-5 existed.
     native_send = native_send and isinstance(reference, dict) and reference.get("kind") == "demos"
-    optional = {"finalityCertificate"} | ({"executionResult"} if native_send else set())
+    optional = {"finalityCertificate"} | ({"executionResult", "selectedEventProof"} if native_send else set())
+    if not native_send:
+        required.add("selectedEventProof")
     if not _exact_object(observation, required, optional):
         return _result("error", "malformed AuthenticatedChainObservation"), None
     if not _chain_profile_shape(profile):
         return _result("error", "malformed chain finality profile"), None
+    if native_send and observation.get("executionResult") is not None and not demos_execution_result_shape(observation["executionResult"]):
+        reason = "malformed Demos execution result attestations" if isinstance(observation["executionResult"], dict) and "attestations" in observation["executionResult"] and not isinstance(observation["executionResult"]["attestations"], list) else "malformed Demos execution result"
+        return _result("error", reason), None
     if observation.get("networkId") != profile.get("networkId") or observation.get("genesisHash") != profile.get("genesisHash"):
         return _result("fail", "chain network or genesis differs from signed rail profile"), None
     if canonical_bytes(observation.get("transactionRef")) != canonical_bytes(reference):
@@ -1325,32 +1346,41 @@ def _verify_chain_observation(
     if not _chain_ref_matches_profile(reference, profile):
         return _result("fail", "signed transaction reference is on the wrong profile network"), None
 
-    event_decision, event_reason, event = _verify_merkle_proof(
-        observation.get("selectedEventProof"), kind="fixture-event-merkle-v1", bytes_field="eventBytes"
-    )
+    event_decision, event_reason, event = "pass", "", None
+    if not native_send:
+        event_decision, event_reason, event = _verify_merkle_proof(
+            observation.get("selectedEventProof"), kind="fixture-event-merkle-v1", bytes_field="eventBytes"
+        )
     transaction_decision, transaction_reason, transaction = _verify_merkle_proof(
         observation.get("transactionInclusionProof"), kind="fixture-transaction-merkle-v1", bytes_field="transactionBytes"
     )
     if event_decision != "pass":
         return _result(event_decision, event_reason), None
     if transaction_decision != "pass":
+        if native_send and transaction_decision == "indeterminate":
+            phase_decision, phase_reason, _ = _verify_demos_phase(expected, trusted)
+            if phase_decision == "error":
+                return _result(phase_decision, phase_reason), None
         return _result(transaction_decision, transaction_reason), None
     # Inclusion commits to transaction identity, not the post-execution RPC record.
     outcome ="txHash" if native_send else "status"
-    if not _exact_object(transaction, {"networkId", "genesisHash", "transactionRef", "eventsRoot", outcome}):
+    transaction_fields = {"networkId", "genesisHash", "transactionRef", outcome}
+    if not _exact_object(transaction, transaction_fields if native_send else transaction_fields | {"eventsRoot"},
+                         {"eventsRoot"} if native_send else set()):
         return _result("error", "malformed raw transaction body"), None
     if (
         transaction.get("networkId") != profile["networkId"]
         or transaction.get("genesisHash") != profile["genesisHash"]
         or canonical_bytes(transaction.get("transactionRef")) != canonical_bytes(reference)
-        or transaction.get("eventsRoot") != observation["selectedEventProof"]["root"]
+        or (not native_send and transaction.get("eventsRoot") != observation["selectedEventProof"]["root"])
         or (not native_send and transaction.get("status") != "success")
         or (native_send and transaction.get("txHash") != reference.get("txHash"))
     ):
         return _result("fail", "raw transaction does not bind selected event, network, or reference"), None
-    economics_decision, economics_reason = _verify_event_economics(event, reference, expected)
-    if economics_decision != "pass":
-        return _result(economics_decision, economics_reason), None
+    if not native_send:
+        economics_decision, economics_reason = _verify_event_economics(event, reference, expected)
+        if economics_decision != "pass":
+            return _result(economics_decision, economics_reason), None
     record_decision, record_reason = "pass", ""
     if native_send:
         record_decision, record_reason, execution = _verify_demos_execution(observation, reference, trusted)
@@ -1369,6 +1399,10 @@ def _verify_chain_observation(
     path_decision, path_reason = _verify_inclusion_path(observation, profile, reference, trusted)
     if path_decision in {"fail", "error"}:
         return _result(path_decision, path_reason), None
+    if native_send:
+        phase_decision, phase_reason, _ = _verify_demos_phase(expected, trusted)
+        if phase_decision == "error" or (path_decision == "pass" and phase_decision != "pass"):
+            return _result(phase_decision, phase_reason), None
     if record_decision == "error":
         return _result(record_decision, record_reason), None
     if path_decision != "pass":
@@ -1514,7 +1548,7 @@ def verify_transaction_inclusion(observation: Any, profile: Any, reference: dict
     event root is optional because DEM-4 selects no event."""
     if observation is None:
         return "indeterminate", "transaction inclusion observation unavailable"
-    if not _exact_object(observation, INCLUSION_OBSERVATION, {"finalityCertificate"}):
+    if not _exact_object(observation, INCLUSION_OBSERVATION, {"finalityCertificate", "selectedEventProof", "executionResult"}):
         return "error", "malformed transaction inclusion observation"
     if not _chain_profile_shape(profile):
         return "error", "malformed chain finality profile"
@@ -1760,6 +1794,7 @@ def _expected_economics(session: dict, agreement_terms: dict) -> dict:
         "currency": agreement_terms["price"]["currency"],
         "payer": session["payer"],
         "payee": session["payee"],
+        **({"payeeAddress": session["payeeAddress"]} if "payeeAddress" in session else {}),
     }
 
 
@@ -2052,6 +2087,9 @@ def _verify(value: Any, trusted: Any) -> dict:
     if value["evidence"].get("paymentAmount") != agreement_terms.get("price"):
         return _result("fail", "signed evidence payment amount differs from signed agreement")
     expected = _expected_economics(session, agreement_terms)
+    if "payoutBindings" in agreement_terms:
+        expected["payeeAddress"] = next(b["payeeAddress"] for b in agreement_terms["payoutBindings"]
+                                        if b["railId"] == session["railId"] and b["phaseIndex"] == session["phaseIndex"])
     model = profile["model"]
     if model in {"block-depth", "commitment-level", "bft-final"}:
         context = value.get("context")
@@ -2064,7 +2102,7 @@ def _verify(value: Any, trusted: Any) -> dict:
             context.get("observation"), profile["settlement"], refs[0], expected, trusted,
             native_send=model == "bft-final",
         )
-        if result["decision"] == "pass" and event.get("eventType") != "transfer":
+        if result["decision"] == "pass" and model != "bft-final" and event.get("eventType") != "transfer":
             return _result("fail", "single-chain finality selected a non-transfer event")
         return result
     if model == "provider-receipt":

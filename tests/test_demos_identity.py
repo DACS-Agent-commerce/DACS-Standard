@@ -3,7 +3,10 @@ import copy
 import unittest
 
 from scripts.demos_identity import demos_key_claim, demos_party_address
-import test_pay_dem_execution_vectors as pay_dem
+try:
+    from tests import test_pay_dem_execution_vectors as pay_dem
+except ImportError:  # unittest discovery with tests/ on sys.path
+    import test_pay_dem_execution_vectors as pay_dem
 
 
 class DemosIdentityTests(unittest.TestCase):

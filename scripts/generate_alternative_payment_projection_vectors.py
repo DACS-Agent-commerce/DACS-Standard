@@ -268,7 +268,7 @@ def make_base(selected: str = "dem", *, ordinary_repeated: bool = False) -> dict
             # The payer's Demos binding (RAV-R3 for a pay-dem rail).
             "payDemBinding": [binding_entry()],
             "payerKeyClaims": [claim("key:" + PAYER_KEY)],
-            "payDemReconciliationTrust": {"railNetwork": NETWORK, **FINALITY, "fv5Policy": FV5_POLICY},
+            "payDemReconciliationTrust": copy.deepcopy({"railNetwork": NETWORK, **FINALITY, "fv5Policy": FV5_POLICY}),
             "projectedStep": copy.deepcopy(projected[2]) if not ordinary_repeated else None,
             "agreementSignatureProduced": True,
             "priorPaymentContext": None,
@@ -487,7 +487,7 @@ def attach_prior_payment_context(
 
     if prior_handler == "pay-dem" and disposition == "closed-cannot-settle":
         context = value["runtime"]["priorPaymentContext"]
-        context["executionAuthority"]["retainedTransfer"] = retained(jobId=prior_job_id, phaseIndex=2)
+        context["disposition"]["retainedPayDemTransfer"] = retained(jobId=prior_job_id, phaseIndex=2)
         retained_proof = failure_proof()
         proof = {**retained_proof["inclusionProof"],
                  "executionResult": retained_proof["authentication"]}
@@ -760,11 +760,11 @@ def build_cases() -> list[dict]:
              conclusive_no_settlement, base="x402")
 
     for name, mutate in (
-        ("another-transaction", lambda c: c["executionAuthority"]["retainedTransfer"].update(txHash=OTHER_TX_HASH)),
+        ("another-transaction", lambda c: c["disposition"]["retainedPayDemTransfer"].update(txHash=OTHER_TX_HASH)),
         ("missing-artifact", lambda c: c["resolution"].pop("payDemFailureProof")),
-        ("missing-retention", lambda c: c["executionAuthority"].pop("retainedTransfer")),
-        ("another-phase", lambda c: c["executionAuthority"]["retainedTransfer"].update(phaseIndex=1)),
-        ("another-job", lambda c: c["executionAuthority"]["retainedTransfer"].update(jobId=JOB_AP2)),
+        ("missing-retention", lambda c: c["disposition"].pop("retainedPayDemTransfer")),
+        ("another-phase", lambda c: c["disposition"]["retainedPayDemTransfer"].update(phaseIndex=1)),
+        ("another-job", lambda c: c["disposition"]["retainedPayDemTransfer"].update(jobId=JOB_AP2)),
         ("wrong-content-hash", lambda c: c["disposition"]["reconciliationEvidenceRefs"][0].update(contentHash="ab" * 32)),
     ):
         def bad_proof(v, mutate=mutate):
@@ -798,7 +798,7 @@ def build_cases() -> list[dict]:
             else:
                 v["runtime"].pop("payDemReconciliationTrust")
             context["disposition"]["reconciliationEvidenceRefs"][0]["contentHash"] = digest(proof)
-        add_case(cases, "fresh-job-cannot-settle-" + label, "fail", "APR-6/DEM-4",
+        add_case(cases, "fresh-job-cannot-settle-" + label, "fail" if label == "malformed-reference" else "indeterminate", "APR-6/DEM-4",
                  "Even a hash-bound artifact needs independent result and finality verification.",
                  invalid_artifact, base="x402", reason="prior-disposition-proof")
 
@@ -817,7 +817,7 @@ def build_cases() -> list[dict]:
                         rename(item)
             rename(v)
             if mismatch:
-                v["runtime"]["priorPaymentContext"]["executionAuthority"]["retainedTransfer"]["txHash"] = OTHER_TX_HASH
+                v["runtime"]["priorPaymentContext"]["disposition"]["retainedPayDemTransfer"]["txHash"] = OTHER_TX_HASH
         add_case(cases, "fresh-job-alternate-dem-rail-" + ("wrong-proof" if mismatch else "bound-proof"),
                  "fail" if mismatch else "pass", "APR-6/DEM-4",
                  "DEM-4 follows the signed phase handler for every registry railId.",
@@ -910,6 +910,26 @@ def build_cases() -> list[dict]:
     add_case(cases, "ordinary-repeated-pay-retains-pipe5", "pass", "APR-8/PIPE-5",
              "an ordinary two-payment pipeline remains two independent DEM invocations",
              base="repeated", operation="validate-pipeline")
+    for label in ("unavailable-observation-keys", "stale-head"):
+        def unavailable(v, label=label):
+            attach_prior_payment_context(v, "closed-cannot-settle")
+            trust = v["runtime"]["payDemReconciliationTrust"]["finalityTrust"]
+            if label == "stale-head":
+                trust["verificationTimeMs"] += 7_200_000
+            else:
+                trust["observationAuthorityKeys"] = {}
+        add_case(cases, "fresh-job-cannot-settle-" + label, "indeterminate", "APR-6/FV-8",
+                 "Unavailable verification authorizes no replacement and preserves indeterminate.",
+                 unavailable, base="x402", reason="prior-disposition-proof")
+    for label, address in (("bare", PAYER_KEY), ("prefixed", "0x" + PAYER_KEY),
+                           ("claim", "KEY:" + PAYER_KEY + "?unknown=ok"),
+                           ("substrate-notation", "demos:0x" + PAYER_KEY),
+                           ("uppercase", "0x" + PAYER_KEY.upper())):
+        allowed = label in {"bare", "prefixed", "claim"}
+        add_case(cases, "selected-dem-payout-" + label, "pass" if allowed else "fail", "RAV-R3/PB-1",
+                 "Validate native payout projection before Agreement commitment, including all permitted forms.",
+                 lambda v, address=address: v["agreement"]["terms"]["payoutBindings"][0].update(payeeAddress=address),
+                 reason=None if allowed else "payout-binding")
     return cases
 
 

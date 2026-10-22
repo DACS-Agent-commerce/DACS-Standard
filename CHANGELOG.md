@@ -1562,8 +1562,9 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   session. A steward-signed definition without the pinned index membership and
   both finalized anchor bindings does not resolve a rail. A binding whose block
   time is not unix ms converts it first; the authorized writer is the one the
-  consumer pins for the rail phase's anchoring authority; two canonically
-  unequal authorized receipts for one binding are an equivocation, and a phase
+  consumer pins for the rail phase's anchoring authority. Observations of one
+  SR2-5 tuple first reconcile through SR2-7 authenticated native ordering;
+  incompatible authorized bindings remaining afterward are an equivocation. A phase
   signature the consumer does not implement (such as PA-3 multisig) leaves the
   rail unresolved (`indeterminate`). Later consumers of that session's rail
   (FV-1 `railDefinitionRef`, DACS-5 current use) use the rail so resolved as
@@ -1592,7 +1593,9 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   HTTPS `statusEndpointOrigin`, duplicate-free `authorityRefs` and
   `captureStatuses`, the quorum ratio) stay with FV-1, which makes a malformed
   profile `error`. Within these checks a declared `string` is non-empty NFC and
-  a digest member is 64 lowercase hex characters. The authenticated Listing
+  a digest member is 64 lowercase hex characters. Ordinary payment and session
+  party hash carriers retain the historical agreement's string contract;
+  identity-bound carriers use IBH-1 bare lowercase digests. The authenticated Listing
   alone selects the identity-bound path, and an agreement of the other kind is
   a PC-1 rejection. On that path an absent `identityBindingCompanions` keeps the
   §9.5.1 `indeterminate` result (`errorClass: "substrate"`, no rail call); an
@@ -1621,7 +1624,14 @@ rail consumer, pay-* handler, and amendment consumer whether or not
   content hash is a violation; that anchor must be written by the orchestrator's
   authorized writer. The transition and finality-bound target arms use
   closed shapes and reject unknown members; ordinary `SettlementEvidence` keeps
-  unknown optional members under CORE SIG-5.
+  unknown optional members under CORE SIG-5, including open nested types.
+  Independently decidable shapes and SIG-6 encoding precede an unsupported
+  signature-algorithm result. Amendment job IDs pass JID-1 before resolution,
+  and receipt payment addresses satisfy the complete PC-2/CF-4 grammar.
+  Receipt digests must be well-formed before they establish a binding.
+  Integer-valued JSON number spellings share admission under CORE CF-5, and
+  ordinary failure evidence may omit its optional `reason`; ST-8 retains its
+  explicit reason requirements.
   Atomic targets use the open normative schema (§9.7.3), preserving unknown
   signed members under CORE SIG-5.
 - **Evidence selectors** (DACS-4 §9.7) — the exclusive-discriminator rule

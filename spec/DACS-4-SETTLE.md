@@ -394,8 +394,11 @@ be an authentic established `finalized` receipt written by the registry's
 authorized writer; a receipt from another writer is discarded (CORE SR2-11).
 The registry's authorized writer is the native writer the consumer pins for the
 anchoring authority of the rail's phase (the steward under PA-2), never a writer
-named by a receipt or a caller. Two canonically unequal authorized receipts for
-the index binding or for the definition binding are an equivocation (CORE §5):
+named by a receipt or a caller. The consumer MUST first reconcile observations
+of each SR2-5 tuple through the binding-authenticated ordering required by
+CORE SR2-7; `observedAt` MUST NOT select a winner. Unorderable conflicting
+observations leave resolution `indeterminate`. Two incompatible authorized
+bindings remaining for the index or definition are an equivocation (CORE §5):
 the rail does not resolve (`indeterminate`). A consumer that does not implement
 the anchoring signature of the rail's phase, such as a PA-3 multisig signature,
 leaves the rail unresolved (`indeterminate`) and MUST NOT verify it as another
@@ -501,11 +504,14 @@ domains, such as the exact HTTPS `statusEndpointOrigin`, duplicate-free
 `authorityRefs` and `captureStatuses`, and the quorum ratio, stay with FV-1,
 which classifies a malformed profile as `error` before any finality-bound
 claim. Within these checks a member declared `string` MUST be a non-empty NFC
-string, and a member
-that carries a SHA-256 digest (a `listingRef.contentHash`, the deliverable
-`hash`, the payer, payee and `SessionParty` `bundleHash`, and an identity-bound
-agreement party's `bundleHash`) MUST be 64 lowercase hexadecimal characters; a
-historical agreement party's `bundleHash` keeps its open string contract.
+string, and a member that carries a SHA-256 digest (a `listingRef.contentHash`, the deliverable
+`hash`, and an identity-bound agreement party's `bundleHash`) MUST be 64
+lowercase hexadecimal characters. On the Atomic or identity-bound path the
+payer and payee `bundleHash`, and the identity-bound `SessionParty.bundleHash`,
+also use that IBH-1 form. On an ordinary path those carriers retain their
+existing non-empty string contract, including
+historical prefixed hashes, so they can match the unchanged agreement hashes
+exactly under §9.5.1; no normalization or re-signing is required.
 Other unknown members of the ordinary arm, top-level or nested, remain subject
 to CORE SIG-5. For the ordinary binding, the authenticated Listing's selection
 alone chooses between `PaymentPhaseInput` and
@@ -2717,12 +2723,19 @@ SettlementAmendment is anchored via SR-2 at dacs4:amendment:{jobId}:{evidenceHas
   required, as DACS-5 SEB-3 consumes the same record. The
   `LegacyTransitionSettlementEvidence` and `FinalityBoundSettlementEvidence`
   arms use their closed shapes; ordinary `SettlementEvidence` keeps unknown
-  optional members under CORE SIG-5; the Atomic arm uses the normative
-  schema in §9.7.3, which admits unknown members preserved under CORE SIG-5.
+  optional members under CORE SIG-5, including those of open nested types;
+  explicitly closed unions such as `ChainTxRef` remain closed. The Atomic arm
+  uses the normative schema in §9.7.3, which admits unknown members preserved
+  under CORE SIG-5. Independently decidable shape requirements and the signature
+  envelope's SIG-6 canonical encoding MUST be checked before an
+  unsupported-algorithm disposition.
+  CORE JID-1/JID-3 validation of the amendment's `jobId` precedes resolution;
+  the target's `jobId` also passes JID-1 before JID-4 comparison.
   The reference's `anchor.locator` is either
   the target's PC-2 logical payment address or the native address of its
   finalized receipt; in both forms the receipt's logical address MUST be a PC-2
-  payment address of the amendment's `jobId`. Each of the following violates
+  payment address of the amendment's `jobId`, including the Atomic evidence
+  address form in §9.7.3. Each of the following violates
   AMEND-1 and is handled under AMEND-4: no recognized discriminator or more
   than one, an unsupported version, a signature valid only under another
   domain, an unregistered signature algorithm, a signer other than that
@@ -2742,8 +2755,9 @@ SettlementAmendment is anchored via SR-2 at dacs4:amendment:{jobId}:{evidenceHas
   not yet finalized, an AnchorReceipt whose proof does not authenticate the
   receipt's own fields, including `state` and `observationDisposition` (CORE
   SR2-4; SR2-12 discards such a candidate), a receipt from a writer other than
-  that orchestrator's, two authorized but canonically unequal carriers for the
-  address (an equivocation under CORE §5), a target or amendment signature
+  that orchestrator's, unorderable observations under CORE SR2-7, two
+  incompatible authorized bindings remaining for the address after SR2-7
+  reconciliation (an equivocation under CORE §5), a target or amendment signature
   under a registered `ComponentSignature` algorithm the consumer does not
   implement, or resolved bytes that CF-5 refuses or that differ from an
   authentic finalized anchor binding the reference's own hash, leaves the

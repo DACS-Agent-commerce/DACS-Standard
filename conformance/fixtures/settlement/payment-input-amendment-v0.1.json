@@ -12723,7 +12723,7 @@
       "expected": "rejected"
     },
     {
-      "name": "ordinary-session-party-bundle-hash-uppercase",
+      "name": "ordinary-session-party-bundle-hash-empty",
       "ruleRefs": [
         "PC-1"
       ],
@@ -12848,7 +12848,7 @@
           "parties": [
             {
               "role": "seller",
-              "bundleHash": "478511A528A87B893429ADF3D019039303822FA568979785D79614562914FD07",
+              "bundleHash": "",
               "primaryClaim": "did:dacs:test:seller",
               "vetRecordRef": {
                 "anchor": {

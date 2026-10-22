@@ -437,8 +437,7 @@ def build_fixture():
         ("ordinary-session-party-claim-malformed", session_party(primaryClaim="not a claim")),
         ("ordinary-session-party-not-object",
          {"sessionContext": {**session, "parties": ["buyer", *session["parties"][1:]]}}),
-        ("ordinary-session-party-bundle-hash-uppercase",
-         session_party(bundleHash=session["parties"][0]["bundleHash"].upper())),
+        ("ordinary-session-party-bundle-hash-empty", session_party(bundleHash="")),
         ("ordinary-session-party-role-unknown", session_party(role="payer")),
         # AgreementArtifact and RailDefinition are typed members, not any object.
         ("ordinary-empty-agreement", {"agreement": {}}),

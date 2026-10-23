@@ -16,6 +16,87 @@
     "nodeCompletedHandlers": "trusted local-operator-policy list of handlers the pinned node completes; required before any operational pay-cross-chain-liquidity-tank availability is selectable (DEMOS-MAPPING A.5)",
     "generator": "scripts/generate_rail_availability_selection_vectors.py"
   },
+  "stewardIssuance": {
+    "spec": "DACS-4 §9.4; DEMOS-MAPPING §A.5 (live issuance only)",
+    "railTemplate": "tank-live-signed-node-incomplete (signature omitted)",
+    "capabilityAuthority": "steward-owned snapshots, never candidate/operator preflight",
+    "incompleteNodeSource": "https://github.com/kynesyslabs/node/blob/ac8f45f02fc9c25082ce9b83595c2e3916b49c5a/src/libs/network/manageNativeBridge.ts",
+    "incompleteNodeOutput": {
+      "content": null,
+      "signature": {
+        "type": "",
+        "data": ""
+      },
+      "routeRegistry": null
+    },
+    "completeNodeScope": "synthetic later pin only; no production completion is claimed",
+    "trustedNodeCapabilities": {
+      "ac8f45f02fc9c25082ce9b83595c2e3916b49c5a": {
+        "completeSignedOperation": false,
+        "routeRegistryPublished": false
+      },
+      "fixture:post-completion-node": {
+        "completeSignedOperation": true,
+        "routeRegistryPublished": true
+      }
+    },
+    "vectors": [
+      {
+        "name": "live-incomplete-node-refused",
+        "availability": "live",
+        "nodePin": "ac8f45f02fc9c25082ce9b83595c2e3916b49c5a",
+        "expected": "fail"
+      },
+      {
+        "name": "live-complete-later-fixture-node",
+        "availability": "live",
+        "nodePin": "fixture:post-completion-node",
+        "expected": "pass"
+      },
+      {
+        "name": "live-unknown-node-refused",
+        "availability": "live",
+        "nodePin": "fixture:unknown-node",
+        "expected": "fail"
+      },
+      {
+        "name": "mocked-issuance-allowed",
+        "availability": "mocked",
+        "nodePin": "ac8f45f02fc9c25082ce9b83595c2e3916b49c5a",
+        "expected": "pass"
+      },
+      {
+        "name": "disabled-issuance-allowed",
+        "availability": "disabled",
+        "nodePin": "ac8f45f02fc9c25082ce9b83595c2e3916b49c5a",
+        "expected": "pass"
+      },
+      {
+        "name": "failed-issuance-allowed",
+        "availability": "failed",
+        "nodePin": "ac8f45f02fc9c25082ce9b83595c2e3916b49c5a",
+        "expected": "pass"
+      },
+      {
+        "name": "operator_gated-issuance-allowed",
+        "availability": "operator_gated",
+        "nodePin": "ac8f45f02fc9c25082ce9b83595c2e3916b49c5a",
+        "expected": "pass"
+      },
+      {
+        "name": "closed_data-issuance-allowed",
+        "availability": "closed_data",
+        "nodePin": "ac8f45f02fc9c25082ce9b83595c2e3916b49c5a",
+        "expected": "pass"
+      },
+      {
+        "name": "bilateral-issuance-allowed",
+        "availability": "bilateral",
+        "nodePin": "ac8f45f02fc9c25082ce9b83595c2e3916b49c5a",
+        "expected": "pass"
+      }
+    ]
+  },
   "hash": "84fbde801c50f2c2a962a71b537ee140e09a2010bfa5ae20ba987463940c9e69",
   "count": 36,
   "vectors": [

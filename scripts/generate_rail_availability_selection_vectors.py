@@ -31,6 +31,9 @@ ATTACKER_SEED = hashlib.sha256(
 PRODUCTION_UNSET = object()
 STEWARD_CLAIM = "did:demos:agent:" + "11" * 32
 ATTACKER_CLAIM = "did:demos:agent:" + "22" * 32
+INCOMPLETE_NODE_PIN = "ac8f45f02fc9c25082ce9b83595c2e3916b49c5a"
+# A separate synthetic pin, not a claim that a later production node exists.
+COMPLETE_NODE_PIN = "fixture:post-completion-node"
 
 
 def canonical_bytes(value: object) -> bytes:
@@ -62,6 +65,7 @@ def rail_digest(rail: dict) -> str:
 
 
 def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=False, fields=None):
+    """Raw fixture signer, including intentionally inadmissible consumer inputs."""
     key = Ed25519PrivateKey.from_private_bytes(
         ATTACKER_SEED if attacker else STEWARD_SEED
     )
@@ -98,6 +102,30 @@ def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=Fal
         "value": base64url(key.sign((DOMAIN + digest).encode("ascii"))),
     }
     return rail
+
+
+def issue_rail(rail: dict, *, node_pin: str, trusted_node_capabilities: dict) -> dict:
+    """Fixture steward issuance (DACS-4 §9.4 / DEMOS-MAPPING §A.5).
+
+    Capability snapshots are steward-owned, indexed by its pinned node, and
+    attest complete signed compilation plus a published route registry.
+    This is an offline policy witness, not a production capability codec.
+    """
+    if "signature" in rail or rail.get("availability") not in {
+        "live", "operator_gated", "closed_data", "bilateral", "mocked", "disabled", "failed"
+    }:
+        raise ValueError("malformed unsigned rail")
+    if rail["availability"] == "live" and (
+        rail.get("phaseHandler") == "pay-cross-chain-liquidity-tank"
+        or rail.get("railType") == "cross-chain-liquidity-tank"
+    ):
+        capability = trusted_node_capabilities.get(node_pin)
+        if not isinstance(capability, dict) or any(
+            capability.get(field) is not True
+            for field in ("completeSignedOperation", "routeRegistryPublished")
+        ):
+            raise ValueError("pinned node cannot authorize live tank issuance")
+    return sign_rail(rail["railId"], rail["availability"], rail["railVersion"], fields=rail)
 
 
 def context(
@@ -312,6 +340,26 @@ def build() -> dict:
             "productionContext": "trusted local-operator-policy input; counterparty and discovery hints are non-authoritative",
             "nodeCompletedHandlers": "trusted local-operator-policy list of handlers the pinned node completes; required before any operational pay-cross-chain-liquidity-tank availability is selectable (DEMOS-MAPPING A.5)",
             "generator": "scripts/generate_rail_availability_selection_vectors.py",
+        },
+        "stewardIssuance": {
+            "spec": "DACS-4 §9.4; DEMOS-MAPPING §A.5 (live issuance only)",
+            "railTemplate": "tank-live-signed-node-incomplete (signature omitted)",
+            "capabilityAuthority": "steward-owned snapshots, never candidate/operator preflight",
+            "incompleteNodeSource": "https://github.com/kynesyslabs/node/blob/" + INCOMPLETE_NODE_PIN + "/src/libs/network/manageNativeBridge.ts",
+            "incompleteNodeOutput": {"content": None, "signature": {"type": "", "data": ""}, "routeRegistry": None},
+            "completeNodeScope": "synthetic later pin only; no production completion is claimed",
+            "trustedNodeCapabilities": {
+                INCOMPLETE_NODE_PIN: {"completeSignedOperation": False, "routeRegistryPublished": False},
+                COMPLETE_NODE_PIN: {"completeSignedOperation": True, "routeRegistryPublished": True},
+            },
+            "vectors": [
+                {"name": "live-incomplete-node-refused", "availability": "live", "nodePin": INCOMPLETE_NODE_PIN, "expected": "fail"},
+                {"name": "live-complete-later-fixture-node", "availability": "live", "nodePin": COMPLETE_NODE_PIN, "expected": "pass"},
+                {"name": "live-unknown-node-refused", "availability": "live", "nodePin": "fixture:unknown-node", "expected": "fail"},
+                *({"name": availability + "-issuance-allowed", "availability": availability,
+                   "nodePin": INCOMPLETE_NODE_PIN, "expected": "pass"}
+                  for availability in ("mocked", "disabled", "failed", "operator_gated", "closed_data", "bilateral")),
+            ],
         },
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),
         "count": len(vectors),

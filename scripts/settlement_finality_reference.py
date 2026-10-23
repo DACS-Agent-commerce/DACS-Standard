@@ -1722,9 +1722,15 @@ def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, t
     for name in ("sourceLock", "sourceClaim", "destinationLock", "destinationReveal"):
         chain_profile = profile["source"] if name.startswith("source") else profile["destination"]
         result, event = _verify_chain_observation(context.get(name), chain_profile, refs[name], expected, trusted)
-        results.append(result)
         if event is not None:
             events[name] = event
+            # HTLC-8/FV-10: each authenticated lock's timing is independent
+            # of unavailable observations on any other arm.
+            if name in {"sourceLock", "destinationLock"} and event.get("eventType") == "htlc-lock":
+                timing = _htlc_lock_timing(context[name], event)
+                if timing is not None:
+                    result = timing
+        results.append(result)
     stop, deferred = _combine_arms(results, events)
     if stop is not None:
         return stop
@@ -1774,10 +1780,6 @@ def _verify_htlc(input_value: dict, profile: dict, rail: dict, expected: dict, t
     # must agree with it; it is never the source of the instant.
     source_mined = _inclusion_timestamp(context["sourceLock"])
     destination_mined = _inclusion_timestamp(context["destinationLock"])
-    for name in ("sourceLock", "destinationLock"):
-        timing = _htlc_lock_timing(context[name], events[name])
-        if timing is not None:
-            return timing
     if (
         source_expiry != source_mined + parameters["timelockSourceSec"] * 1000
         or destination_expiry != destination_mined + parameters["timelockDestSec"] * 1000

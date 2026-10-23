@@ -704,6 +704,13 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         for leg in ("source", "destination"):
             self.assertIn(f"`consumerFinalityProfile.{leg}.networkId`", htlc6)
         self.assertIn("forward-looking", htlc6)
+        for pin in (
+            "f46c0fe052eb80875dd94bbb39af16bb96ad6c1a",
+            "05420bce40492ca7ff11bc79cf3feb24778dce83",
+            "1513b7a5bbbf59f071d1ae2c80403a26b8b6a546",
+            "d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3",
+        ):
+            self.assertIn("/blob/" + pin + "/", settle)
         for phrase in ("`inclusionBlock`", "integer Unix milliseconds", "multiplied by 1000", "`minedAt`", "`expiry`"):
             self.assertIn(phrase, htlc8)
 
@@ -1002,6 +1009,34 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 result = verify_finality(value, self.trust)
                 self.assertEqual("error", result["decision"], result["reason"])
                 self.assertEqual("HTLC signed evidence lacks four unambiguous transaction references", result["reason"])
+
+    def test_htlc_timing_rejection_precedes_other_arm_absence(self):
+        factory = finality_fixtures.FixtureFactory()
+        control = self.cases["fv-htlc-reveal-canonical-success"]["input"]
+        arms = ("sourceLock", "sourceClaim", "destinationLock", "destinationReveal")
+        self.assertEqual("pass", verify_finality(control, self.trust)["decision"])
+        for lock in ("sourceLock", "destinationLock"):
+            observation = control["context"][lock]
+            _, header = SFV.decode_json_bytes(observation["inclusionBlock"]["header"])
+            for timestamp, expected in ((None, "error"), (header["timestamp"] + 1, "fail")):
+                defective = copy.deepcopy(control)
+                factory.rebuild_observation_event(
+                    defective, (lock,), lambda event: None, block_timestamp=timestamp
+                )
+                self.assertEqual(expected, verify_finality(defective, self.trust)["decision"])
+                for absent in arms:
+                    if absent == lock:
+                        continue
+                    value = copy.deepcopy(defective)
+                    value["context"][absent] = None
+                    with self.subTest(lock=lock, timestamp=timestamp, absent=absent):
+                        self.assertEqual(expected, verify_finality(value, self.trust)["decision"])
+                    valid_missing = copy.deepcopy(control)
+                    valid_missing["context"][absent] = None
+                    self.assertEqual("indeterminate", verify_finality(valid_missing, self.trust)["decision"])
+                # Withholding the defective lock itself removes that fact.
+                defective["context"][lock] = None
+                self.assertEqual("indeterminate", verify_finality(defective, self.trust)["decision"])
 
     def test_missing_htlc_and_tank_arms_never_pass(self):
         models = {

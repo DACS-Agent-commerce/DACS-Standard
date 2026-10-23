@@ -57,7 +57,7 @@
     "guards": "checks whose removal makes this vector fail"
   },
   "count": 582,
-  "hash": "9f344c21065eade40fa8413fb43f95667f28d5132042e1f569f919ca858b2160",
+  "hash": "72dd60fd4e0d339464f381709d7c2340cac3d44a59faff9f49d7679959df427b",
   "vectors": [
     {
       "name": "included-confirmed",
@@ -17411,7 +17411,7 @@
       "guards": [
         "no-rebroadcast"
       ],
-      "note": "The node's status index says unknown and there is no record; the handler still only re-reads."
+      "note": "The node's status index says unknown and there is no record; the handler re-reads and may retry only under DEM-6 retained-byte recovery."
     },
     {
       "name": "resume-reuses-failure-proof",
@@ -35778,14 +35778,14 @@
             "blockNumber": 42,
             "sender": "d688ac80648520534781c548067a2611eed71a87ddf5dc56d95ffc0386546c9c",
             "recipient": "6d64af46d52396578a302b114ee9bd1cab3155f4e8a2156dbec3f304c87de837",
-            "payerDebitOs": "0",
-            "payeeCreditOs": "0",
+            "payerDebitOs": "1500000000",
+            "payeeCreditOs": "1500000000",
             "committedBalances": {
               "payerBeforeOs": "1000000000000000000000000000000",
-              "payerAfterOs": "1000000000000000000000000000000",
+              "payerAfterOs": "999999999999999999997500000000",
               "payeeBeforeOs": "7000000000000000000000000",
-              "payeeAfterOs": "7000000000000000000000000",
-              "feeOs": "0"
+              "payeeAfterOs": "7000000000000001500000000",
+              "feeOs": "1000000000"
             }
           },
           "executionResult": {
@@ -35814,18 +35814,16 @@
           }
         }
       },
-      "expected": "indeterminate",
+      "expected": "pass",
       "want": {
-        "dem7GatePassed": false,
+        "dem7GatePassed": true,
         "deliveryAuthorized": false
       },
       "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
       "guards": [
-        "consumer-failed-requires-authentication",
-        "consumer-requires-confirmed-record",
-        "fv5-result-binds-record"
+        "consumer-admits-confirmed"
       ],
-      "note": "The authorities signed another record than this one, with another status; it authenticates this one nothing."
+      "note": "The FV-5-carried confirmed record and authenticated payment are authoritative despite a stale failed RPC record."
     },
     {
       "name": "consumer-wrong-payee-unauthenticated",
@@ -37797,16 +37795,17 @@
           }
         }
       },
-      "expected": "indeterminate",
+      "expected": "error",
       "want": {
         "dem7GatePassed": false,
         "deliveryAuthorized": false
       },
       "rule": "DACS-4 §9.5.9 DEM-7",
       "guards": [
+        "claims-are-claim-references",
         "consumer-requires-confirmed-record"
       ],
-      "note": "key:demos:agent:<hex> is neither key:<hex> nor did:demos:agent:<hex>: it is no Demos key claim, whatever mechanism is said to control it."
+      "note": "key:demos:agent:<hex> violates the registered key: identifier grammar and is a malformed claim."
     },
     {
       "name": "consumer-payee-address-key-claim-parameters",
@@ -39342,7 +39341,7 @@
           }
         }
       },
-      "expected": "indeterminate",
+      "expected": "error",
       "want": {
         "dem7GatePassed": false,
         "deliveryAuthorized": false
@@ -39557,7 +39556,7 @@
           }
         }
       },
-      "expected": "indeterminate",
+      "expected": "error",
       "want": {
         "dem7GatePassed": false,
         "deliveryAuthorized": false
@@ -46861,19 +46860,19 @@
           "admissions": []
         }
       },
-      "expected": "indeterminate",
+      "expected": "fail",
       "want": {
-        "dem7GatePassed": true,
+        "dem7GatePassed": false,
         "deliveryAuthorized": false,
         "settlementAccounting": false
       },
       "rule": "DACS-4 §9.5.9 DEM-7/FV-5",
       "guards": [
-        "consumer-admits-confirmed",
-        "delivery-requires-authenticated-record",
-        "fv5-result-binds-record"
+        "consumer-failed-refutes",
+        "consumer-requires-confirmed-record",
+        "delivery-requires-dem7"
       ],
-      "note": "The authorities signed another record than this one, with another status; it authenticates this one nothing."
+      "note": "The independently signed failed record refutes payment despite a stale confirmed RPC record."
     },
     {
       "name": "delivery-dem7-pending",
@@ -80493,7 +80492,7 @@
         "confirm-egress-may-broadcast",
         "no-rebroadcast"
       ],
-      "note": "After a confirm timeout, error or restart the node may have submitted the bytes; only re-reads follow."
+      "note": "After a confirm timeout, error or restart the node may have submitted the bytes; re-reads follow, with retries only under DEM-6 retained-byte recovery."
     },
     {
       "name": "replacement-after-interrupted-confirm-refused",

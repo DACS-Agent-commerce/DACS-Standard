@@ -20,7 +20,8 @@ class DemosIdentityTests(unittest.TestCase):
                     self.assertEqual(key, demos_party_address(reference))
                     self.assertEqual(scheme + ":" + identifier + suffix, reference)
         for value in ("KEY:" + key.upper(), "DID:DEMOS:agent:" + key, "key:0x" + key):
-            self.assertIsNone(demos_key_claim(value))
+            with self.assertRaises(ValueError):
+                demos_key_claim(value)
             self.assertIsNone(demos_party_address(value))
 
     def test_malformed_qualifiers_never_project_as_controlled_keys(self):

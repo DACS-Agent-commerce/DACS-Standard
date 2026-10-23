@@ -47,9 +47,9 @@ _ADDRESS = re.compile(r"(?:0x)?([0-9a-f]{64})\Z")
 
 def demos_key_claim(value):
     """Return (canonical scheme, key), None for other claims, or raise for
-    malformed parameters. Parameters are validated before being ignored."""
+    malformed claims. Grammar is validated before non-Demos claims are skipped."""
     if not isinstance(value, str):
-        return None
+        raise ValueError("ClaimReference must be a string")
     identity, separator, parameters = value.partition("?")
     if separator:
         # Read grammar accepts any parameter order. Validate each member
@@ -57,6 +57,21 @@ def demos_key_claim(value):
         # uniqueness requirement to DACS-1's key=value grammar.
         for member in parameters.split("&"):
             _parse_parameters(member)
+    # Validate the entire identity, including the registered scheme's
+    # identifier grammar, before deciding whether it projects to a Demos key.
+    # The read rules fold only the scheme and permit unknown schemes and
+    # arbitrary qualifier order; never pass signed bytes through a producer's
+    # canonical-parameter check or silently repair the identifier.
+    scheme, delimiter, identifier = identity.partition(":")
+    if not delimiter:
+        raise ValueError("ClaimReference lacks a scheme delimiter")
+    if re.fullmatch(r"(?ai:[a-z][a-z0-9-]*)", scheme) is None:
+        raise ValueError("ClaimReference scheme is not ASCII")
+    scheme = scheme.lower()
+    _reference.parse_claim_reference(
+        scheme + ":" + identifier,
+        registered_schemes=_reference.REGISTERED_SCHEMES | {scheme},
+    )
     match = _KEY_CLAIM.fullmatch(identity)
     if match is None:
         return None

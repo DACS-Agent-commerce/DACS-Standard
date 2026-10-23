@@ -1659,7 +1659,7 @@ def build_vectors() -> list[dict[str, Any]]:
         ),
         classify(
             "transfer-unknown-not-rebroadcast", "indeterminate", "DEM-6", ["no-rebroadcast"],
-            "The node's status index says unknown and there is no record; the handler still only re-reads.",
+            "The node's status index says unknown and there is no record; the handler re-reads and may retry only under DEM-6 retained-byte recovery.",
             read=NOT_FOUND, status_index="unknown", inclusion=None,
         ),
         # Recovery and resume.
@@ -2114,9 +2114,13 @@ def build_vectors() -> list[dict[str, Any]]:
         ),
         *(
             admit(
-                "consumer-failed-" + suffix, "indeterminate", "DEM-7/FV-5",
-                ["consumer-failed-requires-authentication", "consumer-requires-confirmed-record", guard], note,
-                read=dict(found(record("failed"), state=ROLLED_BACK), **members),
+                "consumer-failed-" + suffix, "pass" if suffix == "fv5-result-of-another-record" else "indeterminate", "DEM-7/FV-5",
+                (["consumer-admits-confirmed"]
+                 if suffix == "fv5-result-of-another-record" else
+                 ["consumer-failed-requires-authentication", "consumer-requires-confirmed-record", guard]),
+                "The FV-5-carried confirmed record and authenticated payment are authoritative despite a stale failed RPC record."
+                if suffix == "fv5-result-of-another-record" else note,
+                read=dict(found(record("failed"), state=APPLIED if suffix == "fv5-result-of-another-record" else ROLLED_BACK), **members),
             )
             for suffix, guard, members, note in fv5_variants(record("failed"))
         ),
@@ -2173,9 +2177,9 @@ def build_vectors() -> list[dict[str, Any]]:
             phase_context=phase(payerKeyClaims=[claim("key:" + PAYER_KEY + "?jurisdiction=US")]),
         ),
         admit(
-            "consumer-claim-key-demos-agent-form-is-no-claim", "indeterminate", "DEM-7",
-            ["consumer-requires-confirmed-record"],
-            "key:demos:agent:<hex> is neither key:<hex> nor did:demos:agent:<hex>: it is no Demos key claim, whatever mechanism is said to control it.",
+            "consumer-claim-key-demos-agent-form-is-no-claim", "error", "DEM-7",
+            ["claims-are-claim-references", "consumer-requires-confirmed-record"],
+            "key:demos:agent:<hex> violates the registered key: identifier grammar and is a malformed claim.",
             read=found(record("confirmed")),
             phase_context=phase(payerKeyClaims=[claim("key:demos:agent:" + PAYER_KEY)]),
         ),
@@ -2198,7 +2202,7 @@ def build_vectors() -> list[dict[str, Any]]:
         # linkage is a cci-xm: mechanism, and bare or 0x hex is no ClaimReference.
         *(
             admit(
-                "consumer-claim-" + name, "indeterminate", "DEM-7", [*guards, "consumer-requires-confirmed-record"],
+                "consumer-claim-" + name, "error" if name in {"bare-hex-is-no-claim", "0x-hex-is-no-claim"} else "indeterminate", "DEM-7", [*guards, "consumer-requires-confirmed-record"],
                 note, read=found(record("confirmed")), phase_context=phase(payerKeyClaims=claims),
             )
             for name, claims, guards, note in (
@@ -2336,9 +2340,14 @@ def build_vectors() -> list[dict[str, Any]]:
         ),
         *(
             deliver(
-                "delivery-record-" + suffix, "indeterminate", "DEM-7/FV-5",
-                ["consumer-admits-confirmed", "delivery-requires-authenticated-record", guard], note,
+                "delivery-record-" + suffix, "fail" if suffix == "fv5-result-of-another-record" else "indeterminate", "DEM-7/FV-5",
+                (["consumer-failed-refutes", "consumer-requires-confirmed-record", "delivery-requires-dem7"]
+                 if suffix == "fv5-result-of-another-record" else
+                 ["consumer-admits-confirmed", "delivery-requires-authenticated-record", guard]),
+                "The independently signed failed record refutes payment despite a stale confirmed RPC record."
+                if suffix == "fv5-result-of-another-record" else note,
                 read=dict(found(record("confirmed")), **members),
+                dem7_passed=suffix != "fv5-result-of-another-record",
             )
             for suffix, guard, members, note in fv5_variants(record("confirmed"))
         ),
@@ -3077,7 +3086,7 @@ def build_vectors() -> list[dict[str, Any]]:
              confirm_response=validity_response(dict(signed(), content=dict(reversed(list(signed()["content"].items())))))),
         gate("rebroadcast-after-interrupted-confirm-refused", "fail", "DEM-6",
              ["confirm-egress-may-broadcast", "no-rebroadcast"],
-             "After a confirm timeout, error or restart the node may have submitted the bytes; only re-reads follow.",
+             "After a confirm timeout, error or restart the node may have submitted the bytes; re-reads follow, with retries only under DEM-6 retained-byte recovery.",
              broadcast_state="confirm-sent-interrupted"),
         gate("replacement-after-interrupted-confirm-refused", "fail", "DEM-6",
              ["confirm-egress-may-broadcast", "no-replacement"],

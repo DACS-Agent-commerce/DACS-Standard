@@ -92,7 +92,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 246 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 247 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1284,7 +1284,8 @@ payer's pinned party bundle, and the payer's DEM-1 gates sign and send only for
 a paying key that is one (DEMOS-MAPPING §A.2): one predicate on both sides. A
 Demos key claim is a DACS-1 ClaimReference, exactly `key:<64 lower-case hex>` or
 `did:demos:agent:<64 lower-case hex>`; bare and `0x` hex are address spellings,
-not claims, and a `cci-xm:` identifier is no Demos key claim. It is controlled
+not claims and make a bundle claim malformed (`error`); a well-formed `cci-xm:`
+identifier is no Demos key claim and is skipped. A Demos key claim is controlled
 only by the DACS-1 §6.3.2 step (6) mechanism defined for its scheme: the exact
 `key:` claim's own bundle presentation signature. A `did:demos:agent:` claim has
 no mechanism, so it never counts as controlled, and a bundle presented by a
@@ -1668,7 +1669,7 @@ Coverage:
   as `permanent`.
 - **PB-2 payout binding tiers** — a resolved tier-2 binding cannot be downgraded to
   a different phase destination; a matching controlled linked claim binds at tier
-  2; `pay-dem` intrinsic addressing binds at tier 1; an applicable-but-unresolvable
+  2; `pay-dem` binds at tier 3 unless a tier-2 controlled claim applies; an applicable-but-unresolvable
   tier-2 binding pauses instead of falling through to tier 3; a resolver `error`
   remains `error`.
 - **PB-3 gate separation** — an SB-3 binding result cannot bypass PB-2 and a
@@ -2289,7 +2290,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
 
-246 candidate cases execute consumer-verifiable settlement finality for
+247 candidate cases execute consumer-verifiable settlement finality for
 block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
 liquidity-tank profiles. The consumer derives the model and strength from the
 exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
@@ -2342,8 +2343,8 @@ for it (`presentation-signature`, `sr1-linkage`, `holder-binding`,
 claim's `presentation-signature` is control of a Demos key claim; a
 `did:demos:agent:` claim has none, SR-1 linkage controls a `cci-xm:` claim, and
 bare or `0x` hex is no ClaimReference. Claims for another payer are
-unavailable, claims that are no Demos key claim are skipped, a claim or
-control that is not a string is `error`, and a bundle with no controlled Demos
+unavailable, well-formed claims that are no Demos key claim are skipped,
+malformed ClaimReference grammar or a non-string claim or control is `error`, and a bundle with no controlled Demos
 key claim is `indeterminate` (after FV-10's `fail`/`error` and a phase's own
 `error`).
 Cases cover a controlled claim distinct from the party signer, any controlled

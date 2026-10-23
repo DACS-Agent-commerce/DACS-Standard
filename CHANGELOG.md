@@ -21,10 +21,11 @@ balances, and verified `bft-final` inclusion. Inclusion or a status label alone
 does not establish payment. DEM-1..DEM-7 define durable retention before the
 first egress, confirm/broadcast submission, guarded retained-byte recovery,
 proof-backed failure and consumer admission. Recovery requires record/mempool
-re-reads and independently authenticated active nonce enforcement; replacements
+re-reads and the binding's provisioned effective-fork attestation of active nonce enforcement; replacements
 remain forbidden. A possibly submitted
-unresolved transfer remains non-terminal through ST-7 pause expiry until success
-is anchored or DEM-4 proves failure; elapsed time never authorizes another
+unresolved transfer remains non-terminal through ST-7 pause expiry until DEM-3 success
+verifies or DEM-4 proves failure; success resumes the remaining pipeline while
+unavailable SR-2 anchoring uses separate PC-7 catch-up retries; elapsed time never authorizes another
 payment. The Demos mapping pins the node/SDK semantics and the one-block window
 for completing broadcast to the same node.
 
@@ -65,11 +66,20 @@ A quorum-authenticated consumed nonce and cumulative record absence at a finaliz
 block can close an unexecuted transfer; APR independently verifies that proof
 against the signed prior retention before a compensating job.
 
+The `identity-bundle-hash-binding-v0.1` corpus is regenerated to add signed
+consumer finality profiles to its pay-dem rails; its verdicts are unchanged.
+
 PB-2 corpus migration: 30 cases, with tier 3 for the historical pay-dem
 case and two tier-2 controls.
 
-Conformance: 582 pay-dem vectors (71 pass, 180 fail, 250 indeterminate, 81 error)
-and 154 guards; settlement-finality cases grow from 86 at the merge base to 246,
+The reference payee uses the FV-5-carried record independently of stale RPC
+data. Claim grammar is checked before non-Demos claims are skipped. Retention
+projects the actual signed transfer, including non-default nonces. Historical
+non-Demos fixture codecs cannot verify a signed payout destination and return
+`indeterminate` for payee-bound agreements.
+
+Conformance: 582 pay-dem vectors (72 pass, 181 fail, 245 indeterminate, 84 error)
+and 154 guards; settlement-finality cases grow from 86 at the merge base to 247,
 and alternative-payment cases from 45 to 77. Crash/restart, delivery idempotence,
 finality composition and serialized invariant witnesses cover the changes.
 

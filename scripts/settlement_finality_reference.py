@@ -624,6 +624,9 @@ def _transaction_ref_shape(reference: Any) -> bool:
             continue
         if not _nonempty_string(value):
             return False
+    # SB-1 defines no legacy spelling for a Demos transaction hash.
+    if kind == "demos" and not _sha256(reference.get("txHash")):
+        return False
     if kind == "solana-instruction":
         try:
             if len(base58_decode(reference["signature"])) != 64:
@@ -1245,7 +1248,7 @@ def _verify_demos_phase(expected: dict, trusted: dict) -> tuple[str, str, Any]:
     try:
         matches = [] if claims is None else [demos_key_claim(claim["claim"]) for claim in claims]
     except ValueError:
-        return "error", "malformed payer bundle ClaimReference parameters", None
+        return "error", "malformed payer bundle ClaimReference", None
     if amount is None or ("payeeAddress" in expected and payee is None):
         return "error", "phase lacks a DEM amount or projecting payout address", None
     if claims is None:
@@ -2091,6 +2094,11 @@ def _verify(value: Any, trusted: Any) -> dict:
         expected["payeeAddress"] = next(b["payeeAddress"] for b in agreement_terms["payoutBindings"]
                                         if b["railId"] == session["railId"] and b["phaseIndex"] == session["phaseIndex"])
     model = profile["model"]
+    if "payoutBindings" in agreement_terms and model != "bft-final":
+        # These historical fixture codecs authenticate the payee's party
+        # identity, not its PB-1 payout address. They cannot establish a
+        # PayeeBoundAgreement's destination match (SB-1 / §9.5.1).
+        return _result("indeterminate", "fixture codec cannot verify the signed payout destination")
     if model in {"block-depth", "commitment-level", "bft-final"}:
         context = value.get("context")
         if not _exact_object(context, {"kind", "observation"}) or context.get("kind") != "chain":

@@ -839,7 +839,13 @@ def fv5_authenticated(read, protocol_input: dict, off, reference=None) -> bool:
     if "fv5-authentication-is-a-signed-result" in off and read.get("authenticated") is True:
         # The wrong implementation takes a flag for FV-5.
         return True
-    if read.get("state") != "found":
+    # A consumer authenticates the record carried by FV-5, independently
+    # of any stale, missing or contradictory plain RPC record beside it.
+    record = read.get("record")
+    if reference is not None:
+        result = read.get("executionResult")
+        record = result.get("record") if isinstance(result, dict) else None
+    elif read.get("state") != "found":
         return False
     if reference is not None and "fv5-result-binds-signed-reference" not in off:
         result = read.get("executionResult")
@@ -847,7 +853,7 @@ def fv5_authenticated(read, protocol_input: dict, off, reference=None) -> bool:
             return False
     inclusion = protocol_input.get("inclusionObservation")
     block = inclusion.get("blockId") if isinstance(inclusion, dict) else None
-    return fv5_result(read.get("executionResult"), read.get("record"), protocol_input, block, off)
+    return fv5_result(read.get("executionResult"), record, protocol_input, block, off)
 
 
 def inclusion_verdict(observation, reference, protocol_input: dict, off) -> str:
@@ -1586,13 +1592,14 @@ def dem7(protocol_input: dict, off) -> str:
         return "error"
     if not payers:
         return "indeterminate"
-    record = read.get("record") if read.get("state") == "found" else None
-    projection = decode(record, off) if record is not None else None
     reference = protocol_input["signedEvidence"]["txRef"]
+    signed = fv5_authenticated(read, protocol_input, off, reference)
+    record = (read.get("executionResult", {}).get("record", read.get("record")) if signed
+              else read.get("record") if read.get("state") == "found" else None)
+    projection = decode(record, off) if record is not None else None
     # DEM-7 binds a record two ways: from a pinned node (a plain read) or as
     # FV-5 authenticates it. A signed result carries its own record, so the
     # build of the node that served the plain read is not what it rests on.
-    signed = fv5_authenticated(read, protocol_input, off, reference)
     if projection is None or not (signed and "consumer-fv5-record-binds-without-node-pin" not in off or pinned(read, off)):
         return "indeterminate"
     expected_values = {
@@ -1972,8 +1979,14 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                                        "resolve-settlement-group", "apr-reconciliation-evidence",
                                        "classify-egress-outcome"}:
                 continue
-            read = vector["protocolInput"]["recordRead"]
+            value = vector["protocolInput"]
+            read = value["recordRead"]
             record = read.get("record") if read.get("state") == "found" else None
+            if vector["operation"] in {"admit-evidence", "admit-for-delivery"} and fv5_authenticated(
+                    read, value, frozenset(), value["signedEvidence"]["txRef"]):
+                # This is an authenticated execution, rather than inclusion
+                # alone, even when the plain RPC status is stale.
+                record = read["executionResult"]["record"]
             if isinstance(record, dict) and record.get("status") == "confirmed":
                 continue
             with self.subTest(name=vector["name"]):
@@ -3744,12 +3757,18 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                 self.assertEqual(expected, vector["expected"])
                 self.assertEqual(expected, evaluate(vector)[0])
                 checked += 1
-        # Every failed-record vector with an authority: dropping or keeping
-        # the authority never changes its outcome.
+        # Every authoritative failed-record vector: a stale RPC failure
+        # beside an FV-5-confirmed record is not a failed execution.
         for vector in self.data["vectors"]:
-            read = vector["protocolInput"].get("recordRead")
-            if not (isinstance(read, dict) and isinstance(read.get("record"), dict)
-                    and read["record"].get("status") == "failed" and "appliedTransfer" in read):
+            value = vector["protocolInput"]
+            read = value.get("recordRead")
+            if not isinstance(read, dict):
+                continue
+            record = read.get("record")
+            evidence = value.get("signedEvidence")
+            if isinstance(evidence, dict) and fv5_authenticated(read, value, frozenset(), evidence["txRef"]):
+                record = read["executionResult"]["record"]
+            if not (isinstance(record, dict) and record.get("status") == "failed" and "appliedTransfer" in read):
                 continue
             with self.subTest(name=vector["name"]):
                 without = json.loads(json.dumps(vector))
@@ -3792,6 +3811,11 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                         content["gcr_edits"] = content["gcr_edits"][:2]
                     else:
                         content["gcr_edits"] = edits
+                    read = mutated["protocolInput"]["recordRead"]
+                    if "executionResult" in read:
+                        # Exercise an authenticated no-op, rather than a
+                        # stale plain record beside an intact signed payment.
+                        read["executionResult"] = generator.execution_result(read["record"])
                     self.assertNotEqual("pass", evaluate(mutated)[0])
 
     def test_record_spellings_that_project_alike_bind(self):

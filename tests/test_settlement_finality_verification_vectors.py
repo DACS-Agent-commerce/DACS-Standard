@@ -171,7 +171,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(246, self.data["count"])
+        self.assertEqual(247, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -584,18 +584,18 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             ("key:" + key + "?a=1&b=2", ("key", key)),
             ("did:demos:agent:" + key, ("did", key)),
             ("did:demos:agent:" + key + "?jurisdiction=US", ("did", key)),
-            ("key:demos:agent:" + key, None),
-            ("did:" + key, None),
-            ("key:0x" + key, None),
-            ("key:" + key.upper(), None),
-            ("key:" + key + "x", None),
-            (key, None),
+            ("did:example:123", None),
+            ("future-scheme:opaque?z=1&a=2", None),
         ):
             with self.subTest(claim=claim):
                 self.assertEqual(expected, demos_key_claim(claim))
+        for claim in ("key:demos:agent:" + key, "did:" + key, "key:0x" + key,
+                      "key:" + key.upper(), "key:" + key + "x", key):
+            with self.subTest(malformed_claim=claim), self.assertRaises(ValueError):
+                demos_key_claim(claim)
         for name, expected in (
             ("fv-bft-final-payer-key-claim-unknown-parameters", "pass"),
-            ("fv-bft-final-payer-key-claim-demos-agent-form", "indeterminate"),
+            ("fv-bft-final-payer-key-claim-demos-agent-form", "error"),
         ):
             with self.subTest(case=name):
                 self.assertEqual(expected, self.evaluate_case(self.cases[name])["decision"])
@@ -796,16 +796,16 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         # A Demos key claim is a DACS-1 ClaimReference (DEMOS-MAPPING §A.2):
         # `key:<hex>` binds, and so does nothing else. A bare or 0x spelling is
         # an address, not a claim; a DID is a Demos key claim that DACS-1
-        # step (6) cannot control; any other spelling is no Demos key claim,
-        # so a bundle with no other controlled claim authenticates no sender.
+        # step (6) cannot control. Malformed claim spellings are errors, while
+        # well-formed claims with no controlled Demos key are indeterminate.
         distinct = self.cases["fv-bft-final-payer-key-claim-distinct"]
         trust = merge(self.trust, distinct.get("trustedOverrides") or {})
         claim = trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0]["claim"]
         self.assertTrue(claim.startswith("key:"))
         key = claim.removeprefix("key:")
-        for spelling, expected in (("key:" + key, "pass"), (key, "indeterminate"), ("0x" + key, "indeterminate"),
+        for spelling, expected in (("key:" + key, "pass"), (key, "error"), ("0x" + key, "error"),
                                    ("did:demos:agent:" + key, "indeterminate"),
-                                   ("key:" + key.upper(), "indeterminate"), ("key:0x" + key, "indeterminate"),
+                                   ("key:" + key.upper(), "error"), ("key:0x" + key, "error"),
                                    ("DID:demos:agent:" + key, "indeterminate"), ("KEY:" + key, "pass")):
             with self.subTest(claim=spelling):
                 spelled = copy.deepcopy(trust)
@@ -834,13 +834,16 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         # Exactly one pair is control, and it is the exact key: claim's signature.
         self.assertEqual({("key", "presentation-signature")},
                          {pair for pair, decision in decided.items() if decision == "pass"})
-        self.assertEqual({"pass", "indeterminate"}, set(decided.values()))
+        self.assertEqual({"pass", "indeterminate", "error"}, set(decided.values()))
+        self.assertEqual({(scheme, control) for scheme in ("bare", "0x") for control in controls},
+                         {pair for pair, decision in decided.items() if decision == "error"})
         # The corpus pins every pair that matters for a Demos key, and a spec
         # that names the mechanism for the scheme (DACS-1 step (6)).
         for name in ("did-presentation-signature", "did-holder-binding", "key-sr1-linkage", "key-holder-binding",
                      "cci-xm-sr1-linkage", "bare-hex-signature", "0x-hex-signature"):
             with self.subTest(case=name):
-                self.assertEqual("indeterminate", self.cases["fv-bft-final-payer-key-claim-" + name]["expected"])
+                self.assertEqual("error" if name in {"bare-hex-signature", "0x-hex-signature"} else "indeterminate",
+                                 self.cases["fv-bft-final-payer-key-claim-" + name]["expected"])
         mapping = (ROOT / "spec" / "DEMOS-MAPPING.md").read_text(encoding="utf-8")
         dacs1 = (ROOT / "spec" / "DACS-1-IDENTIFY.md").read_text(encoding="utf-8")
         self.assertIn("the exact `key:` claim's own **bundle presentation signature**", dacs1)

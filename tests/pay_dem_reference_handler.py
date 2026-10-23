@@ -730,15 +730,21 @@ class PayerHandler:
             # DEM-1/RAV-R4: no binding for the rail's network; nothing is
             # retained or sent, and a later start checks again.
             return {"expected": expected, **want}
-        if self._retained_elsewhere(transaction["hash"]):
+        projection = oracle.decode(transaction, NO_GUARD_REMOVED, executed=False)
+        if projection is None:
+            return {"expected": "error", "broadcastPermitted": False, "cause": "invalid-signed-transfer"}
+        if self._retained_elsewhere(projection["txHash"]):
             # DEM-1: a hash retained for another phase is never retained
             # or sent for this one; nothing leaves for this phase.
             return {"expected": "fail", "broadcastPermitted": False, "cause": "hash-retained-for-another-phase"}
         entry = {
             "start": self.start,
             "progress": "never-broadcast",
-            "retainedTransfer": generator.retained(jobId=self.job_id, phaseIndex=self.phase_index,
-                                                   txHash=transaction["hash"]),
+            "retainedTransfer": {
+                "jobId": self.job_id, "phaseIndex": self.phase_index,
+                **{field: projection[field] for field in ("txHash", "sender", "recipient", "amountOs")},
+                "nonce": int(projection["nonce"]),
+            },
             "signedTransaction": transaction,
             "confirmResponse": None,
             "result": None,
@@ -920,9 +926,14 @@ class Payee:
         read = copy.deepcopy(read)
         read.pop("appliedTransferAuthenticated", None)
         read.pop("appliedTransfer", None)
-        if self.applied_authority is not None and isinstance(read.get("record"), dict):
-            read.update(self.applied_authority.attest(read["record"]))
         protocol_input = generator.deliver("delivery", "pass", "DEM-7", [], "", read=read)["protocolInput"]
+        record = read.get("record")
+        if oracle.fv5_authenticated(read, protocol_input, NO_GUARD_REMOVED,
+                                    protocol_input["signedEvidence"]["txRef"]):
+            record = read["executionResult"]["record"]
+        if self.applied_authority is not None and isinstance(record, dict):
+            read.update(self.applied_authority.attest(record))
+        protocol_input["recordRead"] = read
         protocol_input["phase"] = generator.phase(jobId=job_id, phaseIndex=phase_index)
         protocol_input["consumerAdmissions"] = [] if snapshot is None else snapshot["admissions"]
         protocol_input["admissionIndex"] = snapshot

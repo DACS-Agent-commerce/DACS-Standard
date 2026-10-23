@@ -40,6 +40,9 @@ class PayDemSweepRegressions(unittest.TestCase):
                 case = copy.deepcopy(self.cases[operation])
                 record = case['protocolInput']['recordRead']['record']
                 (record if field == 'blockNumber' else record['content'])[field] = huge
+                # A malformed plain read has no authenticating result; a
+                # separate valid FV-5 payment is covered by the payment-authority tests.
+                case['protocolInput']['recordRead'].pop('executionResult', None)
                 with self.subTest(operation=operation, field=field):
                     self.assertNotEqual('pass', pay.evaluate(case)[0])
                     with tempfile.TemporaryDirectory() as scratch:

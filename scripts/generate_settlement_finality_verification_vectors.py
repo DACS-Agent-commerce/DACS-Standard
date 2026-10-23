@@ -1483,6 +1483,20 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         for model in MODEL_PHASE
     ]
 
+    # Every authenticated representation uses the same noncanonical hash;
+    # no cross-representation mismatch may mask SB-1's spelling rule.
+    uppercase = factory.model_input("bft-final")
+    reference = uppercase["evidence"]["paymentTxRefs"][0]
+    reference["txHash"] = reference["txHash"].upper()
+    factory.resign_evidence(uppercase["evidence"])
+    uppercase["context"]["observation"] = factory.chain_observation(
+        uppercase["rail"]["consumerFinalityProfile"]["settlement"], reference, {},
+        "consistently-uppercase-native-hash", record=factory.demos_send_record(reference),
+    )
+    vectors.append(case("fv-bft-final-consistently-uppercase-hash", "error",
+                        "Demos hashes remain lowercase-only even when evidence, inclusion and signed execution result agree",
+                        uppercase))
+
     def changed(model, mutation):
         value = factory.model_input(model)
         mutation(value)
@@ -1986,7 +2000,8 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         ("key-0x-signature", "key:0x" + buyer_key, "presentation-signature",
          "a key: identifier is hex with no 0x prefix"),
     ):
-        vectors.append(case("fv-bft-final-payer-key-claim-" + name, "indeterminate", why,
+        vectors.append(case("fv-bft-final-payer-key-claim-" + name,
+                            "error" if name in {"bare-hex-signature", "0x-hex-signature", "key-upper-case-signature", "key-0x-signature"} else "indeterminate", why,
                             factory.model_input("bft-final"), trusted_overrides=claims_of(controlled_claim(claim, control))))
     # A listed DID claim names the sender's key but proves nothing: the payer's
     # own controlled key: claim is the only source, and the sender is not it.
@@ -2015,7 +2030,7 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
                         "An unresolved inclusion never hides a malformed phase claim.",
                         factory.model_input("bft-final"), trusted_overrides={
                             "demosPayerKeyClaims": {CLAIMS["buyer"]: []}, "observationAuthorityKeys": {}}))
-    vectors.append(case("fv-bft-final-payer-key-claim-demos-agent-form", "indeterminate", "key:demos:agent:<hex> is no Demos key claim, so it controls nothing",
+    vectors.append(case("fv-bft-final-payer-key-claim-demos-agent-form", "error", "key:demos:agent:<hex> violates the registered key: identifier grammar",
                         factory.model_input("bft-final"),
                         trusted_overrides=claims_of(controlled_claim("key:demos:agent:" + buyer_key))))
     # DEM-7's order: the FV-10 verdict, then `error` for a malformed phase

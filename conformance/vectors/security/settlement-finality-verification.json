@@ -346,8 +346,8 @@
       ]
     }
   },
-  "count": 246,
-  "hash": "b33bfaa0dc64e6febd0aea08654310a4150964482540fd6a8db1c21ad3271125",
+  "count": 247,
+  "hash": "c17a78c084a28d5d78391b54316b006c4f9a36254200495a49732ee9315b2c51",
   "vectors": [
     {
       "name": "fv-block-depth-canonical-success",
@@ -2895,6 +2895,427 @@
         "finalityClass": "profile-final",
         "producerReportTrustedAsProof": false,
         "dacs5BundleDecision": "pass"
+      }
+    },
+    {
+      "name": "fv-bft-final-consistently-uppercase-hash",
+      "expected": "error",
+      "note": "Demos hashes remain lowercase-only even when evidence, inclusion and signed execution result agree",
+      "input": {
+        "evidence": {
+          "finalityBoundEvidenceVersion": "1",
+          "jobId": "FV-392-bft-final",
+          "phase": "pay-dem",
+          "outcome": "success",
+          "paymentTxRefs": [
+            {
+              "kind": "demos",
+              "txHash": "DEB8A24D4C7C6C06F36499BE48EBC5836497D79CA5741256CE4E5C76B5872B13",
+              "blockNumber": 100
+            }
+          ],
+          "paymentAmount": {
+            "amount": "5",
+            "currency": "DEM"
+          },
+          "settlementFinality": {
+            "model": "bft-final",
+            "finalityObservedAt": 1900000000000
+          },
+          "railDefinitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-0309a0816a2f0b6423e40aa6e89467ec16cf22ede212b09b4c5d7405e117f480"
+            },
+            "contentHash": "303b4376ff22d7a4c62916281096281437c804040c768d5a14a847f4117be8f7",
+            "railId": "fixture:bft-final",
+            "railVersion": 1
+          },
+          "observedAt": 1900000000000,
+          "signature": {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "5xOlTqPPDz2aLLZr4xv89J9zNsCsn_me-VlMHxGVmh3KO4hEdw-f4-fIZcXRjfOrl1nPPfToq16sSyXm_QByCw"
+          }
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "fixture:bft-final",
+          "railType": "demos-native",
+          "asset": {
+            "kind": "native-dem",
+            "symbol": "DEM",
+            "decimals": 9
+          },
+          "network": {
+            "kind": "demos"
+          },
+          "phaseHandler": "pay-dem",
+          "parameters": {
+            "assetId": "DEM"
+          },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                },
+                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
+          "availability": "mocked",
+          "governance": {
+            "proposedBy": "did:demos:steward",
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "signer": "did:demos:steward",
+            "algorithm": "ed25519",
+            "value": "RBfkFFArkBO6lsBNybSpNziaBESuWXdCytqcgQJjp11LLpIAtfa9sMMikWVmZ9l3R6-53zvDpQuZrSABvXuJAw"
+          }
+        },
+        "agreement": {
+          "agreementVersion": "1",
+          "jobId": "FV-392-bft-final",
+          "listingRef": {
+            "listingId": "listing-finality-fixture",
+            "version": 1,
+            "contentHash": "a6608fb096f6cbf3da09df18610547f71c91fbda99febc0de4d0d853c1a3b0c4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "7ae9aea700ac6a7c89f02fcc403e19fe695eec61a4c526c52d135f0f26cd3a7f",
+              "primaryClaim": "did:demos:buyer",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-7cfd9ce3503ebfde564fe34f63bab03978d45f47487cefeaace41b901a289207"
+                },
+                "contentHash": "f5fdb7c4f42f495412b668060f7b76251a5790c4385dc8b181cb3176bf7e7fff"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "f6a37ae0087f49a48576842c3b6e6e6afedc82291a65b80033e98f18f2d2395a",
+              "primaryClaim": "did:demos:seller",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-b62a80f5a15e4977a8beda82730e9d96917bd4e9d6db101e164c629f594984fd"
+                },
+                "contentHash": "210bdac3ff27a0bf7c9e709f531903130401e5362d03a5097f36637f0bf30d9c"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "entitlement",
+              "hash": "bdfb5292cf233b6039696511b72afab9552184b6e3f5f38dee1f4c36a756529a"
+            },
+            "price": {
+              "amount": "5",
+              "currency": "DEM"
+            },
+            "rail": {
+              "railId": "fixture:bft-final",
+              "railVersion": 1
+            },
+            "deadline": 1900100000000
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899000000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "d3S75K0k0Mg6bUFYRgkaT19M-upCcWoxKamsJ2SPHsCtrlT72E1CpftMtrpVSJ_z1yt6F88sVys74ASKLT2qDg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "huATv1nr_QeyimVH2SqDe71fp-qJkS21GTliQQLKzK2a41H9p5VgKyxgudZUWfadBvUYlF9EqypOBRCx_oAWBg"
+            }
+          ]
+        },
+        "context": {
+          "kind": "chain",
+          "observation": {
+            "networkId": "demos:mainnet",
+            "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+            "transactionRef": {
+              "kind": "demos",
+              "txHash": "DEB8A24D4C7C6C06F36499BE48EBC5836497D79CA5741256CE4E5C76B5872B13",
+              "blockNumber": 100
+            },
+            "transactionInclusionProof": {
+              "kind": "fixture-transaction-merkle-v1",
+              "transactionBytes": "eyJldmVudHNSb290IjoiN2I5YzU5ZTM2NGY0YTcyZmNkMzkyNjc1OTk4OTdiNzYzYTM3MTk4ZmM4ODU5YmU5OTU3NmI0N2E2MTM2YTg3ZiIsImdlbmVzaXNIYXNoIjoiNjg0YjUxMDcwNDNmNjNkNTkxOTgwODQ5ZDE3MjJjNmJlOWE2NDllYzA5NWY3NjA3YTYwZmJhZDA1YjM4OTgwOCIsIm5ldHdvcmtJZCI6ImRlbW9zOm1haW5uZXQiLCJ0cmFuc2FjdGlvblJlZiI6eyJibG9ja051bWJlciI6MTAwLCJraW5kIjoiZGVtb3MiLCJ0eEhhc2giOiJERUI4QTI0RDRDN0M2QzA2RjM2NDk5QkU0OEVCQzU4MzY0OTdENzlDQTU3NDEyNTZDRTRFNUM3NkI1ODcyQjEzIn0sInR4SGFzaCI6IkRFQjhBMjRENEM3QzZDMDZGMzY0OTlCRTQ4RUJDNTgzNjQ5N0Q3OUNBNTc0MTI1NkNFNEU1Qzc2QjU4NzJCMTMifQ",
+              "leafHash": "9613e6912f20f47b6d916f6a774eb1d7e7997688eda30e582a0c727cfb2e5f35",
+              "siblingHash": "e0da33aac08ebecc916f5a2a8019d6fc78de8ab093b2ec0b4583b9145e4538fa",
+              "leafIndex": 0,
+              "root": "4cee4a3b740324f2111046dc4de1f0f35d4de8ed89de2b0ec41e1bda25f3fca5"
+            },
+            "selectedEventProof": {
+              "kind": "fixture-event-merkle-v1",
+              "eventBytes": "e30",
+              "leafHash": "28a3a18f6cd6406b086e9ffda1f9b8a13dbcf44b0f3f32cb9031a11fd053acf9",
+              "siblingHash": "557beab97a83953e99dc71144ad55b1152a3eb98e3e2844ab29ee63cee1bd04a",
+              "leafIndex": 0,
+              "root": "7b9c59e364f4a72fcd39267599897b763a37198fc8859be99576b47a6136a87f"
+            },
+            "inclusionBlock": {
+              "id": "bc4ad3e28a060835e9a7b246edd674f7eaefc8d2e3d3ab0c1f718e3058211639",
+              "parentId": "f32c9f2519ac57883f1892d7e91e2af5a81c4d1c4943098168ebaa9e52de3385",
+              "position": "100",
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJmMzJjOWYyNTE5YWM1Nzg4M2YxODkyZDdlOTFlMmFmNWE4MWM0ZDFjNDk0MzA5ODE2OGViYWE5ZTUyZGUzMzg1IiwicG9zaXRpb24iOiIxMDAiLCJ0cmFuc2FjdGlvbnNSb290IjoiNGNlZTRhM2I3NDAzMjRmMjExMTA0NmRjNGRlMWYwZjM1ZDRkZThlZDg5ZGUyYjBlYzQxZTFiZGEyNWYzZmNhNSJ9"
+            },
+            "authenticatedHead": {
+              "id": "667df6e0c7b119574d795b849d7a61e90a8148b6c435e2499e8e1983be61b657",
+              "position": "111",
+              "observedAt": 1900000000000,
+              "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI5NTI0NDdiZmMzNTRjZmUwY2I3YjNhNTI0MTBiOTJmNWE2YjBhOGFjOGEyYzg4ODdjNWM2MTMxNGRjMGE5ODE4IiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+            },
+            "ancestryProof": [
+              {
+                "childId": "5532cab8690448cb61b112a2bb9182ad89284f0b8f28da4c76f3f27d76cca7a7",
+                "parentId": "bc4ad3e28a060835e9a7b246edd674f7eaefc8d2e3d3ab0c1f718e3058211639",
+                "position": "101",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJiYzRhZDNlMjhhMDYwODM1ZTlhN2IyNDZlZGQ2NzRmN2VhZWZjOGQyZTNkM2FiMGMxZjcxOGUzMDU4MjExNjM5IiwicG9zaXRpb24iOiIxMDEiLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+              },
+              {
+                "childId": "4a41a271443fb0b727eac7aeb619a410c12ffce6e1f2af7b63315f5b150f23c8",
+                "parentId": "5532cab8690448cb61b112a2bb9182ad89284f0b8f28da4c76f3f27d76cca7a7",
+                "position": "102",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI1NTMyY2FiODY5MDQ0OGNiNjFiMTEyYTJiYjkxODJhZDg5Mjg0ZjBiOGYyOGRhNGM3NmYzZjI3ZDc2Y2NhN2E3IiwicG9zaXRpb24iOiIxMDIiLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+              },
+              {
+                "childId": "12bc9408394bb26b63f9c164b4d4a8eab4e5bb534fa1292c1e233488624cc36a",
+                "parentId": "4a41a271443fb0b727eac7aeb619a410c12ffce6e1f2af7b63315f5b150f23c8",
+                "position": "103",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI0YTQxYTI3MTQ0M2ZiMGI3MjdlYWM3YWViNjE5YTQxMGMxMmZmY2U2ZTFmMmFmN2I2MzMxNWY1YjE1MGYyM2M4IiwicG9zaXRpb24iOiIxMDMiLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+              },
+              {
+                "childId": "008b9039c9d40017f4ffd3e7a0e5aa90c26dc522a758d903472a925f3e700409",
+                "parentId": "12bc9408394bb26b63f9c164b4d4a8eab4e5bb534fa1292c1e233488624cc36a",
+                "position": "104",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIxMmJjOTQwODM5NGJiMjZiNjNmOWMxNjRiNGQ0YThlYWI0ZTViYjUzNGZhMTI5MmMxZTIzMzQ4ODYyNGNjMzZhIiwicG9zaXRpb24iOiIxMDQiLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+              },
+              {
+                "childId": "01404cdb9b54dfe85cd4fda92e4252be79e4640f8aa895659df3aabbf0cfc3f6",
+                "parentId": "008b9039c9d40017f4ffd3e7a0e5aa90c26dc522a758d903472a925f3e700409",
+                "position": "105",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIwMDhiOTAzOWM5ZDQwMDE3ZjRmZmQzZTdhMGU1YWE5MGMyNmRjNTIyYTc1OGQ5MDM0NzJhOTI1ZjNlNzAwNDA5IiwicG9zaXRpb24iOiIxMDUiLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+              },
+              {
+                "childId": "aa7ec8c561d67f42e4b5cc2b7cc33a2a1f835422f852882f5b8723e15e55a00b",
+                "parentId": "01404cdb9b54dfe85cd4fda92e4252be79e4640f8aa895659df3aabbf0cfc3f6",
+                "position": "106",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIwMTQwNGNkYjliNTRkZmU4NWNkNGZkYTkyZTQyNTJiZTc5ZTQ2NDBmOGFhODk1NjU5ZGYzYWFiYmYwY2ZjM2Y2IiwicG9zaXRpb24iOiIxMDYiLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+              },
+              {
+                "childId": "54a9fb09d404b47b0b34fd7f7fa8304e6e498e9d196c5d6f3fcd7fc6bb62d702",
+                "parentId": "aa7ec8c561d67f42e4b5cc2b7cc33a2a1f835422f852882f5b8723e15e55a00b",
+                "position": "107",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJhYTdlYzhjNTYxZDY3ZjQyZTRiNWNjMmI3Y2MzM2EyYTFmODM1NDIyZjg1Mjg4MmY1Yjg3MjNlMTVlNTVhMDBiIiwicG9zaXRpb24iOiIxMDciLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+              },
+              {
+                "childId": "28f36d9d2e8a5b43fdb3949f4c415e1e330f272076262765f46f36fd0a07c9f1",
+                "parentId": "54a9fb09d404b47b0b34fd7f7fa8304e6e498e9d196c5d6f3fcd7fc6bb62d702",
+                "position": "108",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI1NGE5ZmIwOWQ0MDRiNDdiMGIzNGZkN2Y3ZmE4MzA0ZTZlNDk4ZTlkMTk2YzVkNmYzZmNkN2ZjNmJiNjJkNzAyIiwicG9zaXRpb24iOiIxMDgiLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+              },
+              {
+                "childId": "d3f629c78d1a806d4f4e1de65746eb3152c1ba2c7c692c709df33ebf9643210e",
+                "parentId": "28f36d9d2e8a5b43fdb3949f4c415e1e330f272076262765f46f36fd0a07c9f1",
+                "position": "109",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiIyOGYzNmQ5ZDJlOGE1YjQzZmRiMzk0OWY0YzQxNWUxZTMzMGYyNzIwNzYyNjI3NjVmNDZmMzZmZDBhMDdjOWYxIiwicG9zaXRpb24iOiIxMDkiLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+              },
+              {
+                "childId": "952447bfc354cfe0cb7b3a52410b92f5a6b0a8ac8a2c8887c5c61314dc0a9818",
+                "parentId": "d3f629c78d1a806d4f4e1de65746eb3152c1ba2c7c692c709df33ebf9643210e",
+                "position": "110",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiJkM2Y2MjljNzhkMWE4MDZkNGY0ZTFkZTY1NzQ2ZWIzMTUyYzFiYTJjN2M2OTJjNzA5ZGYzM2ViZjk2NDMyMTBlIiwicG9zaXRpb24iOiIxMTAiLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+              },
+              {
+                "childId": "667df6e0c7b119574d795b849d7a61e90a8148b6c435e2499e8e1983be61b657",
+                "parentId": "952447bfc354cfe0cb7b3a52410b92f5a6b0a8ac8a2c8887c5c61314dc0a9818",
+                "position": "111",
+                "header": "eyJnZW5lc2lzSGFzaCI6IjY4NGI1MTA3MDQzZjYzZDU5MTk4MDg0OWQxNzIyYzZiZTlhNjQ5ZWMwOTVmNzYwN2E2MGZiYWQwNWIzODk4MDgiLCJuZXR3b3JrSWQiOiJkZW1vczptYWlubmV0IiwicGFyZW50SWQiOiI5NTI0NDdiZmMzNTRjZmUwY2I3YjNhNTI0MTBiOTJmNWE2YjBhOGFjOGEyYzg4ODdjNWM2MTMxNGRjMGE5ODE4IiwicG9zaXRpb24iOiIxMTEiLCJ0cmFuc2FjdGlvbnNSb290IjoiOGYzY2I3YmQ4NzY5YmU0ODg0YmJiYWE1ZjJlZThhZTU0ODllMDY0NmFhMDI5MTA5MDcyZTFlNjcxOGU0OTViYyJ9"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "fixture-threshold-signature-v1",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ],
+              "attestations": [
+                {
+                  "authorityRef": "rpc-a",
+                  "algorithm": "ed25519",
+                  "value": "GSvJOsXWBhhiLIbp2blcFhPsWPpVqZsewk9Ytlx8Zb_PpYMPh838aTpL2dbGWBupr0VLwssgl9oCk29LE_3iCg"
+                },
+                {
+                  "authorityRef": "rpc-b",
+                  "algorithm": "ed25519",
+                  "value": "2Jpxx8ydqrW4DKf2TMYUGh9j-HiFJXhCUASH1CRTLsxwW3L0Rh0Xe_2vTp0fFkUIL1mTrfBEZjdCVidzwmnTCA"
+                },
+                {
+                  "authorityRef": "rpc-c",
+                  "algorithm": "ed25519",
+                  "value": "1opp__Ah1RtMwcJxUJmRhcX0I7owwqIa6l4GmcRdXvtDFLuMKCdzRVSLst0B6cD6F9eKIf1icdiQly9gcBq4Dg"
+                }
+              ]
+            },
+            "executionResult": {
+              "kind": "fixture-independent-results-v1",
+              "networkId": "demos:mainnet",
+              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+              "blockId": "bc4ad3e28a060835e9a7b246edd674f7eaefc8d2e3d3ab0c1f718e3058211639",
+              "transactionRef": {
+                "kind": "demos",
+                "txHash": "DEB8A24D4C7C6C06F36499BE48EBC5836497D79CA5741256CE4E5C76B5872B13",
+                "blockNumber": 100
+              },
+              "record": {
+                "hash": "DEB8A24D4C7C6C06F36499BE48EBC5836497D79CA5741256CE4E5C76B5872B13",
+                "blockNumber": 100,
+                "status": "confirmed",
+                "content": {
+                  "type": "native",
+                  "from": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "from_ed25519_address": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                  "to": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                  "amount": 5000000000,
+                  "nonce": "7",
+                  "timestamp": "1791649642726",
+                  "transaction_fee": {
+                    "network_fee": 1000000000,
+                    "rpc_fee": 1000000000,
+                    "additional_fee": 0,
+                    "rpc_address": null
+                  },
+                  "data": [
+                    "native",
+                    {
+                      "nativeOperation": "send",
+                      "args": [
+                        "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                        "5000000000"
+                      ]
+                    }
+                  ],
+                  "gcr_edits": [
+                    {
+                      "type": "balance",
+                      "operation": "remove",
+                      "isRollback": false,
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "txhash": "DEB8A24D4C7C6C06F36499BE48EBC5836497D79CA5741256CE4E5C76B5872B13",
+                      "amount": "5000000000"
+                    },
+                    {
+                      "type": "balance",
+                      "operation": "add",
+                      "isRollback": false,
+                      "account": "0x17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                      "txhash": "DEB8A24D4C7C6C06F36499BE48EBC5836497D79CA5741256CE4E5C76B5872B13",
+                      "amount": "5000000000"
+                    },
+                    {
+                      "type": "balance",
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "operation": "remove",
+                      "amount": "1000000000",
+                      "txhash": "DEB8A24D4C7C6C06F36499BE48EBC5836497D79CA5741256CE4E5C76B5872B13",
+                      "isRollback": false
+                    },
+                    {
+                      "type": "nonce",
+                      "operation": "add",
+                      "account": "0xa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                      "amount": 1,
+                      "txhash": "DEB8A24D4C7C6C06F36499BE48EBC5836497D79CA5741256CE4E5C76B5872B13",
+                      "isRollback": false
+                    }
+                  ]
+                }
+              },
+              "appliedTransfer": {
+                "txHash": "DEB8A24D4C7C6C06F36499BE48EBC5836497D79CA5741256CE4E5C76B5872B13",
+                "blockNumber": 100,
+                "sender": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                "recipient": "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+                "payerDebitOs": "5000000000",
+                "payeeCreditOs": "5000000000",
+                "committedBalances": {
+                  "payerBeforeOs": "1000000000000000000000000000000",
+                  "payerAfterOs": "999999999999999999994000000000",
+                  "payeeBeforeOs": "7000000000000000000000000",
+                  "payeeAfterOs": "7000000000000005000000000",
+                  "feeOs": "1000000000"
+                }
+              },
+              "attestations": [
+                {
+                  "authorityRef": "execution-a",
+                  "algorithm": "ed25519",
+                  "value": "VGav3XGor-OIgZtF8x0ewsauTG4Q8Y_VCUhI1WdLuF2M0LRWNMd0RV6mSi6-u4IXF2UcT3yq8U2h6ywsq9UvAg"
+                },
+                {
+                  "authorityRef": "execution-b",
+                  "algorithm": "ed25519",
+                  "value": "BJ9NnH-gIzTs3P2u0auH_9MWBKMbXMbo64bJw1-d73ew3NnLEwGikanlZ6ZHReGhOPvC3x31s5UU6OEyF0HHDA"
+                }
+              ]
+            },
+            "finalityCertificate": {
+              "kind": "fixture-bft-certificate-v1",
+              "validatorSetHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410",
+              "blockId": "bc4ad3e28a060835e9a7b246edd674f7eaefc8d2e3d3ab0c1f718e3058211639",
+              "signatures": [
+                {
+                  "validatorId": "validator-a",
+                  "algorithm": "ed25519",
+                  "value": "703nNJBQHMyZx9QIEj1WYINc6s3b9cSujHs3f2z1hUJCLPOjVpNB2fk6CynjjoZyiIN7U1syO6x-qmkG570QAQ"
+                },
+                {
+                  "validatorId": "validator-b",
+                  "algorithm": "ed25519",
+                  "value": "205pTQ66_aXfK2c0wCIZIBKwF2OdPo-e9z5WLDltvI5TMlc2KrN6bITi8pMYdt8k3g9op0S54iTHB-FvAmqEAA"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5BundleDecision": "error"
       }
     },
     {
@@ -65474,7 +65895,7 @@
     },
     {
       "name": "fv-bft-final-payer-key-claim-bare-hex-signature",
-      "expected": "indeterminate",
+      "expected": "error",
       "note": "bare hex is an address spelling, not a ClaimReference, so a bundle claim cannot be it",
       "input": {
         "evidence": {
@@ -65890,7 +66311,7 @@
         "acceptedAsFinal": false,
         "finalityClass": null,
         "producerReportTrustedAsProof": false,
-        "dacs5BundleDecision": "indeterminate"
+        "dacs5BundleDecision": "error"
       },
       "trustedOverrides": {
         "demosPayerKeyClaims": {
@@ -65905,7 +66326,7 @@
     },
     {
       "name": "fv-bft-final-payer-key-claim-0x-hex-signature",
-      "expected": "indeterminate",
+      "expected": "error",
       "note": "0x hex is an address spelling, not a ClaimReference",
       "input": {
         "evidence": {
@@ -66321,7 +66742,7 @@
         "acceptedAsFinal": false,
         "finalityClass": null,
         "producerReportTrustedAsProof": false,
-        "dacs5BundleDecision": "indeterminate"
+        "dacs5BundleDecision": "error"
       },
       "trustedOverrides": {
         "demosPayerKeyClaims": {
@@ -66336,7 +66757,7 @@
     },
     {
       "name": "fv-bft-final-payer-key-claim-key-upper-case-signature",
-      "expected": "indeterminate",
+      "expected": "error",
       "note": "a key: identifier is lower-case hex; upper case is not the canonical claim",
       "input": {
         "evidence": {
@@ -66752,7 +67173,7 @@
         "acceptedAsFinal": false,
         "finalityClass": null,
         "producerReportTrustedAsProof": false,
-        "dacs5BundleDecision": "indeterminate"
+        "dacs5BundleDecision": "error"
       },
       "trustedOverrides": {
         "demosPayerKeyClaims": {
@@ -66767,7 +67188,7 @@
     },
     {
       "name": "fv-bft-final-payer-key-claim-key-0x-signature",
-      "expected": "indeterminate",
+      "expected": "error",
       "note": "a key: identifier is hex with no 0x prefix",
       "input": {
         "evidence": {
@@ -67183,7 +67604,7 @@
         "acceptedAsFinal": false,
         "finalityClass": null,
         "producerReportTrustedAsProof": false,
-        "dacs5BundleDecision": "indeterminate"
+        "dacs5BundleDecision": "error"
       },
       "trustedOverrides": {
         "demosPayerKeyClaims": {
@@ -71939,8 +72360,8 @@
     },
     {
       "name": "fv-bft-final-payer-key-claim-demos-agent-form",
-      "expected": "indeterminate",
-      "note": "key:demos:agent:<hex> is no Demos key claim, so it controls nothing",
+      "expected": "error",
+      "note": "key:demos:agent:<hex> violates the registered key: identifier grammar",
       "input": {
         "evidence": {
           "finalityBoundEvidenceVersion": "1",
@@ -72355,7 +72776,7 @@
         "acceptedAsFinal": false,
         "finalityClass": null,
         "producerReportTrustedAsProof": false,
-        "dacs5BundleDecision": "indeterminate"
+        "dacs5BundleDecision": "error"
       },
       "trustedOverrides": {
         "demosPayerKeyClaims": {

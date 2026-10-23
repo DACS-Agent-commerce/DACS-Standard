@@ -476,9 +476,22 @@ class VendoredVectorDriftTests(unittest.TestCase):
             "compact sorted-keys (ascii)": b'[{"a":9007199254740992,"b":"\\u00e9"}]',
             "compact sorted-keys (utf-8)": '[{"a":9007199254740992,"b":"é"}]'.encode("utf-8"),
         }
+        expected.update({f"CF-1 {encoding}": data for encoding, data in list(expected.items())})
         encoded = {encoding: CHECKER.canonical_encoding(vectors, encoding) for encoding in CHECKER.CANONICAL_ENCODINGS}
         self.assertEqual(encoded, expected)
         self.assertEqual(sys.modules["validate_security_vectors"].canonical_encodings(vectors), expected)
+
+    def test_cf1_fallback_normalizes_values_and_preserves_member_names(self):
+        vectors = [{"e\u0301": ["e\u0301"], "n": BIG}]
+        for encoding in CHECKER.CANONICAL_ENCODINGS:
+            if encoding.startswith("CF-1 "):
+                with self.subTest(encoding=encoding):
+                    encoded = CHECKER.canonical_encoding(vectors, encoding)
+                    self.assertEqual(json.loads(encoded), [{"e\u0301": ["é"], "n": BIG}])
+                    self.assertNotEqual(
+                        encoded,
+                        CHECKER.canonical_encoding(vectors, encoding.removeprefix("CF-1 ")),
+                    )
 
     def test_neither_hash_available_is_uncheckable(self):
         name = "wide-int-v0.1"

@@ -57,8 +57,8 @@
       "gitBlob": "d99fea77aed51b3381ca1db69121c23baed6bcae"
     },
     "wrappedStandard": {
-      "revision": "854417d1df1d56eebf09dc86ec85932d6438d30d",
-      "tree": "2dd28851672e1fde1edadf7a6c33cd5420c7e6f2",
+      "revision": "48c8d190bc68b24337e1f5ae3a1e709d845b1270",
+      "tree": "ba6c4fbc426c73d662194ce09b9337a6775d15a5",
       "primitives": [
         {
           "path": "scripts/jcs.py",
@@ -67,8 +67,8 @@
         },
         {
           "path": "scripts/validate_conformance_vectors.py",
-          "sha256": "dc05d052ad44f62a798f3f8bbfdd6592e5eca8451f0023d81afef110e99fd04b",
-          "gitBlob": "0f4448f124b14db86e1369c477e28736fdf97c73"
+          "sha256": "b661410e8b4c8b928c1e02d4c45e6bd55d245d2637ef954f06972f865f4d60a0",
+          "gitBlob": "52f99c6551e711c21587def7d1e630a3240e038b"
         },
         {
           "path": "scripts/run_lifecycle_walkthrough.py",

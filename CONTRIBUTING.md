@@ -75,7 +75,7 @@ pins as [the validation workflow](./.github/workflows/validate.yml):
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-python3 -m pip install 'cryptography==46.0.5' 'idna==3.10'
+python3 -m pip install -r requirements-validation.txt
 python3 -c "import cryptography, idna; print(cryptography.__version__, idna.__version__)"
 ```
 

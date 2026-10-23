@@ -16,6 +16,7 @@ import settlement_contract_reference as ref
 from jcs import canonicalize
 from settlement_signer_fixture import FixtureSigner
 
+
 def ibh(verdict):
     """A verifier-owned IBH-1..IBH-5 rerun that returns a fixed outcome."""
     return lambda _phase_input: verdict
@@ -29,12 +30,19 @@ def phase_binding(*args, **kwargs):
 
 
 def runtime_input(value):
+    if "atomicSessionContext" in value:
+        return value  # Atomic's closed arm carries no ordinary SessionContext.
     return {**value, "sessionContext": {**value["sessionContext"], "signer": SIGNER}}
 
 
-# Enclosing handler metadata is fixed outside the phase input.
+# Enclosing handler metadata is fixed outside the phase input. The fixtures
+# cannot choose a profile by adding or removing an input member.
 BINDINGS = {
     "ordinary": phase_binding("pay-dem"),
+    "atomic": phase_binding("pay-dem", "dacs-purchase-v1", True),
+    "ungated-purchase": phase_binding("pay-dem", "dacs-purchase-v1", False),
+    "completion": phase_binding("pay-dem", "dacs-completion-v1", True),
+    "other-payment": phase_binding("pay-evm-erc20", "dacs-purchase-v1", True),
     # The signed Listing phase selected an identity-bound agreement (§9.5.1)
     # and the verifier's IBH rerun verified the companions.
     "identity-bound": phase_binding("pay-dem", identity_bound=True, identity_binding=ibh("verified")),
@@ -43,8 +51,8 @@ BINDINGS = {
 
 def binding_for(vector):
     """The vector's binding, with its declared IBH rerun outcome (none: no authority)."""
-    if vector["binding"] == "ordinary":
-        return BINDINGS["ordinary"]
+    if vector["binding"] != "identity-bound":
+        return BINDINGS[vector["binding"]]
     verdict = vector.get("identityBinding")
     return phase_binding("pay-dem", identity_bound=True,
                             identity_binding=ibh(verdict) if verdict else None)
@@ -61,17 +69,20 @@ def received_resolution(resolved):
         return resolved
     text = resolved.get("artifactText")
     return {**resolved, "artifact": text.encode("utf-8") if text else received(resolved["artifact"])}
+
+
 # PC-1 input arms and AMEND-1 target arms the fixture exercises.
-ARMS = ("ordinary",)
-TARGET_ARMS = ("ordinary", "legacy-transition", "finality-bound")
+ARMS = ("ordinary", "atomic")
+TARGET_ARMS = ("ordinary", "atomic", "legacy-transition", "finality-bound")
 # Target arms whose shape is open (keeps unknown members under CORE SIG-5):
-# ordinary SettlementEvidence. The transition and finality-bound arms are closed.
-OPEN_TARGET_ARMS: dict[str, str] = {"ordinary": "valid"}
+# ordinary SettlementEvidence and Atomic evidence. The transition and
+# finality-bound arms are closed.
+OPEN_TARGET_ARMS: dict[str, str] = {"ordinary": "valid", "atomic": "valid"}
 # IdentityBoundAgreementCompanion placeholders: PC-1 types the objects and the
 # binding's IBH-1..IBH-5 rerun stub decides their contents.
 COMPANIONS = [{"identityBundle": {}, "compositeRecord": {}}]
 # Complete delivery records that pass their arm and fail only the pay-* rule.
-DELIVERY_TARGETS = ("ordinary-delivery-target",)
+DELIVERY_TARGETS = ("ordinary-delivery-target", "atomic-delivery-target")
 # Verifier-owned trust pins for the synthetic finality proofs. They are
 # fixture configuration, never read from the material under test.
 TRUST = {
@@ -163,7 +174,11 @@ class SettlementContractTests(unittest.TestCase):
                     self.assertEqual(result["errorClass"], dispositions[vector["expected"]])
                 else:
                     rail.assert_called_once_with(runtime_input(value))
-                    self.assertIs(rail.call_args.args[0]["sessionContext"]["signer"], SIGNER)
+                    if binding_for(vector).atomic:
+                        self.assertIs(rail.call_args.args[0], value)
+                        self.assertNotIn("sessionContext", rail.call_args.args[0])
+                    else:
+                        self.assertIs(rail.call_args.args[0]["sessionContext"]["signer"], SIGNER)
 
     def test_identity_binding_companions_keep_the_ibh_dispositions(self):
         # §9.5.1 and the IBH corpus: an absent companion member is
@@ -219,14 +234,14 @@ class SettlementContractTests(unittest.TestCase):
                 (BINDINGS["ordinary"], "rejected", "permanent", "agreement is not the agreement kind the Listing selects"),
                 (phase_binding("pay-dem", identity_bound=True), "indeterminate", "substrate",
                  "no IBH-1..IBH-5 rerun authority for the identity-bound path"),
-                (phase_binding("pay-dem", True, ibh("rejected")), "rejected", "permanent",
+                (phase_binding("pay-dem", identity_bound=True, identity_binding=ibh("rejected")), "rejected", "permanent",
                  "IBH-1..IBH-5 rerun rejected the identity binding"),
-                (phase_binding("pay-dem", True, ibh("indeterminate")), "indeterminate", "substrate",
+                (phase_binding("pay-dem", identity_bound=True, identity_binding=ibh("indeterminate")), "indeterminate", "substrate",
                  "IBH-1..IBH-5 rerun did not verify ('indeterminate')"),
-                (phase_binding("pay-dem", True, ibh(True)), "indeterminate", "substrate",
+                (phase_binding("pay-dem", identity_bound=True, identity_binding=ibh(True)), "indeterminate", "substrate",
                  "IBH-1..IBH-5 rerun did not verify (True)"),
                 # The rerun's own failure keeps its cause.
-                (phase_binding("pay-dem", True, failing), "indeterminate", "substrate",
+                (phase_binding("pay-dem", identity_bound=True, identity_binding=failing), "indeterminate", "substrate",
                  "IBH-1..IBH-5 rerun unavailable (TimeoutError: admission store timed out)")):
             with self.subTest(binding=binding):
                 handler = mock.Mock(return_value={"status": "accepted", "ok": True})
@@ -238,7 +253,7 @@ class SettlementContractTests(unittest.TestCase):
         rerun = mock.Mock(return_value="verified")
         value = copy.deepcopy(base)
         handler = mock.Mock(return_value={"status": "accepted", "ok": True})
-        self.assertEqual(ref.dispatch_payment(phase_binding("pay-dem", True, rerun), value, handler)["status"],
+        self.assertEqual(ref.dispatch_payment(phase_binding("pay-dem", identity_bound=True, identity_binding=rerun), value, handler)["status"],
                          "accepted")
         self.assertIs(rerun.call_args.args[0], value)
         handler.assert_called_once_with(runtime_input(value))
@@ -269,6 +284,23 @@ class SettlementContractTests(unittest.TestCase):
                     checked += 1
         self.assertGreater(checked, 0)
 
+    def test_binding_is_selected_before_reading_input(self):
+        events = []
+        class Binding:
+            phase = "pay-dem"
+            @property
+            def atomic(self):
+                events.append("binding")
+                return False
+        class Input(dict):
+            def __contains__(self, key):
+                events.append("input")
+                return super().__contains__(key)
+        with self.assertRaises(ref.InputArmError):
+            ref.check_payment_input(Binding(), Input(sessionContext={}))
+        self.assertEqual(events[0], "binding")
+        self.assertIn("input", events)
+
     def test_committed_ibh_payment_wire_inputs_pass_pc1_without_repair(self):
         import test_identity_bundle_hash_binding_vectors as ibh_vectors
         corpus = json.loads(ibh_vectors.VECTORS.read_text())
@@ -291,7 +323,9 @@ class SettlementContractTests(unittest.TestCase):
         # PC-1 accepts the typed shape, not any object carrying its session key.
         names = {v["name"]: v for v in self.data["phaseInputs"]}
         for name in ("ordinary-empty-session-context", "ordinary-null-payer",
-                     "ordinary-empty-agreement", "ordinary-empty-rail"):
+                     "atomic-null-payer", "atomic-context-parties-reordered",
+                     "ordinary-empty-agreement", "atomic-empty-agreement",
+                     "ordinary-empty-rail", "atomic-empty-rail"):
             with self.subTest(vector=name):
                 rail = mock.Mock()
                 result = ref.dispatch_payment(BINDINGS[names[name]["binding"]],
@@ -302,7 +336,8 @@ class SettlementContractTests(unittest.TestCase):
     def test_single_member_edit_fails_on_that_members_type(self):
         # A one-member edit of an accepted input is rejected by that member's
         # own check, so no case passes by tripping an earlier, unrelated one.
-        reasons = {"sessionContext": "sessionContext is not SessionContext"}
+        reasons = {"sessionContext": "sessionContext is not SessionContext",
+                   "atomicSessionContext": "atomicSessionContext is not AtomicPaymentSessionContextV1"}
         by_name = {
             "ordinary-companions-not-array": "identityBindingCompanions is not an array",
             "ordinary-companions-empty": "identityBindingCompanions is empty",
@@ -313,7 +348,7 @@ class SettlementContractTests(unittest.TestCase):
                 "agreement is not the agreement kind the Listing selects",
         }
         names = {v["name"]: v for v in self.data["phaseInputs"]}
-        bases = {"ordinary": names["ordinary-input"]["input"]}
+        bases = {"ordinary": names["ordinary-input"]["input"], "atomic": names["atomic-input"]["input"]}
         absent, checked = object(), set()
         for vector in self.data["phaseInputs"]:
             base, value = bases.get(vector["binding"]), vector["input"]
@@ -332,7 +367,7 @@ class SettlementContractTests(unittest.TestCase):
                     changed[0], "payment input member is not its declared type"))
                 checked.add(changed[0])
         self.assertTrue({"agreement", "rail", "payer", "payee", "amount", "jobId",
-                         "sessionContext", "identityBindingCompanions"} <= checked, checked)
+                         "sessionContext", "atomicSessionContext", "identityBindingCompanions"} <= checked, checked)
 
     def test_agreement_and_rail_accept_every_declared_enumeration_value(self):
         # DACS-3 AgreementArtifact and DACS-4 9.4.1 RailDefinition closed unions.
@@ -696,10 +731,19 @@ class SettlementContractTests(unittest.TestCase):
                        "These are declared-type checks: a profile's further value domains",
                        "The transition and finality-bound target arms use closed shapes and reject "
                        "unknown members; ordinary `SettlementEvidence` keeps unknown optional members "
-                       "under CORE SIG-5"):
+                       "under CORE SIG-5", "Atomic targets use the open normative schema (§9.7.3)"):
             self.assertIn(phrase, changed)
         spec = " ".join((ROOT / "spec/DACS-4-SETTLE.md").read_text().split())
         self.assertIn("ordinary `SettlementEvidence` keeps unknown optional members under CORE SIG-5", spec)
+
+    def test_atomic_target_needs_one_selector_although_its_arm_is_open(self):
+        # The open Atomic schema keeps unknown members, so exclusivity alone
+        # refuses a second recognized selector.
+        names = {v["name"]: v for v in self.data["amendmentTargets"]}
+        vector = names["atomic-dual-selectors"]
+        self.assertEqual(vector["resolved"]["artifact"]["evidenceVersion"], "1")
+        self.assertEqual(self.consume(vector), (
+            "violation", "amendment target discriminator unsupported or ambiguous"))
 
     def test_inauthentic_target_anchor_leaves_the_amendment_pending(self):
         # CORE SR2-4/SR2-12: an inauthentic receipt is discarded, not a violation.
@@ -937,12 +981,16 @@ class SettlementContractTests(unittest.TestCase):
         self.assertEqual(self.consume(names["ordinary-success-with-reason"]),
                          ("violation", "amendment target is not its evidenceVersion arm"))
         inputs = {v["name"]: v for v in self.data["phaseInputs"]}
-        self.assertEqual(inputs["ordinary-amount-unit"]["input"]["amount"]["unit"], "token")
-        handler = mock.Mock(return_value={"status": "accepted", "ok": True})
-        self.assertEqual(ref.dispatch_payment(BINDINGS["ordinary"], inputs["ordinary-amount-unit"]["input"],
-                                              handler)["status"], "accepted")
-        self.assertEqual(ref.dispatch_payment(BINDINGS["ordinary"], inputs["ordinary-amount-unit-empty"]["input"],
-                                              handler)["reason"], "payment input member is not its declared type")
+        for binding in ARMS:
+            with self.subTest(binding=binding):
+                self.assertEqual(inputs[binding + "-amount-unit"]["input"]["amount"]["unit"], "token")
+                handler = mock.Mock(return_value={"status": "accepted", "ok": True})
+                self.assertEqual(ref.dispatch_payment(BINDINGS[binding], inputs[binding + "-amount-unit"]["input"],
+                                                      handler)["status"], "accepted")
+                handler.reset_mock()
+                self.assertEqual(ref.dispatch_payment(BINDINGS[binding], inputs[binding + "-amount-unit-empty"]["input"],
+                                                      handler)["reason"], "payment input member is not its declared type")
+                handler.assert_not_called()
 
     def resign_receipt(self, receipt, **change):
         """An authentic copy of `receipt` with `change` applied and re-proven."""
@@ -991,6 +1039,29 @@ class SettlementContractTests(unittest.TestCase):
                 result, reason = self.consume(with_receipt(bad))
                 self.assertEqual(result, "indeterminate")
                 self.assertIn(message, reason)
+
+    def test_receipt_callback_preserves_snapshot_scope_and_lifecycle_checks(self):
+        vector = next(v for v in self.data["amendmentTargets"] if v["name"] == "ordinary-target")
+        receipt = vector["resolved"]["anchorReceipts"][0]
+        other = self.resign_receipt(receipt, contentHash="ab" * 32)
+        reorg = self.resign_receipt(receipt, state="reorged")
+        pins = {"writer": self.data["orchestratorWriter"],
+                "public_keys": self.data["publicKeys"], **TRUST}
+        for history in ([other, receipt], [receipt, other], [receipt, reorg], [reorg, receipt]):
+            with self.subTest(states=[r["state"] for r in history]):
+                verifier = mock.Mock(side_effect=lambda r: ref._verify_finality_proof(r, **pins))
+                kwargs = {"selected_content_hash": receipt["contentHash"], "verify_receipt": verifier}
+                if reorg in history:
+                    with self.assertRaisesRegex(ref.Unknown, "SR2-7"):
+                        ref._sole_carrier(history, "snapshot", lambda _: None, **kwargs)
+                else:
+                    self.assertEqual(ref._sole_carrier(history, "snapshot", lambda _: None, **kwargs),
+                                     receipt)
+                self.assertEqual(verifier.call_args_list, [mock.call(r) for r in history])
+        # Missing Atomic proof authority keeps its pending disposition and cause.
+        with self.assertRaisesRegex(ref.Unknown, "anchor is not authentic: proof unavailable"):
+            ref._sole_carrier([receipt], "snapshot", lambda _: None,
+                              verify_receipt=mock.Mock(side_effect=ref.Unknown("proof unavailable")))
 
     def test_amendment_and_target_are_admitted_from_their_received_bytes(self):
         # CORE CF-5: a duplicate member another parser reads differently is

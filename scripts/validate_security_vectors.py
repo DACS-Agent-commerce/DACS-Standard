@@ -16,9 +16,10 @@ This validator checks each set against its own claims:
 - ``hash`` recomputes as sha256 over the canonical JSON of the ``vectors``
   array. Sets from different authors used slightly different canonical
   encodings (insertion-order vs sorted keys; ASCII-escaped vs raw UTF-8), so
-  any of the four compact-JSON variants is accepted — but the hash MUST match
-  one of them, so a stale hash after an edit still fails. A string that is
-  not valid Unicode (a lone surrogate escape) fails under every variant;
+  those four compact-JSON variants and their CORE CF-1 value-normalized forms
+  are accepted — but the hash MUST match one of them, so a stale hash after an
+  edit still fails. A string that is not valid Unicode (a lone surrogate
+  escape) fails under every variant;
 - every vector carries a unique, non-empty ``name``;
 - every vector carries a verdict field (``expected``; legacy sb2 uses
   ``decision``) whose value is a known DACS verdict — the §7.5.1 four-value
@@ -34,6 +35,7 @@ import hashlib
 import json
 import os
 import sys
+import unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECURITY_DIR = os.path.join(ROOT, "conformance", "vectors", "security")
@@ -58,6 +60,17 @@ CURRENT_SB2_SET = "sb2-collision-authority-v0.8"
 SB1_EVENT_IDENTITY_SET = "settlement-event-identity-v0.6"
 
 
+def _nfc_values(value):
+    """Apply DACS CF-1 to JSON string values while preserving member names."""
+    if isinstance(value, str):
+        return unicodedata.normalize("NFC", value)
+    if isinstance(value, list):
+        return [_nfc_values(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _nfc_values(item) for key, item in value.items()}
+    return value
+
+
 # The accepted canonical encodings, as their json.dumps (sort_keys, ensure_ascii).
 CANONICAL_ENCODINGS = {
     "compact insertion-order (ascii)": (False, True),
@@ -66,10 +79,17 @@ CANONICAL_ENCODINGS = {
     "compact sorted-keys (utf-8)": (True, False),
 }
 
+CANONICAL_ENCODINGS.update({
+    f"CF-1 {encoding}": options
+    for encoding, options in list(CANONICAL_ENCODINGS.items())
+})
+
 
 def canonical_encoding(vectors: list, encoding: str) -> bytes:
     """The vectors array under one accepted canonical encoding (see docstring)."""
     sort_keys, ensure_ascii = CANONICAL_ENCODINGS[encoding]
+    if encoding.startswith("CF-1 "):
+        vectors = _nfc_values(vectors)
     return json.dumps(
         vectors, separators=(",", ":"), sort_keys=sort_keys, ensure_ascii=ensure_ascii).encode("utf-8")
 

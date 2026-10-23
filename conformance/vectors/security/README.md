@@ -39,9 +39,15 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
 | [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.8 current composed profile (JID-1 boundary declared at v0.7): §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 66 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 26 | `fail` / `pass` |
+| [`atomic-work-audit-role-v0.1.json`](atomic-work-audit-role-v0.1.json) | DACS-5 §10.4.2 AWB-1..AWB-10 | 29 | `fail` / `indeterminate` / `pass` |
+| [`atomic-work-authorization-v0.1.json`](atomic-work-authorization-v0.1.json) | CORE §5.2 AW-30..AW-38 | 64 | `fail` / `indeterminate` / `pass` |
+| [`atomic-work-execution-recovery-v0.1.json`](atomic-work-execution-recovery-v0.1.json) | CORE §5.2 AW-39..AW-75 | 123 | `fail` / `indeterminate` / `pass` |
+| [`atomic-work-identity-v0.1.json`](atomic-work-identity-v0.1.json) | CORE §5.2 AW-1..AW-29, AW-76..AW-77 | 68 | `fail` / `pass` |
+| [`atomic-work-purchase-completion-v0.1.json`](atomic-work-purchase-completion-v0.1.json) | DACS-3 §8.6.1 AWP-1..AWP-21 | 164 | `error` / `fail` / `indeterminate` / `pass` |
+| [`atomic-work-settlement-slot-v0.1.json`](atomic-work-settlement-slot-v0.1.json) | DACS-4 §9.5.10 and §9.7.3 AWS-1..AWS-29 | 104 | `error` / `fail` / `indeterminate` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
-| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 54 | `fail` / `indeterminate` / `pass` |
+| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 96 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
@@ -105,6 +111,109 @@ _This table is generated from the set files — do not edit by hand._
 _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 
 <!-- END GENERATED: security-vector-index -->
+
+## Atomic Work candidate test profile
+
+The separate [payment input and amendment target fixture](../../fixtures/settlement/payment-input-amendment-v0.1.json)
+executes the general DACS-4 PC-1 and AMEND-1 choices through
+`scripts/settlement_contract_reference.py`. The MUST-to-vector map is in
+CONFORMANCE-PLAN §14.8. AMEND-1 target validity does not establish refund accounting
+or a transition or finality-bound target's reservation or FV-1..FV-10 authority.
+
+The six `atomic-work-*.json` sets exercise the candidate CORE §5.2 profile with
+deterministic, public Ed25519 fixtures. Their synthetic witnesses are not Demos
+contracts or production validator proofs. The candidate verifier recognizes
+only `did:dacs:test:*` identities and canonical `domain:` A-label identifiers;
+other ClaimReference schemes remain unsupported by this test key resolver and
+fail closed. A vector input's `publicKeys`, `expectedNetworkAuthority`,
+`expectedProofProfile`, and `expectedRailRegistryAuthority` are the verifier's
+trust pins, carried beside the material under test only so that each vector is
+self-contained: they are fixture configuration, not caller input, and a
+verifier takes them from its own trusted configuration.
+
+The six sets jointly gate the **applicable** P/N/B cells of every rule: each
+applicable cell has at least one rule-referenced fixture of the right class.
+`P` is an acceptance fixture, `N` is a rejection fixture, `B` is a
+quantitative, lifecycle, discriminator, proof-availability, or profile-scope
+edge, and `X` is a machine-readable non-applicable cell with an explicit
+rationale. A dash is an error, not an informational gap. Multi-rule cases use
+`boundaryRuleRefs` to name which of their rules a boundary is attributed to;
+ordinary signature or hash pass/fail cases are not mislabeled as boundaries. The
+generator and strict validator both refuse any uncovered applicable cell.
+
+The gate counts rule references by verdict class; it does not establish that
+each fixture exercises its rule. Some cells are currently decided by
+self-reported or caller-supplied values. Strengthening them to the semantically
+meaningful fixtures CONFORMANCE-PLAN §14.8 requires remains open for this
+candidate. §14.8 requires those fixtures before `AtomicWorkCapabilityV1` may be
+advertised; this candidate does not yet meet that requirement, and the
+capability stays closed.
+
+The advertised `test-fixed-fee` rule is exact: every normal or replacement
+attempt carries a non-empty nonce and fee `"1"`, whether included or not. An
+exact replay is a separate, mutually exclusive class: it names an already
+authenticated winner, charges fee `"0"`, has no second lifecycle inclusion,
+and declares no replay business effects. A committed or rolled-back Work
+receipt records `{ "nonceConsumed": true, "feeCharged": "1" }` for the
+winning attempt. `AtomicWorkAttemptV1.attemptClass` is required and selects one
+closed object arm: `normal` admits neither replacement nor replay fields;
+`replacement` requires only `replacementFor` in addition to the normal
+submission fields; and `replay` requires `replayOf`, `returnedWinner`, and an
+exact two-member replay-effect record while forbidding lifecycle, observation,
+and replacement fields. The generic envelope leaves nonce, fee, and non-empty
+lifecycle-evidence content to the selected capability and execution/proof
+profile. This candidate's synthetic profile further requires nonce/fee `"1"`
+for normal/replacement submissions and requires its complete signed ledger
+witness whenever an authenticated lifecycle state is claimed, including the
+winner and any prior attempt used as replacement authority. It forbids a replay
+nonce while requiring fee `"0"` and zero effects.
+Authenticated lifecycle evidence and an ordinary local observation are
+mutually exclusive.
+
+Synthetic ledger, ledger effect-inventory, receipt, session-context,
+limit-reservation, and limit-metric witnesses bind the advertised proof profile
+and validator set. The attempts whose business effect committed come only from
+the network-signed Work-ledger effect inventory for the exact `workId`; no
+caller-supplied list is an input. A rolled-back Work records no business
+effect, so its inventory lists no attempt, the winner included. Every path that
+consumes an inventory binds its block: the finalized receipt block when a
+receipt is presented, and otherwise the block of the authenticated lifecycle
+evidence that resolves the Work; with no such block the inventory is
+unavailable. Admission is therefore evaluated as of that block: fencing an
+effect in a later block remains the ledger's AW-44 guarantee, which the
+verifier does not observe. Without a receipt the rule is reached only on the
+focused `attempts` surface (composed admission always requires the finalized
+receipt), and there it is only an as-of check over the presented authenticated
+evidence at the block that evidence names: it does not assert that the result
+is current or that the presented evidence is complete. For
+a committed Purchase, a later attempt cannot reach payment: it carries the
+same signed `payment-slot-cas` expectation (AW-39), whose `vacant` or
+`rolled-back` state cannot match the terminal `settled` slot the receipt
+proves (AW-46); that CAS precedes any payment (AWS-6), and the Work rolls back
+with every other critical write (AWP-10). A
+whole-profile Purchase derives its slot transition from the signed
+`payment-slot-cas` expectation: `vacant` admits a claim and `rolled-back`
+admits only the fully proven retry. The authenticated prior slot state decides
+that transition; a caller's local attempt observation is not consulted.
+Registry and
+publication AnchorReceipts bind the selected finality profile and pinned
+authority. The rail fixture uses the canonical registered
+`demos-native:DEM` identifier with a synthetic registry-index and anchor-proof
+encoding; it is not a production Demos registry or finality proof. The focused
+`slot` surface proves pre-execution eligibility against prior authenticated
+state; it does not claim that the compare-and-set executed. The authenticated
+Work receipt proves the resulting transition. Whole-profile
+`purchase-admission` composes both sides of that boundary. Its synthetic
+`maxProofBytes` admission uses a synthetic proof-profile-defined encoded-size
+reservation available before execution. The authenticated actual measurement
+ends at the finalized Work-result proof closure and is checked afterward
+against both that reservation and the limit. Its exact JCS preimage contains
+`proofMaterial` plus `proofReservationEvidence` and excludes only the
+self-authenticating `limitEvidence` envelope, whose encoding is separately
+fixed and bounded by the synthetic proof profile. An actual overage demonstrates a
+nonconforming node/profile and cannot retroactively roll back committed Work;
+later settlement evidence and its separate audit-publication proof are outside
+this Work-result closure.
 
 ## Included sets
 
@@ -604,7 +713,7 @@ assertions with `python3 -m unittest tests.test_metered_pricing_vectors -v`.
 
 ### `bundle-settlement-evidence-bijection-v0.4.json` — §10.4.3 SEB-1..SEB-6
 
-46 candidate vectors bind an `EvidenceBoundFaultAttestationBundle` raw top-level
+67 candidate vectors bind an `EvidenceBoundFaultAttestationBundle` raw top-level
 `settlementEvidence[]` array to the
 phase keys derived from a signature-verified DACS-1 listing pipeline and the
 domain-verified EBFAB `phaseSummary`; no caller-supplied expected set is trusted.
@@ -627,8 +736,12 @@ and an unfinalized or unresolvable completed EBFAB reject. Inputs keep raw
 full-canonical reference keys, independently resolved phase keys, present optional
 pointers, SR-2 lifecycle overrides, ST-8 record classes/supersession edges, and
 unrelated authority disposition separate. Stable
-outputs use `verified`, `rejected`, or `indeterminate` plus one normative
-`reasonCode`; `reasonPrecedence` fixes cross-run code selection. The evaluator
+outputs use `verified`, `rejected`, `indeterminate`, or `error` plus one
+normative `reasonCode`; `reasonPrecedence` fixes cross-run code selection. An
+Atomic member's AWS result propagates as SEB-3 requires: only an exact `pass`
+admits it, a deterministic `fail` rejects it, and an `indeterminate` or `error`
+result for its exact bytes is that same state (`execution-authority-indeterminate`
+or `execution-authority-error`). The evaluator
 derives `P` from those authenticated artifacts and tests the exact SR-2 vocabulary:
 completed evidence is `finalized` and independently resolvable; failed/aborted
 evidence is `included` or `finalized` without importing that stricter ST-11

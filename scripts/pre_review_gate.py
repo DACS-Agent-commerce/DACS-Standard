@@ -698,6 +698,50 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_phase_bound_delivery_vectors.py",
         "test": "PhaseBoundDeliveryVectorTests.test_credential_field_vectors_reject_delivery_signature_bypass",
     },
+    "pr336-atomic-exact-presenter-vector-consumer": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_whole_profile_admission_resolves_exactly_one_presented_claim",
+    },
+    "pr336-atomic-malformed-bundle-claim-structural": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_malformed_bundle_claim_is_a_structural_error",
+    },
+    "pr336-atomic-exact-presenter-wiring-witness": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicPresenterWiringWitnessTests.test_authority_context_presenter_wiring_is_load_bearing",
+    },
+    "pr336-atomic-effect-inventory-vector-consumer": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_composed_business_effects_come_from_the_ledger_inventory",
+    },
+    "pr336-atomic-unsigned-effect-inventory-indeterminate": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_unsigned_effect_inventory_has_one_classification",
+    },
+    "pr336-atomic-slot-transition-signed-cas": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_composed_slot_transition_follows_the_signed_cas",
+    },
+    "pr336-atomic-commitment-finality-evidence-unavailable": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_commitment_receipt_without_finality_evidence_is_unavailable",
+    },
+    "pr336-atomic-effect-inventory-guard-witness": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicEffectInventoryGuardWitnessTests.test_each_effect_inventory_and_slot_guard_is_load_bearing",
+    },
+    "pr336-atomic-rolled-back-winner-no-business-effect": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_rolled_back_winner_records_no_business_effect",
+    },
+    "pr336-atomic-effect-inventory-block-bound": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_inventory_block_is_bound_on_every_path",
+    },
+    "pr336-atomic-composed-retry-authenticated-slot-only": {
+        "file": "tests/test_atomic_work_vectors.py",
+        "test": "AtomicWorkVectorTests.test_composed_retry_ignores_caller_attempt_observation",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"

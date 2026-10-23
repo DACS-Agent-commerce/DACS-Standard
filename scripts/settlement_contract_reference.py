@@ -29,6 +29,11 @@ IBH-1..IBH-5 rerun over their contents is the verifier-owned
 `indeterminate`. RTB-1 here verifies PA-2 single-signer rails; a PA-1 in-code
 or PA-3 multisig rail is left `indeterminate`, not verified.
 
+The binding alone selects the PC-1 arm: only a capability-gated CORE §5.2
+`dacs-purchase-v1` `pay-dem` uses the closed `AtomicPaymentPhaseInputV1`.
+Its identity authority is checked by the enclosing Atomic verifier; an Atomic
+AMEND-1 target is checked against its open normative schema.
+
 The synthetic finality proof may carry a signed `observationSequence`, a
 canonical unsigned-decimal string ordering finalized observations of one
 SR2-5 tuple. Such observations may differ in `observedAt` only; all anchor
@@ -66,12 +71,18 @@ PAYMENT_PHASES = frozenset({
 ORDINARY_INPUT_MEMBERS = frozenset({
     "jobId", "rail", "agreement", "payer", "payee", "amount", "sessionContext",
 })
+ATOMIC_INPUT_MEMBERS = ORDINARY_INPUT_MEMBERS - {"sessionContext"} | {"atomicSessionContext"}
+_ATOMIC_CONTEXT_MEMBERS = frozenset({
+    "contextVersion", "jobId", "listingRef", "recipeRegistryVersion",
+    "railRegistryVersion", "parties", "priorPhaseOutputsHash", "startedAt",
+})
 _AMENDMENT_ADDRESS = re.compile(
     r"dacs4:amendment:([^:]+):([0-9a-f]{64}):(0|[1-9][0-9]*)\Z"
 )
 _JOB_ID = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z")
 _PAYMENT_ADDRESS = re.compile(
-    r"dacs4:payment:([^:]+):([^:]+):(0|[1-9][0-9]*)(:resolved)?\Z"
+    r"dacs4:payment:([^:]+):([^:]+):(0|[1-9][0-9]*)"
+    r"(?::resolved|:atomic:(?:0|[1-9][0-9]*):[0-9a-f]{64})?\Z"
 )
 # DACS-3 AgreementArtifact discriminators; the last three carry payout bindings.
 _AGREEMENT_SELECTORS = {
@@ -104,10 +115,12 @@ _CHAIN_FINALITY_KINDS = frozenset({"block-depth", "commitment-level", "bft-final
 _METERED_QUANTITY = re.compile(r"(0|[1-9][0-9]*)\Z")
 
 # Every recognized DACS-4 evidence selector, and the AMEND-1 target arms among
-# them: (signature domain, complete arm shape predicate name).
+# them: (signature domain, complete arm shape predicate name, or the
+# open normative schema of the Atomic arm).
 EVIDENCE_SELECTORS = (
     "evidenceVersion", "legacyTransitionEvidenceVersion",
     "deliveryEvidenceVersion", "finalityBoundEvidenceVersion",
+    "atomicEvidenceVersion",
 )
 _TARGET_ARMS = {
     "evidenceVersion": (b"dacs-evidence:v1:", "_settlement_evidence_shape_valid"),
@@ -117,6 +130,8 @@ _TARGET_ARMS = {
     "finalityBoundEvidenceVersion": (
         b"dacs-finality-bound-evidence:v1:",
         "_finality_bound_settlement_evidence_shape_valid"),
+    "atomicEvidenceVersion": (
+        b"dacs-atomic-evidence:v1:", "atomic-settlement-evidence-v1.schema.json"),
 }
 AMENDMENT_DOMAIN = b"dacs-amendment:v1:"
 RAIL_DOMAIN = b"dacs-rail:v1:"
@@ -187,9 +202,16 @@ class PhaseBinding:
     admission and the IBH rerun, never obtained from a serialized member.
     """
     phase: str
+    work_profile: str | None = None
+    capability_gated: bool = False
     identity_bound: bool = False
     identity_binding: Callable[[dict], str] | None = None
     signer: SubstrateSigner | None = None
+
+    @property
+    def atomic(self) -> bool:
+        return (self.phase == "pay-dem" and self.capability_gated
+                and self.work_profile == "dacs-purchase-v1")
 
 
 class InputArmError(ValueError):
@@ -200,8 +222,10 @@ class InputAuthorityUnavailable(RuntimeError):
     """§9.5.1: required identity-binding authority is missing: indeterminate."""
 
 
-def _party_valid(shape, value, key_member: str, *, identity_bound=False) -> bool:
+def _party_valid(shape, value, key_member: str, *, closed: bool = False,
+                 identity_bound: bool = False) -> bool:
     if (not isinstance(value, dict) or not {"bundleHash", "primaryClaim", key_member} <= set(value)
+            or (closed and set(value) != {"bundleHash", "primaryClaim", key_member})
             or not (shape._sha256_hex(value["bundleHash"]) if identity_bound
                     else shape._nonempty_jcs_string(value["bundleHash"]))
             or not shape._claim_reference_shape_valid(value["primaryClaim"])):
@@ -211,16 +235,19 @@ def _party_valid(shape, value, key_member: str, *, identity_bound=False) -> bool
     return shape._nonempty_jcs_string(value["payeeAddress"])
 
 
-def _listing_ref_valid(shape, value) -> bool:
+def _listing_ref_valid(shape, value, *, closed: bool = False) -> bool:
     return (isinstance(value, dict) and {"listingId", "version", "contentHash"} <= set(value)
+            and (not closed or set(value) == {"listingId", "version", "contentHash"})
             and shape._nonempty_jcs_string(value["listingId"])
             and shape._safe_nonnegative_integer(value["version"], positive=True)
             and shape._sha256_hex(value["contentHash"]))
 
 
-def _price_term_valid(shape, value) -> bool:
+def _price_term_valid(shape, value, *, closed: bool = False) -> bool:
     """PriceTerm's declared members typed; unknown members stay open (SIG-5)."""
-    return (isinstance(value, dict) and shape._price_term_shape_valid(
+    return (isinstance(value, dict)
+            and (not closed or not set(value) - {"amount", "currency", "unit"})
+            and shape._price_term_shape_valid(
         {key: item for key, item in value.items() if key in {"amount", "currency", "unit"}})
             and ("unit" not in value or shape._nonempty_jcs_string(value["unit"])))
 
@@ -497,26 +524,57 @@ def _session_context_valid(shape, value, *, identity_bound=False) -> bool:
             and shape._safe_nonnegative_integer(value["startedAt"]))
 
 
+def _atomic_session_context_valid(shape, value) -> bool:
+    return (isinstance(value, dict) and set(value) == _ATOMIC_CONTEXT_MEMBERS
+            and value["contextVersion"] == "1"
+            and shape._nonempty_jcs_string(value["jobId"])
+            and _listing_ref_valid(shape, value["listingRef"], closed=True)
+            and shape._safe_nonnegative_integer(value["recipeRegistryVersion"])
+            and shape._safe_nonnegative_integer(value["railRegistryVersion"])
+            and isinstance(value["parties"], list)
+            and [party.get("role") if isinstance(party, dict) else None
+                 for party in value["parties"]] == ["buyer", "seller", "orchestrator"]
+            and all(set(party) == {"role", "primaryClaim"}
+                    and shape._claim_reference_shape_valid(party["primaryClaim"])
+                    for party in value["parties"])
+            and shape._sha256_hex(value["priorPhaseOutputsHash"])
+            and shape._safe_nonnegative_integer(value["startedAt"]))
+
+
 def check_payment_input(binding: PhaseBinding, phase_input: Any) -> None:
+    # Select the arm before accessing even a single input member.
+    atomic = binding.atomic
     if binding.phase not in PAYMENT_PHASES:
         raise InputArmError("binding is not a payment phase")
     if not isinstance(phase_input, dict):
         raise InputArmError("payment input is not an object")
-    if "sessionContext" not in phase_input:
-        raise InputArmError("payment input lacks sessionContext")
+    if atomic:
+        if set(phase_input) != ATOMIC_INPUT_MEMBERS:
+            raise InputArmError("Atomic payment input is not its closed arm")
+    elif "sessionContext" not in phase_input or "atomicSessionContext" in phase_input:
+        raise InputArmError("ordinary payment input requires only its session arm")
     shape = _shapes()
-    # Unknown members stay open under CORE SIG-5.
-    if not ORDINARY_INPUT_MEMBERS <= set(phase_input):
+    # Ordinary members stay open under CORE SIG-5; the Atomic arm is closed.
+    closed = atomic
+    if not ORDINARY_INPUT_MEMBERS - {"sessionContext"} <= set(phase_input):
         raise InputArmError("payment input lacks a required member")
     if not (shape._nonempty_jcs_string(phase_input["jobId"])
             and _agreement_valid(shape, phase_input["agreement"])
             and _rail_valid(shape, phase_input["rail"])
-            and _party_valid(shape, phase_input["payer"], "payingKey", identity_bound=binding.identity_bound)
-            and _party_valid(shape, phase_input["payee"], "payeeAddress", identity_bound=binding.identity_bound)
-            and _price_term_valid(shape, phase_input["amount"])):
+            and _party_valid(shape, phase_input["payer"], "payingKey", closed=closed,
+                             identity_bound=atomic or binding.identity_bound)
+            and _party_valid(shape, phase_input["payee"], "payeeAddress", closed=closed,
+                             identity_bound=atomic or binding.identity_bound)
+            and _price_term_valid(shape, phase_input["amount"], closed=closed)):
         raise InputArmError("payment input member is not its declared type")
-    if not _session_context_valid(shape, phase_input["sessionContext"], identity_bound=binding.identity_bound):
+    if atomic:
+        if not _atomic_session_context_valid(shape, phase_input["atomicSessionContext"]):
+            raise InputArmError("atomicSessionContext is not AtomicPaymentSessionContextV1")
+    elif not _session_context_valid(shape, phase_input["sessionContext"],
+                                    identity_bound=binding.identity_bound):
         raise InputArmError("sessionContext is not SessionContext")
+    if atomic:
+        return  # The enclosing Atomic verifier establishes identity authority.
     # §9.5.1: the signed Listing's selection alone selects the path; an
     # agreement of the other kind contradicts it in either direction.
     identity_bound = any(key in phase_input["agreement"] for key in _IDENTITY_BOUND_SELECTORS)
@@ -575,7 +633,7 @@ def dispatch_payment(binding: PhaseBinding, phase_input: Any, handler: Callable)
     IBH-1..IBH-5 rerun before the enclosing handler can call a rail."""
     try:
         check_payment_input(binding, phase_input)
-        if binding.identity_bound:
+        if binding.identity_bound and not binding.atomic:
             _require_identity_binding(binding, phase_input)
         _require_runtime_signer(binding.signer)
     except InputArmError as exc:
@@ -584,6 +642,8 @@ def dispatch_payment(binding: PhaseBinding, phase_input: Any, handler: Callable)
     except InputAuthorityUnavailable as exc:
         return {"status": "indeterminate", "ok": False, "errorClass": "substrate",
                 "reason": str(exc)}
+    if binding.atomic:
+        return handler(phase_input)
     runtime_input = {**phase_input, "sessionContext": {
         **phase_input["sessionContext"], "signer": binding.signer}}
     return handler(runtime_input)
@@ -826,6 +886,7 @@ def admit(raw: Any, error: type[Exception], label: str) -> Any:
 
 def _sole_carrier(receipts: Any, label: str, for_address: Callable[[dict], None],
                   *, selected_content_hash: str | None = None,
+                  verify_receipt: Callable[[dict], int | None] | None = None,
                   **pins) -> dict:
     """The one authorized finalized carrier for an immutable address (CORE §5).
 
@@ -848,10 +909,13 @@ def _sole_carrier(receipts: Any, label: str, for_address: Callable[[dict], None]
                     or not in_number_profile(receipt)):
                 raise Invalid("receipt is not an admitted AnchorReceipt")
             for_address(receipt)
-            sequence = _verify_finality_proof(receipt, **pins)
+            if verify_receipt is None:
+                sequence = _verify_finality_proof(receipt, **pins)
+            else:
+                sequence = verify_receipt(receipt)
             if selected_content_hash is not None and receipt["contentHash"] != selected_content_hash:
                 continue
-        except (Invalid, ValueError, TypeError, KeyError) as exc:
+        except (Invalid, Unknown, ValueError, TypeError, KeyError) as exc:
             causes.append(str(exc))
             continue
         binding = canonicalize({key: receipt.get(key) for key in (
@@ -889,6 +953,15 @@ def _sole_carrier(receipts: Any, label: str, for_address: Callable[[dict], None]
 
 
 # ---- AMEND-1 ------------------------------------------------------------------
+
+def _arm_shape_valid(shape, shape_name: str, target: dict) -> bool:
+    """A DACS-4 arm's shape, or the Atomic arm's open normative schema."""
+    if shape_name.endswith(".schema.json"):
+        import atomic_work_reference as atomic
+        atomic.validate_schema(target, shape_name)
+        return True
+    return getattr(shape, shape_name)(target)
+
 
 def _ordinary_target_shape(record: dict) -> dict:
     """Declared members of open ordinary types, only for shape checking.
@@ -956,7 +1029,9 @@ def consume_amendment_target(
     admitted under CORE CF-5 before any hash or signature check: refused
     amendment bytes violate, refused target bytes are a substituted
     resolution. The resolver returns {artifact, anchorReceipts} with every
-    carrier it found for the reference's locator. No surviving carrier
+    carrier it found for the reference's locator. Atomic publication proofs
+    accompany them as `publication` or, for multiple carriers, `publications`.
+    No surviving carrier
     (absent, unfinalized, inauthentic or another writer's), an equivocation,
     or bytes that differ from the authentic anchor binding the reference's
     hash leave the target pending. Contradictory established proofs are
@@ -998,13 +1073,45 @@ def consume_amendment_target(
                 raise Invalid("AnchorReceipt is for another address")
             if not _payment_address_valid(receipt.get("logicalAddress"), amendment["jobId"]):
                 raise Invalid("AnchorReceipt is not for a PC-2 payment address of this job")
+
+        def verify_payment_receipt(receipt):
+            evidence = receipt.get("evidence")
+            if not isinstance(evidence, dict) or evidence.get("kind") != "test-anchor-publication":
+                return _verify_finality_proof(
+                    receipt, writer=writer, public_keys=public_keys,
+                    network_authority=network_authority, network_id=network_id,
+                    proof_profile=proof_profile, validator_set_id=validator_set_id)
+            import atomic_work_reference as atomic
+            if receipt.get("writer") != writer:
+                raise Invalid("AnchorReceipt writer is not the authorized writer")
+            publications = resolved.get("publications", [resolved.get("publication")])
+            if not isinstance(publications, list) or len(publications) > MAX_CARRIERS:
+                raise Unknown("complete Atomic publication proofs unavailable")
+            publication = next((item for item in publications
+                                if isinstance(item, dict) and item.get("anchorReceipt") == receipt), None)
+            if publication is None:
+                raise Unknown("complete Atomic publication proof unavailable")
+            # Authenticate each carrier independently of the resolver's target
+            # bytes, so another authorized hash is a contradiction/equivocation
+            # just as it is for the ordinary finality proof.
+            published = admit(b64u_decode(publication.get("canonicalBytes")),
+                              Unknown, "Atomic publication")
+            if not isinstance(published, dict):
+                raise Unknown("Atomic publication is not an object")
+            try:
+                atomic._verify_atomic_publication(
+                    publication, published, receipt["logicalAddress"], public_keys,
+                    network_authority=network_authority, network_id=network_id,
+                    proof_profile=proof_profile, validator_set_id=validator_set_id, writer=writer)
+            except atomic.Unknown as exc:
+                raise Unknown(str(exc)) from exc
+
         # CORE SR2-4/SR2-11/SR2-12: receipt fields are assertions until its
         # proof binds them, and only the orchestrator's writer has authority
         # over the payment address.
         anchor = _sole_carrier(
             resolved.get("anchorReceipts"), "amendment target", for_payment_address,
-            writer=writer, public_keys=public_keys, network_authority=network_authority,
-            network_id=network_id, proof_profile=proof_profile, validator_set_id=validator_set_id)
+            verify_receipt=verify_payment_receipt)
         # PC-2's payment address is single-write, so an authentic anchor by
         # the authorized writer binding another hash means the reference
         # names other content.
@@ -1036,7 +1143,7 @@ def consume_amendment_target(
         # transition and finality-bound arms are closed.
         checked = (_ordinary_target_shape(target)
                    if selector == "evidenceVersion" else target)
-        if not getattr(shape, shape_name)(checked):
+        if not _arm_shape_valid(shape, shape_name, checked):
             raise Invalid(f"amendment target is not its {selector} arm")
         if "signer" in target_ref:
             require_signer(target, target_ref["signer"])
@@ -1044,7 +1151,8 @@ def consume_amendment_target(
             raise Invalid("amendment target job mismatch")
         if target.get("phase") not in PAYMENT_PHASES:
             raise Invalid("amendment target is not a payment phase")
-        # Every arm's {evidenceHash} is its signature-omitting content hash.
+        # Every arm's {evidenceHash} is its signature-omitting content hash
+        # (atomic_evidence_hash for an Atomic target).
         address = (_AMENDMENT_ADDRESS.fullmatch(amendment_address)
                    if isinstance(amendment_address, str) else None)
         if (address is None or address.group(1) != amendment.get("jobId")

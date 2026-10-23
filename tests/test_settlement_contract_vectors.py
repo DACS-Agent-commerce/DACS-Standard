@@ -915,7 +915,7 @@ class SettlementContractTests(unittest.TestCase):
         for name in ("session-registry-version-zero", "session-registry-version-negative"):
             with self.subTest(case=name):
                 self.assertEqual(self.resolve_rail(names[name]), (
-                    "rejected", "session pins are not an integer start and a positive registry version"))
+                    "rejected", "session pins are not a non-negative time and a positive registry version"))
         # PA-1 and PA-3 rail authority is not implemented here: never verified.
         for name, anchoring in (("pa3-multisig-rail-not-implemented", "multisig"),
                                 ("pa1-in-code-rail-not-implemented", "in-code")):

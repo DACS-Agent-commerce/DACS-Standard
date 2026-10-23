@@ -41,7 +41,6 @@ import base64
 import binascii
 import hashlib
 import json
-import math
 import re
 import sys
 import unicodedata
@@ -601,6 +600,8 @@ class Unknown(RuntimeError):
 
 
 def jcs_bytes(value: Any) -> bytes:
+    if not in_number_profile(value):
+        raise Invalid("value is outside the CORE value model or CF-5 nesting bound")
     return canonicalize(value).encode("utf-8")
 
 
@@ -637,20 +638,34 @@ def in_number_profile(value: Any) -> bool:
     Values need not already be NFC: CF-1 normalizes string values (never
     member names) while hashing, which `jcs.canonicalize` does.
     """
-    if value is None or isinstance(value, bool):
-        return True
-    if isinstance(value, str):
-        return _well_formed(value)
-    if isinstance(value, int):
-        return abs(value) <= SAFE_INT_MAX
-    if isinstance(value, float):
-        return math.isfinite(value) and abs(value) <= SAFE_INT_MAX
-    if isinstance(value, list):
-        return all(in_number_profile(item) for item in value)
-    if isinstance(value, dict):
-        return all(isinstance(key, str) and _well_formed(key) and in_number_profile(item)
-                   for key, item in value.items())
-    return False
+    # Pre-parsed resolver replies need the same CF-5 depth bound as raw JSON.
+    # An explicit stack also rejects host-object cycles without recursion.
+    stack, active = [(value, 0, False)], set()
+    while stack:
+        item, depth, leaving = stack.pop()
+        if leaving:
+            active.remove(id(item))
+        elif item is None or isinstance(item, bool):
+            continue
+        elif isinstance(item, str):
+            if not _well_formed(item):
+                return False
+        elif isinstance(item, (int, float)):
+            if not -SAFE_INT_MAX <= item <= SAFE_INT_MAX:
+                return False
+        elif isinstance(item, (list, dict)):
+            if depth >= raw_json_profile.MAX_NESTING_DEPTH or id(item) in active:
+                return False
+            if isinstance(item, dict) and not all(
+                    isinstance(key, str) and _well_formed(key) for key in item):
+                return False
+            active.add(id(item))
+            stack.append((item, depth, True))
+            stack.extend((child, depth + 1, False)
+                         for child in (item.values() if isinstance(item, dict) else item))
+        else:
+            return False
+    return True
 
 
 def claim_identity(claim: Any) -> str:
@@ -737,16 +752,16 @@ def _verify_finality_proof(receipt: dict, *, writer: str, public_keys: dict,
     if (not isinstance(transaction, dict) or set(transaction) != {"kind", "value"}
             or not all(isinstance(item, str) and item for item in transaction.values())):
         raise Invalid("AnchorReceipt transactionRef is malformed")
-    if type(receipt.get("observedAt")) is not int or not 0 <= receipt["observedAt"] <= SAFE_INT_MAX:
+    if not _safe_time(receipt.get("observedAt")):
         raise Invalid("AnchorReceipt observedAt is malformed")
     # SR2-6: consensus time is blockRef.timestamp in unix ms; a finalized
     # receipt carries it, and a present height is canonical decimal.
     block = receipt.get("blockRef")
-    if (not isinstance(block, dict) or not isinstance(block.get("id"), str) or not block["id"]
-            or type(block.get("timestamp")) is not int
-            or not 0 <= block["timestamp"] <= SAFE_INT_MAX
+    if ((receipt.get("state") in {"included", "finalized"} or "blockRef" in receipt) and (
+            not isinstance(block, dict) or not isinstance(block.get("id"), str) or not block["id"]
+            or not _safe_time(block.get("timestamp"))
             or ("height" in block and (not isinstance(block["height"], str)
-                                       or _HEIGHT.fullmatch(block["height"]) is None))):
+                                       or _HEIGHT.fullmatch(block["height"]) is None)))):
         raise Invalid("AnchorReceipt blockRef is malformed")
     evidence = receipt.get("evidence")
     if not isinstance(evidence, dict):
@@ -810,12 +825,14 @@ def admit(raw: Any, error: type[Exception], label: str) -> Any:
 
 
 def _sole_carrier(receipts: Any, label: str, for_address: Callable[[dict], None],
+                  *, selected_content_hash: str | None = None,
                   **pins) -> dict:
     """The one authorized finalized carrier for an immutable address (CORE §5).
 
-    Every candidate that is not an established finalized receipt for this
-    address, whose proof does not authenticate its fields, or whose writer
-    is not the authorized one is discarded (SR2-4, SR2-11, SR2-12).
+    Candidates whose proof does not authenticate their fields or writer are
+    discarded (SR2-4, SR2-11, SR2-12). Lifecycle reconciliation precedes the
+    finalized gate. A registry snapshot's exact content hash scopes its history;
+    the shared registry logical address is not an immutable snapshot address.
     Observations of the same tuple are reconciled by this test profile's
     signed observationSequence. Distinct bindings are equivocation; neither
     fetch order nor observer time can choose a winner.
@@ -827,10 +844,13 @@ def _sole_carrier(receipts: Any, label: str, for_address: Callable[[dict], None]
     groups, causes = {}, []
     for receipt in receipts:
         try:
-            if not _established_finalized(receipt):
-                raise Invalid("receipt is not an established finalized receipt")
+            if (not isinstance(receipt, dict) or receipt.get("receiptVersion") != "1"
+                    or not in_number_profile(receipt)):
+                raise Invalid("receipt is not an admitted AnchorReceipt")
             for_address(receipt)
             sequence = _verify_finality_proof(receipt, **pins)
+            if selected_content_hash is not None and receipt["contentHash"] != selected_content_hash:
+                continue
         except (Invalid, ValueError, TypeError, KeyError) as exc:
             causes.append(str(exc))
             continue
@@ -855,6 +875,12 @@ def _sole_carrier(receipts: Any, label: str, for_address: Callable[[dict], None]
                 raise Unknown(f"{label} has unorderable observations of one transaction (SR2-7)")
             ordered[sequence] = (body, receipt)
         survivors[binding] = ordered[max(ordered)][1]
+    # The lifecycle gate applies to reconciled tuples, before comparing
+    # otherwise-qualifying bindings for immutable-address equivocation.
+    finalized = {key: receipt for key, receipt in survivors.items() if _established_finalized(receipt)}
+    if survivors and not finalized:
+        causes.append("receipt is not an established finalized receipt")
+    survivors = finalized
     if len(survivors) > 1:
         raise Unknown(f"{label} has {len(survivors)} canonically unequal authorized carriers (equivocation)")
     if not survivors:
@@ -1042,7 +1068,12 @@ def _nfc(value: str) -> str:
 
 
 def _positive_safe(value: Any) -> bool:
-    return type(value) is int and 0 < value <= SAFE_INT_MAX
+    return _shapes()._safe_nonnegative_integer(value, positive=True)
+
+
+def _safe_time(value: Any) -> bool:
+    return (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and 0 <= value <= SAFE_INT_MAX)
 
 
 def _index_entry_valid(shape, entry) -> bool:
@@ -1110,6 +1141,11 @@ def resolve_session_rail(
     shape = _shapes()
     try:
         state = authenticate_retained_state(retained_state, public_keys, network_authority)
+        for candidate_session in (session, state["session"]):
+            if (not isinstance(candidate_session, dict)
+                    or not _safe_time(candidate_session.get("startedAt"))
+                    or not _positive_safe(candidate_session.get("railRegistryVersion"))):
+                raise TypeError("session pins are not a non-negative time and a positive registry version")
         if (state["jobId"] != job_id or state["session"] != session
                 or claim_identity(state["steward"]) != claim_identity(steward)
                 or state["registryWriter"] != registry_writer):
@@ -1120,8 +1156,6 @@ def resolve_session_rail(
             raise Invalid("session pins, rail reference and rail definition must be objects")
         started_at = session["startedAt"]
         registry_version = session["railRegistryVersion"]
-        if type(started_at) is not int or not _positive_safe(registry_version):
-            raise TypeError("session pins are not an integer start and a positive registry version")
         index = authority.get("railRegistryIndex") if isinstance(authority, dict) else None
         index_receipts = authority.get("railRegistryIndexReceipts") if isinstance(authority, dict) else None
         rail_receipts = authority.get("railDefinitionReceipts") if isinstance(authority, dict) else None
@@ -1146,7 +1180,11 @@ def resolve_session_rail(
             if receipt.get("logicalAddress") != REGISTRY_INDEX_ADDRESS:
                 raise Invalid("index receipt is for another address")
         # The index is read only after its finalized binding authenticates it.
-        index_receipt = _sole_carrier(index_receipts, REGISTRY_INDEX_ADDRESS, for_index_address, **pins)
+        if not in_number_profile(index):
+            raise Invalid("rail-registry index snapshot is outside the CORE value model")
+        index_receipt = _sole_carrier(
+            index_receipts, REGISTRY_INDEX_ADDRESS, for_index_address,
+            selected_content_hash=sha256_hex(jcs_bytes(index)), **pins)
         if index_receipt["contentHash"] != sha256_hex(jcs_bytes(index)):
             raise Invalid(f"authentic {REGISTRY_INDEX_ADDRESS} anchor binds other content")
         # The index must be the session's own pinned snapshot: a later index
@@ -1177,7 +1215,7 @@ def resolve_session_rail(
             if not listed:
                 raise Invalid("pinned index does not list the agreement's rail version")
         entry = max(listed, key=lambda item: item["version"])
-        if rail["railVersion"] != entry["version"] or type(rail["railVersion"]) is not int:
+        if rail["railVersion"] != entry["version"] or not _positive_safe(rail["railVersion"]):
             raise Invalid("definition is not the version the agreement selects")
         if content_hash(rail) != entry["contentHash"]:
             raise Invalid("pinned index does not select this definition")
@@ -1190,7 +1228,7 @@ def resolve_session_rail(
         if rail_receipt["contentHash"] != entry["contentHash"]:
             raise Invalid("authentic rail definition anchor binds other content")
         accepted_at = rail["governance"]["acceptedAt"]
-        if (type(accepted_at) is not int or accepted_at > started_at
+        if (not _safe_time(accepted_at) or accepted_at > started_at
                 or index_receipt["blockRef"]["timestamp"] > started_at
                 or rail_receipt["blockRef"]["timestamp"] > started_at):
             raise Invalid("rail authority postdates the session start")
@@ -1225,9 +1263,11 @@ def resolve_session_rail_state(session, rail_ref, rail, authority, **pins):
         return status, reason, None
     binding = {"retainedStateText": pins["retained_state"].decode("utf-8"),
                "railRef": rail_ref, "rail": rail, "authority": authority}
+    # This is a persistence envelope, not a signed artifact. JCS here would
+    # normalize the embedded raw JSON text, including its literal member names.
     retained = ResolvedSessionRail(
         sha256_hex(jcs_bytes(authority["railRegistryIndex"])), content_hash(rail),
-        jcs_bytes(binding))
+        json.dumps(binding, ensure_ascii=False, sort_keys=True).encode("utf-8"))
     return status, reason, retained
 
 

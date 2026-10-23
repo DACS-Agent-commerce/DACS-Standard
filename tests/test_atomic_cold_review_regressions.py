@@ -85,7 +85,7 @@ class AtomicColdReviewRegressions(unittest.TestCase):
             p=G.purchase_intent(current_profile=True)
             next(b for b in p['roleRoster'] if b['role']==role)['nativeAccount']='wrong-account'
             d=admission(p)
-            if role=='orchestrator': d['authority']['orchestratorBundle']=G.identity_bundle(role)
+            if role=='orchestrator': d['authority']['orchestratorBundle']=G.identity_bundle(role);G.add_composed_limit_evidence(d)
             self.verdict('purchase-admission', d, 'fail')
         for role in ('buyer','orchestrator'):
             original=G.identity_bundle
@@ -101,11 +101,11 @@ class AtomicColdReviewRegressions(unittest.TestCase):
                 p=G.purchase_intent(current_profile=True)
                 next(v for v in p['roleRoster'] if v['role']==role)['nativeAccount']=f'dem-test-{role}'
                 d=admission(p)
-                if role=='orchestrator':d['authority']['orchestratorBundle']=G.identity_bundle(role)
+                if role=='orchestrator':d['authority']['orchestratorBundle']=G.identity_bundle(role);G.add_composed_limit_evidence(d)
                 self.verdict('purchase-admission',d,'pass')
                 next(v for v in p['roleRoster'] if v['role']==role)['nativeAccount']='wrong-account'
                 d=admission(p)
-                if role=='orchestrator':d['authority']['orchestratorBundle']=G.identity_bundle(role)
+                if role=='orchestrator':d['authority']['orchestratorBundle']=G.identity_bundle(role);G.add_composed_limit_evidence(d)
                 self.verdict('purchase-admission',d,'fail')
 
     def test_all_agreement_selectors_are_exclusive(self):
@@ -174,7 +174,7 @@ class AtomicColdReviewRegressions(unittest.TestCase):
             op=p['operations'][index]
             receipts[role]=G.registry_anchor_receipt(op['payload']['logicalAddress'],op['payload']['artifact'],label=role,nonce=str(index+10))
             op['kind']='assert-artifact';op['payload']={'artifact':op['payload']['artifact']}
-        d=admission(p);d['vetReceipts']=receipts
+        d=admission(p);d['vetReceipts']=receipts;G.add_composed_limit_evidence(d)
         self.verdict('purchase-admission',d,'pass')
         d['vetReceipts']['buyer']['state']='included'
         self.verdict('purchase-admission',d,'fail')
@@ -302,16 +302,16 @@ class AtomicColdReviewRegressions(unittest.TestCase):
         failed=G.failed_delivery_material(p,pr)
         d={**PINS,**failed,'publicKeys':G.PUBLIC_KEYS,'capability':G.capability(),'purchaseIntent':p,'purchaseReceipt':pr,'paymentEvidence':entry,'authorizationAuthority':G.authorization_authority(p),'remedy':'ordinary-failure-record'}
         for outcome,fault,expected in (('failed-counterparty','seller','pass'),('aborted-by-self','buyer','fail'),('aborted-by-other','seller','fail')):
-            bundle=G.role_bundle(p,[entry,failed['failureDeliveryEvidence']],role='buyer',outcome=outcome,faulted=fault,signers=('buyer',))
+            bundle=G.role_bundle(p,[entry,failed['failureDeliveryEvidence']],role='buyer',outcome=outcome,faulted=fault,signers=('buyer','seller','orchestrator'))
             d['failureRecord']=G.published_bundle(p,bundle,state='included')
             self.verdict('post-purchase',d,expected)
 
     def test_post_payment_audit_substrate_failure_keeps_successful_delivery(self):
         p=self.audit['purchaseIntent'];pr=self.audit['purchaseReceipt']
         entries=self.audit['st11Closure']['settlementEvidence']
-        bundle=G.role_bundle(p,entries,role='buyer',outcome='failed-substrate',faulted='none',signers=('buyer',))
+        bundle=G.role_bundle(p,entries,role='buyer',outcome='failed-substrate',faulted='none',signers=('buyer','seller','orchestrator'))
         bundle['phaseSummary'][-1]={'index':3,'kind':'deliver-storage-program','outcome':'ok'}
-        bundle=G.sign_bundle(bundle,('buyer',))
+        bundle=G.sign_bundle(bundle,('buyer','seller','orchestrator'))
         d={**PINS,'publicKeys':G.PUBLIC_KEYS,'capability':G.capability(),'purchaseIntent':p,'purchaseReceipt':pr,
            'paymentEvidence':entries[0],'authorizationAuthority':G.authorization_authority(p),'remedy':'ordinary-failure-record',
            'failureCompletionIntent':self.audit['completionIntent'],'failureCompletionReceipt':self.audit['completionReceipt'],
@@ -349,6 +349,11 @@ class AtomicColdReviewRegressions(unittest.TestCase):
         kwargs=dict(amendment_address=f"dacs4:amendment:{ev['jobId']}:{digest}:0",orchestrator=G.CLAIMS['orchestrator'],writer=G.CLAIMS['orchestrator'],public_keys=G.PUBLIC_KEYS,network_authority=G.CLAIMS['network'],network_id=ev['networkId'],proof_profile=PINS['expectedProofProfile'],validator_set_id='test-validator-set-1',retained_state=json.dumps(state).encode('utf-8'))
         resolved={'artifact':json.dumps(ev).encode('utf-8'),'anchorReceipts':[entry['publication']['anchorReceipt']],'publication':entry['publication']}
         self.assertEqual(PC.consume_amendment_target(a,lambda _:resolved,**kwargs)[0],'valid')
+        duplicate=copy.deepcopy(resolved)
+        proof=duplicate['anchorReceipts'][0]['evidence']
+        raw=R.b64u_decode(proof['value'])
+        proof['value']=R.b64u(b'{"writer":"ignored-first-value",'+raw[1:])
+        self.assertNotEqual(PC.consume_amendment_target(a,lambda _:duplicate,**kwargs)[0],'valid')
         bad=copy.deepcopy(resolved);bad['anchorReceipts'][0]['contentHash']='00'*32
         self.assertNotEqual(PC.consume_amendment_target(a,lambda _:bad,**kwargs)[0],'valid')
         self.assertEqual(PC.consume_amendment_target(a,lambda _:resolved,**{**kwargs,'retained_state':None})[0],'indeterminate')

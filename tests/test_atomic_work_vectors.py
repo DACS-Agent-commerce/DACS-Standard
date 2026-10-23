@@ -2344,7 +2344,7 @@ class AtomicPredicatePinWitnessTests(unittest.TestCase):
         ("_verify_failure_record", "faultedParty is outside the permissible set for this outcome and role", (
             ("awp-post-purchase-failure-record-attribution-invalid", PASS),
         )),
-        ("_verify_failure_record", "failure bundle is not signed by its anchoring role holder", (
+        ("_verify_failure_record", "failure bundle is missing a required party signature", (
             ("awp-post-purchase-failure-record-unsigned", PASS),
         )),
         ("_verify_failure_record", "failure bundle evidence differs from the exact phase-result set", (

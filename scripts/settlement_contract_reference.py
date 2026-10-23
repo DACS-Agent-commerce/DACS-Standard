@@ -1075,7 +1075,7 @@ def consume_amendment_target(
                 atomic._verify_atomic_publication(
                     publication, published, receipt["logicalAddress"], public_keys,
                     network_authority=network_authority, network_id=network_id,
-                    proof_profile=proof_profile, validator_set_id=validator_set_id)
+                    proof_profile=proof_profile, validator_set_id=validator_set_id, writer=writer)
             except atomic.Unknown as exc:
                 raise Unknown(str(exc)) from exc
 

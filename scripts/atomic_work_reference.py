@@ -30,6 +30,7 @@ if str(ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts"))
 
 from jcs import canonicalize  # noqa: E402
+import raw_json_profile  # noqa: E402
 from jsonschema import Draft202012Validator  # noqa: E402
 from referencing import Registry, Resource  # noqa: E402
 
@@ -457,7 +458,7 @@ def artifact_content_hash(value: dict[str, Any]) -> str:
                                    "identityBoundAgreementVersion", "identityBoundPayeeAgreementVersion",
                                    "sealedSelectionAgreementVersion")):
         return _agreement_hash(value)
-    if any(key in value for key in ("recordVersion", "finalityCommitmentVersion", "atomicEvidenceVersion", "amendmentVersion")):
+    if any(key in value for key in ("recordVersion", "finalityCommitmentVersion", "atomicEvidenceVersion", "amendmentVersion", "railVersion", "deliveryEvidenceVersion")):
         return sha256_hex(jcs_bytes({k: v for k, v in value.items() if k != "signature"}))
     return sha256_hex(jcs_bytes(value))
 
@@ -518,8 +519,8 @@ def verify_encoded_evidence(
     if evidence.get("kind") != expected_kind:
         raise Invalid(f"unexpected evidence kind {evidence.get('kind')!r}")
     try:
-        decoded = json.loads(b64u_decode(evidence.get("value", "")).decode("utf-8"))
-    except (Invalid, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        decoded = raw_json_profile.loads(b64u_decode(evidence.get("value", "")))
+    except (Invalid, raw_json_profile.RawJsonProfileError) as exc:
         raise Invalid(f"invalid encoded {expected_kind} evidence") from exc
     if not isinstance(decoded, dict):
         raise Invalid(f"decoded {expected_kind} evidence is not an object")
@@ -1560,8 +1561,8 @@ def verify_receipt(
     if witness_ref.get("kind") != "test-business-state-witness":
         raise Invalid("business-state evidence kind mismatch")
     try:
-        witness = json.loads(b64u_decode(witness_ref.get("value", "")).decode("utf-8"))
-    except (Invalid, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        witness = raw_json_profile.loads(b64u_decode(witness_ref.get("value", "")))
+    except (Invalid, raw_json_profile.RawJsonProfileError) as exc:
         raise Invalid("business-state witness encoding invalid") from exc
     if not isinstance(witness, dict):
         raise Invalid("business-state witness is not an object")
@@ -1841,8 +1842,8 @@ def evaluate_projection(data: dict[str, Any]) -> None:
     if anchor_evidence.get("kind") != "demos-work-operation-proof-v1":
         raise Invalid("projected receipt evidence kind mismatch")
     try:
-        resolved = json.loads(b64u_decode(anchor_evidence.get("value", "")).decode("utf-8"))
-    except (Invalid, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        resolved = raw_json_profile.loads(b64u_decode(anchor_evidence.get("value", "")))
+    except (Invalid, raw_json_profile.RawJsonProfileError) as exc:
         raise Invalid("projected receipt evidence encoding invalid") from exc
     expected_operation_ref = {
         "kind": "demos-work-operation-v1",
@@ -1949,13 +1950,25 @@ def _verify_rail_registry_resolution(
         index, index_receipt, rail_receipt,
     )):
         raise Unknown("finalized rail-registry index/definition resolution unavailable")
-    if (
-        set(index) != {"registryVersion", "logicalAddress", "entries"}
-        or index.get("registryVersion") != registry_version
-        or index.get("logicalAddress") != "dacs4:registry:v0.1"
-        or not isinstance(index.get("entries"), list)
-    ):
+    from settlement_contract_reference import _index_entry_valid, _shapes
+    if (not {"registryIndexVersion", "registryKind", "revision", "entries"} <= set(index)
+            or index.get("registryIndexVersion") != "1" or index.get("registryKind") != "rail"
+            or type(index.get("revision")) is not int or index["revision"] != registry_version
+            or not isinstance(index.get("entries"), list)
+            or not all(_index_entry_valid(_shapes(), e) for e in index["entries"])):
         raise Invalid("rail-registry index snapshot is malformed or unpinned")
+    snapshot_hash = sha256_hex(jcs_bytes(index))
+    keys = [(e["id"], e["version"]) for e in index["entries"]]
+    if len(keys) != len(set(keys)):
+        raise Invalid("duplicate rail-registry version")
+    listed = [e for e in index["entries"] if e["id"] == rail["railId"]]
+    index = {"entries": [{"railId": rail["railId"],
+        "latestVersion": max((e["version"] for e in listed), default=0),
+        "versions": [{"railVersion": e["version"], "logicalAddress": rail_receipt.get("logicalAddress"),
+                      "contentHash": e["contentHash"]} for e in listed]}]}
+    if not any(e["version"] == rail["railVersion"] and e["anchor"]["kind"] == "storage-program"
+               and e["anchor"]["locator"] == rail_receipt.get("nativeAddress") for e in listed):
+        raise Invalid("registry rail native address does not match its receipt")
     entries = index["entries"]
     matching = [
         entry for entry in entries
@@ -2011,12 +2024,12 @@ def _verify_rail_registry_resolution(
     )
     if selected.get("logicalAddress") != expected_address:
         raise Invalid("registry selected a non-canonical rail definition address")
-    rail_hash = sha256_hex(jcs_bytes(rail))
+    rail_hash = artifact_content_hash(rail)
     if selected.get("contentHash") != rail_hash:
         raise Invalid("pinned registry rail content hash mismatch")
     _verify_anchor_receipt(
         index_receipt, logical="dacs4:registry:v0.1",
-        content_hash=sha256_hex(jcs_bytes(index)), public_keys=public_keys,
+        content_hash=snapshot_hash, public_keys=public_keys,
         network_authority=network_authority, network_id=network_id,
         proof_profile=proof_profile, validator_set_id=validator_set_id,
     )
@@ -2339,6 +2352,8 @@ def _verify_listing(listing: dict[str, Any], public_keys: dict[str, str]) -> Non
 def _verify_agreement_listing(
     agreement: dict[str, Any], listing: dict[str, Any], committed_at: int | None
 ) -> None:
+    if "priorPaymentDispositionRef" in agreement.get("terms", {}):
+        raise Invalid("concrete pay-dem forbids priorPaymentDispositionRef (check 10)")
     artifact_kind = _agreement_artifact_kind(agreement)
     listing_hash = sha256_hex(jcs_bytes({k: v for k, v in listing.items() if k != "signature"}))
     if not _json_equal(agreement.get("listingRef"), {
@@ -2585,6 +2600,7 @@ def _verify_atomic_payment_session_context(
     payer_bundle: dict[str, Any], payee_bundle: dict[str, Any],
     orchestrator: str, network_authority: str,
     public_keys: dict[str, str], proof_profile: str, validator_set_id: str,
+    vet_receipts: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     source_fields = {
         "jobId", "listingRef", "recipeRegistryVersion",
@@ -2689,6 +2705,19 @@ def _verify_atomic_payment_session_context(
             unsigned_ref = {
                 key: present_ref[key] for key in ("anchor", "contentHash")
             }
+            if (unsigned_ref["contentHash"] != expected_ref["contentHash"]
+                    or unsigned_ref["anchor"]["kind"] != "storage-program"):
+                raise Invalid("Session/agreement Vet reference content mismatch")
+            if not _json_equal(unsigned_ref, expected_ref):
+                anchor = (vet_receipts or {}).get(role)
+                if not isinstance(anchor, dict):
+                    raise Unknown("finalized native Vet reference mapping unavailable")
+                _verify_anchor_receipt(anchor, logical=expected_ref["anchor"]["locator"],
+                    content_hash=expected_ref["contentHash"], public_keys=public_keys,
+                    network_authority=network_authority, network_id=source_intent["networkId"],
+                    proof_profile=proof_profile, validator_set_id=validator_set_id)
+                expected_ref = {"anchor": {"kind": "storage-program", "locator": anchor["nativeAddress"]},
+                                "contentHash": expected_ref["contentHash"]}
             if not _json_equal(unsigned_ref, expected_ref) or (
                 "signer" in present_ref
                 and not claim_equal(present_ref["signer"], record_signer)
@@ -2841,7 +2870,7 @@ def _verified_authority_context(
         orchestrator=orchestrator,
         network_authority=claim_key(capability["networkAuthority"]),
         public_keys=public_keys, proof_profile=expected_proof_profile,
-        validator_set_id=capability["validatorSetId"],
+        validator_set_id=capability["validatorSetId"], vet_receipts=authority.get("vetReceipts"),
     )
     _verify_rail_registry_resolution(
         authority, rail_definition, public_keys=public_keys,
@@ -3056,7 +3085,7 @@ def _verify_atomic_delivery_eligibility(listing: dict[str, Any], payment_index: 
             or delivery[0][0] <= payment_index):
         raise Invalid("Atomic Purchase requires one subsequent storage delivery under PIPE-4")
     spec = listing.get("offering", {}).get("deliverable", {})
-    if spec.get("kind") != "storage-program" or spec.get("accessModel") != "public":
+    if spec.get("kind") != "storage-program" or spec.get("accessModel", "public") != "public":
         raise Invalid("Atomic v1 supports only public storage-program delivery")
 
 
@@ -3559,7 +3588,7 @@ def evaluate_slot_distinction(data: dict[str, Any]) -> None:
 def _verify_atomic_publication(
     publication: dict[str, Any] | None, evidence: dict[str, Any], address: str,
     public_keys: dict[str, str], *, network_authority: str,
-    network_id: str, proof_profile: str, validator_set_id: str,
+    network_id: str, proof_profile: str, validator_set_id: str, writer: str,
 ) -> None:
     if not isinstance(publication, dict):
         raise Unknown("finalized Atomic evidence publication unavailable")
@@ -3621,6 +3650,16 @@ def _verify_atomic_publication(
         or isinstance(anchor.get("observedAt"), bool)
     ):
         raise Invalid("Atomic publication AnchorReceipt binding mismatch")
+    block = anchor["blockRef"]
+    if (not set(block) <= {"id", "height", "timestamp"}
+            or not isinstance(block.get("id"), str) or not block["id"]
+            or ("height" in block and (not isinstance(block["height"], str)
+                or re.fullmatch(r"0|[1-9][0-9]*", block["height"]) is None))
+            or ("timestamp" in block and (type(block["timestamp"]) not in (int, float)
+                or not 0 <= block["timestamp"] <= SAFE_INT_MAX))
+            or not 0 <= anchor["observedAt"] <= SAFE_INT_MAX
+            or anchor["writer"] != writer):
+        raise Invalid("Atomic publication block or authorized writer mismatch")
     proof = verify_encoded_evidence(
         anchor["evidence"], "test-anchor-publication", public_keys,
         _PUBLICATION_TEST_DOMAIN, expected_signer=network_authority,
@@ -3698,6 +3737,8 @@ def verify_settlement(data: dict[str, Any]) -> None:
         authority.get("purchaseIntent"), data.get("purchaseIntent")
     ):
         raise Invalid("Completion settlement authority differs from verified Purchase intent")
+    authority = {**authority, "vetReceipts": data.get("vetReceipts", authority.get("vetReceipts", {}))}
+    data = {**data, "authority": authority}
     authority_receipt = (
         data.get("purchaseReceipt")
         if intent.get("profile") == "dacs-completion-v1"
@@ -3810,8 +3851,8 @@ def verify_settlement(data: dict[str, Any]) -> None:
     if any(subject.get(key) != value for key, value in expected_subject.items()):
         raise Invalid("operation proof subject required member mismatch")
     try:
-        decoded_path = json.loads(b64u_decode(proof.get("value", "")).decode("utf-8"))
-    except (Invalid, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        decoded_path = raw_json_profile.loads(b64u_decode(proof.get("value", "")))
+    except (Invalid, raw_json_profile.RawJsonProfileError) as exc:
         raise Invalid("operation proof value encoding invalid") from exc
     verify_capability(capability, data["publicKeys"], data.get("expectedNetworkAuthority"))
     if proof.get("proofProfile") != capability.get("proofProfile"):
@@ -3886,7 +3927,7 @@ def verify_settlement(data: dict[str, Any]) -> None:
         network_authority=claim_key(capability["networkAuthority"]),
         network_id=intent["networkId"],
         proof_profile=data.get("expectedProofProfile"),
-        validator_set_id=capability["validatorSetId"],
+        validator_set_id=capability["validatorSetId"], writer=authority_context["orchestrator"],
     )
     if data.get("auditWrite", {}).get("resubmitsPayment"):
         raise Invalid("audit tail resubmits payment")
@@ -4095,13 +4136,17 @@ def _verify_role_bundle_publication(
     binding = entry.get("bundleBinding")
     if not isinstance(binding, dict):
         raise Unknown("BundleBinding unavailable")
-    verify_embedded(binding, data["publicKeys"], _BINDING_TEST_DOMAIN)
+    verify_embedded(binding, data["publicKeys"], b"dacs-bundle-binding:v1:")
     require_signer(binding, roster[role])
+    if not claim_equal(binding.get("signer"), roster[role]):
+        raise Invalid("BundleBinding signer does not hold the authenticated role")
     expected = {
         "bindingVersion": "1", "jobId": bundle["jobId"], "role": role,
         "logicalAddress": logical, "nativeAddress": receipt["nativeAddress"],
-        "contentHash": receipt["contentHash"],
+        "bundleContentHash": receipt["contentHash"],
     }
+    if "anchorTx" in binding and binding["anchorTx"] != receipt["transactionRef"]["value"]:
+        raise Invalid("BundleBinding anchorTx differs from anchor transaction")
     if any(binding.get(k) != v for k, v in expected.items()):
         raise Invalid("BundleBinding does not bind the anchored bundle copy")
 
@@ -4122,9 +4167,13 @@ def _verify_bundle_dependencies(bundle, intent, receipt, data):
     from settlement_contract_reference import _shapes
     if not _shapes()._absolute_fault_bundle_shape_valid(bundle, "evidence-bound"):
         raise Invalid("bundle is not a complete EvidenceBoundFaultAttestationBundle")
+    if bundle.get("amendments") or any(e.get("evidence", {}).get("amendmentRefs")
+            for e in data.get("st11Closure", {}).get("settlementEvidence", [])):
+        raise Unknown("referenced amendment dependency resolution unavailable")
     authority = data.get("authorizationAuthority")
     if not isinstance(authority, dict):
         raise Unknown("bundle Listing/agreement/session authority unavailable")
+    authority = {**authority, "vetReceipts": data.get("vetReceipts", authority.get("vetReceipts", {}))}
     context = _verified_authority_context(
         intent, authority, data["publicKeys"], data["capability"],
         data["expectedProofProfile"], data.get("expectedRailRegistryAuthority"),
@@ -4147,7 +4196,8 @@ def _verify_bundle_dependencies(bundle, intent, receipt, data):
         del expected_parties["orchestrator"]
     if not _json_equal(parties, expected_parties):
         raise Invalid("bundle parties differ from authenticated session")
-    expected_vets = [p["vetRecordRef"] for p in agreement["parties"]]
+    vets_by_role = {p["role"]: p["vetRecordRef"] for p in agreement["parties"]}
+    expected_vets = list(vets_by_role.values())
     if sorted(map(jcs_bytes, bundle["vetRecords"])) != sorted(map(jcs_bytes, expected_vets)):
         raise Invalid("bundle Vet set differs from authenticated agreement")
     commitment = intent["operations"][3]["payload"]["artifact"]
@@ -4163,8 +4213,8 @@ def _verify_bundle_dependencies(bundle, intent, receipt, data):
             anchor = data.get("vetReceipts", {}).get(role)
             if not isinstance(anchor, dict):
                 raise Unknown("finalized Vet publication unavailable")
-            _verify_anchor_receipt(anchor, logical=expected_vets[index]["anchor"]["locator"],
-                content_hash=expected_vets[index]["contentHash"], public_keys=data["publicKeys"],
+            _verify_anchor_receipt(anchor, logical=f"dacs2:composite:{intent['jobId']}:{cf4_encode(op['payload']['artifact']['evaluatedParty'])}",
+                content_hash=vets_by_role[role]["contentHash"], public_keys=data["publicKeys"],
                 network_authority=_network_authority(data), network_id=intent["networkId"],
                 proof_profile=data["expectedProofProfile"], validator_set_id=data["capability"]["validatorSetId"])
     pipeline = listing["pipeline"]
@@ -4174,7 +4224,7 @@ def _verify_bundle_dependencies(bundle, intent, receipt, data):
     for index, (row, step) in enumerate(zip(rows, pipeline)):
         if row["index"] != index or row["kind"] != step["kind"]:
             raise Invalid("bundle phaseSummary differs from signed pipeline")
-        if index < len(pipeline) - 1 and row["outcome"] != "ok":
+        if index < len(pipeline) - 1 and row["outcome"] != "ok" and row["kind"] != "rate":
             raise Invalid("bundle contradicts committed Purchase phases")
         if row.get("attestationRef") is not None and row["attestationRef"] not in bundle["settlementEvidence"] + bundle["vetRecords"]:
             raise Invalid("bundle phase back-pointer is outside its exact evidence set")
@@ -4189,7 +4239,7 @@ def _verify_bundle_dependencies(bundle, intent, receipt, data):
                              for entry in entries if entry["evidence"]["phaseIndex"] == index), None)
         if expected_ref is not None and row.get("attestationRef") is not None and not _json_equal(row["attestationRef"], expected_ref):
             raise Invalid("bundle phase back-pointer differs from its authenticated phase result")
-    last = rows[-1]
+    last = next((row for row in reversed(rows) if row["kind"] != "rate"), rows[-1])
     if bundle["outcome"] == "completed":
         if last["outcome"] != "ok":
             raise Invalid("completed bundle contains a failed phase")
@@ -4292,15 +4342,42 @@ def _verify_failure_record(
     )
     if faulted not in permitted:
         raise Invalid("faultedParty is outside the permissible set for this outcome and role")
-    if _bundle_signature_missing(bundle, role, roster, data["publicKeys"]):
-        raise Invalid("failure bundle is not signed by its anchoring role holder")
+    if any(_bundle_signature_missing(bundle, required, roster, data["publicKeys"])
+           for required in roles):
+        raise Invalid("failure bundle is missing a required party signature")
     delivery = data.get("failureDeliveryEvidence")
     completion_intent = data.get("failureCompletionIntent")
     completion_receipt = data.get("failureCompletionReceipt")
-    if not isinstance(completion_intent, dict) or not isinstance(completion_receipt, dict):
-        raise Unknown("failed delivery invocation and evidence unavailable")
-    _verify_published_evidence(delivery, completion_intent, completion_receipt,
-        "storage-program-put", roster["orchestrator"], data, expected_outcome="success" if bundle["phaseSummary"][-1]["outcome"] == "ok" else "failure")
+    if completion_intent is None and completion_receipt is None:
+        # AWP-17: refusal/timeout before Completion uses ordinary DeliveryEvidence.
+        from settlement_contract_reference import _shapes
+        evidence = delivery.get("evidence") if isinstance(delivery, dict) else None
+        if not isinstance(evidence, dict):
+            raise Unknown("ordinary failed delivery evidence unavailable")
+        if not _shapes()._delivery_evidence_shape_valid(evidence):
+            raise Invalid("ordinary failed delivery evidence is malformed")
+        rows = [r for r in bundle["phaseSummary"] if r["kind"] == "deliver-storage-program"]
+        if (len(rows) != 1 or rows[0]["outcome"] != "fail"
+                or evidence["jobId"] != intent["jobId"] or evidence["outcome"] != "failure"
+                or evidence["phase"] != rows[0]["kind"] or evidence["phaseIndex"] != rows[0]["index"]):
+            raise Invalid("ordinary delivery failure contradicts authenticated phase")
+        verify_embedded(evidence, data["publicKeys"], b"dacs-delivery-evidence:v1:")
+        require_signer(evidence, roster["orchestrator"])
+        anchor = delivery.get("publication", {}).get("anchorReceipt")
+        if not isinstance(anchor, dict) or anchor.get("state") not in {"included", "finalized"}:
+            raise Unknown("ordinary delivery failure publication unavailable")
+        _verify_anchor_receipt(anchor, logical=f"dacs4:delivery:{intent['jobId']}:{evidence['phaseIndex']}",
+            content_hash=artifact_content_hash(evidence), public_keys=data["publicKeys"],
+            network_authority=_network_authority(data), network_id=intent["networkId"],
+            proof_profile=data["expectedProofProfile"], validator_set_id=data["capability"]["validatorSetId"],
+            state=anchor["state"])
+        if anchor["writer"] != roster["orchestrator"]:
+            raise Invalid("ordinary failure publication writer is not phase orchestrator")
+    else:
+        if not isinstance(completion_intent, dict) or not isinstance(completion_receipt, dict):
+            raise Unknown("failed delivery invocation and evidence unavailable")
+        _verify_published_evidence(delivery, completion_intent, completion_receipt,
+            "storage-program-put", roster["orchestrator"], data, expected_outcome="success" if bundle["phaseSummary"][-1]["outcome"] == "ok" else "failure")
     refs = _evidence_refs(bundle)
     if len(refs) != 2 or set(refs) != {_published_ref(payment), _published_ref(delivery)}:
         raise Invalid("failure bundle evidence differs from the exact phase-result set")
@@ -4339,7 +4416,9 @@ def _verify_refund_amendment(
         amendment.get("jobId") != intent["jobId"]
         or not _valid_attestation_ref(target)
         or target["contentHash"] != evidence_hash
-        or target["anchor"]["locator"] != payment["evidenceAddress"]
+        or target["anchor"]["kind"] != "storage-program"
+        or target["anchor"]["locator"] not in {
+            payment["evidenceAddress"], payment["publication"]["anchorReceipt"]["nativeAddress"]}
     ):
         raise Invalid("SettlementAmendment is not linked to the original evidence")
     kind = amendment.get("amendmentType")
@@ -4636,6 +4715,14 @@ def composed_proof_material(data: dict[str, Any]) -> dict[str, Any]:
         "purchaseReceiptProofs": receipt_proofs(data.get("purchaseReceipt")),
         "purchaseCommitmentProjection": data.get("purchaseCommitmentProjection"),
     }
+    vet_receipts = data.get("vetReceipts", authority.get("vetReceipts"))
+    if vet_receipts:
+        material["vetReceipts"] = vet_receipts
+    if authority.get("orchestratorBundle"):
+        material["orchestratorBundlePresentation"] = authority["orchestratorBundle"].get("presentation")
+    source = data.get("purchaseIntent") or data.get("intent", {})
+    material["vetArtifactSignatures"] = [op.get("payload", {}).get("artifact", {}).get("signature")
+        for op in source.get("operations", [])[:2]]
     slot_admission = data.get("slotAdmission")
     if isinstance(slot_admission, dict):
         material["admissionSlotLedgerProof"] = slot_admission.get("ledgerProof")
@@ -4812,6 +4899,8 @@ def _evaluate_composed_admission(
         raise Unknown("composed admission authority unavailable")
     if not isinstance(receipt, dict):
         raise Unknown("common finalized Work receipt unavailable")
+    authority = {**authority, "vetReceipts": data.get("vetReceipts", authority.get("vetReceipts", {}))}
+    data = {**data, "authority": authority}
     authority_receipt = (
         data.get("purchaseReceipt")
         if expected_profile == "dacs-completion-v1" else receipt

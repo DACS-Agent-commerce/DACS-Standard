@@ -572,30 +572,15 @@ def rail_registry_material(
         f"dacs4:rail:{ref.cf4_encode(rail['railId'])}:"
         f"{rail['railVersion']}"
     )
+    rail_receipt = registry_anchor_receipt(rail_address, rail, label="rail-definition", nonce="201")
     index = {
-        "registryVersion": 1,
-        "logicalAddress": "dacs4:registry:v0.1",
-        "entries": [{
-            "railId": rail["railId"],
-            "latestVersion": rail["railVersion"],
-            "versions": [{
-                "railVersion": rail["railVersion"],
-                "logicalAddress": rail_address,
-                "contentHash": ref.sha256_hex(ref.jcs_bytes(rail)),
-            }],
-        }],
+        "registryIndexVersion": "1", "registryKind": "rail", "revision": 1,
+        "entries": [{"id": rail["railId"], "version": rail["railVersion"],
+                     "anchor": {"kind": "storage-program", "locator": rail_receipt["nativeAddress"]},
+                     "contentHash": ref.artifact_content_hash(rail)}],
     }
-    return (
-        index,
-        registry_anchor_receipt(
-            index["logicalAddress"], index,
-            label="rail-index", nonce="200",
-        ),
-        registry_anchor_receipt(
-            rail_address, rail,
-            label="rail-definition", nonce="201",
-        ),
-    )
+    return (index, registry_anchor_receipt("dacs4:registry:v0.1", index,
+            label="rail-index", nonce="200"), rail_receipt)
 
 
 def portable_session_context_source(intent: dict[str, Any]) -> dict[str, Any]:
@@ -1846,13 +1831,13 @@ def authorization_vectors() -> list[dict[str, Any]]:
 
     noncanonical_registry_address = copy.deepcopy(base)
     bad_index = noncanonical_registry_address["authority"]["railRegistryIndex"]
-    bad_index["entries"][0]["versions"][0]["logicalAddress"] = (
+    bad_index["entries"][0]["anchor"]["locator"] = (
         "dacs4:rail:attacker-selected:1"
     )
     noncanonical_registry_address["authority"][
         "railRegistryIndexReceipt"
     ] = registry_anchor_receipt(
-        bad_index["logicalAddress"], bad_index,
+        "dacs4:registry:v0.1", bad_index,
         label="rail-index-address-substitution", nonce="202",
     )
     payee_bound_intent = purchase_intent(payee_bound=True)
@@ -2831,7 +2816,7 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     def failure_record(**bundle_options: Any) -> dict[str, Any]:
         """The buyer's fault copy after the seller fails to deliver."""
         options = {"role": "buyer", "outcome": "failed-counterparty",
-                   "faulted": "seller", "signers": ("buyer",), **bundle_options}
+                   "faulted": "seller", "signers": ("buyer", "seller", "orchestrator"), **bundle_options}
         return role_bundle(remedy_purchase, [remedy_payment, failed_delivery["failureDeliveryEvidence"]], **options)
 
     def failure_input(bundle: dict[str, Any] | None, *, job: str | None = None,
@@ -2846,7 +2831,7 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
 
     other_failure = failure_record(outcome="aborted-by-other")
     wrong_job_failure = sign_bundle(
-        {**failure_record(), "jobId": "01K1DPA0000000000000000001"}, ("buyer",))
+        {**failure_record(), "jobId": "01K1DPA0000000000000000001"}, ("buyer", "seller", "orchestrator"))
     failure_anchor_missing = failure_input(failure_record())
     del failure_anchor_missing["failureRecord"]["anchorReceipt"]
     remedy_hash = ref.atomic_evidence_hash(remedy_evidence)
@@ -2981,7 +2966,7 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         vector("awp-post-purchase-failure-record-missing", ["AWP-17"], "post-purchase", failure_input(None), "indeterminate", "Without the role-specific failure bundle no ordinary failure record is established.", boundary_rules=["AWP-17"]),
         vector("awp-post-purchase-failure-record-unsigned", ["AWP-17"], "post-purchase", failure_input(failure_record(signers=("seller",))), "fail", "A fault copy anchored by the buyer must carry the buyer's signature; the counterparty's signature is not that authority."),
         vector("awp-post-purchase-failure-record-attribution-invalid", ["AWP-17"], "post-purchase", failure_input(failure_record(faulted="buyer")), "fail", "failed-counterparty anchored by the buyer cannot name the buyer as faulted party (DACS-5 §10.4.1)."),
-        vector("awp-post-purchase-failure-record-omits-payment", ["AWP-17"], "post-purchase", failure_input(role_bundle(remedy_purchase, [], role="buyer", outcome="failed-counterparty", faulted="seller", signers=("buyer",))), "fail", "A post-Purchase failure record cannot drop or reverse the final Purchase payment evidence."),
+        vector("awp-post-purchase-failure-record-omits-payment", ["AWP-17"], "post-purchase", failure_input(role_bundle(remedy_purchase, [], role="buyer", outcome="failed-counterparty", faulted="seller", signers=("buyer", "seller", "orchestrator"))), "fail", "A post-Purchase failure record cannot drop or reverse the final Purchase payment evidence."),
         vector("awp-post-purchase-failure-record-wrong-job", ["AWP-17"], "post-purchase", failure_input(wrong_job_failure, job="01K1DPA0000000000000000001"), "fail", "A re-signed fault copy for another job, anchored and bound at that job's address, is not this Purchase's failure record."),
         vector("awp-post-purchase-failure-record-anchor-missing", ["AWP-17"], "post-purchase", failure_anchor_missing, "indeterminate", "A fault copy without its anchor receipt is not yet an established failure record.", boundary_rules=["AWP-17"]),
         vector("awp-post-purchase-failure-record-anchor-other-content", ["AWP-17"], "post-purchase", failure_input(failure_record(), anchored=other_failure), "fail", "An authentic anchor binding another fault copy contradicts the presented record."),
@@ -3912,10 +3897,10 @@ def bundle_binding(intent: dict[str, Any], role: str, storage: dict[str, Any]) -
         "role": role,
         "logicalAddress": storage["logicalAddress"],
         "nativeAddress": storage["nativeAddress"],
-        "contentHash": storage["contentHash"],
+        "bundleContentHash": storage["contentHash"], "signer": CLAIMS[role],
     }
     return ref.sign_embedded(
-        value, CLAIMS[role], SEEDS[role], ref._BINDING_TEST_DOMAIN
+        value, CLAIMS[role], SEEDS[role], b"dacs-bundle-binding:v1:"
     )
 
 
@@ -4794,7 +4779,7 @@ def predicate_pin_vectors(
                 index, _, rail_receipt = real(rail)
                 edit(index)
                 return index, registry_anchor_receipt(
-                    index["logicalAddress"], index, label="rail-index", nonce="200",
+                    "dacs4:registry:v0.1", index, label="rail-index", nonce="200",
                 ), rail_receipt
             return fake
         return ("rail_registry_material", wrap)
@@ -4996,8 +4981,8 @@ def predicate_pin_vectors(
         vector("awp-composed-listing-dacs-version-2", ["AWP-7"], "purchase-admission", composed_variant((listing_edit(lambda l: l.update(dacsVersion="2")),)), "fail", "A re-signed Listing with an unsupported dacsVersion is malformed."),
         vector("awp-composed-two-pay-dem-phases", ["AWP-20"], "purchase-admission", two_pay_dem, "fail", "A pipeline with two pay-dem phases does not have exactly one Atomic payment."),
         vector("awp-composed-rail-phase-handler-not-pay-dem", ["AWP-20"], "purchase-admission", composed_variant((embedded_edit("rail_definition", lambda r: r.update(phaseHandler="pay-evm"), "network", ref._RAIL_DOMAIN),)), "fail", "A network-signed, registry-pinned native-DEM RailDefinition whose phaseHandler is not pay-dem is rejected."),
-        vector("awp-composed-registry-index-version-differs", ["AWP-7"], "purchase-admission", composed_variant((registry_edit(lambda i: i.update(registryVersion=2)),)), "fail", "A finalized registry index with an unsupported registryVersion is not a pinned snapshot."),
-        vector("awp-composed-registry-index-content-hash-differs", ["AWP-7"], "purchase-admission", composed_variant((registry_edit(lambda i: i["entries"][0]["versions"][0].update(contentHash="00" * 32)),)), "fail", "A finalized registry index that pins another rail content hash does not resolve the presented rail."),
+        vector("awp-composed-registry-index-version-differs", ["AWP-7"], "purchase-admission", composed_variant((registry_edit(lambda i: i.update(revision=2)),)), "fail", "A finalized registry index with an unsupported registryVersion is not a pinned snapshot."),
+        vector("awp-composed-registry-index-content-hash-differs", ["AWP-7"], "purchase-admission", composed_variant((registry_edit(lambda i: i["entries"][0].update(contentHash="00" * 32)),)), "fail", "A finalized registry index that pins another rail content hash does not resolve the presented rail."),
         vector("awp-composed-payer-bundle-presentation-invalid", ["AWP-7"], "purchase-admission", composed_variant(edit=bad_bundle_presentation), "fail", "A payer IdentityBundle with an invalid presentation signature is not payer authority."),
         vector("awp-composed-agreement-discriminator-version-2", ["AWP-4"], "purchase-admission", composed_variant((agreement_edit(lambda a: a.update(identityBoundPayeeAgreementVersion="2")),)), "fail", "A re-signed Agreement with an unsupported discriminator version is not IdentityBoundPayeeAgreementV1."),
         vector("awp-composed-payee-bound-agreement-with-current-admission", ["AWP-4"], "purchase-admission", payee_bound_with_current_admission(), "fail", "A current Atomic payment requires the identity-bound payee agreement, not a legacy payee-bound one, even with a current-profile admission."),

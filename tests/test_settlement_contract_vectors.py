@@ -959,7 +959,7 @@ class SettlementContractTests(unittest.TestCase):
         for name in ("session-registry-version-zero", "session-registry-version-negative"):
             with self.subTest(case=name):
                 self.assertEqual(self.resolve_rail(names[name]), (
-                    "rejected", "session pins are not an integer start and a positive registry version"))
+                    "rejected", "session pins are not a non-negative time and a positive registry version"))
         # PA-1 and PA-3 rail authority is not implemented here: never verified.
         for name, anchoring in (("pa3-multisig-rail-not-implemented", "multisig"),
                                 ("pa1-in-code-rail-not-implemented", "in-code")):
@@ -1039,6 +1039,29 @@ class SettlementContractTests(unittest.TestCase):
                 result, reason = self.consume(with_receipt(bad))
                 self.assertEqual(result, "indeterminate")
                 self.assertIn(message, reason)
+
+    def test_receipt_callback_preserves_snapshot_scope_and_lifecycle_checks(self):
+        vector = next(v for v in self.data["amendmentTargets"] if v["name"] == "ordinary-target")
+        receipt = vector["resolved"]["anchorReceipts"][0]
+        other = self.resign_receipt(receipt, contentHash="ab" * 32)
+        reorg = self.resign_receipt(receipt, state="reorged")
+        pins = {"writer": self.data["orchestratorWriter"],
+                "public_keys": self.data["publicKeys"], **TRUST}
+        for history in ([other, receipt], [receipt, other], [receipt, reorg], [reorg, receipt]):
+            with self.subTest(states=[r["state"] for r in history]):
+                verifier = mock.Mock(side_effect=lambda r: ref._verify_finality_proof(r, **pins))
+                kwargs = {"selected_content_hash": receipt["contentHash"], "verify_receipt": verifier}
+                if reorg in history:
+                    with self.assertRaisesRegex(ref.Unknown, "SR2-7"):
+                        ref._sole_carrier(history, "snapshot", lambda _: None, **kwargs)
+                else:
+                    self.assertEqual(ref._sole_carrier(history, "snapshot", lambda _: None, **kwargs),
+                                     receipt)
+                self.assertEqual(verifier.call_args_list, [mock.call(r) for r in history])
+        # Missing Atomic proof authority keeps its pending disposition and cause.
+        with self.assertRaisesRegex(ref.Unknown, "anchor is not authentic: proof unavailable"):
+            ref._sole_carrier([receipt], "snapshot", lambda _: None,
+                              verify_receipt=mock.Mock(side_effect=ref.Unknown("proof unavailable")))
 
     def test_amendment_and_target_are_admitted_from_their_received_bytes(self):
         # CORE CF-5: a duplicate member another parser reads differently is

@@ -1593,8 +1593,8 @@ def _verify(value: Any, trusted: Any) -> dict:
         retained_by_job.get(value["evidence"]["jobId"]) if isinstance(retained_by_job, dict) else None,
         value["rail"], value["evidence"]["railDefinitionRef"],
         value["evidence"]["jobId"], trusted.get("railAuthorityPolicy"))
-    if retained_status != "verified":
-        return _result("fail" if retained_status == "rejected" else "indeterminate", retained_reason)
+    if retained_status == "rejected":
+        return _result("fail", retained_reason)
     report_decision, report_reason = _report_shape(value["evidence"].get("settlementFinality"), profile)
     if report_decision != "pass":
         return _result(report_decision, report_reason)
@@ -1614,14 +1614,21 @@ def _verify(value: Any, trusted: Any) -> dict:
         )
         if result["decision"] == "pass" and event.get("eventType") != "transfer":
             return _result("fail", "single-chain finality selected a non-transfer event")
+    elif model == "provider-receipt":
+        result = _verify_provider(value, profile, expected, trusted)
+    elif model == "htlc-reveal":
+        result = _verify_htlc(value, profile, value["rail"], expected, trusted)
+    elif model == "liquidity-tank":
+        result = _verify_tank(value, profile, value["rail"], expected, trusted)
+    else:
+        return _result("error", "unsupported finality model")
+    # FV-10: missing retained authority must not mask independently established
+    # encoding errors or authenticated contradictions in the available proof.
+    if result["decision"] in {"error", "fail"}:
         return result
-    if model == "provider-receipt":
-        return _verify_provider(value, profile, expected, trusted)
-    if model == "htlc-reveal":
-        return _verify_htlc(value, profile, value["rail"], expected, trusted)
-    if model == "liquidity-tank":
-        return _verify_tank(value, profile, value["rail"], expected, trusted)
-    return _result("error", "unsupported finality model")
+    if retained_status != "verified":
+        return _result("indeterminate", retained_reason)
+    return result
 
 
 def _verify_single_view_finality(value: Any, trusted: Any) -> dict:

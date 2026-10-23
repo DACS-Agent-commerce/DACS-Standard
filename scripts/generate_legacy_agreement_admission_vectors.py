@@ -866,9 +866,9 @@ def vectors() -> list[dict]:
         ),
         case(
             "laa-transition-audit-phase-index-noninteger", "error",
-            "a numerically equal floating point phase index is malformed",
+            "a fractional transition-evidence phase index is malformed",
             operation="transition-audit",
-            changes={"transitionEvidence": {"phaseIndex": 2.0}},
+            changes={"transitionEvidence": {"phaseIndex": 2.5}},
         ),
         case(
             "laa-transition-audit-txrefs-duplicate", "fail",

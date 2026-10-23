@@ -13,8 +13,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 if __package__:
     from scripts.jcs import canonicalize as jcs_canonicalize
+    from scripts.secp256k1_fixture import deterministic_ecdsa_signature, fixture_private_value
 else:  # Direct execution from scripts/.
     from jcs import canonicalize as jcs_canonicalize
+    from secp256k1_fixture import deterministic_ecdsa_signature, fixture_private_value
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -98,6 +100,7 @@ ROTATED_KEY = private_key("rsc-seller-rotated")
 OUTSIDER_KEY = private_key("rsc-outsider")
 CURRENT_STATE_KEY = private_key("rsc-test-current-state-authority")
 KEY_LIFECYCLE_AUTHORITY_KEY = private_key("rsc-test-key-lifecycle-authority")
+ECDSA_FIXTURE_VALUE = fixture_private_value(b"rsc-ecdsa-unavailable")
 KEY_LIFECYCLE_DOMAIN = "dacs-key-lifecycle:v1:"
 KEY_LIFECYCLE_KIND = "dacs1-key-lifecycle-attestation"
 SELLER = "did:example:seller"
@@ -743,7 +746,13 @@ def build_vectors() -> list[dict]:
     wrong_algorithm = input_for(TARGET_HEAD, TARGET_LEAVES, discovery_status="revoked")
     for item in wrong_algorithm["resolutionContext"]["resolvedMarkers"]:
         if item["revocationRef"]["contentHash"] == TARGET_REF["contentHash"]:
+            # A registered algorithm the fixture resolver lacks, in its CORE
+            # §B.7 encoding, so the case stays about availability.
+            payload = (MARKER_DOMAIN + artifact_hash(item["marker"])).encode("ascii")
             item["marker"]["signature"]["algorithm"] = "ecdsa-secp256k1"
+            item["marker"]["signature"]["value"] = b64url(
+                deterministic_ecdsa_signature(ECDSA_FIXTURE_VALUE, payload)
+            )
 
     higher_head, higher_leaves = append_head(OTHER_HEAD, OTHER_LEAVES, TARGET, TARGET_REF)
     higher = input_for(OTHER_HEAD, OTHER_LEAVES, conflicting_heads=[history_item(higher_head)])
@@ -1022,7 +1031,7 @@ def build_vectors() -> list[dict]:
         vector("rsc-authorized-rotation-key", "fail", "an authenticated rotated seller key may append an exact revocation through the RSC inclusion path", rotated, "revoked"),
         vector("rsc-rotated-key-corrupted-signature", "indeterminate", "a rotated marker whose signature does not verify fails closed", rotated_corrupted, "indeterminate"),
         vector("rsc-wrong-signer-key", "indeterminate", "a marker signed by a key other than the authenticated authority key fails closed", wrong_key, "indeterminate"),
-        vector("rsc-wrong-signature-algorithm", "indeterminate", "a marker declaring an unsupported algorithm is unverifiable", wrong_algorithm, "indeterminate"),
+        vector("rsc-wrong-signature-algorithm", "indeterminate", "a marker signed under a registered algorithm the fixture resolver does not implement is unverifiable", wrong_algorithm, "indeterminate"),
         vector("rsc-higher-known-head-revokes", "fail", "an authenticated later head that revokes the target supersedes a stale absent read", higher, "revoked"),
         vector("rsc-downgrade-without-profile-admission", "indeterminate", "a current-profile Listing without the authenticated corrective-profile admission cannot start a new session", active, "indeterminate", trusted_admission=None),
         vector("rsc-profile-admission-release-mismatch", "indeterminate", "a different release pin refuses the session before listing validation", active, "indeterminate", trusted_admission=release_mismatch),

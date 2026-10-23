@@ -107,8 +107,10 @@ implementation feedback.
 
 **Live today** (on Demos): SR-1 cross-substrate identity (CCI), SR-2 anchored
 storage, SR-3 consensus-backed proxy (DAHR). **Substrate-live, SDK ergonomics on
-the backlog:** SR-4 private channels (L2PS), SR-5 atomic cross-chain settlement
-(Liquidity Tanks / Native Bridges, Phase 1).
+the backlog:** SR-4 private channels (L2PS). **Unavailable/experimental:** SR-5
+atomic cross-chain settlement through Liquidity Tanks / Native Bridges; the
+pinned node does not yet return a complete, signed bridge operation
+(DEMOS-MAPPING §A.5).
 
 The honest list of what is **not** done lives in the specification and the
 [builders guide](./docs/builders-guide.md): SR-4/SR-5 SDK surface work, SR-5

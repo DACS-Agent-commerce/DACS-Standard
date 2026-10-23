@@ -292,14 +292,14 @@ The v0.1 registry contains rail entries for the most-used settlement paths in pr
 | solana-spl:mainnet:USDC | pay-solana-spl | Solana mainnet USDC |
 | solana-spl:mainnet:USDT | pay-solana-spl | Solana mainnet USDT |
 | cross-chain-htlc:USDC | pay-cross-chain-htlc | Atomic swap across EVM ↔ Solana for USDC |
-| cross-chain-liquidity-tank:USDC | pay-cross-chain-liquidity-tank | Substrate-coordinated atomic settlement; on Demos: Liquidity Tanks. v0.1 supported routes: ETH Sepolia → Polygon Amoy unidirectional only |
+| cross-chain-liquidity-tank:USDC | pay-cross-chain-liquidity-tank | Substrate-coordinated atomic settlement; on Demos: Liquidity Tanks. Unavailable/experimental (DEMOS-MAPPING §A.5); intended initial route: ETH Sepolia → Polygon Amoy unidirectional |
 | demos-native:DEM | pay-dem | Native-DEM transfer on the Demos substrate (§9.5.9); single payee. |
 | ap2:visa-direct | pay-ap2 | AP2 mandate to Visa Direct |
 | ap2:mastercard-send | pay-ap2 | AP2 mandate to Mastercard Send |
 | ap2:stripe-paymentintents | pay-ap2 | AP2 mandate to Stripe PaymentIntents |
 | x402:default | pay-x402 | Generic x402 HTTP 402 micropayment |
 
-**v0.1 cross-chain settlement scope.** `pay-cross-chain-liquidity-tank` is supported **only** for the live tank routes: ETH Sepolia ↔ Polygon Amoy testnet, USDC, EVM-source unidirectional. All other tank rails are 🟡 to-add. v0.1 keeps both `pay-cross-chain-liquidity-tank` and `pay-cross-chain-htlc` first-class.
+**v0.1 cross-chain settlement scope.** Production availability of `pay-cross-chain-liquidity-tank` is **unavailable/experimental** (DEMOS-MAPPING §A.5): at the pinned Demos node the compiled bridge operation is unsigned, the chain parsers return no result, and the cited route registry does not exist. Until a pinned node commit returns a complete, signed compiled operation and publishes its route registry, the steward MUST NOT sign this rail `live`, and an orchestrator MUST NOT select it with `live`, `operator_gated`, `closed_data` or `bilateral` availability unless its trusted local operator policy (the RAV-R2 source) records that its pinned node completes `pay-cross-chain-liquidity-tank` (RAV-R1). Missing policy is not that record; malformed policy fails closed. The intended initial scope is ETH Sepolia → Polygon Amoy testnet, USDC, EVM-source unidirectional. All other tank rails are 🟡 to-add. v0.1 keeps both `pay-cross-chain-liquidity-tank` and `pay-cross-chain-htlc` first-class.
 
 > **Note (non-normative).** Further tank routes unlock as Native Bridges Phase 2–4 ship: Solana tanks, bidirectional routes, additional EVM rails, mainnet deployments, non-USDC stablecoins. HTLC is the path the reference implementation runs today — a ~929-LOC reference (Solana Anchor program + Base Sepolia EVM HTLC contract) with lock/reveal/refund implemented end-to-end.
 
@@ -310,7 +310,7 @@ Maturity by rail:
 | Rail(s) | v0.1 status |
 | --- | --- |
 | `pay-evm-erc20`, `pay-solana-spl`, `pay-cross-chain-htlc` | Reference-backed: exercised by the reference implementation, with §14 conformance vectors |
-| `pay-cross-chain-liquidity-tank` | Partially live: only the Phase-1 testnet route (ETH Sepolia → Polygon Amoy, USDC, unidirectional); other routes to-add |
+| `pay-cross-chain-liquidity-tank` | Unavailable/experimental (DEMOS-MAPPING §A.5): no route is live at the pinned Demos node; intended initial route ETH Sepolia → Polygon Amoy, USDC, unidirectional; other routes to-add |
 | `pay-x402` | Exercised by the reference implementation; §14 conformance vector present (`settlement-x402-pass`); **not** `operator_gated` (see note) |
 | `pay-ap2` | Reference-backed in provider test mode: official AP2 mandate verification, provider capture, DAHR-attested status, and Demos-anchored evidence are exercised by the reference SDK; §14 fixture present (`settlement-ap2-reference-pass`); still `operator_gated` (see note) |
 
@@ -425,7 +425,7 @@ Every RailDefinition MUST declare an availability value, with the same value set
 
 **Orchestrator obligations.**
 
-- (RAV-R1) An orchestrator MUST inspect rail availability before selecting a rail for a session.
+- (RAV-R1) An orchestrator MUST inspect rail availability before selecting a rail for a session. For `pay-cross-chain-liquidity-tank`, every otherwise selectable operational availability (`live`, `operator_gated`, `closed_data`, or `bilateral`) additionally requires trusted local operator policy recording that the pinned node completes the handler (§9.4). Operator preflight alone does not establish node completion. The candidate rail-availability harness represents this verifier-owned record as `operatorContext: {source: "local-operator-policy", production: boolean, nodeCompletedHandlers?: string[]}`; omission of the handler list means no completion record. This fixture record is configured before selection, never accepted from the rail or counterparty, and its positive tank case is non-production capability simulation. A production host must establish completion for its exact pinned node build independently. Non-production `mocked` fixtures remain subject to RAV-R2.
 - (RAV-R2) For any new session, an orchestrator MUST NOT select a rail with availability `disabled` or `failed`. For a new production session, it additionally MUST NOT select a rail with availability `mocked`. Production/non-production mode for this decision MUST come from trusted local implementation or operator execution policy established before rail selection. It is not a `RailDefinition` or session-artifact field and MUST NOT be supplied or overridden by a listing, rail definition, discovery/catalog record, counterparty, or other evaluated protocol input. Non-production mode MUST be explicitly configured for development or testing; missing, malformed, or unauthenticated mode is not authority to select `mocked`, and the orchestrator MUST fail closed. A session that already pinned a rail MAY continue under that pinned definition when a later registry revision marks the rail `disabled`; the orchestrator MUST NOT reinterpret that permission as authority to create a replacement or additional session. `failed` settlement attempts remain subject to RAV-R4.
 - (RAV-R3) An orchestrator MAY select rails with availability values operator_gated, closed_data, or bilateral only if the relevant operator-side configuration is in place; this is a runtime preflight check, not a static property of the rail.
 - (RAV-R4) A rail's `availability` is pinned at session start (§9.13), so a mid-session availability *flip* is not observable from the pinned definition; RAV-R4 therefore binds at the point of use. If a settlement attempt on the pinned rail fails because the rail is non-operational, the orchestrator MUST classify the failure `errorClass: "substrate"`, not `counterparty`. Rail-non-operational means a rail-down / substrate failure, as distinct from a transient RPC hiccup or a counterparty error.
@@ -979,10 +979,25 @@ Atomic cross-chain settlement using HTLC contracts on source and destination cha
 - (HTLC-3) buyerSalt MUST NOT be reused across sessions; each jobId uses a freshly-generated salt.
 - (HTLC-4) The payer MUST retain buyerSalt until the destination-side claim reaches finality (loss makes the preimage unrecoverable — a fund-safety requirement, not merely operational).
 - (HTLC-5) **Preimage derivation** MUST use HKDF (RFC 5869, sha256): IKM=buyerSalt, salt=jobId, info=agreementHash. Weaker derivations MUST NOT be used. jobId MUST be globally unique per swap and agreementHash MUST be collision-resistant; both hold in DACS, where jobId is per-session and agreementHash is the sha256 of the canonical agreement.
-- (HTLC-6) **Hashlock** is the chain-native hash of the preimage. Source and destination chains MAY use different hash functions (keccak256 EVM, sha256 Solana/BTC, blake2b Cosmos) and MUST NOT be required to share one. The preimage is the only cross-chain-shared value; the preimage revealed on the destination is bit-identical to the one producing `hashlock_source`.
+- (HTLC-6) **Hashlock** is the chain-native hash of the preimage. Source and destination chains MAY use different hash functions and MUST NOT be required to share one; each MUST be an identifier the §9.14 HTLC row registers and that the leg chain computes natively: `keccak256` or `sha256` on EVM (the KECCAK256 opcode and the SHA-256 precompile), `keccak256` or `sha256` on Solana (the `sol_keccak256` and `sol_sha256` syscalls), and `sha256` on Bitcoin (`OP_SHA256`). The verifier checks this on the signed rail before the observations: an unregistered identifier, a registered identifier that the leg chain does not compute natively (for example `keccak256` on a Bitcoin leg), and a leg on a chain the row lists no native hash for are each `error`, never `fail`. Another chain's hash (for example blake2b, or Bitcoin's `OP_HASH160`) needs a registry entry first. For finality-bound operation, a leg's chain is named by the signed rail's finality profile, not by the evidence: the source leg's chain is `consumerFinalityProfile.source.networkId` and the destination leg's is `consumerFinalityProfile.destination.networkId`, each a CAIP-2 chain ID whose namespace (the text before the first `:`) selects the native-hash entry. Each leg's HTLC txRef `chainId` MUST equal that CAIP-2 ID's reference; it never selects the chain. The registered HTLC txRef kinds carry a numeric EVM `chainId`, so v0.1 finality-bound settlement evidence can name only `eip155` legs, and evidence for a leg whose profile names any other namespace is `error`. The `solana` and `bip122` native-hash entries are forward-looking: no v0.1 evidence reaches them until an HTLC txRef kind for that chain is registered. The preimage is the only cross-chain-shared value; the preimage revealed on the destination is bit-identical to the one producing `hashlock_source`.
 - (HTLC-7) **Timelock asymmetry.** Implementations MUST reject a route unless `expiry_source > expiry_dest + source_finality + safety`, evaluated on absolute expiry instants. The margin is sized to **source** finality, not destination latency: the binding constraint is the payee *finalising* its source claim after the reveal. `source_finality` and `safety` are the pinned rail parameters `rail.parameters.sourceFinalitySec` and `rail.parameters.safetyWindowSec`; both are REQUIRED, and `safetyWindowSec` defaults to 600s. The inequality MUST be evaluated against the pinned values, not runtime-estimated latency.
-- (HTLC-8) **Timelock epoch.** Timelocks are durations measured from when each lock is mined. The destination lock MUST NOT be mined before source-lock finality; implementations MUST reject any schedule that could. With this anchoring, the HTLC-7 duration inequality implies the absolute-expiry inequality.
+- (HTLC-8) **Timelock epoch.** Timelocks are durations measured from when each lock is mined. With this anchoring, the HTLC-7 duration inequality implies the absolute-expiry inequality. HTLC-8 places two separate requirements:
+  - *Payee obligation.* The payee MUST NOT submit the destination lock until it has itself observed the source lock reach finality under the source chain's finality profile. Implementations MUST reject any schedule that could mine the destination lock before that.
+  - *Handler conformance input (finality-bound operation only).* Before submission, the handler consumes a fresh source-lock observation authenticated under the signed source profile, bound to the exact source-lock transaction, session economics, source contract, hash algorithm, hashlock and expiry retained for this swap. The handler uses its own acquisition clock and pinned observation authorities; candidate data cannot supply or replace this authority. Only a passing actual-finality observation permits submission. An unavailable or stale observation pauses; malformed or invalid proof refuses. Elapsed `sourceFinalitySec`, inclusion alone, or a producer assertion cannot grant permission. The fixture-only `htlc-submission-safety-v0.1` corpus supplies this separate pre-submission input; it does not extend settlement evidence or register a production codec.
+  - *Ordinary-payment compatibility.* An ordinary HTLC handler MAY omit `consumerFinalityProfile` (§9.4.1). It still MUST satisfy the payee obligation using its source-chain finality rules; the finality-bound profile-derived chain selection and handler conformance input above do not apply. It MUST NOT claim finality-bound verification without the signed profile and its authenticated observations.
+  - *Timing inputs.* A lock's *mined instant* is the timestamp of the block that includes the lock transaction: the leg observation's authenticated `inclusionBlock`, whose timestamp the leg network's binding decodes from the exact `header` bytes. A lock's *expiry* is the absolute instant the authenticated lock event commits to. A verifier compares both as integer Unix milliseconds; a chain whose header timestamp is in seconds (EVM `block.timestamp`) is multiplied by 1000 exactly, with no rounding. Evidence whose binding cannot yield an authenticated mined instant and expiry for each lock is `error`. The conformance fixtures' header codec carries the decoded block timestamp as the inclusion header's `timestamp` member, in integer milliseconds; a lock observation whose inclusion header has none, or a non-integer one, is `error`. In this fixture codec, the authenticated `htlc-lock` event carries `expiry` and also records the mined instant as `minedAt`; a non-integer value is `error`, and a `minedAt` that differs from the inclusion header's `timestamp` is `fail`, because the header, not the event, is the mined instant's source. The fixtures' millisecond-offset boundary cases test the comparison itself, which a seconds-resolution chain reaches only at multiples of 1000.
+  - *Verifier schedule bound.* From settlement evidence, a verifier checks only the pinned bound that HTLC-7 also uses. A destination lock whose authenticated mined instant is earlier than the source lock's authenticated mined instant plus `sourceFinalitySec` is `fail`; one mined exactly at that instant satisfies the bound. A `pass` attests this schedule property only. It does not attest that the source lock had finalized when the destination lock was mined, because the registered evidence carries no authenticated source-finalization instant; that remains the payee's own obligation above. Economic completion does not rest on this bound: each of the four HTLC observations, including the payee's source claim, MUST verify under its own chain's finality profile, and `outcome: "success"` requires the source claim's source-chain finality.
 - (HTLC-10) **Free-option disclosure.** The asymmetry guarantees liveness but not freedom from the inherent HTLC free option. The payer MAY decline to reveal after observing market movement, at zero cost, while the payee's destination capital stays locked to the destination timelock. v0.1 does NOT standardise an anti-option mechanism. Listings sensitive to option abuse SHOULD prefer pay-cross-chain-liquidity-tank or require a payer stake.
+
+**Native-hash reference pins (HTLC-6 / §9.14).** Chain identifiers use [CAIP-2 at `f46c0fe052eb80875dd94bbb39af16bb96ad6c1a`](https://github.com/ChainAgnostic/CAIPs/blob/f46c0fe052eb80875dd94bbb39af16bb96ad6c1a/CAIPs/caip-2.md). The native primitives above are reproducible against these immutable source revisions:
+
+| Namespace | Primitive references |
+| --- | --- |
+| `eip155` | Ethereum execution-specs Prague at `05420bce40492ca7ff11bc79cf3feb24778dce83`: [KECCAK256](https://github.com/ethereum/execution-specs/blob/05420bce40492ca7ff11bc79cf3feb24778dce83/src/ethereum/forks/prague/vm/instructions/keccak.py), [SHA-256 precompile](https://github.com/ethereum/execution-specs/blob/05420bce40492ca7ff11bc79cf3feb24778dce83/src/ethereum/forks/prague/vm/precompiled_contracts/sha256.py). |
+| `solana` | Agave at `1513b7a5bbbf59f071d1ae2c80403a26b8b6a546`: [`sol_sha256` and `sol_keccak256` syscall registration](https://github.com/anza-xyz/agave/blob/1513b7a5bbbf59f071d1ae2c80403a26b8b6a546/syscalls/src/lib.rs). |
+| `bip122` | Bitcoin Core v30.0 at `d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3`: [`OP_SHA256` interpreter](https://github.com/bitcoin/bitcoin/blob/d0f6d9953a15d7c7111d46dcb76ab2bb18e5dee3/src/script/interpreter.cpp). |
+
+These pins identify primitive semantics, not deployment availability. The v0.1 evidence scope remains `eip155` legs under their signed finality profiles; the `solana` and `bip122` entries remain forward-looking until matching HTLC txRef kinds are registered.
 
 > **Note (non-normative).**
 > - HTLC-2 — disclosing the salt mid-swap lets an adversary recompute the preimage and claim whichever leg pays the submitter (the HTLC-7 race); there is no safe mid-swap disclosure point.
@@ -1022,9 +1037,9 @@ Substrate-coordinated atomic settlement using pre-funded liquidity primitives. O
 **Procedure.**
 
 1. Resolve rail; verify `asset.kind == "stablecoin-cross-chain"` and `network.kind == "cross-chain"` with `mechanism: "liquidity-tank"`.
-2. Select `liquidityTankIds` matching `(sourceChainId, destChainId)`; validate the route is in v0.1 supported scope (today: ETH Sepolia → Polygon Amoy, USDC, unidirectional).
-3. Call the substrate’s native bridge API — on Demos, construct a BridgeOperation conforming to `kynesyslabs/sdks/src/bridge/nativeBridgeTypes.ts` (originChainType, destinationChainType, originAddress, destinationAddress, originAmount, originAsset, destinationAsset); submit via `demos.bridge.submitBridgeOperation(…)`.
-4. The substrate’s validator shard executes lock-on-source and release-on-dest atomically, within the substrate’s consensus epoch. Record the `bridge_id` — the 16-char hash that is the canonical end-to-end tracking handle.
+2. Select `liquidityTankIds` matching `(sourceChainId, destChainId)`; validate the route is in v0.1 scope (intended: ETH Sepolia → Polygon Amoy, USDC, unidirectional) and that the pinned rail `availability` (§9.4.4) admits it. No tank route is available today (DEMOS-MAPPING §A.5).
+3. Call the substrate’s native bridge API. On Demos (`@kynesyslabs/demosdk@4.0.16` (git head `d3620ae24f657ae7442e63e7adaefef7094b22e2`)), construct a `BridgeOperation` conforming to `src/bridge/nativeBridgeTypes.ts` (`demoAddress`, `originChainType`, `originChain`, `destinationChainType`, `destinationChain`, `originAddress`, `destinationAddress`, `amount`, `token`, `txHash`, `status`), have the node's native-bridge RPC compile it, and submit the compiled operation as a `nativeBridge` transaction (`demos.run.bridge.submit(compiled)`). DEMOS-MAPPING §A.5 records the current availability.
+4. The substrate’s validator shard executes lock-on-source and release-on-dest atomically, within the substrate’s consensus epoch. Record the `bridge_id` — the canonical end-to-end tracking handle. The pinned SDK types it only as a string (`bridgeId: string`); DACS does not assume a length or hash format.
 5. Wait for `BridgeOperation.status` to transition `"empty"` → `"pending"` → `"completed"`.
 6. Construct `SettlementEvidence` with `txRef` of kind `liquidity-tank` including bridgeId + both lock and release tx hashes; anchor via SR-2; return success. If the bridge has reached `completed` but SR-2 is unavailable, return `ok: true` with the bridge txRefs plus a durable idempotent anchor-retry, per PC-7 — never `errorClass: "substrate"`.
 
@@ -1061,7 +1076,7 @@ Before step 1 or any rail resolution, hash derivation, provider-metadata constru
 3. The payer’s AP2-compatible wallet authorises the mandate.
 4. Submit the mandate to `rail.network.providerEndpoint`; receive a payment receipt and provider-side reference (e.g. Visa Direct payment id, Stripe PaymentIntent id).
 5. Verify the receipt per AP2-2: an SR-3 attested fetch of the provider’s payment-status endpoint for `providerRef`, using an AP2-3-conformant credential.
-6. Construct SettlementEvidence with a transaction reference carrying mandateId, providerRef, the AP2 `protocolVersion` — the wire version that produced the mandate/receipt, so historical evidence is re-validatable against the rules of its era (#27) — and the AP2-2 `receiptAttestation`. When the selected SR-3 binding does not identify an authoritative native transaction, use the frozen `ap2` arm. When it does, use the distinct `ap2-sr3` arm and carry the native transaction in its required `receiptTransactionRef`. Anchor via SR-2; return success.
+6. Construct SettlementEvidence with a transaction reference carrying mandateId, providerRef, the AP2 `protocolVersion` — the wire version that produced the mandate/receipt, so historical evidence is re-validatable against the rules of its era (#27) — and the AP2-2 `receiptAttestation`. A verifier MUST apply the rules of the carried `protocolVersion`; a version whose rules it does not implement is `error` and MUST NOT be verified under another version's rules. When the selected SR-3 binding does not identify an authoritative native transaction, use the frozen `ap2` arm. When it does, use the distinct `ap2-sr3` arm and carry the native transaction in its required `receiptTransactionRef`. Anchor via SR-2; return success.
 
 - (AP2-1) **Provider-metadata session binding.** The handler MUST bind the session into the provider-side payment object at creation: metadata key `dacs_job_id` set to the session `jobId`, and SHOULD additionally set `dacs_agreement_hash` to the agreement content hash (§8.5.2). The key names are pinned so two implementations produce and check the same binding. This is the §9.5.8 SB-3 binding for `pay-ap2`: it rides the provider’s own payment record, so the AP2-2 attested status response returns it and a single attestation binds payment → session (→ agreed terms when the agreement hash is present). A verifier resolves the binding per the SB-3 four-value branches (verified match `pass`; present mismatch `fail`; absent or unavailable `indeterminate`; malformed evidence `error`). A provider whose payment object cannot carry the AP2-1 metadata, **or whose payment-status endpoint does not return it**, cannot satisfy AP2-1/AP2-2 and MUST NOT be registered as a `pay-ap2` rail — a registration-time gate, not a per-settlement silent degradation to unbound transfer evidence.
 - (AP2-2) **SR-3-bounded provider-receipt verification.** A success-outcome `pay-ap2` record MUST verify the provider receipt through the selected SR-3 binding's authenticated fetch of the provider’s payment-status endpoint for `providerRef`. Universally, a verifier MAY claim only the response-authentication property that the selected SR-3 binding establishes and MUST NOT infer a stronger observation, signature, or quorum property. In the **current Demos DAHR binding** (DEMOS-MAPPING §A.3), the authenticated on-chain `web2Request` transaction and response hash establish a consensus-anchored hash commitment: the response body is checked against that commitment, but is not itself multi-validator-observed or consensus-set-signed. A Demos verifier therefore MUST NOT read `receiptAttestation` as quorum-observed unless a later binding explicitly supplies and authenticates validator body-signatures. A stronger conforming SR-3 binding MAY establish stronger response authentication, and its verifier MAY report only those authenticated properties. Under the selected binding, the verifier MUST obtain the exact returned body bytes, match them to the authenticated response hash, and parse the provider-reported status, provider reference, amount, currency, and AP2-1 metadata from those same bytes. It then checks that the status is the provider's settled/captured value, the reference is the expected `providerRef`, the amount and currency match the agreement, and the AP2-1 binding resolves under the same SB-3 four-value boundary: verified match `pass`, verified mismatch `fail`, absent or unavailable authority `indeterminate`, and malformed or unsupported evidence `error`. A detached, caller-supplied, or separately stored field projection MUST NOT substitute for parsing the authenticated body. The attestation MUST be recorded in the transaction reference's `receiptAttestation`: its `anchor.locator` identifies the fetched provider-status resource and its `contentHash` is the authenticated raw-response hash, so DACS-2 §7.5.2 resolution can fetch the same resource and check the exact bytes. A substrate transaction hash is method-native authentication evidence, not a Storage Program locator, and MUST NOT be placed in `receiptAttestation.anchor.locator` under `anchor.kind == "storage-program"`. When the selected SR-3 binding identifies an authoritative native transaction, the record MUST use the distinct `ap2-sr3` arm and MUST carry it separately in `receiptTransactionRef`; for current Demos DAHR this is `{ kind: "demos-web2-request", value: txHash }`. The existing `ap2` arm is frozen and MUST NOT be extended with that field: this keeps the change additive because an older closed-union reader refuses `ap2-sr3` before AP2-specific action. A bare provider reference with no attestation MUST NOT be presented as verified settlement evidence.
@@ -1242,7 +1257,7 @@ pipeline `phaseIndex`.
    `dacs4:delivery:{jobId}:{phaseIndex}` via SR-2 and returns success. The
    seller remains the writer of the deliverable payload.
 
-**Soft limit.** Storage Programs have a 128 KB cap. Larger payloads MUST use the extended-pointer pattern: the Storage Program at the canonical address contains a pointer record { externalUrl, externalContentHash, segmentRefs[]? }; the actual payload is hosted externally; the externalContentHash binds it. The buyer fetches the pointer, then fetches the payload, then verifies the hash.
+**Soft limit.** DACS applies a 128 KB soft limit to Storage Program payloads, stricter than the 1 MB substrate cap (DEMOS-MAPPING §A.2). The limit is 131,072 bytes, measured over the exact payload bytes the adapter writes (for a JSON value, the UTF-8 bytes of its RFC 8785 canonical form); a payload of exactly 131,072 bytes fits. Larger payloads MUST use the extended-pointer pattern: the Storage Program at the canonical address contains a pointer record { externalUrl, externalContentHash, segmentRefs[]? }; the actual payload is hosted externally; the externalContentHash binds it. The buyer fetches the pointer, then fetches the payload, then verifies the hash.
 
 **Private delivery (`accessModel`).** A `storage-program` deliverable MAY be delivered privately when `deliverable.accessModel` (declared in the agreement, hash-bound per §8.5.2) is non-`public`:
 - `buyer-only` — the Storage Program is written with a `restricted` ACL listing the buyer's address in `allowed`; reads are node-enforced.
@@ -1702,6 +1717,8 @@ type ComponentSignature = {
   value: string                                // unpadded Base64URL signature over the artifact payload (CORE §B.7 SIG-6)
 
 }
+
+type RailSignature = ComponentSignature        // signer: the authorized registry steward; payload "dacs-rail:v1:" (§9.4.3)
 ```
 
 The finality-bound shape is closed. A #392 producer MUST first authenticate the
@@ -1812,15 +1829,26 @@ type AuthenticatedChainObservation = {
   authorityEvidence: {
     kind: string
     sourceRefs: string[]
-    attestations: { authorityRef: string; algorithm: string; value: string }[]
+    attestations: { authorityRef: string; algorithm: "ed25519"; value: string }[]
   }
   finalityCertificate?: {
     kind: string
     validatorSetHash: string
     blockId: string
-    signatures: { validatorId: string; algorithm: string; value: string }[]
+    signatures: { validatorId: string; algorithm: "ed25519"; value: string }[]
   }
 }
+```
+
+Observation-authority attestations and finality-certificate signatures verify
+against the verifier's pinned authority keys and validator-set checkpoint keys,
+which are raw 32-byte Ed25519 public keys in this version. Their algorithm set
+is therefore `ed25519` alone, like the `FinalityObservationResponseVersion1`
+signature; any other name, including a registered `ComponentSignature`
+algorithm, is outside the set and `error` (CORE §B.7 SIG-7). Adding an
+algorithm here is a new revision of these types.
+
+```
 
 type FinalityVerificationContext =
   | { kind: "chain"; observation: AuthenticatedChainObservation }
@@ -2015,7 +2043,21 @@ the reference authenticates.
 - **(FRC-8) Native projection and disposition.** The registered codec MUST
   project each response to canonical finality meaning before consistency
   comparison. Irrelevant transport differences MUST NOT create an economic
-  conflict. A malformed known-binding artifact is `error`; an independently
+  conflict. Authentication evidence the binding has verified, such as
+  which sufficient set of authority or validator signatures accompanies a
+  view and in what order, is not finality meaning, and neither is the
+  instant a head was observed. The head, ancestry, inclusion, transaction,
+  event and, for a BFT certificate, its block and validator set are. `FinalityObservationResponseVersion1` and both of its `response`
+  arms are closed: a member outside the type, other than the optional
+  `transportMetadata`, makes the response malformed, and so does a
+  `transportMetadata` that is not a JSON object. Closure continues below the
+  arms: the `observed` arm's `observation` is a `FinalityVerificationContext`,
+  and each of its members is closed by its own FV type, so an extra member at
+  any depth is likewise malformed; `transportMetadata` alone is open. A later revision adds
+  members only under a new `finalityObservationResponseVersion`. SIG-5 is
+  unaffected: the signature still covers the response as received, and a
+  valid signature does not cure the closed-shape refusal. A malformed
+  known-binding artifact is `error`; an independently
   established contract contradiction is `fail`; unsupported mapping,
   incomplete coverage or unresolved conflict is `indeterminate`; only
   complete consistent coverage plus every FV gate is `pass`. The verifier
@@ -2059,7 +2101,37 @@ session/phase/role authority, and — for the `ap2-sr3` arm — an
 `SR3NativeTransactionFinalityAuthority` whose `sr3Binding` equals the selected
 rail profile's `sr3Binding`. Candidate fields cannot add or replace those trust
 anchors. Missing trusted authority is `indeterminate`; malformed trusted material
-is `error`.
+is `error`. A missing or empty key map is missing authority. So is a
+well-formed map that lacks the key of a signer the authenticated session or
+signed profile names (the phase orchestrator, a session party, a pinned
+observation authority, or the profile provider); such a signer cannot count
+toward a quorum. A cryptographic signature mismatch is `fail` only when
+checked against an available key. An absent key does not end evaluation: across
+the evidence, Agreement, rail and context stages, within one observation, and across a composite
+model's arms and their relations, every signature with an available key and
+every deterministic check still runs, and any `error` or
+`fail` they establish is the result; the absent key is reported as
+`indeterminate` only when none does (FV-10). A presented signature envelope
+whose key is absent still gets the key-free checks of CORE §B.7 SIG-7: an
+algorithm outside the envelope's set or a value that fails the SIG-6 wire
+encoding is `error`, and a canonical value whose decoded length or internal
+format is invalid for its algorithm (for `ecdsa-secp256k1`, anything but
+strict low-S DER) is `fail`, whether or not the verifier holds the key. The
+evidence, rail and Agreement signatures are `ComponentSignature` and
+`AgreementSignature` envelopes, so `ecdsa-secp256k1` and `sr1-aggregate` are
+inside their set. Such a value whose signer's trusted key authenticates
+another algorithm is `fail` (SIG-7 step 3). Such a value whose key is absent,
+or whose algorithm the verifier does not implement, is deferred like an
+absent key (step 5). A rail signer absent
+from a non-empty steward key map is not a trusted steward and is `fail`.
+A missing validator-set checkpoint is authority uncertainty, distinct from
+an absent key map; on chain, SR-3 and composite paths it is deferred while
+available deterministic checks run (FV-10). The certificate's own checks
+still run first: a non-array signature list, a malformed member, an
+algorithm other than `ed25519`, or a value that fails the SIG-6 wire
+encoding is `error`, and a duplicate signer, a canonical value of the wrong
+decoded length, or an empty signature list (which no positive quorum admits)
+is `fail`.
 
 - **(FV-1) Exact rail authority.** A consumer MUST classify the record by
   `finalityBoundEvidenceVersion` before finality action, resolve
@@ -2163,8 +2235,15 @@ is `error`.
   strength or non-capture is `fail`; unavailable, conflicting or unstable
   authority is `indeterminate`; only complete verification is `pass`. Evaluate
   deterministic `error`/`fail` facts before unrelated uncertainty so an
-  attacker cannot hide a mismatch by withholding another input. For the
-  `ap2-sr3` arm, a missing `receiptTransactionObservation` or a missing
+  attacker cannot hide a mismatch by withholding another input. A stale head,
+  missing certificate or validator checkpoint, or absent SR-3 observation does
+  not suppress independent certificate, event, provider or composite-relation
+  checks for which the required data is present. Within rail verification,
+  envelope shape is checked first, then signature verification, then reference
+  and governance/common-field checks. Thus an available-key signature mismatch
+  is `fail` before a later malformed governance field; an absent key defers to
+  that field's `error`. Both deterministic outcomes take precedence over
+  uncertainty. For the `ap2-sr3` arm, a missing `receiptTransactionObservation` or a missing
   `sr3Binding`-bound finality authority is `indeterminate`, a malformed
   observation or malformed trusted authority is `error`, and a malformed
   observation is `error` before an unrelated missing authority is considered.
@@ -2801,9 +2880,9 @@ implementers.
 | --- | --- | --- |
 | pay-evm-erc20 | {rail: railId}; rail.parameters.finalityBlocks optional | evm-event (legacy read: evm) |
 | pay-solana-spl | {rail: railId}; rail.parameters.commitmentLevel optional | solana-instruction (legacy read: solana) |
-| pay-cross-chain-htlc | {rail: railId}; rail.parameters.timelockSourceSec, timelockDestSec, sourceFinalitySec, and safetyWindowSec required, with timelockSourceSec > timelockDestSec + sourceFinalitySec + safetyWindowSec (HTLC-7 — the margin covers the payee reaching SOURCE-chain finality after the reveal; evaluated against the pinned params, not runtime latency), under the source-lock-finality epoch (HTLC-8) | htlc-lock + htlc-reveal + htlc-claim (source) |
+| pay-cross-chain-htlc | {rail: railId}; rail.parameters.timelockSourceSec, timelockDestSec, sourceFinalitySec, and safetyWindowSec required, with timelockSourceSec > timelockDestSec + sourceFinalitySec + safetyWindowSec (HTLC-7 — the margin covers the payee reaching SOURCE-chain finality after the reveal; evaluated against the pinned params, not runtime latency), under the HTLC-8 epoch (a verifier fails a destination lock mined before the source lock's mined instant plus sourceFinalitySec); rail.parameters.sourceHashAlgorithm and destinationHashAlgorithm required, each a registered HTLC-6 hashlock identifier: `sha256` (FIPS 180-4 SHA-256) or `keccak256` (Keccak-256 with the original `0x01` padding, as used by EVM; **not** FIPS 202 SHA3-256). Each identifier MUST be native to its leg chain; for finality-bound operation this is the CAIP-2 namespace of the profile's `source.networkId` or `destination.networkId` (`keccak256` or `sha256` for `eip155`; the forward-looking `solana` entry admits `keccak256` or `sha256` and `bip122` admits `sha256`, and v0.1 evidence reaches only `eip155`), and a registered identifier the leg chain does not compute natively, or a leg chain without a native-hash entry, is `error`; any other identifier, including `sha3-256`, is unsupported (`error`) until registered. A verifier recomputes each leg's hashlock under that leg's identifier; a hashlock that does not recompute is `fail` | htlc-lock + htlc-reveal + htlc-claim (source) |
 | pay-cross-chain-liquidity-tank | {rail: railId} | liquidity-tank |
-| pay-ap2 | {rail: railId}; rail.parameters.providerEndpoint required | ap2 (txRef carries `protocolVersion`, required) |
+| pay-ap2 | {rail: railId}; rail.network.providerEndpoint required (the `ap2-provider` NetworkSpec member that step 4 submits to) | ap2 (txRef carries `protocolVersion`, required) |
 | pay-x402 | {rail: railId} | x402-event (`protocolVersion`, receipt hash, settlement transaction, chain, and log index required; legacy read: x402) |
 | pay-dem | {rail: railId} | demos |
 | pay-alternative | {alternatives: PaymentRailRef[]} | none — APR-4 projects it before execution; it is not a PaymentPhaseType |

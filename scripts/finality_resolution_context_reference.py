@@ -104,6 +104,15 @@ def _b64url(value: Any) -> bytes:
     return raw
 
 
+def _signature_wire(value: Any) -> bool:
+    """CORE §B.7 SIG-6 wire stage; failing it is malformed (SIG-7 ``error``)."""
+    try:
+        _b64url(value)
+    except (ValueError, TypeError, binascii.Error):
+        return False
+    return True
+
+
 @dataclass(frozen=True)
 class FinalityResolutionAuthority:
     """Verifier-owned authority retained after issuing one exact query."""
@@ -365,12 +374,30 @@ def with_acquisition(
     )
 
 
-def _authority_shape(authority: Any) -> bool:
+def _authority_present(authority: Any) -> bool:
+    """An authenticated verifier-owned authority object; anything else is
+    missing authority (``indeterminate``), never malformed material."""
     return (
         is_dataclass(authority)
         and not isinstance(authority, type)
         and authority.__class__.__name__ == "FinalityResolutionAuthority"
         and authority.authenticated is True
+    )
+
+
+def _authority_classification(authority: Any, unavailable: str) -> dict | None:
+    """FV entry rule: missing trusted authority is ``indeterminate``;
+    malformed trusted material is ``error``."""
+    if not _authority_present(authority):
+        return {"decision": "indeterminate", "reason": unavailable}
+    if not _authority_shape(authority):
+        return {"decision": "error", "reason": "malformed verifier-owned resolution authority"}
+    return None
+
+
+def _authority_shape(authority: Any) -> bool:
+    return (
+        _authority_present(authority)
         and authority.mode in {"current", "replay"}
         and _policy_shape(authority.policy)
         and isinstance(authority.issued_query, dict)
@@ -481,6 +508,8 @@ def _response_shape(response: Any) -> bool:
     }
     if not _exact(response, required, {"transportMetadata"}):
         return False
+    if "transportMetadata" in response and not isinstance(response["transportMetadata"], dict):
+        return False
     arm = response.get("response")
     signature = response.get("signature")
     if (
@@ -499,7 +528,7 @@ def _response_shape(response: Any) -> bool:
         or not _exact(signature, {"keyId", "algorithm", "value"})
         or not _nonempty(signature.get("keyId"))
         or signature.get("algorithm") != "ed25519"
-        or not _nonempty(signature.get("value"))
+        or not _signature_wire(signature.get("value"))
     ):
         return False
     if not isinstance(arm, dict) or arm.get("status") not in {"observed", "unavailable"}:
@@ -556,28 +585,46 @@ def _acquisition_map(authority: FinalityResolutionAuthority) -> tuple[dict | Non
     return records, None
 
 
-def _projection(observation: dict) -> str:
-    """Canonical fixture meaning; signature arrival order is transport-irrelevant."""
-    value = copy.deepcopy(observation)
+PROJECTED_CHAIN_MEMBERS = (
+    "networkId", "genesisHash", "transactionRef", "transactionInclusionProof",
+    "selectedEventProof", "inclusionBlock", "ancestryProof",
+)
+PROJECTED_HEAD_MEMBERS = ("id", "position", "header")
+PROJECTED_CERTIFICATE_MEMBERS = ("kind", "validatorSetHash", "blockId")
 
-    def normalize(item: Any) -> None:
-        if isinstance(item, dict):
-            authority = item.get("authorityEvidence")
-            if isinstance(authority, dict) and isinstance(authority.get("attestations"), list):
-                authority["attestations"].sort(
-                    key=lambda row: (
-                        row.get("authorityRef", "") if isinstance(row, dict) else "",
-                        canonicalize(row),
-                    )
-                )
-            for member in item.values():
-                normalize(member)
-        elif isinstance(item, list):
-            for member in item:
-                normalize(member)
 
-    normalize(value)
-    return hash_value(value)
+def _projection(observation: Any, *, certificate_verified: bool = False) -> str:
+    """Canonical fixture meaning, compared only after FV verified the view.
+
+    An explicit list of finality facts: network, transaction, inclusion,
+    event, head and ancestry, and for BFT which block the certificate binds
+    under which validator set.  Which sufficient set of RPC or validator
+    signatures accompanies a view, in what order, and the instant the head
+    was observed are authentication and freshness evidence FV has checked,
+    not finality meaning.
+    """
+    native = observation.get("observation") if isinstance(observation, dict) else None
+    if not isinstance(native, dict):
+        # FV has already refused this view; its bytes are its projection.
+        return hash_value(observation)
+
+    def members(item: Any, names: tuple[str, ...]) -> Any:
+        if not isinstance(item, dict):
+            return item
+        return {name: item[name] for name in names if name in item}
+
+    meaning = {"kind": observation.get("kind")}
+    meaning.update(members(native, PROJECTED_CHAIN_MEMBERS))
+    meaning["authenticatedHead"] = members(
+        native.get("authenticatedHead"), PROJECTED_HEAD_MEMBERS
+    )
+    if "finalityCertificate" in native:
+        certificate = native["finalityCertificate"]
+        meaning["finalityCertificate"] = (
+            members(certificate, PROJECTED_CERTIFICATE_MEMBERS)
+            if certificate_verified else certificate
+        )
+    return hash_value(meaning)
 
 
 def _fixture_checkpoint_relation(
@@ -658,8 +705,11 @@ def _verify_finality_resolution_context(
             or not isinstance(context.get("replay"), dict)
         ):
             return {"decision": "error", "reason": "malformed finality resolution context"}
-        if not _authority_shape(authority):
-            return {"decision": "indeterminate", "reason": "verifier-owned resolution authority unavailable"}
+        classification = _authority_classification(
+            authority, "verifier-owned resolution authority unavailable"
+        )
+        if classification is not None:
+            return classification
         if authority.mode != required_mode:
             return {
                 "decision": "indeterminate",
@@ -800,7 +850,11 @@ def _verify_finality_resolution_context(
             result = legacy_verifier(candidate, authority.base_trusted)
             observed_results.append((
                 response["authorityId"],
-                _projection(response["response"]["observation"]),
+                _projection(
+                    response["response"]["observation"],
+                    certificate_verified=(result.get("decision") == "pass" and
+                        value["rail"]["consumerFinalityProfile"]["model"] == "bft-final"),
+                ),
                 result,
             ))
             if result.get("decision") != "pass":
@@ -896,7 +950,12 @@ def replay_finality_resolution(
         "retainedResponses",
     }) or replay_record.get("finalityResolutionReplayVersion") != "1":
         return {"decision": "error", "reason": "malformed finality resolution replay record"}
-    if not _authority_shape(authority) or authority.mode != "replay":
+    classification = _authority_classification(
+        authority, "recorded replay authority unavailable"
+    )
+    if classification is not None:
+        return classification
+    if authority.mode != "replay":
         return {"decision": "indeterminate", "reason": "recorded replay authority unavailable"}
     if (
         replay_record["policy"] != authority.policy
@@ -956,12 +1015,11 @@ def verify_composite_resolution(
             })
             continue
         authority = leg["authority"]
-        if not _authority_shape(authority):
-            results.append({
-                "decision": "indeterminate",
-                "reason": "composite leg authority unavailable",
-                "legId": leg["legId"],
-            })
+        classification = _authority_classification(
+            authority, "composite leg authority unavailable"
+        )
+        if classification is not None:
+            results.append({**classification, "legId": leg["legId"]})
             continue
         query = authority.issued_query
         if not _query_shape(query):

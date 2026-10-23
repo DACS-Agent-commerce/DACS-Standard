@@ -249,21 +249,21 @@ def verify_detached_signature_status(
         return "fail"
     if not isinstance(algorithm, str) or algorithm not in SUPPORTED_SIGNATURE_ALGORITHMS:
         return "fail"
-    if algorithm != "ed25519":
-        return "indeterminate"
-    if re.fullmatch(r"key:[0-9a-f]{64}", signer) is None:
-        return "indeterminate"
+    # SIG-7 key-free checks precede unavailable algorithm/key handling. SPA-1
+    # maps an envelope error to rejection of the containing artifact (fail).
     try:
-        raw = _decode_base64url(encoded)
-        assert raw is not None
-        key = Ed25519PublicKey.from_public_bytes(bytes.fromhex(signer[4:]))
-        key.verify(raw, (domain + digest).encode("ascii"))
-    except (
-        AssertionError, InvalidSignature, MemoryError, OverflowError,
-        RecursionError, TypeError, ValueError,
-    ):
-        return "fail"
-    return "pass"
+        from .signature_authorization_reference import verify_envelope
+    except ImportError:
+        from signature_authorization_reference import verify_envelope
+    keys = {}
+    if re.fullmatch(r"key:[0-9a-f]{64}", signer):
+        keys[signer] = {
+            "algorithm": "ed25519",
+            "publicKey": base64.urlsafe_b64encode(bytes.fromhex(signer[4:])).rstrip(b"=").decode(),
+        }
+    verdict = verify_envelope(signature, (domain + digest).encode("ascii"), keys,
+                              signer_field=signer_field, implemented={"ed25519"})
+    return "fail" if verdict == "error" else verdict
 
 
 def verify_signed_artifact(

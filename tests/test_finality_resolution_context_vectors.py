@@ -4,17 +4,21 @@ import hashlib
 import json
 import subprocess
 import sys
+import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = str(ROOT / "scripts")
-if SCRIPTS not in sys.path:
-    sys.path.insert(0, SCRIPTS)
+for path in (str(ROOT / "scripts"), str(ROOT / "tests")):
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 import dacs5_reference as D5
+import finality_resolution_context_reference as FRC
+import generate_finality_resolution_context_vectors as GEN
 from finality_resolution_context_reference import (
     CAPABILITY,
     CONTEXT_VERSION,
@@ -54,13 +58,16 @@ class FinalityResolutionContextTests(unittest.TestCase):
         *,
         records=None,
         retained=None,
-        mode="current",
+        mode=None,
         replay_value=None,
         verification_time=None,
     ):
         payload = copy.deepcopy(
             payload or self.data["positive"]["authority"]
         )
+        mode = mode or payload.get("mode", "current")
+        if replay_value is None:
+            replay_value = payload.get("replayValue")
         return FinalityResolutionAuthority(
             authenticated=payload["authenticated"],
             policy=payload["policy"],
@@ -93,6 +100,36 @@ class FinalityResolutionContextTests(unittest.TestCase):
             copy.deepcopy(value or self.data["positive"]["value"]),
             self.trust(authority or self.authority()),
         )
+
+    def execute_vector(self, case):
+        """Run one committed case through its named entry point, JSON only."""
+        payload = copy.deepcopy(case["input"])
+        if case["operation"] == "verify":
+            return self.verify(payload["value"], self.authority(payload["authority"]))
+        if case["operation"] == "verify-composite":
+            legs = [
+                {
+                    "legId": leg["legId"],
+                    "value": leg["value"],
+                    "authority": self.authority(leg["authority"]),
+                }
+                for leg in payload["legs"]
+            ]
+            return verify_composite_resolution(
+                legs,
+                payload["relationship"],
+                legacy_verifier=_verify_single_view_finality,
+            )
+        if case["operation"] == "replay":
+            return replay_finality_resolution(
+                payload["replayRecord"],
+                self.authority(payload["authority"]),
+                legacy_verifier=_verify_single_view_finality,
+            )
+        raise AssertionError("unknown vector operation %r" % case["operation"])
+
+    def case(self, name):
+        return next(v for v in self.data["vectors"] if v["name"] == name)
 
     @staticmethod
     def replace_seat(value, payload, variant, authority_id="observer-b"):
@@ -150,10 +187,83 @@ class FinalityResolutionContextTests(unittest.TestCase):
         legacy = copy.deepcopy(self.data["positive"]["value"])
         response = legacy["context"]["responseArtifacts"][0]
         legacy["context"] = response["response"]["observation"]
+        # The single-view observation is genuine on its own, so only FRC-1's
+        # selected-capability rule refuses it at the FV entry point.
         self.assertEqual(
             "pass",
             _verify_single_view_finality(legacy, copy.deepcopy(self.base_trusted))["decision"],
         )
+        for trusted in (copy.deepcopy(self.base_trusted), self.trust(self.authority())):
+            result = verify_finality(copy.deepcopy(legacy), trusted)
+            self.assertEqual("error", result["decision"])
+            self.assertIn("cannot fall back to a single-view context", result["reason"])
+        committed = self.case("frc1-single-view-under-capability")["input"]["value"]
+        observer_a = next(
+            response for response in self.data["positive"]["value"]["context"]["responseArtifacts"]
+            if response["authorityId"] == "observer-a"
+        )
+        self.assertEqual(observer_a["response"]["observation"], committed["context"])
+        self.assertEqual(
+            {key: item for key, item in legacy.items() if key != "context"},
+            {key: item for key, item in committed.items() if key != "context"},
+        )
+
+    def test_frc1_vectors_reject_a_single_view_fallback(self):
+        """Wrong implementation: verify any non-FRC context through FV."""
+
+        def falls_back(value, trusted):
+            context = value.get("context") if isinstance(value, dict) else None
+            if isinstance(context, dict) and (
+                "finalityResolutionContextVersion" in context
+                or context.get("capability") == CAPABILITY
+            ):
+                return verify_finality(value, trusted)
+            return _verify_single_view_finality(value, trusted)
+
+        for name in (
+            "frc1-single-view-under-capability",
+            "frc1-fork-view-under-capability",
+        ):
+            case = self.case(name)
+            value = case["input"]["value"]
+            self.assertEqual(
+                CAPABILITY,
+                value["rail"]["consumerFinalityProfile"]["finalityResolutionCapability"],
+            )
+            self.assertEqual("chain", value["context"]["kind"])
+            trusted = self.trust(self.authority(case["input"]["authority"]))
+            with self.subTest(case=name):
+                self.assertEqual("error", self.execute_vector(case)["decision"])
+                self.assertEqual(
+                    "pass", falls_back(copy.deepcopy(value), trusted)["decision"]
+                )
+        # #416's own conflict resolves to indeterminate; its fork view alone
+        # would pass a falling-back verifier.
+        self.assertEqual(
+            "indeterminate",
+            self.execute_vector(self.case("fv-conflicting-authenticated-heads"))["decision"],
+        )
+
+        case = self.case("frc1-context-without-signed-capability")
+        value = case["input"]["value"]
+        self.assertNotIn(
+            "finalityResolutionCapability", value["rail"]["consumerFinalityProfile"]
+        )
+        self.assertEqual(self.data["positive"]["value"]["context"], value["context"])
+        self.assertEqual("error", self.execute_vector(case)["decision"])
+        original = FRC.derive_query
+
+        def without_capability_check(candidate, *args, **kwargs):
+            candidate = copy.deepcopy(candidate)
+            candidate["rail"]["consumerFinalityProfile"][
+                "finalityResolutionCapability"
+            ] = CAPABILITY
+            return original(candidate, *args, **kwargs)
+
+        # Skipping only the signed-capability requirement leaves the query
+        # binding, which reports a contradiction instead of a refusal.
+        with mock.patch.object(FRC, "derive_query", without_capability_check):
+            self.assertEqual("fail", self.execute_vector(case)["decision"])
 
     def test_plain_caller_dictionary_is_not_acquisition_authority(self):
         value = self.data["positive"]["value"]
@@ -215,6 +325,169 @@ class FinalityResolutionContextTests(unittest.TestCase):
         # transport metadata and native-attestation arrival order differ.
         responses = value["context"]["responseArtifacts"]
         self.assertNotEqual(responses[0].get("transportMetadata"), responses[1].get("transportMetadata"))
+
+    def test_equivalent_sufficient_authentication_sets_are_one_view(self):
+        case = self.case("equivalent-sufficient-authentication-sets")
+        value = case["input"]["value"]
+        views = {
+            response["authorityId"]: response["response"]["observation"]
+            for response in value["context"]["responseArtifacts"]
+        }
+        attestations = {
+            authority_id: view["observation"]["authorityEvidence"]["attestations"]
+            for authority_id, view in views.items()
+        }
+        threshold = value["rail"]["consumerFinalityProfile"]["settlement"]["observation"]["threshold"]
+        self.assertEqual(threshold + 1, len(attestations["observer-a"]))
+        self.assertEqual(threshold, len(attestations["observer-b"]))
+        self.assertEqual(
+            FRC._projection(views["observer-a"]), FRC._projection(views["observer-b"])
+        )
+        self.assertEqual("pass", self.execute_vector(case)["decision"])
+
+        # Each view is still authenticated on its own: below the threshold
+        # observer-b's view does not verify, so the pair cannot pass.
+        thin = copy.deepcopy(views["observer-b"])
+        del thin["observation"]["authorityEvidence"]["attestations"][threshold - 1:]
+        key = GEN.Ed25519PrivateKey.from_private_bytes(
+            bytes.fromhex(GEN.AUTHORITY_SEEDS["observer-b-key"])
+        )
+        query = case["input"]["authority"]["issuedQuery"]
+        response = GEN.signed_response(
+            key,
+            authority_id="observer-b",
+            key_id="observer-b-key",
+            query=query,
+            checkpoint=query["checkpoint"],
+            arm={"status": "observed", "observation": thin},
+        )
+        changed, payload = self.replace_seat(
+            value, case["input"]["authority"],
+            {
+                "response": response,
+                "acquisition": GEN.acquisition(response, query["nonce"], GEN.ACQUIRED_AT),
+            },
+        )
+        self.assertNotEqual("pass", self.verify(changed, self.authority(payload))["decision"])
+
+    def test_bft_certificate_order_and_sufficient_set_are_one_view(self):
+        case = self.case("bft-equivalent-certificate-signature-sets")
+        value = case["input"]["value"]
+        self.assertEqual(
+            "bft-final", value["rail"]["consumerFinalityProfile"]["settlement"]["kind"]
+        )
+        views = {
+            response["authorityId"]: response["response"]["observation"]
+            for response in value["context"]["responseArtifacts"]
+        }
+        signers = {
+            authority_id: [
+                signature["validatorId"]
+                for signature in view["observation"]["finalityCertificate"]["signatures"]
+            ]
+            for authority_id, view in views.items()
+        }
+        self.assertEqual(["validator-c", "validator-b", "validator-a"], signers["observer-a"])
+        self.assertEqual(["validator-a", "validator-b"], signers["observer-b"])
+        for view in views.values():
+            candidate = copy.deepcopy(value)
+            candidate["context"] = copy.deepcopy(view)
+            result = _verify_single_view_finality(candidate, copy.deepcopy(self.base_trusted))
+            self.assertEqual("pass", result["decision"], result["reason"])
+        self.assertEqual(
+            FRC._projection(views["observer-a"], certificate_verified=True),
+            FRC._projection(views["observer-b"], certificate_verified=True),
+        )
+        self.assertEqual("pass", self.execute_vector(case)["decision"])
+
+        # The certificate's block and validator set remain finality meaning.
+        moved = copy.deepcopy(views["observer-b"])
+        moved["observation"]["finalityCertificate"]["blockId"] = "00" * 32
+        self.assertNotEqual(
+            FRC._projection(views["observer-b"], certificate_verified=True),
+            FRC._projection(moved, certificate_verified=True),
+        )
+
+        below = self.case("bft-certificate-below-quorum")
+        thin = next(
+            response["response"]["observation"]
+            for response in below["input"]["value"]["context"]["responseArtifacts"]
+            if response["authorityId"] == "observer-b"
+        )
+        self.assertEqual(
+            ["validator-a"],
+            [s["validatorId"] for s in thin["observation"]["finalityCertificate"]["signatures"]],
+        )
+        result = self.execute_vector(below)
+        self.assertEqual("fail", result["decision"], result["reason"])
+        self.assertIn("quorum", result["reason"])
+
+    def test_optional_certificates_are_closed_before_non_bft_projection(self):
+        for defect, expected in (("none", "pass"), ("array", "error"),
+                                 ("certificate-extra", "error"), ("signature-extra", "error"),
+                                 ("signature-wire", "error"), ("signature-format", "fail"),
+                                 ("unverified-difference", "indeterminate")):
+            _, value, payload = self.materialized("complete-all-authorities")
+            responses = []
+            for index, response in enumerate(value["context"]["responseArtifacts"]):
+                view = copy.deepcopy(response["response"]["observation"])
+                certificate = {
+                    "kind": "fixture-bft-certificate-v1", "validatorSetHash": "ab" * 32,
+                    "blockId": view["observation"]["inclusionBlock"]["id"], "signatures": [],
+                }
+                if index == 1:
+                    if defect == "array":
+                        certificate["signatures"] = "not-an-array"
+                    elif defect == "certificate-extra":
+                        certificate["extra"] = 1
+                    elif defect in {"signature-extra", "signature-wire", "signature-format", "unverified-difference"}:
+                        signature = {"validatorId": "validator-a", "algorithm": "ed25519",
+                                     "value": base64.urlsafe_b64encode(b"a" * 64).rstrip(b"=").decode()}
+                        if defect == "signature-extra":
+                            signature["extra"] = 1
+                        elif defect == "signature-wire":
+                            signature["value"] += "="
+                        elif defect == "signature-format":
+                            signature["value"] = "AA"
+                        certificate["signatures"] = [signature]
+                view["observation"]["finalityCertificate"] = certificate
+                key_id = response["signature"]["keyId"]
+                key = GEN.Ed25519PrivateKey.from_private_bytes(bytes.fromhex(GEN.AUTHORITY_SEEDS[key_id]))
+                responses.append(GEN.signed_response(
+                    key, authority_id=response["authorityId"], key_id=key_id,
+                    query=value["context"]["query"], checkpoint=response["checkpoint"],
+                    signed_time=response["signedObservationTime"],
+                    arm={"status": "observed", "observation": view}))
+            records = [GEN.acquisition(r, value["context"]["query"]["nonce"], GEN.ACQUIRED_AT)
+                       for r in responses]
+            value["context"]["responseArtifacts"] = responses
+            value["context"]["replay"]["acquisitionRecords"] = records
+            payload["acquisitionRecords"] = records
+            payload["retainedResponses"] = responses
+            with self.subTest(defect=defect):
+                self.assertEqual(expected, self.verify(value, self.authority(payload))["decision"])
+
+    def test_frc_readme_count_matches_the_committed_corpus(self):
+        readme = (VECTOR.parent / "README.md").read_text()
+        self.assertEqual(54, self.data["count"])
+        self.assertTrue("Fifty-four candidate cases execute the all-authorities finality resolution" in readme,
+                        "FRC narrative count differs from the committed corpus")
+
+    def test_observation_instant_is_not_finality_meaning(self):
+        case = self.case("equivalent-views-observed-at-different-instants")
+        views = {
+            response["authorityId"]: response["response"]["observation"]["observation"]
+            for response in case["input"]["value"]["context"]["responseArtifacts"]
+        }
+        heads = {authority_id: view["authenticatedHead"] for authority_id, view in views.items()}
+        self.assertEqual(
+            heads["observer-a"]["observedAt"] + 2000, heads["observer-b"]["observedAt"]
+        )
+        self.assertEqual(
+            {k: v for k, v in heads["observer-a"].items() if k != "observedAt"},
+            {k: v for k, v in heads["observer-b"].items() if k != "observedAt"},
+        )
+        self.assertEqual("pass", self.execute_vector(case)["decision"])
 
     def test_transport_omission_cannot_erase_retained_response(self):
         value = copy.deepcopy(self.data["positive"]["value"])
@@ -279,19 +552,259 @@ class FinalityResolutionContextTests(unittest.TestCase):
         return case, copy.deepcopy(case["input"]["value"]), copy.deepcopy(case["input"]["authority"])
 
     def test_materialized_cases_execute_their_expectation(self):
-        executed = set()
-        for case in self.data["vectors"]:
-            if "input" not in case:
-                continue
-            with self.subTest(case=case["name"]):
-                result = self.verify(
-                    case["input"]["value"], self.authority(case["input"]["authority"])
-                )
-                self.assertEqual(case["expected"], result["decision"], result["reason"])
-            executed.add(case["name"])
-        self.assertLessEqual(
-            {"fv-conflicting-authenticated-heads", "fv-reorg-unresolved"}, executed
+        self.assertEqual(54, self.data["count"])
+        self.assertEqual(self.data["count"], len(self.data["vectors"]))
+        self.assertEqual(
+            hashlib.sha256(json.dumps(
+                self.data["vectors"], separators=(",", ":"), sort_keys=True,
+            ).encode("utf-8")).hexdigest(),
+            self.data["hash"],
         )
+        decisions = set()
+        for case in self.data["vectors"]:
+            self.assertIn(case["operation"], {"verify", "verify-composite", "replay"})
+            self.assertIn("input", case)
+            with self.subTest(case=case["name"]):
+                result = self.execute_vector(case)
+                self.assertEqual(case["expected"], result["decision"], result["reason"])
+            decisions.add(result["decision"])
+        self.assertEqual({"pass", "fail", "indeterminate", "error"}, decisions)
+
+    def test_closed_shape_and_acquisition_cases_fail_a_verifier_missing_their_guard(self):
+        """Source mutants: each removes one FRC-5/FRC-8/FRC-9 guard.
+
+        ``pass`` shows the case is otherwise valid; ``None`` requires only
+        that the mutant's verdict differs from the committed one.
+        """
+        source = (ROOT / "scripts" / "finality_resolution_context_reference.py").read_text(encoding="utf-8")
+
+        def mutant(old, new):
+            self.assertEqual(1, source.count(old), old)
+            module = types.ModuleType("finality_resolution_guard_mutant")
+            module.__file__ = FRC.__file__
+            # Dataclass processing resolves the defining module by name.
+            with mock.patch.dict(sys.modules, {module.__name__: module}):
+                exec(compile(source.replace(old, new), FRC.__file__, "exec"), module.__dict__)
+            return module
+
+        guards = [
+            ('if not _exact(response, required, {"transportMetadata"}):',
+             'if not isinstance(response, dict) or not required <= set(response):',
+             "pass", ["response-extra-member"]),
+            ('    if "transportMetadata" in response and not isinstance(response["transportMetadata"], dict):\n'
+             '        return False\n', "", "pass",
+             ["response-transport-metadata-not-object", "response-transport-metadata-null"]),
+            # FRC-8 projection: authentication evidence is not finality meaning.
+            ('"networkId", "genesisHash", "transactionRef", "transactionInclusionProof",',
+             '"networkId", "genesisHash", "transactionRef", "transactionInclusionProof", "authorityEvidence",',
+             "indeterminate", ["equivalent-sufficient-authentication-sets"]),
+            ('PROJECTED_HEAD_MEMBERS = ("id", "position", "header")',
+             'PROJECTED_HEAD_MEMBERS = ("id", "position", "header", "observedAt")',
+             "indeterminate", ["equivalent-views-observed-at-different-instants"]),
+            ('PROJECTED_CERTIFICATE_MEMBERS = ("kind", "validatorSetHash", "blockId")',
+             'PROJECTED_CERTIFICATE_MEMBERS = ("kind", "validatorSetHash", "blockId", "signatures")',
+             "indeterminate", ["bft-equivalent-certificate-signature-sets"]),
+            ('return _exact(arm, {"status", "observation"}) and', "return", "pass",
+             ["response-observed-arm-extra-member"]),
+            ('return _exact(arm, {"status", "reason"}) and', "return", None,
+             ["response-unavailable-arm-extra-member"]),
+            ('or record.get("queryNonce") != authority.issued_query.get("nonce")\n', "", "pass",
+             ["acquisition-record-other-nonce"]),
+            ('or record.get("status") != "obtained"\n', "", "pass",
+             ["acquisition-record-not-obtained"]),
+            ('or record["responseHash"] in records\n', "", "pass",
+             ["acquisition-record-duplicate-response-hash"]),
+            ('if acquisition["authorityId"] != response["authorityId"]:', "if False:", "pass",
+             ["acquisition-authority-differs-from-responder"]),
+            ('}) or replay_record.get("finalityResolutionReplayVersion") != "1":', "}):", "pass",
+             ["replay-record-version-unknown"]),
+            ('return {"decision": "error", "reason": "malformed verifier-owned resolution authority"}',
+             'return {"decision": "indeterminate", "reason": unavailable}', None,
+             ["resolution-authority-policy-malformed", "replay-authority-policy-malformed",
+              "composite-leg-authority-policy-malformed"]),
+            # FRC-4 / CORE SIG-6 on the observation response envelope.
+            ('if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != value:', "if False:", "pass",
+             ["response-signature-nonminimal-base64url"]),
+            # CORE §B.7 SIG-7: the wire stage is part of the response shape
+            # (error); a non-empty-string check lets it fall through to fail.
+            ('or not _signature_wire(signature.get("value"))', 'or not _nonempty(signature.get("value"))', "fail",
+             ["response-signature-nonminimal-base64url"]),
+            ("if not _verify_response_signature(response, seat):", "if False:", "pass",
+             ["response-signature-invalid"]),
+            # FRC-2 query and provenance binding.
+            ('if context["query"] != authority.issued_query:', "if False:", None,
+             ["transported-query-differs"]),
+            ('or authority.policy_source.get("contentHash") != hash_value(authority.policy)\n', "", "pass",
+             ["resolution-policy-source-differs"]),
+            # FRC-5 local acquisition time.
+            ('if not boundary["issuedAt"] <= acquisition["acquiredAt"] <= boundary["expiresAt"]:', "if False:", "pass",
+             ["response-acquired-outside-query-boundary"]),
+            ('if acquisition["acquiredAt"] > authority.verification_time_ms:', "if False:", None,
+             ["response-acquired-after-decision-time"]),
+            # FRC-9 replay inputs and classification.
+            ('return {"decision": "indeterminate", "reason": "recorded replay commerce inputs unavailable"}',
+             'return {"decision": "pass", "reason": "mutant"}', "pass",
+             ["replay-commerce-inputs-unavailable"]),
+            ('    if classification is not None:\n        return classification\n    if authority.mode != "replay":',
+             '    if authority.mode != "replay":', None, ["replay-authority-policy-malformed"]),
+            # FV entry: each structural rule of the verifier-owned policy.
+            ('        or not policy["authorities"]\n    ):', "    ):", None,
+             ["resolution-authority-policy-authorities-empty"]),
+            ("return len(authority_ids) == len(set(authority_ids))", "return True", None,
+             ["resolution-authority-policy-duplicate-authority-id"]),
+            ("        if len(key_ids) != len(set(key_ids)):\n            return False\n", "", None,
+             ["resolution-authority-policy-duplicate-key-id"]),
+            ("            or not keys\n", "", None,
+             ["resolution-authority-policy-seat-without-keys"]),
+            ('                or key.get("algorithm") != "ed25519"\n', "", None,
+             ["resolution-authority-policy-key-algorithm-unknown"]),
+            ('        or len(policy["unavailableReasons"]) != len(set(policy["unavailableReasons"]))\n', "", None,
+             ["resolution-authority-policy-unavailable-reasons-duplicate"]),
+        ]
+        for old, new, mutant_decision, names in guards:
+            module = mutant(old, new)
+            for name in names:
+                case = self.case(name)
+                payload = copy.deepcopy(case["input"])
+                with self.subTest(case=name, guard=old):
+                    self.assertEqual(case["expected"], self.execute_vector(case)["decision"])
+                    if case["operation"] == "replay":
+                        result = module.replay_finality_resolution(
+                            payload["replayRecord"], self.authority(payload["authority"]),
+                            legacy_verifier=_verify_single_view_finality,
+                        )
+                    elif case["operation"] == "verify-composite":
+                        result = module.verify_composite_resolution(
+                            [
+                                {"legId": leg["legId"], "value": leg["value"],
+                                 "authority": self.authority(leg["authority"])}
+                                for leg in payload["legs"]
+                            ],
+                            payload["relationship"],
+                            legacy_verifier=_verify_single_view_finality,
+                        )
+                    else:
+                        result = module.verify_finality_resolution_context(
+                            payload["value"], self.authority(payload["authority"]),
+                            legacy_verifier=_verify_single_view_finality,
+                        )
+                    if mutant_decision is None:
+                        self.assertNotEqual(case["expected"], result["decision"], result["reason"])
+                    else:
+                        self.assertEqual(mutant_decision, result["decision"], result["reason"])
+
+    def test_materialized_replay_record_is_the_current_decision_record(self):
+        case = self.case("recorded-policy-replay")
+        self.assertEqual(
+            self.verify()["replayRecord"], case["input"]["replayRecord"]
+        )
+        authority = case["input"]["authority"]
+        self.assertEqual("replay", authority["mode"])
+        self.assertEqual(self.data["positive"]["value"], authority["replayValue"])
+        result = self.execute_vector(case)
+        self.assertTrue(result["historicalReplay"])
+        self.assertFalse(result["currentFinalityDecision"])
+        # The same recorded authority cannot authorize a current decision.
+        self.assertEqual(
+            "indeterminate",
+            self.verify(authority=self.authority(authority))["decision"],
+        )
+
+    def test_unknown_response_version_is_malformed_not_ignored(self):
+        case = self.case("response-version-unknown")
+        responses = {
+            response["authorityId"]: response
+            for response in case["input"]["value"]["context"]["responseArtifacts"]
+        }
+        unknown = responses["observer-a"]
+        self.assertEqual("2", unknown["finalityObservationResponseVersion"])
+        self.assertEqual("1", responses["observer-b"]["finalityObservationResponseVersion"])
+        # Genuinely signed by the configured key, for the issued query, and
+        # acquired by the verifier: only the closed version value differs.
+        seat = next(
+            seat for seat in case["input"]["authority"]["policy"]["authorities"]
+            if seat["authorityId"] == "observer-a"
+        )
+        Ed25519PublicKey.from_public_bytes(
+            decode_key(seat["verificationKeys"][0]["publicKey"])
+        ).verify(
+            decode_key(unknown["signature"]["value"]),
+            (RESPONSE_DOMAIN + response_signature_hash(unknown)).encode("ascii"),
+        )
+        self.assertEqual(
+            hash_value(case["input"]["authority"]["issuedQuery"]), unknown["queryHash"]
+        )
+        self.assertIn(
+            hash_value(unknown),
+            [record["responseHash"] for record in case["input"]["authority"]["acquisitionRecords"]],
+        )
+        result = self.execute_vector(case)
+        self.assertEqual("error", result["decision"])
+        self.assertIn("malformed finality observation response", result["reason"])
+
+        original = FRC._response_shape
+
+        def version_blind(response):
+            if isinstance(response, dict):
+                response = dict(response, finalityObservationResponseVersion="1")
+            return original(response)
+
+        with mock.patch.object(FRC, "_response_shape", version_blind):
+            self.assertEqual("pass", self.execute_vector(case)["decision"])
+
+        case = self.case("response-status-unknown")
+        unknown = next(
+            response for response in case["input"]["value"]["context"]["responseArtifacts"]
+            if response["authorityId"] == "observer-a"
+        )
+        self.assertEqual("finalized", unknown["response"]["status"])
+        self.assertIn(
+            hash_value(unknown),
+            [record["responseHash"] for record in case["input"]["authority"]["acquisitionRecords"]],
+        )
+        result = self.execute_vector(case)
+        self.assertEqual("error", result["decision"])
+        self.assertIn("malformed finality observation response", result["reason"])
+
+        def status_blind(response):
+            # Wrong implementation: any non-unavailable arm is an observation.
+            if isinstance(response, dict) and isinstance(response.get("response"), dict):
+                arm = response["response"]
+                if arm.get("status") != "unavailable":
+                    response = dict(response, response=dict(arm, status="observed"))
+            return original(response)
+
+        with mock.patch.object(FRC, "_response_shape", status_blind):
+            self.assertEqual("pass", self.execute_vector(case)["decision"])
+
+    def test_issued_query_binds_the_presented_settlement_evidence(self):
+        case = self.case("issued-query-other-evidence")
+        value = case["input"]["value"]
+        positive = self.data["positive"]["value"]
+        self.assertEqual(positive["context"], value["context"])
+        self.assertEqual(
+            positive["evidence"]["paymentTxRefs"], value["evidence"]["paymentTxRefs"]
+        )
+        self.assertNotEqual(positive["evidence"], value["evidence"])
+        # The presented evidence is genuine: the historical single-view
+        # contract accepts it beside an authority's signed native view.
+        observed = copy.deepcopy(value)
+        observed["context"] = copy.deepcopy(
+            value["context"]["responseArtifacts"][0]["response"]["observation"]
+        )
+        self.assertEqual(
+            "pass",
+            _verify_single_view_finality(observed, copy.deepcopy(self.base_trusted))["decision"],
+        )
+        result = self.execute_vector(case)
+        self.assertEqual("fail", result["decision"])
+        self.assertIn("issued query does not bind", result["reason"])
+
+        issued = case["input"]["authority"]["issuedQuery"]
+        with mock.patch.object(
+            FRC, "derive_query", lambda *args, **kwargs: copy.deepcopy(issued)
+        ):
+            self.assertEqual("pass", self.execute_vector(case)["decision"])
 
     def test_conflicting_authenticated_heads_reach_frc7(self):
         case, value, payload = self.materialized("fv-conflicting-authenticated-heads")

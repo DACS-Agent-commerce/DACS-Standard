@@ -25,7 +25,7 @@
     "operation": "legacy-import"
   },
   "correctiveProfileFixture": {
-    "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+    "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
     "moduleVersions": {
       "core": "0.3",
       "dacs1": "0.8",
@@ -37,8 +37,8 @@
     "authority": "verifier-owned and bound to exact session plus participant identities",
     "legacyImportExempt": true
   },
-  "count": 55,
-  "hash": "e8e00dfed106826aa81841e56a4e828ef54edd99262c5c69eeb8d0661e2b0b4e",
+  "count": 67,
+  "hash": "b9efb40fe5fece512aad3d3a62e02c29cf872c2df893fd3caef4819e97fd20b0",
   "vectors": [
     {
       "name": "canonical-valid-first",
@@ -82,7 +82,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -135,7 +135,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -188,7 +188,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -273,7 +273,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -337,6 +337,59 @@
       }
     },
     {
+      "name": "current-profile-wrong-module-version",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the exact release pin with one module version outside its tuple refuses the session",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.6"
+        }
+      }
+    },
+    {
       "name": "current-profile-duplicate-participant",
       "expected": "error",
       "operation": "current-read",
@@ -379,7 +432,7 @@
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -432,7 +485,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -485,7 +538,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -538,7 +591,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -591,7 +644,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -644,7 +697,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -697,7 +750,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -749,7 +802,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -802,7 +855,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -855,7 +908,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -908,7 +961,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -961,7 +1014,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1014,7 +1067,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1067,7 +1120,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1120,7 +1173,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1173,7 +1226,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1226,7 +1279,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1279,7 +1332,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1332,7 +1385,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1385,7 +1438,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1438,7 +1491,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1491,7 +1544,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1544,7 +1597,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1597,7 +1650,166 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
+      }
+    },
+    {
+      "name": "canonical-ecdsa-high-s",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the high-S twin of the genuine signature is mathematically valid but not low-S",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEYCIQC9dj_q9CNETiGezQOQ0Cal2NBx4NA-abbTlBe-1BX9mQIhAPovovT4WHlJwP3WhtT_46lvOeZSkkL6WnMhSM60uCWo"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
+      }
+    },
+    {
+      "name": "canonical-ecdsa-fixed-width-r-s",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the genuine (r, s) as 64-byte r || s is not the canonical DER encoding",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "vXY_6vQjRE4hns0DkNAmpdjQceDQPmm205QXvtQV_ZkF0F0LB6eGtj8CKXkrABxVS3T2lB0FpeFMsRW-G34bmQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
+      }
+    },
+    {
+      "name": "canonical-ecdsa-der-long-form-length",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the genuine DER signature with a long-form SEQUENCE length is BER, not canonical DER",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MIFFAiEAvXY_6vQjRE4hns0DkNAmpdjQceDQPmm205QXvtQV_ZkCIAXQXQsHp4a2PwIpeSsAHFVLdPaUHQWl4UyxFb4bfhuZ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1650,7 +1862,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1703,7 +1915,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1756,7 +1968,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1809,7 +2021,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1862,7 +2074,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1916,7 +2128,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -1970,7 +2182,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2026,7 +2238,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2079,7 +2291,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2132,7 +2344,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2186,7 +2398,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2238,7 +2450,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2286,7 +2498,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2339,7 +2551,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2386,7 +2598,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2439,7 +2651,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2492,7 +2704,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2651,7 +2863,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2704,7 +2916,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2757,7 +2969,7 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",
@@ -2817,7 +3029,298 @@
           "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
           "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
         ],
-        "releasePin": "0d92f6642bdbd96655c8bb9a150b984d6be8bb67",
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
+      }
+    },
+    {
+      "name": "demosdk-4.0.16-wire-legacy-import",
+      "expected": "error",
+      "operation": "legacy-import",
+      "note": "the shipped @kynesyslabs/demosdk@4.0.16 wire: 0x-prefixed signature object, demos:0x sender, and a signature over the historical domain plus the ASCII-hex digest; legacy-import requires a bare lowercase-hex signature",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "demos:0xe70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "sigVersion": "1",
+          "signature": "0xcb63866a664fbeb36a617531d5cddd4445e1eed9ef116660a1e4f3d278300cca0be0e95f5a713347135bccff732e49818831bee28f6be7399949be9c6ee9dd06"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "demosdk-4.0.16-wire-current-read",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "the same shipped SDK wire on a current channel lacks the current discriminator and signature envelope",
+      "message": {
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "demos:0xe70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "sigVersion": "1",
+          "signature": "0xb4d77ed03165f04e2080655545dcd77ecd637ef56acced648eff7a77309d4333df72487702e715d958cdd1ec0981d5cb60275e0c8c910e3b42d401aa6c5f9500"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
+      }
+    },
+    {
+      "name": "legacy-0x-prefixed-hex-signature",
+      "expected": "error",
+      "operation": "legacy-import",
+      "note": "a genuine frozen-recipe signature is still malformed with a 0x prefix; the reader does not strip it",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": "0xacf8e533004671daa02a3fc5c47720233a738ba4d5ed65514c51d77df5ffbcd5f70828e2508468f66cae3b83ff8a6c1bc2727e46c027fbb24f53be41bcae5602"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "legacy-object-signature",
+      "expected": "error",
+      "operation": "legacy-import",
+      "note": "a genuine frozen-recipe signature wrapped in an SDK-style object is not the bare-hex historical value",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "sigVersion": "1",
+          "signature": "acf8e533004671daa02a3fc5c47720233a738ba4d5ed65514c51d77df5ffbcd5f70828e2508468f66cae3b83ff8a6c1bc2727e46c027fbb24f53be41bcae5602"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "legacy-demos-0x-sender",
+      "expected": "error",
+      "operation": "legacy-import",
+      "note": "demos:0x<64hex> is a substrate address, not a historical ClaimReference; the reader does not map it to cci:",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "demos:0xe70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": "18bdeada114a31577c460645946b1ad6ae096209c591049e9cde76d24dbb222c48590ef1696cb4e6acedf13ba7a847a7dc022ad9e3e5b1fff90dbc0db667a309"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "legacy-import-outsider-valid-signature",
+      "expected": "fail",
+      "operation": "legacy-import",
+      "note": "a valid frozen-recipe signature by a well-formed historical claim outside the authenticated CH-1 member set; key bytes embedded in the claim are not authority",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": "ae069c8d422fce6159bb336ea40a9fc498155ebadb1e0a8976a301f4969e8d4e92e2bb915b209908df72c0c89c16543900d53b3fb68693cd796c329727c8040f"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "canonical-foreign-signer-sender-signature",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the sender's genuine signature labelled with another member's signature.signer; signer and sender must identify the same party",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+          "algorithm": "ed25519",
+          "value": "dJmXGFgvqZ7rYyybtyObKEHAi84c-eCuK1DXP1MeCEqP6q-9ELxAB4NtCzEdxqzOnZ6ojok9LD3WVHtBguVlBA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.8",
+          "dacs2": "0.6",
+          "dacs3": "0.6",
+          "dacs4": "0.8",
+          "dacs5": "0.7"
+        }
+      }
+    },
+    {
+      "name": "canonical-missing-sent-at",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "sentAt is a required member; a signature over the message without it does not make it well formed",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "95O61Sw0wYtimg79G7QCdtOzdk6oYM-TlAXiLzp7xwH0q73EJ9ZDpewnPLHhN9G2ZMG9TcgE71Ux8mSdLaecBg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      },
+      "profileAdmission": {
+        "source": "fixture-verifier-owned",
+        "authenticated": true,
+        "sessionId": "channel-349",
+        "participantIdentities": [
+          "did:example:dacs-349-ecdsa",
+          "did:example:dacs-349-sr1-root",
+          "did:example:unresolved",
+          "key:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "key:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+        ],
+        "releasePin": "55c783790b3d288c3defdf3e6b3377399cf2aafe",
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.8",

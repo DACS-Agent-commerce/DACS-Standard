@@ -99,7 +99,7 @@ UNRESOLVED_REF = "did:example:unresolved"
 # the generated corpus only inside explicit legacy-import compatibility
 # cases and the current-read refusal regression; the current arm refuses it.
 HISTORICAL_ALICE_REF = f"cci:{public_hex(ALICE)}"
-CURRENT_RELEASE_PIN = "0d92f6642bdbd96655c8bb9a150b984d6be8bb67"
+CURRENT_RELEASE_PIN = "55c783790b3d288c3defdf3e6b3377399cf2aafe"
 CURRENT_MODULE_VERSIONS = {
     "core": "0.3", "dacs1": "0.8", "dacs2": "0.6",
     "dacs3": "0.6", "dacs4": "0.8", "dacs5": "0.7",
@@ -256,6 +256,22 @@ def sign_legacy(
     return {**copy.deepcopy(unsigned), "signature": key.sign(payload).hex()}
 
 
+# The shipped @kynesyslabs/demosdk@4.0.16 wire, unchanged through 4.0.18:
+# signChannelMessage signs UTF-8 "dacs-channelmsg:v1:" followed by the
+# lowercase-hex SHA-256 digest of the canonical unsigned message, emits
+# {sigVersion: "1", signature: "0x" + lowercase hex}, and requires a
+# demos:0x<64hex> sender.  Its bytes are neither CH-9 arm.
+DEMOSDK_ALICE_SENDER = "demos:0x" + public_hex(ALICE)
+
+
+def sign_demosdk_wire(unsigned: dict, *, key: Ed25519PrivateKey = ALICE) -> dict:
+    payload = LEGACY_DOMAIN + digest(unsigned).hex().encode("ascii")
+    return {
+        **copy.deepcopy(unsigned),
+        "signature": {"sigVersion": "1", "signature": "0x" + key.sign(payload).hex()},
+    }
+
+
 def context(**updates: object) -> dict:
     value = {
         "sessionChannelId": "channel-349",
@@ -397,6 +413,40 @@ def build_vectors() -> list[dict]:
         legacy_unsigned, domain=CURRENT_DOMAIN, framing="hex"
     )
 
+    # The shipped SDK wire, and the lenient readings a shape-keyed
+    # "SDK-compat" importer would need: unwrap the object, strip 0x, or map a
+    # demos:0x sender.  Each signature is genuine for the bytes it covers, so
+    # only CH-9 dispatch and the frozen historical grammar reject them.
+    sdk_wire_legacy = sign_demosdk_wire(
+        {**legacy_unsigned, "sender": DEMOSDK_ALICE_SENDER}
+    )
+    sdk_current_unsigned = unsigned_message(sender=DEMOSDK_ALICE_SENDER)
+    del sdk_current_unsigned["canonicalChannelMessageVersion"]
+    sdk_wire_current = sign_demosdk_wire(sdk_current_unsigned)
+    legacy_valid = sign_legacy(legacy_unsigned)
+    legacy_prefixed = copy.deepcopy(legacy_valid)
+    legacy_prefixed["signature"] = "0x" + legacy_valid["signature"]
+    legacy_object = copy.deepcopy(legacy_valid)
+    legacy_object["signature"] = {
+        "sigVersion": "1", "signature": legacy_valid["signature"],
+    }
+    legacy_demos_sender = sign_legacy(
+        {**legacy_unsigned, "sender": DEMOSDK_ALICE_SENDER}
+    )
+    # A well-formed historical claim outside the fixed member set, whose
+    # spelling embeds the key that genuinely signed the frozen recipe.
+    legacy_outsider = sign_legacy(
+        {**legacy_unsigned, "sender": f"cci:{public_hex(OUTSIDER)}"},
+        key=OUTSIDER,
+    )
+    # CH-7: Alice's genuine signature labelled with another member's claim.
+    foreign_signer = copy.deepcopy(valid)
+    foreign_signer["signature"]["signer"] = BOB_REF
+    # The type requires sentAt; the signature covers the message as received.
+    missing_sent_at_unsigned = unsigned_message()
+    del missing_sent_at_unsigned["sentAt"]
+    missing_sent_at = sign_current(missing_sent_at_unsigned)
+
     legacy_doc = json.loads(LEGACY.read_text(encoding="utf-8"))
     if legacy_doc.get("hash") != LEGACY_VECTOR_HASH:
         raise RuntimeError("frozen historical channel corpus changed")
@@ -425,6 +475,25 @@ def build_vectors() -> list[dict]:
     ecdsa_tampered["body"]["price"] = "11"
     ecdsa_wrong_domain = sign_current_ecdsa(ecdsa_unsigned, domain=LEGACY_DOMAIN)
     ecdsa_raw_framing = sign_current_ecdsa(ecdsa_unsigned, framing="raw")
+    # CORE §B.7 ECDSA encoding: the same genuine (r, s) as the valid case,
+    # once as the high-S twin and once as JOSE-style fixed-width r || s.
+    ecdsa_r, ecdsa_s = utils.decode_dss_signature(
+        deterministic_ecdsa_signature(current_payload(ecdsa_unsigned, CURRENT_DOMAIN, "hex"))
+    )
+    ecdsa_high_s = copy.deepcopy(ecdsa_valid)
+    ecdsa_high_s["signature"]["value"] = b64url(
+        utils.encode_dss_signature(ecdsa_r, SECP256K1_ORDER - ecdsa_s)
+    )
+    ecdsa_fixed_width = copy.deepcopy(ecdsa_valid)
+    ecdsa_fixed_width["signature"]["value"] = b64url(
+        ecdsa_r.to_bytes(32, "big") + ecdsa_s.to_bytes(32, "big")
+    )
+    # The genuine DER with its SEQUENCE length in non-minimal long form.
+    ecdsa_der = utils.encode_dss_signature(ecdsa_r, ecdsa_s)
+    ecdsa_long_form = copy.deepcopy(ecdsa_valid)
+    ecdsa_long_form["signature"]["value"] = b64url(
+        b"\x30\x81" + ecdsa_der[1:2] + ecdsa_der[2:]
+    )
 
     sr1_unsigned = unsigned_message(sequence=3, sender=SR1_REF)
     sr1_valid = sign_current_sr1(sr1_unsigned)
@@ -465,6 +534,12 @@ def build_vectors() -> list[dict]:
         case("current-profile-wrong-release-pin", "fail", valid,
              profileAdmission=profile_admission("channel-349", releasePin="f" * 40),
              note="an authenticated different release pin refuses the session"),
+        case("current-profile-wrong-module-version", "fail", valid,
+             profileAdmission=profile_admission(
+                 "channel-349",
+                 moduleVersions={**CURRENT_MODULE_VERSIONS, "dacs5": "0.6"},
+             ),
+             note="the exact release pin with one module version outside its tuple refuses the session"),
         case("current-profile-duplicate-participant", "error", valid,
              profileAdmission=profile_admission(
                  "channel-349",
@@ -532,6 +607,15 @@ def build_vectors() -> list[dict]:
              ctx=context(lastSequence=1), note="ECDSA cannot authenticate the historical domain"),
         case("canonical-ecdsa-raw-digest-framing", "fail", ecdsa_raw_framing,
              ctx=context(lastSequence=1), note="ECDSA signs ASCII lowercase hex, not raw digest bytes"),
+        case("canonical-ecdsa-high-s", "fail", ecdsa_high_s,
+             ctx=context(lastSequence=1),
+             note="the high-S twin of the genuine signature is mathematically valid but not low-S"),
+        case("canonical-ecdsa-fixed-width-r-s", "fail", ecdsa_fixed_width,
+             ctx=context(lastSequence=1),
+             note="the genuine (r, s) as 64-byte r || s is not the canonical DER encoding"),
+        case("canonical-ecdsa-der-long-form-length", "fail", ecdsa_long_form,
+             ctx=context(lastSequence=1),
+             note="the genuine DER signature with a long-form SEQUENCE length is BER, not canonical DER"),
         case("canonical-sr1-aggregate-valid", "pass", sr1_valid,
              ctx=context(lastSequence=2),
              note="authenticated SR-1 root fixture verifies the canonical current payload"),
@@ -596,6 +680,32 @@ def build_vectors() -> list[dict]:
         case("untrusted-context-membership-injection", "error", valid,
              ctx=injected_membership_context,
              note="message-adjacent session input cannot supply or replace authenticated CH-1 authority"),
+        case("demosdk-4.0.16-wire-legacy-import", "error", sdk_wire_legacy,
+             ctx=copy.deepcopy(legacy_ctx),
+             operation="legacy-import",
+             note="the shipped @kynesyslabs/demosdk@4.0.16 wire: 0x-prefixed signature object, demos:0x sender, and a signature over the historical domain plus the ASCII-hex digest; legacy-import requires a bare lowercase-hex signature"),
+        case("demosdk-4.0.16-wire-current-read", "error", sdk_wire_current,
+             note="the same shipped SDK wire on a current channel lacks the current discriminator and signature envelope"),
+        case("legacy-0x-prefixed-hex-signature", "error", legacy_prefixed,
+             ctx=copy.deepcopy(legacy_ctx),
+             operation="legacy-import",
+             note="a genuine frozen-recipe signature is still malformed with a 0x prefix; the reader does not strip it"),
+        case("legacy-object-signature", "error", legacy_object,
+             ctx=copy.deepcopy(legacy_ctx),
+             operation="legacy-import",
+             note="a genuine frozen-recipe signature wrapped in an SDK-style object is not the bare-hex historical value"),
+        case("legacy-demos-0x-sender", "error", legacy_demos_sender,
+             ctx=copy.deepcopy(legacy_ctx),
+             operation="legacy-import",
+             note="demos:0x<64hex> is a substrate address, not a historical ClaimReference; the reader does not map it to cci:"),
+        case("legacy-import-outsider-valid-signature", "fail", legacy_outsider,
+             ctx=copy.deepcopy(legacy_ctx),
+             operation="legacy-import",
+             note="a valid frozen-recipe signature by a well-formed historical claim outside the authenticated CH-1 member set; key bytes embedded in the claim are not authority"),
+        case("canonical-foreign-signer-sender-signature", "fail", foreign_signer,
+             note="the sender's genuine signature labelled with another member's signature.signer; signer and sender must identify the same party"),
+        case("canonical-missing-sent-at", "error", missing_sent_at,
+             note="sentAt is a required member; a signature over the message without it does not make it well formed"),
     ]
 
 

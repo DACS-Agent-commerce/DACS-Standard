@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import copy
+import decimal
 import hashlib
 import json
 from pathlib import Path
@@ -19,6 +20,8 @@ try:
         AGREEMENT_DOMAIN,
         BFT_CERTIFICATE_DOMAIN,
         CHAIN_AUTHORITY_DOMAIN,
+        DEMOS_RECORD_PROFILE,
+        DEMOS_EXECUTION_DOMAIN,
         EVIDENCE_DOMAIN,
         FIXTURE_POLICY,
         LEGACY_EVIDENCE_DOMAIN,
@@ -33,6 +36,8 @@ except ImportError:
         AGREEMENT_DOMAIN,
         BFT_CERTIFICATE_DOMAIN,
         CHAIN_AUTHORITY_DOMAIN,
+        DEMOS_RECORD_PROFILE,
+        DEMOS_EXECUTION_DOMAIN,
         EVIDENCE_DOMAIN,
         FIXTURE_POLICY,
         LEGACY_EVIDENCE_DOMAIN,
@@ -70,6 +75,9 @@ SEEDS = {
     "rpc-a": "51" * 32,
     "rpc-b": "52" * 32,
     "rpc-c": "53" * 32,
+    "execution-a": "54" * 32,
+    "execution-b": "55" * 32,
+    "execution-c": "56" * 32,
     "provider": "61" * 32,
     "validator-a": "71" * 32,
     "validator-b": "72" * 32,
@@ -90,6 +98,13 @@ MODEL_PHASE = {
     "htlc-reveal": "pay-cross-chain-htlc",
     "liquidity-tank": "pay-cross-chain-liquidity-tank",
 }
+
+
+def controlled_claim(claim: str, control: str = "presentation-signature") -> dict:
+    """A payer bundle claim (a DACS-1 ClaimReference) with the DACS-1 §6.3.2
+    step (6) mechanism the verifier's own check of the pinned bundle found, or
+    "none" for a claim the bundle only lists."""
+    return {"claim": claim, "control": control}
 
 
 def canonical_bytes(value) -> bytes:
@@ -154,6 +169,18 @@ class FixtureFactory:
                 "sr3Binding": "provider-jws-v1",
                 "settlement": self.chain_profile("bft-final", network="demos:mainnet"),
             },
+            "demosRecordProfile": DEMOS_RECORD_PROFILE,
+            "demosExecutionPolicy": {
+                "kind": "fixture-independent-results-v1", "threshold": 2,
+                "authorityKeys": {
+                    name: b64u(self.keys[name].public_key().public_bytes_raw())
+                    for name in ("execution-a", "execution-b", "execution-c")
+                },
+            },
+            # The Demos key claims of each payer's party bundle that the
+            # Agreement pins (payer.bundleHash), each with how the payer
+            # proved control of it (DACS-1 §6.3.2 step 6), or "none".
+            "demosPayerKeyClaims": {},
         }
         self.controls = {}
 
@@ -246,17 +273,24 @@ class FixtureFactory:
         commitment: str | None = None,
         bft_signers=("validator-a", "validator-b"),
         parent_id: str | None = None,
+        record: dict | None = None,
+        state: dict | None = None,
     ) -> dict:
         event_proof = self.merkle_proof(
             "fixture-event-merkle-v1", "eventBytes", event, label + ":event"
         )
+        # A native inclusion leaf binds identity only. Execution results
+        # come from an independently configured result authority policy.
         transaction = {
             "networkId": profile["networkId"],
             "genesisHash": profile["genesisHash"],
             "transactionRef": copy.deepcopy(reference),
             "eventsRoot": event_proof["root"],
-            "status": "success",
         }
+        if record is None:
+            transaction["status"] = "success"
+        else:
+            transaction["txHash"] = reference["txHash"]
         transaction_proof = self.merkle_proof(
             "fixture-transaction-merkle-v1", "transactionBytes", transaction, label + ":transaction"
         )
@@ -320,6 +354,28 @@ class FixtureFactory:
             "authorityEvidence": None,
         }
         self.sign_chain_authority(observation)
+        if record is not None:
+            state = self.committed() if state is None else state
+            debit, credit = self.committed_change(state)
+            observation["executionResult"] = {
+                "kind": "fixture-independent-results-v1",
+                "networkId": profile["networkId"], "genesisHash": profile["genesisHash"],
+                "blockId": inclusion_id, "transactionRef": copy.deepcopy(reference),
+                "record": copy.deepcopy(record),
+                # Synthetic, independently observed committed state transition:
+                # it names the transaction it was asked about, and its debit
+                # and credit are the change of the committed balances the
+                # scenario fixes, never the record's amount, status or edits.
+                "appliedTransfer": {
+                    "txHash": record["hash"], "blockNumber": record["blockNumber"],
+                    "sender": record["content"]["from"].removeprefix("0x").lower(),
+                    "recipient": record["content"]["to"].removeprefix("0x").lower(),
+                    "payerDebitOs": debit,
+                    "payeeCreditOs": credit,
+                    "committedBalances": dict(state),
+                },
+            }
+            self.sign_execution_result(observation)
         if profile["kind"] == "bft-final":
             certificate = {
                 "kind": "fixture-bft-certificate-v1",
@@ -339,6 +395,16 @@ class FixtureFactory:
             ]
             observation["finalityCertificate"] = certificate
         return observation
+
+    def sign_execution_result(self, observation: dict, signers=("execution-a", "execution-b")) -> None:
+        proof = observation["executionResult"]
+        payload = {key: value for key, value in proof.items() if key != "attestations"}
+        digest = hash_value(payload)
+        proof["attestations"] = [
+            {"authorityRef": signer, "algorithm": "ed25519",
+             "value": self.sign_digest(signer, DEMOS_EXECUTION_DOMAIN, digest)}
+            for signer in signers
+        ]
 
     @staticmethod
     def tx_id(label: str) -> str:
@@ -370,6 +436,106 @@ class FixtureFactory:
             return {"kind": "demos", "txHash": self.tx_id(label), "blockNumber": 100}
         raise ValueError(model)
 
+    def demos_key(self, role: str) -> str:
+        return self.keys[role].public_key().public_bytes_raw().hex()
+
+    @staticmethod
+    def demos_send_edits(content: dict, tx_hash: str) -> list | None:
+        """The four `gcr_edits` the pinned node stores with a native send
+        (debit, credit, 1 DEM gas, nonce), each `txhash` set to the hash; None
+        when the send arguments cannot generate them."""
+        data, sender = content.get("data"), content.get("from_ed25519_address")
+        if not (isinstance(data, list) and len(data) == 2 and isinstance(data[1], dict)
+                and isinstance(data[1].get("args"), list) and len(data[1]["args"]) == 2
+                and isinstance(data[1]["args"][0], str) and isinstance(sender, str)):
+            return None
+        to, amount = data[1]["args"]
+        to = to if to.startswith("0x") else "0x" + to
+        return [
+            {"type": "balance", "operation": "remove", "isRollback": False, "account": sender, "txhash": tx_hash, "amount": amount},
+            {"type": "balance", "operation": "add", "isRollback": False, "account": to, "txhash": tx_hash, "amount": amount},
+            {"type": "balance", "account": sender, "operation": "remove", "amount": "1000000000", "txhash": tx_hash, "isRollback": False},
+            {"type": "nonce", "operation": "add", "account": sender, "amount": 1, "txhash": tx_hash, "isRollback": False},
+        ]
+
+    # The scenario's committed state, independent of every RPC record: each
+    # account's balance before the transaction's apply, and the 1 DEM gas an
+    # applied native send charges the payer.
+    PAYER_PRE_STATE_OS = "1" + "0" * 30
+    PAYEE_PRE_STATE_OS = "7" + "0" * 24
+    GAS_OS = "1000000000"
+
+    @staticmethod
+    def _os(operation, left: str, right: str) -> str:
+        """Exact OS decimal arithmetic, past int()'s digit limit."""
+        with decimal.localcontext() as context:
+            context.prec = max(len(left), len(right)) + 1
+            value = operation(decimal.Decimal(left), decimal.Decimal(right))
+        if value < 0:
+            raise ValueError("negative committed balance change")
+        return format(value, "f")
+
+    @classmethod
+    def committed(cls, outcome: str = "applied", amount_os: str = "5000000000", *,
+                  payer_before: str | None = None) -> dict:
+        """The committed balance transition the fixture scenario fixes for its
+        transaction, never read from the record: `applied` moves `amount_os`
+        and charges the gas; `rolled-back` (a failed or rejected apply) and
+        `no-op` (missing or empty edits) leave both balances unchanged."""
+        if outcome == "applied":
+            moved, fee = amount_os, cls.GAS_OS
+        elif outcome in ("rolled-back", "no-op"):
+            moved, fee = "0", "0"
+        else:
+            raise ValueError(outcome)
+        payer_before = payer_before or cls.PAYER_PRE_STATE_OS
+        add, sub = (lambda a, b: a + b), (lambda a, b: a - b)
+        return {
+            "payerBeforeOs": payer_before,
+            "payerAfterOs": cls._os(sub, payer_before, cls._os(add, moved, fee)),
+            "payeeBeforeOs": cls.PAYEE_PRE_STATE_OS,
+            "payeeAfterOs": cls._os(add, cls.PAYEE_PRE_STATE_OS, moved),
+            "feeOs": fee,
+        }
+
+    @classmethod
+    def committed_change(cls, balances: dict) -> tuple[str, str]:
+        """The payment debit (fee excluded) and payee credit of a committed
+        balance transition: the authority's figures are this change."""
+        sub = lambda a, b: a - b  # noqa: E731
+        payer = cls._os(sub, balances["payerBeforeOs"], balances["payerAfterOs"])
+        return (cls._os(sub, payer, balances["feeOs"]),
+                cls._os(sub, balances["payeeAfterOs"], balances["payeeBeforeOs"]))
+
+    def demos_send_record(self, reference: dict, *, status: str = "confirmed", **content_changes) -> dict:
+        """A `getTxByHash` native-send record in the node's wire form
+        (DEMOS-MAPPING §A.2) for 5 DEM from the buyer to the seller, with the
+        stored timestamp, fees and the send's four edits. `gcr_edits=None`
+        drops the edits, which the pinned node applies as a no-op."""
+        payee = self.demos_key("seller")
+        content = {
+            "type": "native",
+            "from": "0x" + self.demos_key("buyer"),
+            "from_ed25519_address": "0x" + self.demos_key("buyer"),
+            "to": "0x" + payee,
+            "amount": 5_000_000_000,
+            "nonce": "7",
+            "timestamp": "1791649642726",
+            "transaction_fee": {"network_fee": 1000000000, "rpc_fee": 1000000000, "additional_fee": 0, "rpc_address": None},
+            "data": ["native", {"nativeOperation": "send", "args": [payee, "5000000000"]}],
+        }
+        content.update(content_changes)
+        if "gcr_edits" not in content_changes:
+            # The pinned apply stamps each edit's `txhash` only while applying
+            # it: a failed record's edits keep the empty hash.
+            content["gcr_edits"] = self.demos_send_edits(content, "" if status == "failed" else reference["txHash"])
+        return {
+            "hash": reference["txHash"],
+            "blockNumber": reference["blockNumber"],
+            "status": status,
+            "content": {key: value for key, value in content.items() if value is not None},
+        }
+
     @staticmethod
     def common_event(reference: dict, session: dict, *, event_type="transfer") -> dict:
         tx_id = {
@@ -381,6 +547,8 @@ class FixtureFactory:
             "htlc-reveal": reference.get("revealTxHash"),
             "htlc-claim": reference.get("claimTxHash"),
         }[reference["kind"]]
+        if reference["kind"] == "demos" and event_type == "transfer":
+            return {"transactionRef": copy.deepcopy(reference), "transactionId": tx_id}
         event_index = reference.get("logIndex", reference.get("instructionIndex", 0))
         return {
             "eventType": event_type,
@@ -571,6 +739,7 @@ class FixtureFactory:
             "partyClaims": {"buyer": CLAIMS["buyer"], "seller": CLAIMS["seller"]},
             "payer": CLAIMS["buyer"],
             "payee": CLAIMS["seller"],
+            **({"payeeAddress": self.demos_key("seller")} if model == "bft-final" else {}),
             "asset": agreement["terms"]["price"]["currency"],
         }
 
@@ -629,6 +798,9 @@ class FixtureFactory:
         agreement = self.agreement(job_id, rail_id, rail_version, currency, listing)
         session = self.session(model, agreement, phase, rail_id, rail_version)
         self.trusted["sessionAuthorityByJob"][job_id] = copy.deepcopy(session)
+        if model == "bft-final":
+            self.trusted["demosPayerKeyClaims"][session["payer"]] = [
+                controlled_claim("key:" + self.demos_key("buyer"))]
         rail = self.rail(model, phase, rail_id, rail_version)
         profile = rail["consumerFinalityProfile"]
 
@@ -638,6 +810,7 @@ class FixtureFactory:
             observation = self.chain_observation(
                 profile["settlement"], reference, event, model,
                 commitment="finalized" if model == "commitment-level" else None,
+                record=self.demos_send_record(reference) if model == "bft-final" else None,
             )
             payment_refs = [reference]
             context = {"kind": "chain", "observation": observation}
@@ -774,11 +947,14 @@ class FixtureFactory:
         event = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
         mutate(event)
         profile = value["rail"]["consumerFinalityProfile"]
+        record = None
         if value["context"]["kind"] == "chain":
             chain_profile = profile["settlement"]
             ref = value["evidence"]["paymentTxRefs"][0]
             label = "rebuilt:chain"
             commitment = "finalized" if chain_profile["kind"] == "commitment-level" else None
+            if chain_profile["kind"] == "bft-final":
+                record = self.demos_send_record(ref)
         elif value["context"]["kind"] == "htlc":
             arm = path[-1]
             chain_profile = profile["source"] if arm.startswith("source") else profile["destination"]
@@ -792,7 +968,7 @@ class FixtureFactory:
             label = "rebuilt:tank:" + arm
             commitment = None
         rebuilt = self.chain_observation(
-            chain_profile, ref, event, label, commitment=commitment
+            chain_profile, ref, event, label, commitment=commitment, record=record
         )
         target = value["context"]
         for segment in path[:-1]:
@@ -1307,6 +1483,20 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         for model in MODEL_PHASE
     ]
 
+    # Every authenticated representation uses the same noncanonical hash;
+    # no cross-representation mismatch may mask SB-1's spelling rule.
+    uppercase = factory.model_input("bft-final")
+    reference = uppercase["evidence"]["paymentTxRefs"][0]
+    reference["txHash"] = reference["txHash"].upper()
+    factory.resign_evidence(uppercase["evidence"])
+    uppercase["context"]["observation"] = factory.chain_observation(
+        uppercase["rail"]["consumerFinalityProfile"]["settlement"], reference, {},
+        "consistently-uppercase-native-hash", record=factory.demos_send_record(reference),
+    )
+    vectors.append(case("fv-bft-final-consistently-uppercase-hash", "error",
+                        "Demos hashes remain lowercase-only even when evidence, inclusion and signed execution result agree",
+                        uppercase))
+
     def changed(model, mutation):
         value = factory.model_input(model)
         mutation(value)
@@ -1332,6 +1522,12 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-verifier-clock-missing", "error", "candidate time cannot replace a missing verifier-local clock", factory.model_input("block-depth"), trusted_overrides={"verificationTimeMs": None}),
         case("fv-head-observation-stale", "indeterminate", "freshness uses the verifier-local clock", factory.model_input("block-depth"), trusted_overrides={"verificationTimeMs": OBSERVED_AT + 61_000}),
         case("fv-head-observation-future", "fail", "future authenticated observation time is rejected", factory.model_input("block-depth"), trusted_overrides={"verificationTimeMs": OBSERVED_AT - 1}),
+        # The verifier's own trust must be able to verify the signed profile
+        # before any evidence is judged: trust it cannot use refutes nothing.
+        case("fv-trust-observation-keys-undecodable", "error", "observation-authority keys the verifier holds must decode", factory.model_input("block-depth"), trusted_overrides={"observationAuthorityKeys": {name: "AAAA" for name in ("rpc-a", "rpc-b", "rpc-c")}}),
+        case("fv-trust-observation-keys-aliased", "error", "two authority names under one key are one authority", factory.model_input("block-depth"), trusted_overrides={"observationAuthorityKeys": {name: factory.trusted["observationAuthorityKeys"]["rpc-a"] for name in ("rpc-a", "rpc-b", "rpc-c")}}),
+        case("fv-trust-observation-keys-unavailable", "indeterminate", "a verifier without observation-authority keys authenticates no head", factory.model_input("block-depth"), trusted_overrides={"observationAuthorityKeys": None}),
+        case("fv-trust-validator-set-not-pinned", "error", "a validator set held under the pinned hash must hash to it", factory.model_input("bft-final"), trusted_overrides={"validatorSets": {factory.validator_set_hash: {"validators": []}}}),
         case("fv-producer-freshness-substitution", "indeterminate", "a fresh producer report cannot refresh a stale authenticated head", changed("block-depth", lambda v: (v["evidence"]["settlementFinality"].__setitem__("finalityObservedAt", OBSERVED_AT + 61_000), factory.resign_evidence(v["evidence"]))), trusted_overrides={"verificationTimeMs": OBSERVED_AT + 61_000}),
         case("fv-freshness-bound-wrong-type", "error", "nested arithmetic fields are shape-checked", changed("block-depth", lambda v: (v["rail"]["consumerFinalityProfile"]["settlement"]["observation"].__setitem__("maxHeadAgeSec", "60"), factory.rebind_rail(v)))),
         case("fv-evidence-cross-domain-replay", "fail", "legacy evidence domain cannot authenticate the new type", changed("block-depth", lambda v: factory.resign_evidence(v["evidence"], domain=LEGACY_EVIDENCE_DOMAIN))),
@@ -1392,6 +1588,490 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-bft-quorum-insufficient", "fail", "weighted quorum is recomputed from the pinned validator set", changed("bft-final", lambda v: v["context"]["observation"]["finalityCertificate"].__setitem__("signatures", v["context"]["observation"]["finalityCertificate"]["signatures"][:1]))),
         case("fv-bft-validator-key-substitution", "fail", "unknown validator cannot enter the pinned set", changed("bft-final", lambda v: v["context"]["observation"]["finalityCertificate"]["signatures"][0].__setitem__("validatorId", CLAIMS["orchestrator"]))),
     ])
+
+    # DACS-4 §9.5.9 DEM-7 under FV-5. Each case re-forges an authentic,
+    # BFT-certified block and independently attested native-send record,
+    # with exactly one dimension
+    # changed; fv-bft-final-canonical-success is the positive control.
+    def demos_record(*, status="confirmed", event_changes=None, block_number=None,
+                     record_changes=None, without_record=False, phase_amount=None, phase_currency="DEM", state=None,
+                     **content_changes):
+        job_id = ("FV-amount-" + phase_amount + "-" + phase_currency) if phase_amount is not None else None
+        value = factory.model_input("bft-final", job_id=job_id)
+        reference = value["evidence"]["paymentTxRefs"][0]
+        encoded = value["context"]["observation"]["selectedEventProof"]["eventBytes"]
+        event = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+        event.update(event_changes or {})
+        if phase_amount is not None:
+            agreement = value["agreement"]
+            agreement["terms"]["price"] = {"amount": phase_amount, "currency": phase_currency}
+            if phase_currency != "DEM":
+                value["rail"]["asset"]["symbol"] = phase_currency
+                value["rail"]["parameters"]["assetId"] = phase_currency
+                factory.rebind_rail(value)
+                factory.trusted["sessionAuthorityByJob"][agreement["jobId"]]["asset"] = phase_currency
+                event.update(asset=phase_currency, currency=phase_currency)
+            digest = artifact_hash(agreement, "signatures")
+            for signature, role in zip(agreement["signatures"], ("buyer", "seller")):
+                signature["value"] = factory.sign_digest(role, AGREEMENT_DOMAIN, digest)
+            factory.trusted["sessionAuthorityByJob"][agreement["jobId"]]["agreementHash"] = digest
+            value["evidence"]["paymentAmount"] = {"amount": phase_amount, "currency": phase_currency}
+            factory.resign_evidence(value["evidence"])
+            event["amount"] = phase_amount
+        if block_number is not None:
+            reference["blockNumber"] = block_number
+            event["transactionRef"]["blockNumber"] = block_number
+            factory.resign_evidence(value["evidence"])
+        record = factory.demos_send_record(reference, status=status, **content_changes)
+        record.update(record_changes or {})
+        value["context"]["observation"] = factory.chain_observation(
+            value["rail"]["consumerFinalityProfile"]["settlement"],
+            reference, event, "bft-final", record=record, state=state,
+        )
+        if without_record:
+            value["context"]["observation"].pop("executionResult")
+        return value
+
+    other_party = CLAIMS["orchestrator"]
+    other_key = factory.demos_key("orchestrator")
+    applied, rolled_back, no_op = factory.committed(), factory.committed("rolled-back"), factory.committed("no-op")
+    payee_key = factory.demos_key("seller")
+
+    def send(recipient, amount_os):
+        return ["native", {"nativeOperation": "send", "args": [recipient, amount_os]}]
+
+    vectors.extend([
+        case("fv-bft-final-included-execution-failed", "fail", "BFT-final inclusion of a Demos transfer whose authenticated record failed is not settlement", demos_record(status="failed", state=rolled_back)),
+        # A signed failed record whose own committed balances show the payment
+        # contradicts itself: no proven failure, so it refutes nothing and is
+        # never closed-cannot-settle evidence (DEM-4, DEM-7).
+        case("fv-bft-final-included-execution-failed-shows-payment", "indeterminate", "a signed failed record whose applied transfer shows the payment authenticates nothing", demos_record(status="failed")),
+        case("fv-bft-final-execution-pending", "indeterminate", "an authenticated Demos record that is neither confirmed nor failed is not an execution result", demos_record(status="pending")),
+        case("fv-bft-final-execution-included-alias", "indeterminate", "the status-index label included is not a Demos execution result", demos_record(status="included")),
+        case("fv-bft-final-execution-success-alias", "indeterminate", "only the exact Demos record status confirmed is an executed send", demos_record(status="success")),
+        case("fv-bft-final-event-wrong-payee", "pass", "an authentic selected event naming another payee contradicts the phase", demos_record(event_changes={"payee": other_party})),
+        case("fv-bft-final-event-wrong-payer", "pass", "an authentic selected event naming another payer contradicts the phase", demos_record(event_changes={"payer": other_party})),
+        case("fv-bft-final-event-wrong-amount", "pass", "an authentic selected event of another amount contradicts the phase", demos_record(event_changes={"amount": "6"})),
+        case("fv-bft-final-record-wrong-payee", "fail", "an authentic confirmed native send to another Demos key contradicts the phase payee", demos_record(to="0x" + other_key, data=send(other_key, "5000000000"))),
+        case("fv-bft-final-record-wrong-payer", "fail", "an authentic confirmed native send from another Demos key contradicts the phase payer", demos_record(**{"from": "0x" + other_key, "from_ed25519_address": "0x" + other_key})),
+        case("fv-bft-final-record-wrong-amount", "fail", "an authentic confirmed native send of another OS amount contradicts the phase amount", demos_record(amount=6_000_000_000, data=send(payee_key, "6000000000"), state=factory.committed(amount_os="6000000000"))),
+        case("fv-bft-final-record-wrong-record-hash", "fail", "the authenticated record must be the signed txHash's record", demos_record(record_changes={"hash": "ee" * 32})),
+        case("fv-bft-final-record-wrong-record-block", "fail", "the authenticated record's blockNumber must be the signed blockNumber", demos_record(record_changes={"blockNumber": 101})),
+        case("fv-bft-final-record-wrong-block", "fail", "the signed Demos blockNumber must be the authenticated inclusion block", demos_record(block_number=101)),
+        case("fv-bft-final-record-wrong-hash", "fail", "a re-signed Demos txHash must match the authenticated transaction", changed("bft-final", lambda v: (v["evidence"]["paymentTxRefs"][0].__setitem__("txHash", "ff" * 32), factory.resign_evidence(v["evidence"])))),
+        case("fv-bft-final-record-missing", "indeterminate", "inclusion without independent execution evidence cannot settle", demos_record(without_record=True)),
+        case("fv-bft-final-record-noncanonical-nonce", "indeterminate", "a nonce with a leading zero does not decode under the native-send record profile", demos_record(nonce="07")),
+        case("fv-bft-final-record-missing-nonce", "indeterminate", "a record without a nonce does not decode under the native-send record profile", demos_record(nonce=None)),
+        case("fv-bft-final-record-send-recipient-mismatch", "indeterminate", "the native send argument must credit the same key as content.to", demos_record(data=send(other_key, "5000000000"))),
+        case("fv-bft-final-record-send-amount-mismatch", "indeterminate", "the native send argument must carry the same OS amount as content.amount", demos_record(data=send(payee_key, "6000000000"))),
+        case("fv-bft-final-record-not-native-send", "indeterminate", "only a native send moves the payment", demos_record(data=["native", {"nativeOperation": "burn", "args": [payee_key, "5000000000"]}])),
+        case("fv-bft-final-record-non-native-type", "indeterminate", "send-shaped data in another transaction type is not payment", demos_record(type="escrow")),
+        case("fv-bft-final-record-uppercase-recipient", "indeterminate", "recipient keys are exact lower-case account identifiers", demos_record(to="0x" + payee_key.upper())),
+        case("fv-bft-final-record-uppercase-send-argument", "indeterminate", "the send argument must use the exact lower-case payee account", demos_record(data=send(payee_key.upper(), "5000000000"))),
+        case("fv-bft-final-record-unpinned-node", "indeterminate", "a verifier that does not pin the profile's execution-record semantics cannot rely on confirmed", factory.model_input("bft-final"), trusted_overrides={"demosRecordProfile": "kynesyslabs/node@ac8f45f02fc9c25082ce9b83595c2e3916b49c5a"}),
+    ])
+
+    # A zero debit or credit is a committed transition that moved nothing on
+    # that side; the authority's figures stay the change of its balances.
+    zero_credit = dict(applied, payeeAfterOs=applied["payeeBeforeOs"])
+    zero_debit = dict(applied, payerAfterOs=factory._os(lambda a, b: a - b, applied["payerBeforeOs"], applied["feeOs"]))
+    undecodable = {"extra-member", "numeric-debit", "noncanonical-credit",
+                   "committed-balances-missing", "committed-balances-numeric"}
+    # The applied transfer is part of the signed result (FV-5, DEMOS-MAPPING
+    # §A.2): one that does not move the confirmed record's amount between its
+    # own parties in its own transaction and block contradicts the record it
+    # was signed with, so the result authenticates nothing either way.
+    contradicts = {"zero-credit", "zero-debit", "wrong-hash", "wrong-block", "wrong-sender", "wrong-recipient"}
+    for suffix, replacement, expected in (
+        ("missing", None, "indeterminate"),
+        ("zero-credit", dict(zip(("payerDebitOs", "payeeCreditOs"), factory.committed_change(zero_credit)),
+                             committedBalances=zero_credit), "indeterminate"),
+        ("zero-debit", dict(zip(("payerDebitOs", "payeeCreditOs"), factory.committed_change(zero_debit)),
+                            committedBalances=zero_debit), "indeterminate"),
+        ("wrong-hash", {"txHash": "ee" * 32}, "indeterminate"),
+        ("wrong-block", {"blockNumber": 101}, "indeterminate"),
+        ("wrong-sender", {"sender": other_key}, "indeterminate"),
+        ("wrong-recipient", {"recipient": other_key}, "indeterminate"),
+        # Figures that are not the change of the committed balances the
+        # authority authenticates prove nothing either way.
+        ("not-committed-change", {"committedBalances": rolled_back}, "indeterminate"),
+        # An authenticated transfer that does not decode is no evidence either way.
+        ("extra-member", {"feeOs": "1000000000"}, "indeterminate"),
+        ("numeric-debit", {"payerDebitOs": 5000000000}, "indeterminate"),
+        ("noncanonical-credit", {"payeeCreditOs": "05000000000"}, "indeterminate"),
+        ("committed-balances-missing", {"committedBalances": {k: v for k, v in applied.items() if k != "feeOs"}},
+         "indeterminate"),
+        ("committed-balances-numeric", {"committedBalances": dict(applied, feeOs=1000000000)}, "indeterminate"),
+    ):
+        value = demos_record()
+        observation = value["context"]["observation"]
+        proof = observation["executionResult"]
+        if replacement is None:
+            proof.pop("appliedTransfer")
+        else:
+            proof["appliedTransfer"].update(copy.deepcopy(replacement))
+        factory.sign_execution_result(observation)
+        vectors.append(case("fv-bft-final-applied-transfer-" + suffix, expected,
+                            "an authenticated applied transfer that does not decode proves nothing"
+                            if suffix in undecodable else
+                            "an applied debit and credit are evidence only as the change of the committed balances the authority authenticates"
+                            if suffix == "not-committed-change" else
+                            "a signed result whose applied transfer contradicts its own record authenticates nothing"
+                            if suffix in contradicts else
+                            "confirmed and the send's edits cannot substitute for an authenticated applied debit and payee credit", value))
+
+    # A confirmed send whose transaction carries no edits is a successful
+    # no-op at the pinned node: its committed balances do not change, and an
+    # authority that reports a payment for it is not believed.
+    for name, edits in (("missing-edits", None), ("empty-edits", [])):
+        vectors.append(case("fv-bft-final-confirmed-no-op-" + name, "indeterminate",
+                            "a signed confirmed result whose committed balances show no debit or credit contradicts itself and authenticates nothing",
+                            demos_record(gcr_edits=edits, state=no_op)))
+    vectors.append(case("fv-bft-final-confirmed-no-op-copied-authority", "indeterminate",
+                        "an authority that reports payment for a confirmed send without its edits establishes nothing",
+                        demos_record(gcr_edits=None)))
+    # The edit list must equal the send's four edits: a partial list or a
+    # changed member is not that list, whatever the authority reports. The
+    # signed result is hashed over JCS bytes, which do not keep the order of an
+    # edit's members, so that order is not authenticated and decides nothing.
+    full = factory.demos_send_record(factory.transaction_ref("bft-final", "bft-final"))["content"]["gcr_edits"]
+    vectors.append(case("fv-bft-final-confirmed-partial-edits", "indeterminate",
+                        "a confirmed send whose edits are not exactly its four send edits establishes no payment",
+                        demos_record(gcr_edits=full[:2])))
+    vectors.append(case("fv-bft-final-confirmed-edit-member-changed", "indeterminate",
+                        "a confirmed send whose edit names another amount than its send is not its four send edits",
+                        demos_record(gcr_edits=[dict(full[0], amount="1")] + full[1:])))
+    vectors.append(case("fv-bft-final-confirmed-reordered-edit-members", "pass",
+                        "the order of an edit's members is not signed (JCS sorts members), so reordering them changes neither the result's signature nor the decision",
+                        demos_record(gcr_edits=[dict(reversed(list(full[0].items())))] + full[1:])))
+    # With `gasFeeSeparation` active the pinned node's apply prepends
+    # fee-distribution edits (feeDistribution.ts shape; the burn/treasury
+    # split is illustrative) and stores them: such a network is outside the
+    # profile, even with the send's four edits last and the payment applied.
+    sender, stamp = full[0]["account"], full[0]["txhash"]
+    treasury = "0xf7a1c3417e39563ca8f63f2e9a9ba08890888695768e95e22026e6f942addf23"
+    fee_edits = [{"type": "balance", "operation": operation, "isRollback": False, "account": account,
+                  "amount": amount, "txhash": stamp}
+                 for operation, account, amount in (("remove", sender, 1000000000), ("add", "0x" + "0" * 64, 500000000),
+                                                    ("add", treasury, 500000000), ("remove", sender, 1000000000),
+                                                    ("add", treasury, 1000000000))]
+    vectors.append(case("fv-bft-final-confirmed-fee-separated-edits", "indeterminate",
+                        "a confirmed send carrying gasFeeSeparation fee edits before its four is outside the record profile",
+                        demos_record(gcr_edits=fee_edits + full)))
+    # A signed confirmed result over committed balances that did not move
+    # contradicts itself: it authenticates nothing, so it refutes nothing.
+    vectors.append(case("fv-bft-final-confirmed-fee-separated-edits-uncommitted-payment", "indeterminate",
+                        "a signed confirmed result whose committed balances did not move authenticates nothing",
+                        demos_record(gcr_edits=fee_edits + full, state=rolled_back)))
+    # A confirmed send that carries all four edits while the authenticated
+    # committed balances did not move: the edits are the claim, not the payment.
+    vectors.append(case("fv-bft-final-confirmed-four-edits-uncommitted-payment", "indeterminate",
+                        "a signed confirmed result whose committed balances did not move authenticates nothing, whatever its edits",
+                        demos_record(state=rolled_back)))
+    # DEMOS-MAPPING §A.2 spellings that project to the same values each bind
+    # on the record path, up to a JSON number of 2^53 - 1 (JCS cannot carry a
+    # larger one, so the tests refuse it in memory). T, the credit edit's
+    # account, is the send argument with `0x` prefixed only when absent.
+    prefixed = send("0x" + payee_key, "5000000000")
+    payer_key = factory.demos_key("buyer")
+    double_prefixed = copy.deepcopy(full)
+    double_prefixed[1]["account"] = "0x0x" + payee_key
+    safe_max = 2**53 - 1
+    for name, expected, note, value in (
+        ("send-argument-prefixed", "pass", "a 0x-prefixed send argument credits the same account",
+         demos_record(data=prefixed)),
+        ("send-argument-prefixed-credit-double-prefix", "indeterminate",
+         "the credit edit of a 0x-prefixed send argument names that argument, never a second prefix",
+         demos_record(data=prefixed, gcr_edits=double_prefixed)),
+        ("unprefixed-parties-bind", "pass", "party keys without 0x project to the same keys",
+         demos_record(**{"from": payer_key, "from_ed25519_address": payer_key, "to": payee_key})),
+        ("integer-nonce-binds", "pass", "a JSON integer nonce projects to the same nonce", demos_record(nonce=7)),
+        ("string-amount-binds", "pass", "a canonical decimal string amount projects to the same OS amount",
+         demos_record(amount="5000000000")),
+        ("safe-max-number-amount-binds", "pass", "a JSON number amount of 2^53 - 1 OS decodes",
+         demos_record(phase_amount="9007199.254740991", amount=safe_max, data=send(payee_key, str(safe_max)),
+                      state=factory.committed(amount_os=str(safe_max)))),
+    ):
+        vectors.append(case("fv-bft-final-" + name, expected, note, value))
+    vectors.append(case("fv-block-depth-execution-result-not-native-send", "error",
+                        "only a Demos native send carries an execution result; on another chain model the member is malformed",
+                        changed("block-depth", lambda v: v["context"]["observation"].__setitem__("executionResult", {}))))
+
+    # Raw body binding: each contradiction is inside a freshly authenticated block.
+    class BodyVariant(FixtureFactory):
+        def __init__(self, member, replacement):
+            super().__init__()
+            self.member, self.replacement = member, replacement
+
+        def merkle_proof(self, kind, bytes_field, body, label):
+            if kind == "fixture-transaction-merkle-v1":
+                body = dict(body, **{self.member: self.replacement})
+            return FixtureFactory.merkle_proof(kind, bytes_field, body, label)
+
+    for model in ("block-depth", "commitment-level", "bft-final"):
+        members = {"networkId": "wrong:network", "genesisHash": "00" * 32,
+                   "transactionRef": factory.transaction_ref(model, "another"), "eventsRoot": "00" * 32}
+        if model == "bft-final":
+            members["txHash"] = "00" * 32
+        else:
+            members["status"] = "reverted" if model == "block-depth" else "failed"
+        for member, replacement in members.items():
+            value = BodyVariant(member, replacement).model_input(model)
+            vectors.append(case("fv-" + model + "-transaction-body-" + member, "pass" if model == "bft-final" and member == "eventsRoot" else "fail",
+                                "the included transaction must bind every selected body member", value))
+
+    for name, amount, os_amount, expected in (
+        ("fractional-amount-binds", "1.5", "1500000000", "pass"),
+        ("fractional-underpayment", "1.5", "500000000", "fail"),
+        ("one-os-amount-binds", "0.000000001", "1", "pass"),
+        ("amount-below-os-precision", "5.0000000001", "5000000000", "error"),
+    ):
+        vectors.append(case("fv-bft-final-" + name, expected, "DEM amount converts exactly to OS",
+                            demos_record(phase_amount=amount, amount=int(os_amount), data=send(payee_key, os_amount),
+                                         state=factory.committed(amount_os=os_amount))))
+    vectors.append(case("fv-bft-final-amount-not-dem", "error", "native DEM settlement requires DEM currency",
+                        demos_record(phase_amount="5", phase_currency="USDC")))
+    for name, value in (
+        ("record-wrong-payee-certificate-withheld", demos_record(to="0x" + other_key, data=send(other_key, "5000000000"))),
+        ("execution-failed-certificate-withheld", demos_record(status="failed", state=rolled_back)),
+        ("record-wrong-hash-certificate-withheld", demos_record(record_changes={"hash": "ee" * 32})),
+    ):
+        value["context"]["observation"].pop("finalityCertificate")
+        vectors.append(case("fv-bft-final-" + name, "indeterminate",
+                            "a signed failure or contradiction refutes nothing until its block's bft-final path verifies",
+                            value))
+    vectors.append(case("fv-bft-final-record-ed25519-address-mismatch", "indeterminate", "the debited key must be the sender",
+                        demos_record(from_ed25519_address="0x" + other_key)))
+    # Canonical decimals longer than Python's int() digit limit (4300) are
+    # compared by spelling, so each returns its decision instead of raising.
+    oversized = "9" * 4301
+    vectors.append(case("fv-bft-final-record-oversized-amount", "fail", "an authentic native send of an oversized OS amount contradicts the phase amount",
+                        demos_record(amount=oversized, data=send(payee_key, oversized),
+                                     state=factory.committed(amount_os=oversized, payer_before="1" + "0" * 4320))))
+    vectors.append(case("fv-bft-final-record-oversized-send-argument", "indeterminate", "an oversized send argument differs from content.amount, so the record does not decode",
+                        demos_record(data=send(payee_key, oversized))))
+    vectors.append(case("fv-bft-final-applied-transfer-oversized-debit", "indeterminate", "a signed oversized applied debit contradicts its own record, so the result authenticates nothing",
+                        demos_record(state=factory.committed(amount_os=oversized, payer_before="1" + "0" * 4320))))
+    for name, mutate, expected in (
+        ("record-not-object", lambda o: o["executionResult"].__setitem__("record", []), "indeterminate"),
+        ("record-content-not-object", lambda o: o["executionResult"]["record"].__setitem__("content", []), "indeterminate"),
+        # A result signed by the policy for another block, network or
+        # transaction is no result for this reference: it refutes nothing.
+        ("result-other-block", lambda o: o["executionResult"].__setitem__("blockId", "00" * 32), "indeterminate"),
+        ("result-other-transaction", lambda o: o["executionResult"]["transactionRef"].__setitem__("txHash", "00" * 32), "indeterminate"),
+        ("result-other-network", lambda o: o["executionResult"].__setitem__("networkId", "demos:other"), "indeterminate"),
+        ("result-other-genesis", lambda o: o["executionResult"].__setitem__("genesisHash", "00" * 32), "indeterminate"),
+    ):
+        value = factory.model_input("bft-final")
+        observation = value["context"]["observation"]
+        mutate(observation)
+        factory.sign_execution_result(observation)
+        vectors.append(case("fv-bft-final-" + name, expected, "independent execution-result binding", value))
+    for name, mutate, expected in (
+        # Attestations are counted, never a veto: one that does not verify,
+        # names no policy key or repeats a counted key adds nothing, so a
+        # result below the threshold is unauthenticated, not refuted.
+        ("result-unsigned", lambda o: o["executionResult"].__setitem__("attestations", []), "indeterminate"),
+        ("result-status-tampered", lambda o: o["executionResult"]["record"].__setitem__("status", "failed"), "indeterminate"),
+        ("result-quorum-missing", lambda o: o["executionResult"].__setitem__("attestations", o["executionResult"]["attestations"][:1]), "indeterminate"),
+        ("result-duplicate-signer", lambda o: o["executionResult"]["attestations"].__setitem__(1, copy.deepcopy(o["executionResult"]["attestations"][0])), "indeterminate"),
+        # An attestation that is no signature object counts as none.
+        ("result-attestation-malformed", lambda o: o["executionResult"]["attestations"][0].pop("algorithm"), "indeterminate"),
+        # Neither a relayer's appended attestation nor one faulty authority
+        # turns a threshold-authenticated result into anything else.
+        ("result-extra-unknown-attestation",
+         lambda o: o["executionResult"]["attestations"].append(
+             dict(o["executionResult"]["attestations"][0], authorityRef="execution-unknown")), "pass"),
+        ("result-spare-key-bad-signature",
+         lambda o: o["executionResult"]["attestations"].append(
+             dict(o["executionResult"]["attestations"][0], authorityRef="execution-c")), "pass"),
+        # Nor does an appended entry that is no signature object at all.
+        ("result-extra-malformed-attestation",
+         lambda o: o["executionResult"]["attestations"].append({"authorityRef": 7}), "pass"),
+    ):
+        value = factory.model_input("bft-final")
+        mutate(value["context"]["observation"])
+        vectors.append(case("fv-bft-final-" + name, expected, "only independently authenticated results count", value))
+    forged_success = demos_record(status="failed")
+    forged_success["context"]["observation"]["executionResult"]["record"]["status"] = "confirmed"
+    vectors.append(case("fv-bft-final-result-forged-confirmed", "indeterminate", "a valid BFT block cannot authenticate an altered execution outcome", forged_success))
+    vectors.append(case("fv-bft-final-result-policy-unavailable", "indeterminate", "BFT does not authenticate execution status",
+                        factory.model_input("bft-final"), trusted_overrides={"demosExecutionPolicy": None}))
+    # Each policy override is a whole replacement, so its decision does not
+    # depend on whether a runner merges or replaces trustedOverrides members.
+    def result_policy(**changes):
+        policy = copy.deepcopy(factory.trusted["demosExecutionPolicy"])
+        policy["authorityKeys"].update(changes.pop("keys", {}))
+        policy.update(changes)
+        return {"demosExecutionPolicy": policy}
+
+    vectors.append(case("fv-bft-final-result-policy-other-kind", "indeterminate", "only the registered result policy authenticates execution",
+                        factory.model_input("bft-final"), trusted_overrides=result_policy(kind="other")))
+    # A configured result policy is checked before any result: a threshold of
+    # zero, above its keys, or met by aliases of one key is malformed.
+    unsigned = factory.model_input("bft-final")
+    unsigned["context"]["observation"]["executionResult"]["attestations"] = []
+    aliased = factory.model_input("bft-final")
+    attestations = aliased["context"]["observation"]["executionResult"]["attestations"]
+    attestations[1]["value"] = attestations[0]["value"]
+    alias_key = factory.trusted["demosExecutionPolicy"]["authorityKeys"]["execution-a"]
+    for name, value, overrides in (
+        ("threshold-zero", unsigned, result_policy(threshold=0)),
+        ("threshold-above-keys", factory.model_input("bft-final"), result_policy(threshold=4)),
+        ("duplicate-key", aliased, result_policy(keys={"execution-b": alias_key})),
+        ("key-malformed", factory.model_input("bft-final"), result_policy(keys={"execution-c": "AAAA"})),
+    ):
+        vectors.append(case("fv-bft-final-result-policy-" + name, "error", "a result quorum counts distinct configured keys",
+                            value, trusted_overrides=overrides))
+    all_of_n = factory.model_input("bft-final")
+    factory.sign_execution_result(all_of_n["context"]["observation"], ("execution-a", "execution-b", "execution-c"))
+    vectors.append(case("fv-bft-final-result-policy-all-of-n", "pass", "a threshold equal to the key count is valid",
+                        all_of_n, trusted_overrides=result_policy(threshold=3)))
+    for name, mutate, resign in (
+        ("result-member-missing", lambda o: o["executionResult"].pop("blockId"), True),
+        ("result-kind-mismatch", lambda o: o["executionResult"].__setitem__("kind", "other-results-v1"), True),
+        ("result-attestations-not-array", lambda o: o["executionResult"].__setitem__("attestations", {}), False),
+        ("result-inclusion-block-not-object", lambda o: o.__setitem__("inclusionBlock", []), False),
+    ):
+        value = factory.model_input("bft-final")
+        observation = value["context"]["observation"]
+        mutate(observation)
+        if resign:
+            factory.sign_execution_result(observation)
+        vectors.append(case("fv-bft-final-" + name, "error", "a malformed execution result is not evidence", value))
+    # DEM-7/FV-5: the sender binds a controlled Demos key claim of the payer's
+    # pinned party bundle; nothing a consumer receives names the payer's
+    # per-phase selection, the payer's own word is no source, and a claim the
+    # bundle only lists (another party's key) binds nothing. A Demos key claim
+    # is a DACS-1 ClaimReference (`key:<hex>` or `did:demos:agent:<hex>`) and is
+    # controlled only by the step (6) mechanism DACS-1 defines for its scheme:
+    # the exact `key:` claim's own bundle presentation signature.
+    claimed_key = factory.demos_key("orchestrator")
+    buyer_key = factory.demos_key("buyer")
+    only_claimed = {CLAIMS["buyer"]: [controlled_claim("key:" + claimed_key)]}
+    claimed_sender = demos_record(**{"from": "0x" + claimed_key, "from_ed25519_address": "0x" + claimed_key})
+    buyer_claim = controlled_claim("key:" + buyer_key)
+    def claims_of(*claims):
+        return {"demosPayerKeyClaims": {CLAIMS["buyer"]: list(claims)}}
+    vectors.append(case("fv-bft-final-payer-key-claim-distinct", "pass", "a controlled Demos key claim of the payer's bundle may differ from the party signer",
+                        claimed_sender, trusted_overrides={"demosPayerKeyClaims": only_claimed}))
+    vectors.append(case("fv-bft-final-payer-key-claim-any-of-bundle", "pass", "any controlled Demos key claim of the payer's bundle binds the sender",
+                        claimed_sender,
+                        trusted_overrides=claims_of(buyer_claim, controlled_claim("key:" + claimed_key),
+                                                    controlled_claim("did:demos:agent:" + claimed_key, "none"))))
+    vectors.append(case("fv-bft-final-payer-key-claim-wrong", "fail", "a sender that is no controlled Demos key claim of the payer's bundle, the primary party signer included, contradicts the phase",
+                        factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": only_claimed}))
+    # Another party's key that the payer's bundle lists with no control proof:
+    # its transfer binds nothing, and the payer's own claim still does.
+    listed_only = {CLAIMS["buyer"]: [buyer_claim, controlled_claim("key:" + claimed_key, "none")]}
+    vectors.append(case("fv-bft-final-payer-key-claim-listed-not-controlled", "fail", "a Demos key the payer's bundle lists without a control proof is another party's key, so its transfer contradicts the phase",
+                        claimed_sender, trusted_overrides={"demosPayerKeyClaims": listed_only}))
+    vectors.append(case("fv-bft-final-payer-key-claim-listed-beside-controlled", "pass", "listing another party's key beside the payer's own controlled claim does not disturb the payer's own transfer",
+                        factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": listed_only}))
+    vectors.append(case("fv-bft-final-payer-key-claim-none-controlled", "indeterminate", "a bundle that proves control of no Demos key claim authenticates no sender, even one it lists",
+                        claimed_sender, trusted_overrides=claims_of(controlled_claim("key:" + claimed_key, "none"))))
+    vectors.append(case("fv-bft-final-payer-key-claim-session-key-presentation", "indeterminate", "a bundle presented by a session key has no presentation signature of its own key: claim, so its key claim is listed only and its owner's own transfer is not admitted",
+                        factory.model_input("bft-final"), trusted_overrides=claims_of(controlled_claim("key:" + buyer_key, "none"))))
+    vectors.append(case("fv-bft-final-payer-key-claim-non-demos-skipped", "pass", "a claim that is no Demos key claim is skipped, never an error",
+                        factory.model_input("bft-final"),
+                        trusted_overrides=claims_of(
+                            controlled_claim("cci-xm:evm:8453:0x" + "ab" * 20, "sr1-linkage"), buyer_claim,
+                            controlled_claim("lei:529900T8BM49AURSDO55", "holder-binding"))))
+    # One vector per scheme and mechanism over the claim's ClaimReference. A
+    # Demos key is bound only through the mechanism DACS-1 step (6) defines
+    # for the claim's scheme; nothing else, and no other spelling, is control.
+    for name, claim, control, why in (
+        ("did-presentation-signature", "did:demos:agent:" + buyer_key, "presentation-signature",
+         "DACS-1 step (6) defines no control mechanism for a did:demos:agent: claim, so a signature label on it controls nothing"),
+        ("did-holder-binding", "did:demos:agent:" + buyer_key, "holder-binding",
+         "holder-binding is a credential mechanism, not control of a Demos agent DID"),
+        ("key-sr1-linkage", "key:" + buyer_key, "sr1-linkage",
+         "SR-1 linkage controls a cci-xm: claim, not a key: claim"),
+        ("key-holder-binding", "key:" + buyer_key, "holder-binding",
+         "holder-binding controls a credential claim, not a key: claim"),
+        ("cci-xm-sr1-linkage", "cci-xm:demos:mainnet:0x" + buyer_key, "sr1-linkage",
+         "no registered mapping takes a cci-xm: identifier to a Demos account key, so it is no Demos key claim"),
+        ("bare-hex-signature", buyer_key, "presentation-signature",
+         "bare hex is an address spelling, not a ClaimReference, so a bundle claim cannot be it"),
+        ("0x-hex-signature", "0x" + buyer_key, "presentation-signature",
+         "0x hex is an address spelling, not a ClaimReference"),
+        ("key-upper-case-signature", "key:" + buyer_key.upper(), "presentation-signature",
+         "a key: identifier is lower-case hex; upper case is not the canonical claim"),
+        ("key-0x-signature", "key:0x" + buyer_key, "presentation-signature",
+         "a key: identifier is hex with no 0x prefix"),
+    ):
+        vectors.append(case("fv-bft-final-payer-key-claim-" + name,
+                            "error" if name in {"bare-hex-signature", "0x-hex-signature", "key-upper-case-signature", "key-0x-signature"} else "indeterminate", why,
+                            factory.model_input("bft-final"), trusted_overrides=claims_of(controlled_claim(claim, control))))
+    # A listed DID claim names the sender's key but proves nothing: the payer's
+    # own controlled key: claim is the only source, and the sender is not it.
+    vectors.append(case("fv-bft-final-payer-key-claim-did-listed-sender", "fail", "a did:demos:agent: claim names a key but DACS-1 defines no control of it, so a sender it names contradicts the phase beside the payer's own controlled claim",
+                        claimed_sender, trusted_overrides=claims_of(buyer_claim, controlled_claim("did:demos:agent:" + claimed_key))))
+    # DACS-1 §6.3.1: a reader ignores a ?<parameters> suffix; the canonical
+    # identity is the scheme and identifier. key:demos:agent:<hex> is neither
+    # accepted scheme form.
+    vectors.append(case("fv-bft-final-payer-key-claim-unknown-parameters", "pass", "a controlled key: claim that carries a ?<parameters> suffix still binds the sender: readers ignore parameters (DACS-1 §6.3.1)",
+                        factory.model_input("bft-final"),
+                        trusted_overrides=claims_of(controlled_claim("key:" + buyer_key + "?jurisdiction=US"))))
+    for label, reference, expected in (
+        ("scheme-upper-key", "KEY:" + buyer_key, "pass"),
+        ("scheme-mixed-key", "KeY:" + buyer_key, "pass"),
+        ("scheme-upper-did", "DID:demos:agent:" + buyer_key, "indeterminate"),
+        ("unknown-qualified-key", "KEY:" + buyer_key + "?jurisdiction=US&zone=", "pass"),
+        ("parameters-empty", "key:" + buyer_key + "?", "error"),
+        ("parameter-without-equals", "key:" + buyer_key + "?oops", "error"),
+        ("parameter-empty-key", "key:" + buyer_key + "?=US", "error"),
+        ("parameter-newline", "key:" + buyer_key + "?a=b\nc", "error"),
+    ):
+        vectors.append(case("fv-bft-final-claim-read-" + label, expected,
+                            "DACS-1 read grammar preserves identifier case and requires well-formed qualifiers.",
+                            factory.model_input("bft-final"), trusted_overrides=claims_of(controlled_claim(reference))))
+    vectors.append(case("fv-bft-final-malformed-claim-inclusion-below-threshold", "error",
+                        "An unresolved inclusion never hides a malformed phase claim.",
+                        factory.model_input("bft-final"), trusted_overrides={
+                            "demosPayerKeyClaims": {CLAIMS["buyer"]: []}, "observationAuthorityKeys": {}}))
+    vectors.append(case("fv-bft-final-payer-key-claim-demos-agent-form", "error", "key:demos:agent:<hex> violates the registered key: identifier grammar",
+                        factory.model_input("bft-final"),
+                        trusted_overrides=claims_of(controlled_claim("key:demos:agent:" + buyer_key))))
+    # DEM-7's order: the FV-10 verdict, then `error` for a malformed phase
+    # value or claim, then `indeterminate` for no controlled claim, then the
+    # record. A malformed claim is `error` whatever the record shows, and an
+    # inclusion that FV decides is that verdict whatever the claim is.
+    malformed_claims = claims_of(controlled_claim("key:" + buyer_key, ["presentation-signature"]))
+    vectors.append(case("fv-bft-final-payer-key-claim-malformed-record-undecodable", "error", "a malformed claim is error before the record is decoded",
+                        demos_record(type="storage"), trusted_overrides=malformed_claims))
+    vectors.append(case("fv-bft-final-payer-key-claim-malformed-semantics-unpinned", "error", "a malformed claim is error before the record's semantics pin is consulted",
+                        factory.model_input("bft-final"),
+                        trusted_overrides=dict(malformed_claims, demosRecordProfile=None)))
+    vectors.append(case("fv-bft-final-payer-key-claim-malformed-certificate-forged", "fail", "FV-10: an inclusion whose certificate does not verify is fail before a malformed claim is error",
+                        changed("bft-final", lambda v: v["context"]["observation"]["finalityCertificate"]["signatures"][0].__setitem__("value", "A" * 86)),
+                        trusted_overrides=malformed_claims))
+    # A malformed phase value is `error` before the claims' verdict, as DEM-7
+    # orders them.
+    vectors.append(case("fv-bft-final-payer-key-claim-none-controlled-amount-not-dem", "error", "a phase without a DEM amount is error whatever the bundle controls",
+                        demos_record(phase_amount="5", phase_currency="USDC"),
+                        trusted_overrides=claims_of(controlled_claim("key:" + buyer_key, "none"))))
+    forged = BodyVariant("txHash", "00" * 32).model_input("bft-final")
+    vectors.append(case("fv-bft-final-payer-key-claim-none-controlled-inclusion-body-mismatch", "fail", "FV-10: an inclusion the bft-final verification decides fail is that verdict before the bundle's claims",
+                        forged, trusted_overrides=claims_of(controlled_claim("key:" + buyer_key, "none"))))
+    vectors.append(case("fv-bft-final-payer-key-claim-unavailable", "indeterminate", "no payer key may be inferred without the payer's authenticated bundle",
+                        factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": None}))
+    for name, bundles, expected in (
+        # Override members merge: the payer's own entry is cleared, so only
+        # another payer's bundle claims the sender's key.
+        ("other-payer", {CLAIMS["buyer"]: None, CLAIMS["seller"]: [buyer_claim]}, "indeterminate"),
+        ("payer-missing", {CLAIMS["buyer"]: None}, "indeterminate"),
+        ("claims-empty", {CLAIMS["buyer"]: []}, "error"),
+        ("claims-malformed", [], "error"),
+        ("claim-not-an-object", {CLAIMS["buyer"]: [buyer_key]}, "error"),
+        ("claim-not-a-string", {CLAIMS["buyer"]: [controlled_claim(7)]}, "error"),
+        ("claim-control-unknown", {CLAIMS["buyer"]: [controlled_claim("key:" + buyer_key, "self-declared")]}, "error"),
+        ("claim-control-array", {CLAIMS["buyer"]: [controlled_claim("key:" + buyer_key, ["presentation-signature"])]}, "error"),
+        ("claim-control-object", {CLAIMS["buyer"]: [controlled_claim("key:" + buyer_key, {})]}, "error"),
+        ("claim-extra-member", {CLAIMS["buyer"]: [dict(buyer_claim, verified=True)]}, "error"),
+    ):
+        vectors.append(case("fv-bft-final-payer-key-claim-" + name, expected, "the sender binds the controlled Demos key claims of this phase's payer's bundle",
+                            factory.model_input("bft-final"), trusted_overrides={"demosPayerKeyClaims": bundles}))
 
     provider_not_captured, provider_override = factory.provider_variant(status="declined")
     vectors.extend([
@@ -1476,6 +2156,25 @@ def build_vectors(factory: FixtureFactory) -> list[dict]:
         case("fv-malformed-context-kind", "error", "context/profile kind mismatch is structural error", changed("block-depth", lambda v: v["context"].__setitem__("kind", "provider"))),
         case("fv-production-codec-unavailable", "indeterminate", "synthetic vectors never claim a native production codec", factory.model_input("block-depth"), trusted_overrides={"policy": "production-native-unavailable"}),
     ])
+    for missing in (True, False):
+        value = factory.model_input("bft-final")
+        observation = value["context"]["observation"]
+        if missing:
+            observation.pop("executionResult")
+        else:
+            observation["executionResult"]["attestations"] = []
+        vectors.append(case("fv-bft-final-malformed-claims-result-" + ("missing" if missing else "unauthenticated"),
+            "error", "Phase claims are validated independently of execution authentication.", value,
+            trusted_overrides={"demosPayerKeyClaims": {CLAIMS["buyer"]: [42]}}))
+    value = factory.model_input("bft-final")
+    result = value["context"]["observation"]["executionResult"]
+    result["appliedTransfer"]["blockNumber"] = float(result["appliedTransfer"]["blockNumber"])
+    vectors.append(case("fv-bft-final-equivalent-json-block-number", "pass",
+                        "Equivalent JSON number values preserve JCS signatures and payment.", value))
+    value = factory.model_input("bft-final")
+    value["context"]["observation"].pop("selectedEventProof")
+    vectors.append(case("fv-bft-final-no-synthetic-event", "pass",
+                        "A native send carries no job or execution event; verify transaction identity and independent execution.", value))
     return vectors
 
 

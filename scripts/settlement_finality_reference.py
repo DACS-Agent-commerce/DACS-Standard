@@ -11,11 +11,17 @@ from __future__ import annotations
 
 import base64
 import binascii
+import decimal
 import hashlib
 import json
 import re
 from typing import Any
 from urllib.parse import urlsplit
+
+try:
+    from scripts.demos_identity import demos_key_claim, demos_party_address
+except ImportError:  # direct script entry point
+    from demos_identity import demos_key_claim, demos_party_address
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -33,11 +39,26 @@ LEGACY_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 RAIL_DOMAIN = "dacs-rail:v1:"
 AGREEMENT_DOMAIN = "dacs-agreement:v1:"
 CHAIN_AUTHORITY_DOMAIN = "dacs-finality-fixture-chain-observation:v1:"
+DEMOS_EXECUTION_DOMAIN = "dacs-fixture-demos-execution:v1:"
 BFT_CERTIFICATE_DOMAIN = "dacs-finality-fixture-bft-certificate:v1:"
 PROVIDER_ATTESTATION_DOMAIN = "dacs-finality-fixture-provider-response:v1:"
+# DEMOS-MAPPING §A.2: the node source whose execution-record semantics the
+# verifier pins for a `pay-dem` record.
+DEMOS_RECORD_PROFILE = "kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f45578"
 
 POSITION_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
+DEMOS_KEY_RE = re.compile(r"(?:0x)?([0-9a-f]{64})\Z")
+# How a payer bundle claim's control was established: the DACS-1 §6.3.2
+# step (6) mechanisms, as the verifier's own check of the bundle that
+# `payer.bundleHash` pins reports them, or "none" for a claim the bundle only
+# lists. Only a mechanism DACS-1 defines for the claim's scheme is control:
+# for a Demos key claim that is the exact `key:` claim's own bundle
+# presentation signature. `did:demos:agent:` has no step (6) mechanism.
+DEMOS_CLAIM_CONTROLS = frozenset({"presentation-signature", "sr1-linkage", "holder-binding", "demos-gcr-domain"})
+DEMOS_CLAIM_UNCONTROLLED = "none"
+DEMOS_KEY_CLAIM_CONTROL = {"key": "presentation-signature"}
+DEM_AMOUNT_RE =re.compile(r"(0|[1-9][0-9]*)(?:\.([0-9]{1,9}))?\Z")
 DECIMAL_RE = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
 SIG_RE = re.compile(r"[A-Za-z0-9_-]+\Z")
 MAX_SAFE_INTEGER = 9_007_199_254_740_991
@@ -230,14 +251,16 @@ def _https_origin(value: Any) -> bool:
 
 
 def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str, str, dict | None]:
+    payee_bound = isinstance(agreement, dict) and "payeeBoundAgreementVersion" in agreement
+    discriminator = "payeeBoundAgreementVersion" if payee_bound else "agreementVersion"
     required = {
-        "agreementVersion", "jobId", "listingRef", "parties", "terms",
+        discriminator, "jobId", "listingRef", "parties", "terms",
         "derivedFromPattern", "generatedAt", "signatures",
     }
     if not _exact_object(agreement, required):
         return "error", "malformed AgreementDocument", None
     if (
-        agreement.get("agreementVersion") != "1"
+        agreement.get(discriminator) != "1"
         or agreement.get("jobId") != session.get("jobId")
         or agreement.get("derivedFromPattern") not in {"fixed-price", "rfq", "sealed-envelope"}
         or not _finite_time(agreement.get("generatedAt"))
@@ -270,7 +293,7 @@ def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str
     if party_claims != session.get("partyClaims"):
         return "fail", "agreement parties differ from authenticated session authority", None
     terms = agreement.get("terms")
-    if not _exact_object(terms, {"deliverable", "price", "rail", "deadline"}):
+    if not _exact_object(terms, {"deliverable", "price", "rail", "deadline"} | ({"payoutBindings"} if payee_bound else set())):
         return "error", "malformed agreement terms", None
     deliverable = terms.get("deliverable")
     rail_ref = terms.get("rail")
@@ -290,6 +313,16 @@ def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str
         or rail_ref.get("railVersion") != session.get("railVersion")
     ):
         return "fail", "agreement rail differs from authenticated session authority", None
+    if payee_bound:
+        bindings = terms.get("payoutBindings")
+        if not (isinstance(bindings, list) and bindings
+                and all(_exact_object(b, {"railId", "phaseIndex", "payeeAddress"})
+                        and _nonempty_string(b["railId"]) and _safe_integer(b["phaseIndex"])
+                        and isinstance(b["payeeAddress"], str) for b in bindings)
+                and len({(b["railId"], b["phaseIndex"]) for b in bindings}) == len(bindings)
+                and sum(b["railId"] == session["railId"] and b["phaseIndex"] == session["phaseIndex"]
+                        for b in bindings) == 1):
+            return "error", "invalid signed payout binding", None
     digest = artifact_hash(agreement, "signatures")
     if digest != session.get("agreementHash"):
         return "fail", "agreement hash differs from authenticated commitment", None
@@ -304,7 +337,7 @@ def _verify_agreement(agreement: Any, trusted: dict, session: dict) -> tuple[str
         if signer in signed or signer not in party_claims.values():
             return "fail", "agreement signer is duplicate or not a session party", None
         if not _verify_ed25519(
-            trusted.get("partyKeys"), signer, AGREEMENT_DOMAIN, digest, signature["value"]
+            trusted.get("partyKeys"), signer, "dacs-payee-bound-agreement:v1:" if payee_bound else AGREEMENT_DOMAIN, digest, signature["value"]
         ):
             return "fail", "agreement signature does not verify", None
         signed.add(signer)
@@ -591,6 +624,9 @@ def _transaction_ref_shape(reference: Any) -> bool:
             continue
         if not _nonempty_string(value):
             return False
+    # SB-1 defines no legacy spelling for a Demos transaction hash.
+    if kind == "demos" and not _sha256(reference.get("txHash")):
+        return False
     if kind == "solana-instruction":
         try:
             if len(base58_decode(reference["signature"])) != 64:
@@ -659,7 +695,7 @@ def _verify_evidence(evidence: Any, trusted: dict) -> tuple[str, str, dict | Non
         "jobId", "phaseIndex", "phaseKind", "phaseOrchestrator", "railId", "railVersion",
         "agreementHash", "partyClaims", "payer", "payee", "asset",
     }
-    if set(session) != expected_session_fields:
+    if not expected_session_fields <= set(session) <= expected_session_fields | {"payeeAddress"}:
         return "error", "malformed trusted session authority", None
     if (
         session.get("jobId") != evidence.get("jobId")
@@ -820,6 +856,75 @@ def _authority_payload(observation: dict, path_ids: list[str]) -> dict:
     }
 
 
+def observation_trust(profile: dict, trusted: dict) -> tuple[str, str]:
+    """FV-6's trusted observation authorities for a well-formed chain
+    profile: `pass` when the verifier holds a key that decodes for at least
+    the profile's threshold of the authorities it names, each a distinct key
+    (an alias of one key is not a second authority); `indeterminate` when it
+    holds fewer, and `error` when a key it holds for a named authority is
+    malformed or aliased. The keys are the verifier's own trust anchors:
+    which key is an authority's is configuration the profile does not sign."""
+    keys = trusted.get("observationAuthorityKeys")
+    if keys is None:
+        return "indeterminate", "trusted observation authority keys unavailable"
+    if not isinstance(keys, dict):
+        return "error", "malformed trusted observation authority keys"
+    names = [name for name in profile["observation"]["authorityRefs"] if name in keys]
+    decoded = [_public_key(keys, name) for name in names]
+    if None in decoded or len(set(decoded)) != len(decoded):
+        return "error", "malformed or aliased trusted observation authority key"
+    if len(decoded) < profile["observation"]["threshold"]:
+        return "indeterminate", "trusted observation authorities below the profile threshold"
+    return "pass", "trusted observation authorities cover the profile"
+
+
+def validator_set_trust(profile: dict, trusted: dict) -> tuple[str, str, dict, int]:
+    """FV-7's trusted validator set for a well-formed `bft-final` profile:
+    the set the profile pins by content hash, its members by ID and its
+    total weight. `indeterminate` when the verifier holds no set for that
+    hash, `error` when the set it holds does not hash to it, is empty or has
+    a malformed, repeated or undecodable member."""
+    set_hash = profile["validatorSetRef"]["contentHash"]
+    validator_set = (trusted.get("validatorSets") or {}).get(set_hash)
+    if validator_set is None:
+        return "indeterminate", "trusted validator set unavailable", {}, 0
+    if not isinstance(validator_set, dict) or hash_value(validator_set) != set_hash:
+        return "error", "malformed trusted validator-set checkpoint", {}, 0
+    validators = validator_set.get("validators")
+    if not isinstance(validators, list) or not validators:
+        return "error", "trusted validator set is empty", {}, 0
+    by_id = {}
+    total = 0
+    for validator in validators:
+        if not (
+            _exact_object(validator, {"validatorId", "weight", "publicKey"})
+            and _nonempty_string(validator.get("validatorId"))
+            and _safe_integer(validator.get("weight"), positive=True)
+            and validator["validatorId"] not in by_id
+            and _public_key({validator["validatorId"]: validator.get("publicKey")}, validator["validatorId"]) is not None
+        ):
+            return "error", "malformed trusted validator set member", {}, 0
+        by_id[validator["validatorId"]] = validator
+        total += validator["weight"]
+    return "pass", "trusted validator set verified", by_id, total
+
+
+def bft_final_trust(profile: Any, trusted: Any) -> tuple[str, str]:
+    """Whether `trusted` can verify a transaction's inclusion under the
+    signed `bft-final` `profile`: the profile is well formed, and the
+    verifier's observation authorities and validator set pass the checks FV
+    applies to them before any evidence. DEM-1's gate applies this same
+    check, so it never passes trust the verifier rejects."""
+    if not _chain_profile_shape(profile, "bft-final"):
+        return "error", "malformed bft-final profile"
+    if not isinstance(trusted, dict):
+        return "error", "malformed bft-final trust"
+    decision, reason = observation_trust(profile, trusted)
+    if decision != "pass":
+        return decision, reason
+    return validator_set_trust(profile, trusted)[:2]
+
+
 def _verify_authority(observation: dict, profile: dict, path_ids: list[str], trusted: dict) -> tuple[str, str]:
     authority = observation.get("authorityEvidence")
     if authority is None:
@@ -834,6 +939,10 @@ def _verify_authority(observation: dict, profile: dict, path_ids: list[str], tru
     attestations = authority.get("attestations")
     if not isinstance(attestations, list):
         return "error", "authority attestations are not an array"
+    # Trust that cannot verify the profile refutes nothing it is shown.
+    decision, reason = observation_trust(profile, trusted)
+    if decision != "pass":
+        return decision, reason
     payload_hash = hash_value(_authority_payload(observation, path_ids))
     valid = set()
     for attestation in attestations:
@@ -868,27 +977,9 @@ def _verify_bft_certificate(observation: dict, profile: dict, trusted: dict) -> 
     set_hash = profile["validatorSetRef"]["contentHash"]
     if certificate.get("validatorSetHash") != set_hash or certificate.get("blockId") != observation["inclusionBlock"]["id"]:
         return "fail", "BFT certificate binds the wrong block or validator set"
-    validator_set = (trusted.get("validatorSets") or {}).get(set_hash)
-    if validator_set is None:
-        return "indeterminate", "trusted validator set unavailable"
-    if not isinstance(validator_set, dict) or hash_value(validator_set) != set_hash:
-        return "error", "malformed trusted validator-set checkpoint"
-    validators = validator_set.get("validators")
-    if not isinstance(validators, list) or not validators:
-        return "error", "trusted validator set is empty"
-    by_id = {}
-    total = 0
-    for validator in validators:
-        if not (
-            _exact_object(validator, {"validatorId", "weight", "publicKey"})
-            and _nonempty_string(validator.get("validatorId"))
-            and _safe_integer(validator.get("weight"), positive=True)
-            and validator["validatorId"] not in by_id
-            and _public_key({validator["validatorId"]: validator.get("publicKey")}, validator["validatorId"]) is not None
-        ):
-            return "error", "malformed trusted validator set member"
-        by_id[validator["validatorId"]] = validator
-        total += validator["weight"]
+    decision, reason, by_id, total = validator_set_trust(profile, trusted)
+    if decision != "pass":
+        return decision, reason
     signatures = certificate.get("signatures")
     if not isinstance(signatures, list):
         return "error", "BFT signatures are not an array"
@@ -913,25 +1004,346 @@ def _verify_bft_certificate(observation: dict, profile: dict, trusted: dict) -> 
     return "pass", "BFT certificate and weighted quorum verified"
 
 
+def _demos_key(value: Any) -> str | None:
+    match = DEMOS_KEY_RE.match(value) if isinstance(value, str) else None
+    return match.group(1) if match else None
+
+
+def _demos_decimal(value: Any) -> str | None:
+    """A safe JSON integer or a canonical decimal string (DEMOS-MAPPING §A.2),
+    as its canonical decimal spelling. A canonical spelling is unique, so
+    values compare as spellings; an untrusted string is never passed to
+    int(), which raises above Python's integer-string digit limit."""
+    if (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and 0 <= value <= 2**53 - 1 and value == int(value)):
+        return str(int(value))
+    if isinstance(value, str) and POSITION_RE.match(value):
+        return value
+    return None
+
+
+def _demos_os_spelling(amount: re.Match) -> str:
+    """The canonical OS decimal of a DEM_AMOUNT_RE match (10^9 OS per DEM)."""
+    return (amount.group(1) + (amount.group(2) or "").ljust(9, "0")).lstrip("0") or "0"
+
+
+def _demos_native_send(record: Any) -> dict | None:
+    """DEMOS-MAPPING §A.2 native-send projection of a transaction record."""
+    if not isinstance(record, dict) or not isinstance(record.get("content"), dict):
+        return None
+    content = record["content"]
+    tx_hash = record.get("hash")
+    nonce = _demos_decimal(content.get("nonce"))
+    amount = _demos_decimal(content.get("amount"))
+    sender = _demos_key(content.get("from"))
+    recipient = _demos_key(content.get("to"))
+    data = content.get("data")
+    if not (
+        isinstance(tx_hash, str) and SHA256_RE.match(tx_hash)
+        and not isinstance(record.get("blockNumber"), (str, bool))
+        and _demos_decimal(record.get("blockNumber")) is not None
+        and isinstance(record.get("status"), str)
+        and content.get("type") == "native"
+        and None not in (nonce, amount, sender, recipient)
+        and ("from_ed25519_address" not in content or _demos_key(content["from_ed25519_address"]) == sender)
+        and isinstance(data, list) and len(data) == 2 and data[0] == "native"
+        and _exact_object(data[1], {"nativeOperation", "args"})
+        and data[1]["nativeOperation"] == "send"
+        and isinstance(data[1]["args"], list) and len(data[1]["args"]) == 2
+        and _demos_key(data[1]["args"][0]) == recipient
+        and isinstance(data[1]["args"][1], str) and data[1]["args"][1] == amount
+    ):
+        return None
+    return {
+        "txHash": tx_hash, "blockNumber": int(record["blockNumber"]), "status": record["status"],
+        "nonce": nonce, "sender": sender, "recipient": recipient, "amountOs": amount,
+    }
+
+
+# DEMOS-MAPPING §A.2: the committed balance transition an applied-payment
+# authority authenticates, each a canonical OS decimal.
+DEMOS_COMMITTED_BALANCES = {"payerBeforeOs", "payerAfterOs", "payeeBeforeOs", "payeeAfterOs", "feeOs"}
+
+
+def _os_difference(left: str, right: str) -> str | None:
+    """Exact difference of two canonical OS decimals, or None when negative.
+    Decimal arithmetic, so a spelling past int()'s digit limit still decides."""
+    with decimal.localcontext() as context:
+        context.prec = max(len(left), len(right)) + 1
+        value = decimal.Decimal(left) - decimal.Decimal(right)
+    return None if value < 0 else format(value, "f")
+
+
+def _demos_committed_change(balances: dict) -> tuple[str, str] | None:
+    """The payment debit (fee excluded) and payee credit that an applied-
+    payment authority's committed balances show; None when one decreases."""
+    payer = _os_difference(balances["payerBeforeOs"], balances["payerAfterOs"])
+    debit = None if payer is None else _os_difference(payer, balances["feeOs"])
+    credit = _os_difference(balances["payeeAfterOs"], balances["payeeBeforeOs"])
+    return None if debit is None or credit is None else (debit, credit)
+
+
+# DEMOS-MAPPING §A.2: the applied transfer a signed FV-5 execution result MAY carry.
+DEMOS_APPLIED_TRANSFER = {"txHash", "blockNumber", "sender", "recipient", "payerDebitOs", "payeeCreditOs",
+                          "committedBalances"}
+
+
+def demos_applied_transfer_binds_record(applied: Any, record: Any) -> bool:
+    """FV-5 and DEMOS-MAPPING §A.2: a signed execution result MAY carry the
+    applied transfer its authorities observed. Carried, it is part of what
+    they sign, never a separate authority: it must decode, be the change of
+    its committed balances, name the record's own transaction, block, sender
+    and recipient, and move the record's OS amount when the record is
+    `confirmed` and nothing when it is `failed`. A result that contradicts
+    its own record authenticates nothing: it is neither payment nor a proven
+    failure (`indeterminate`). The pay-dem oracle calls this same check."""
+    return _demos_applied_transfer_problem(applied, record) is None
+
+
+def _demos_applied_transfer_problem(applied: Any, record: Any) -> str | None:
+    """Why a carried applied transfer does not bind its record, or None."""
+    projection = _demos_native_send(record)
+    if projection is None:
+        return "is carried with a record that does not decode"
+    if not (_exact_object(applied, DEMOS_APPLIED_TRANSFER)
+            and all(isinstance(applied[k], str) and POSITION_RE.fullmatch(applied[k])
+                    for k in ("payerDebitOs", "payeeCreditOs"))
+            and _exact_object(applied["committedBalances"], DEMOS_COMMITTED_BALANCES)
+            and all(isinstance(value, str) and POSITION_RE.fullmatch(value)
+                    for value in applied["committedBalances"].values())
+            and not isinstance(applied["blockNumber"], (str, bool))
+            and _demos_decimal(applied["blockNumber"]) is not None):
+        return "does not decode"
+    if _demos_committed_change(applied["committedBalances"]) != (applied["payerDebitOs"], applied["payeeCreditOs"]):
+        return "debit and credit are not the change of its committed balances"
+    moved = {"confirmed": projection["amountOs"], "failed": "0"}.get(projection["status"])
+    if (moved is None or any(applied[k] != projection[k] for k in ("txHash", "blockNumber", "sender", "recipient"))
+            or not applied["payerDebitOs"] == moved == applied["payeeCreditOs"]):
+        return "contradicts its own record, so the signed result authenticates nothing"
+    return None
+
+
+def _json_value(value: Any) -> tuple[str, Any]:
+    """A JSON value as `JSON.stringify` spells it: a number compares by value
+    (`1` and `1.0` are both `1`), never equal to a boolean or a string."""
+    if isinstance(value, bool):
+        return "boolean", value
+    if isinstance(value, (int, float)):
+        return "number", value
+    return type(value).__name__, value
+
+
+def _demos_send_edits_match(content: dict) -> bool:
+    """DEMOS-MAPPING §A.2: a `confirmed` record shows payment only when its
+    `gcr_edits`, each `txhash` blanked, are the four edits of its send in
+    list order (each edit's members compare by name: JCS does not preserve
+    their order). The pinned node applies a missing or empty list as a
+    successful no-op. Necessary, never sufficient. A number compares by
+    value, as JSON.stringify spells it."""
+    edits, data, sender = content.get("gcr_edits"), content.get("data"), content.get("from_ed25519_address")
+    if not (isinstance(edits, list) and len(edits) == 4 and all(isinstance(edit, dict) for edit in edits)
+            and isinstance(data, list) and len(data) == 2 and isinstance(data[1], dict)
+            and isinstance(data[1].get("args"), list) and len(data[1]["args"]) == 2
+            and isinstance(data[1]["args"][0], str) and isinstance(sender, str)):
+        return False
+    to, amount = data[1]["args"]
+    to = to if to.startswith("0x") else "0x" + to
+    expected = [
+        [("type", "balance"), ("operation", "remove"), ("isRollback", False), ("account", sender), ("txhash", ""), ("amount", amount)],
+        [("type", "balance"), ("operation", "add"), ("isRollback", False), ("account", to), ("txhash", ""), ("amount", amount)],
+        [("type", "balance"), ("account", sender), ("operation", "remove"), ("amount", "1000000000"), ("txhash", ""), ("isRollback", False)],
+        [("type", "nonce"), ("operation", "add"), ("account", sender), ("amount", 1), ("txhash", ""), ("isRollback", False)],
+    ]
+    actual = [[(k, "" if k == "txhash" else v) for k, v in edit.items()] for edit in edits]
+    # A signed execution result is hashed over CORE JCS bytes, which sort
+    # members: the order of an edit's members is not authenticated and cannot
+    # decide anything here, so each edit compares by member name and value.
+    # bool is an int in Python: compare JSON kinds too, so `1` is not `True`.
+    return ([{k: _json_value(v) for k, v in edit} for edit in actual]
+            == [{k: _json_value(v) for k, v in edit} for edit in expected])
+
+
+def demos_execution_policy(policy: Any) -> tuple[str, str]:
+    """The FV-5 independent execution-result policy check: `pass` for a
+    policy this verifier can apply, `indeterminate` for none it knows, and
+    `error` for a malformed one. DEM-1's gate applies the same check."""
+    if not isinstance(policy, dict) or policy.get("kind") != "fixture-independent-results-v1":
+        return "indeterminate", "independent Demos execution-result policy unavailable"
+    keys, threshold = policy.get("authorityKeys"), policy.get("threshold")
+    # The threshold counts distinct keys: an alias of one key is not a second authority.
+    decoded = [_public_key(keys, signer) for signer in keys] if isinstance(keys, dict) else [None]
+    if (None in decoded or len(set(decoded)) != len(decoded)
+            or not _safe_integer(threshold, positive=True) or threshold > len(keys)):
+        return "error", "malformed Demos execution-result policy"
+    return "pass", "independent Demos execution-result policy"
+
+
+def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -> tuple[str, str, Any]:
+    """Independent result attestation, never inferred from BFT inclusion.
+    Attestations are counted, never a veto: one that is not a well-formed
+    signature object, names no policy key, repeats a counted key or does not
+    verify is not counted, so a relayer or one faulty authority cannot turn
+    an authenticated result into `fail` or `error`."""
+    proof = observation.get("executionResult")
+    if proof is not None and not demos_execution_result_shape(proof):
+        return "error", "malformed Demos execution result attestations" if isinstance(proof, dict) and "attestations" in proof and not isinstance(proof["attestations"], list) else "malformed Demos execution result", None
+    policy = trusted.get("demosExecutionPolicy")
+    decision, reason = demos_execution_policy(policy)
+    if decision != "pass":
+        return decision, reason, None
+    keys, threshold = policy["authorityKeys"], policy["threshold"]
+    if proof is None:
+        return "indeterminate", "independent Demos execution result unavailable", None
+    if not _exact_object(proof, {"kind", "networkId", "genesisHash", "blockId", "transactionRef", "record", "attestations"}, {"appliedTransfer"}):
+        return "error", "malformed Demos execution result", None
+    if proof["kind"] != policy["kind"]:
+        return "error", "Demos execution result kind differs from policy", None
+    if not isinstance(proof["attestations"], list):
+        return "error", "malformed Demos execution result attestations", None
+    payload = {key: value for key, value in proof.items() if key != "attestations"}
+    digest = hash_value(payload)
+    counted = set()
+    for attestation in proof["attestations"]:
+        if not (_exact_object(attestation, {"authorityRef", "algorithm", "value"})
+                and isinstance(attestation["authorityRef"], str)):
+            continue
+        signer = attestation["authorityRef"]
+        if (signer not in counted and signer in keys and attestation["algorithm"] == "ed25519"
+                and _verify_ed25519(keys, signer, DEMOS_EXECUTION_DOMAIN, digest, attestation["value"])):
+            counted.add(signer)
+    if len(counted) < threshold:
+        return "indeterminate", "independent Demos execution result quorum unavailable", None
+    inclusion = observation.get("inclusionBlock")
+    if not isinstance(inclusion, dict):
+        return "error", "malformed inclusion block for Demos execution result", None
+    # A result authenticates only the network, block and transaction it
+    # names. One about another is no result for this reference, and one
+    # about another block is about a fork or a block that is not final.
+    if (proof["networkId"] != observation["networkId"] or proof["genesisHash"] != observation["genesisHash"]
+            or proof["blockId"] != inclusion.get("id")
+            or canonical_bytes(proof["transactionRef"]) != canonical_bytes(reference)):
+        return "indeterminate", "authenticated Demos execution result is for another block, network or transaction", None
+    return "pass", "independent execution result authenticated", proof
+
+
+def demos_execution_result_shape(proof: Any) -> bool:
+    """FV-5 structural validation, independent of policy availability."""
+    return (_exact_object(proof, {"kind", "networkId", "genesisHash", "blockId", "transactionRef", "record", "attestations"}, {"appliedTransfer"})
+            and isinstance(proof["attestations"], list))
+
+
+def _verify_demos_phase(expected: dict, trusted: dict) -> tuple[str, str, Any]:
+    """Validate the phase and claims even when no execution result verifies."""
+    amount_value = expected.get("amount")
+    amount = DEM_AMOUNT_RE.fullmatch(amount_value) if isinstance(amount_value, str) and expected.get("currency") == "DEM" else None
+    payee = demos_party_address(expected.get("payeeAddress"))
+    bundles = trusted.get("demosPayerKeyClaims")
+    if bundles is not None and not isinstance(bundles, dict):
+        return "error", "malformed payer bundle Demos key claims", None
+    claims = None if bundles is None else bundles.get(expected["payer"])
+    if claims is not None and not (isinstance(claims, list) and claims and all(
+            isinstance(claim, dict) and set(claim) == {"claim", "control"}
+            and isinstance(claim["claim"], str) and isinstance(claim["control"], str)
+            and claim["control"] in DEMOS_CLAIM_CONTROLS | {DEMOS_CLAIM_UNCONTROLLED}
+            for claim in claims)):
+        return "error", "malformed payer bundle Demos key claims", None
+    try:
+        matches = [] if claims is None else [demos_key_claim(claim["claim"]) for claim in claims]
+    except ValueError:
+        return "error", "malformed payer bundle ClaimReference", None
+    if amount is None or ("payeeAddress" in expected and payee is None):
+        return "error", "phase lacks a DEM amount or projecting payout address", None
+    if claims is None:
+        return "indeterminate", "payer bundle Demos key claims unavailable", None
+    if "payeeAddress" not in expected:
+        return "indeterminate", "authenticated phase destination unavailable", None
+    payers = {match[1] for match, claim in zip(matches, claims)
+              if match and DEMOS_KEY_CLAIM_CONTROL.get(match[0]) == claim["control"]}
+    if not payers:
+        return "indeterminate", "payer bundle controls no Demos key claim", None
+    return "pass", "phase and claims verified", (amount, payee, payers)
+
+
+def _verify_demos_record(record: Any, reference: dict, expected: dict, trusted: dict,
+                         applied_transfer: Any = None) -> tuple[str, str]:
+    """DACS-4 §9.5.9 DEM-7 under FV-5 for an authenticated `pay-dem` record."""
+    # DEM-7 decides in one order: a malformed phase value or claim is `error`,
+    # then a bundle with no controlled Demos key claim is `indeterminate`, then
+    # the record. (An FV-10 verdict on the inclusion comes before all of them:
+    # the caller takes it first.) The record checks below therefore never turn
+    # a malformed phase into `indeterminate`.
+    decision, reason, phase = _verify_demos_phase(expected, trusted)
+    if decision != "pass":
+        return decision, reason
+    amount, payee, payers = phase
+    if trusted.get("demosRecordProfile") != DEMOS_RECORD_PROFILE:
+        return "indeterminate", "Demos execution-record semantics are not pinned (DEM-7)"
+    projection = _demos_native_send(record)
+    if projection is None:
+        return "indeterminate", "authenticated Demos record does not decode as a native send (DEM-7)"
+    # A carried applied transfer is part of the signed result: one that does
+    # not bind its record leaves the result neither payment nor a proven
+    # failure (FV-5, DEMOS-MAPPING §A.2), before any contradiction decides.
+    problem = None if applied_transfer is None else _demos_applied_transfer_problem(applied_transfer, record)
+    if problem is not None and projection["status"] not in ("confirmed", "failed"):
+        return "indeterminate", "authenticated Demos record status is not an execution result (DEM-7)"
+    if problem is not None:
+        return "indeterminate", "Demos applied transfer " + problem + " (DEM-7)"
+    amount_os = _demos_os_spelling(amount)
+    if (
+        projection["txHash"] != reference.get("txHash")
+        or projection["blockNumber"] != reference.get("blockNumber")
+        or projection["sender"] not in payers
+        or projection["recipient"] != payee
+        or projection["amountOs"] != amount_os
+    ):
+        return "fail", "authenticated Demos record contradicts the signed reference or phase (DEM-7)"
+    if projection["status"] == "failed":
+        return "fail", "authenticated Demos transaction record failed execution (DEM-7)"
+    if projection["status"] != "confirmed":
+        return "indeterminate", "authenticated Demos record status is not an execution result (DEM-7)"
+    # The caller has checked that a carried applied transfer binds this
+    # record (demos_applied_transfer_binds_record), so it moved the phase amount.
+    if applied_transfer is None:
+        return "indeterminate", "independently authenticated Demos applied transfer unavailable (DEM-7)"
+    if not _demos_send_edits_match(record["content"]):
+        return "indeterminate", "confirmed Demos record does not carry exactly its send's four edits (DEM-7)"
+    return "pass", "authenticated Demos record binds a confirmed native send"
+
+
 def _verify_chain_observation(
     observation: Any,
     profile: dict,
     reference: dict,
     expected: dict,
     trusted: dict,
+    *,
+    native_send: bool = False,
 ) -> tuple[dict, dict | None]:
+    native_send = native_send and isinstance(reference, dict) and reference.get("kind") == "demos"
     if observation is None:
+        phase_decision, phase_reason, _ = _verify_demos_phase(expected, trusted) if native_send else ("pass", "", None)
+        if phase_decision == "error":
+            return _result(phase_decision, phase_reason), None
         return _result("indeterminate", "required chain observation unavailable"), None
     required = {
         "networkId", "genesisHash", "transactionRef", "transactionInclusionProof",
-        "selectedEventProof", "inclusionBlock", "authenticatedHead", "ancestryProof",
+        "inclusionBlock", "authenticatedHead", "ancestryProof",
         "authorityEvidence",
     }
-    optional = {"finalityCertificate"}
+    # Only a Demos native send carries an execution result; on any other
+    # chain model the member is malformed, as before FV-5 existed.
+    native_send = native_send and isinstance(reference, dict) and reference.get("kind") == "demos"
+    optional = {"finalityCertificate"} | ({"executionResult", "selectedEventProof"} if native_send else set())
+    if not native_send:
+        required.add("selectedEventProof")
     if not _exact_object(observation, required, optional):
         return _result("error", "malformed AuthenticatedChainObservation"), None
     if not _chain_profile_shape(profile):
         return _result("error", "malformed chain finality profile"), None
+    if native_send and observation.get("executionResult") is not None and not demos_execution_result_shape(observation["executionResult"]):
+        reason = "malformed Demos execution result attestations" if isinstance(observation["executionResult"], dict) and "attestations" in observation["executionResult"] and not isinstance(observation["executionResult"]["attestations"], list) else "malformed Demos execution result"
+        return _result("error", reason), None
     if observation.get("networkId") != profile.get("networkId") or observation.get("genesisHash") != profile.get("genesisHash"):
         return _result("fail", "chain network or genesis differs from signed rail profile"), None
     if canonical_bytes(observation.get("transactionRef")) != canonical_bytes(reference):
@@ -939,30 +1351,75 @@ def _verify_chain_observation(
     if not _chain_ref_matches_profile(reference, profile):
         return _result("fail", "signed transaction reference is on the wrong profile network"), None
 
-    event_decision, event_reason, event = _verify_merkle_proof(
-        observation.get("selectedEventProof"), kind="fixture-event-merkle-v1", bytes_field="eventBytes"
-    )
+    event_decision, event_reason, event = "pass", "", None
+    if not native_send:
+        event_decision, event_reason, event = _verify_merkle_proof(
+            observation.get("selectedEventProof"), kind="fixture-event-merkle-v1", bytes_field="eventBytes"
+        )
     transaction_decision, transaction_reason, transaction = _verify_merkle_proof(
         observation.get("transactionInclusionProof"), kind="fixture-transaction-merkle-v1", bytes_field="transactionBytes"
     )
     if event_decision != "pass":
         return _result(event_decision, event_reason), None
     if transaction_decision != "pass":
+        if native_send and transaction_decision == "indeterminate":
+            phase_decision, phase_reason, _ = _verify_demos_phase(expected, trusted)
+            if phase_decision == "error":
+                return _result(phase_decision, phase_reason), None
         return _result(transaction_decision, transaction_reason), None
-    if not _exact_object(transaction, {"networkId", "genesisHash", "transactionRef", "eventsRoot", "status"}):
+    # Inclusion commits to transaction identity, not the post-execution RPC record.
+    outcome ="txHash" if native_send else "status"
+    transaction_fields = {"networkId", "genesisHash", "transactionRef", outcome}
+    if not _exact_object(transaction, transaction_fields if native_send else transaction_fields | {"eventsRoot"},
+                         {"eventsRoot"} if native_send else set()):
         return _result("error", "malformed raw transaction body"), None
     if (
         transaction.get("networkId") != profile["networkId"]
         or transaction.get("genesisHash") != profile["genesisHash"]
         or canonical_bytes(transaction.get("transactionRef")) != canonical_bytes(reference)
-        or transaction.get("eventsRoot") != observation["selectedEventProof"]["root"]
-        or transaction.get("status") != "success"
+        or (not native_send and transaction.get("eventsRoot") != observation["selectedEventProof"]["root"])
+        or (not native_send and transaction.get("status") != "success")
+        or (native_send and transaction.get("txHash") != reference.get("txHash"))
     ):
         return _result("fail", "raw transaction does not bind selected event, network, or reference"), None
-    economics_decision, economics_reason = _verify_event_economics(event, reference, expected)
-    if economics_decision != "pass":
-        return _result(economics_decision, economics_reason), None
+    if not native_send:
+        economics_decision, economics_reason = _verify_event_economics(event, reference, expected)
+        if economics_decision != "pass":
+            return _result(economics_decision, economics_reason), None
+    record_decision, record_reason = "pass", ""
+    if native_send:
+        record_decision, record_reason, execution = _verify_demos_execution(observation, reference, trusted)
+        # A malformed result is malformed whatever the chain shows.
+        if record_decision == "error":
+            return _result(record_decision, record_reason), None
+        # DEM-7 orders the rest: the FV-10 verdict of the inclusion path
+        # first, then `error` for a malformed phase value or claim, then the
+        # record. A signed failure or contradiction refutes the payment only
+        # once the canonical bft-final path of its block verifies: a result
+        # about a fork or an unfinalized block decides nothing.
+        if record_decision == "pass":
+            record_decision, record_reason = _verify_demos_record(
+                execution["record"], reference, expected, trusted, execution.get("appliedTransfer"))
 
+    path_decision, path_reason = _verify_inclusion_path(observation, profile, reference, trusted)
+    if path_decision in {"fail", "error"}:
+        return _result(path_decision, path_reason), None
+    if native_send:
+        phase_decision, phase_reason, _ = _verify_demos_phase(expected, trusted)
+        if phase_decision == "error" or (path_decision == "pass" and phase_decision != "pass"):
+            return _result(phase_decision, phase_reason), None
+    if record_decision == "error":
+        return _result(record_decision, record_reason), None
+    if path_decision != "pass":
+        return _result(path_decision, path_reason), None
+    if record_decision != "pass":
+        return _result(record_decision, record_reason), None
+    return _result("pass", "chain observation verified"), event
+
+
+def _verify_inclusion_path(observation: dict, profile: dict, reference: dict, trusted: dict) -> tuple[str, str]:
+    """FV-5 inclusion block, FV-6 authenticated head and ancestry, and FV-7
+    finality of an observation whose transaction inclusion proof verified."""
     inclusion = observation.get("inclusionBlock")
     head = observation.get("authenticatedHead")
     if not (
@@ -977,15 +1434,15 @@ def _verify_chain_observation(
         and POSITION_RE.fullmatch(head["position"])
         and _finite_time(head.get("observedAt"))
     ):
-        return _result("error", "malformed inclusion block or authenticated head"), None
+        return "error", "malformed inclusion block or authenticated head"
     try:
         _inclusion_raw, inclusion_header = decode_json_bytes(inclusion["header"])
         _head_raw, head_header = decode_json_bytes(head["header"])
     except (ValueError, TypeError, UnicodeError, json.JSONDecodeError, binascii.Error):
-        return _result("error", "malformed raw block header bytes"), None
+        return "error", "malformed raw block header bytes"
     required_header = {"networkId", "genesisHash", "position", "parentId", "transactionsRoot"}
     if not _exact_object(inclusion_header, required_header, {"commitment"}) or not _exact_object(head_header, required_header, {"commitment"}):
-        return _result("error", "malformed fixture block header"), None
+        return "error", "malformed fixture block header"
     if (
         hash_value(inclusion_header) != inclusion["id"]
         or inclusion_header.get("parentId") != inclusion["parentId"]
@@ -998,37 +1455,39 @@ def _verify_chain_observation(
         or head_header.get("networkId") != profile["networkId"]
         or head_header.get("genesisHash") != profile["genesisHash"]
     ):
-        return _result("fail", "block header identity or transaction root does not verify"), None
+        return "fail", "block header identity or transaction root does not verify"
 
     ancestry = observation.get("ancestryProof")
     if not isinstance(ancestry, list):
-        return _result("error", "ancestryProof is not an array"), None
+        return "error", "ancestryProof is not an array"
     inclusion_position = int(inclusion["position"])
     head_position = int(head["position"])
+    if reference.get("kind") == "demos" and reference.get("blockNumber") != inclusion_position:
+        return "fail", "Demos blockNumber differs from the authenticated inclusion block (DEM-7)"
     if head_position < inclusion_position:
-        return _result("fail", "authenticated head precedes inclusion block"), None
+        return "fail", "authenticated head precedes inclusion block"
     if len(ancestry) != head_position - inclusion_position:
-        return _result("fail", "ancestry proof is incomplete or contains an extra link"), None
+        return "fail", "ancestry proof is incomplete or contains an extra link"
     previous_id = inclusion["id"]
     path_ids = [previous_id]
     previous_position = inclusion_position
     for link in ancestry:
         if not _exact_object(link, {"childId", "parentId", "position", "header"}):
-            return _result("error", "malformed ancestry link"), None
+            return "error", "malformed ancestry link"
         if (
             not _sha256(link.get("childId"))
             or not _sha256(link.get("parentId"))
             or not isinstance(link.get("position"), str)
             or POSITION_RE.fullmatch(link["position"]) is None
         ):
-            return _result("error", "malformed ancestry identity or position"), None
+            return "error", "malformed ancestry identity or position"
         try:
             _raw, header = decode_json_bytes(link["header"])
         except (ValueError, TypeError, UnicodeError, json.JSONDecodeError, binascii.Error):
-            return _result("error", "malformed ancestry header bytes"), None
+            return "error", "malformed ancestry header bytes"
         position = int(link["position"])
         if not _exact_object(header, required_header, {"commitment"}):
-            return _result("error", "malformed ancestry header body"), None
+            return "error", "malformed ancestry header body"
         if (
             position != previous_position + 1
             or link["parentId"] != previous_id
@@ -1038,43 +1497,88 @@ def _verify_chain_observation(
             or header.get("networkId") != profile["networkId"]
             or header.get("genesisHash") != profile["genesisHash"]
         ):
-            return _result("fail", "ancestry link does not extend the authenticated path"), None
+            return "fail", "ancestry link does not extend the authenticated path"
         previous_id = link["childId"]
         previous_position = position
         path_ids.append(previous_id)
     if previous_id != head["id"] or canonical_bytes(head_header) != canonical_bytes(
         inclusion_header if not ancestry else header
     ):
-        return _result("fail", "ancestry terminus differs from authenticated head"), None
+        return "fail", "ancestry terminus differs from authenticated head"
 
     authority_decision, authority_reason = _verify_authority(observation, profile, path_ids, trusted)
     if authority_decision != "pass":
-        return _result(authority_decision, authority_reason), None
+        return authority_decision, authority_reason
     verification_time = trusted.get("verificationTimeMs")
     if not _finite_time(verification_time):
-        return _result("error", "trusted verifier-local clock is malformed"), None
+        return "error", "trusted verifier-local clock is malformed"
     if head["observedAt"] > verification_time:
-        return _result("fail", "authenticated head observation is from the future"), None
+        return "fail", "authenticated head observation is from the future"
     age_ms = verification_time - head["observedAt"]
     if age_ms > profile["observation"]["maxHeadAgeSec"] * 1000:
-        return _result("indeterminate", "authenticated head observation is stale"), None
+        return "indeterminate", "authenticated head observation is stale"
 
     kind = profile["kind"]
     if kind == "block-depth":
         depth = head_position - inclusion_position + 1
         if depth < profile["requiredDepth"]:
-            return _result("fail", "authenticated canonical depth is insufficient"), None
+            return "fail", "authenticated canonical depth is insufficient"
     elif kind == "commitment-level":
         observed = head_header.get("commitment")
         if observed not in COMMITMENT_RANK:
-            return _result("error", "authenticated commitment is missing or unknown"), None
+            return "error", "authenticated commitment is missing or unknown"
         if COMMITMENT_RANK[observed] < COMMITMENT_RANK[profile["requiredCommitment"]]:
-            return _result("fail", "authenticated commitment is below the signed requirement"), None
+            return "fail", "authenticated commitment is below the signed requirement"
     else:
         bft_decision, bft_reason = _verify_bft_certificate(observation, profile, trusted)
         if bft_decision != "pass":
-            return _result(bft_decision, bft_reason), None
-    return _result("pass", "chain observation verified"), event
+            return bft_decision, bft_reason
+    return "pass", "transaction inclusion and finality verified"
+
+
+# The members of an AuthenticatedChainObservation that prove a transaction's
+# inclusion and finality, without a selected event or execution result.
+INCLUSION_OBSERVATION = {
+    "networkId", "genesisHash", "transactionRef", "transactionInclusionProof",
+    "inclusionBlock", "authenticatedHead", "ancestryProof", "authorityEvidence",
+}
+
+
+def verify_transaction_inclusion(observation: Any, profile: Any, reference: dict, trusted: dict) -> tuple[str, str]:
+    """FV-4 network identity, FV-5 transaction inclusion, FV-6 head and
+    ancestry and FV-7 finality of one native transaction, as
+    `_verify_chain_observation` checks them, for a DACS-4 §9.5.9 DEM-4
+    proven failure: the inclusion half that FV-5's execution result does not
+    show. The raw transaction body is the native-send form, whose selected
+    event root is optional because DEM-4 selects no event."""
+    if observation is None:
+        return "indeterminate", "transaction inclusion observation unavailable"
+    if not _exact_object(observation, INCLUSION_OBSERVATION, {"finalityCertificate", "selectedEventProof", "executionResult"}):
+        return "error", "malformed transaction inclusion observation"
+    if not _chain_profile_shape(profile):
+        return "error", "malformed chain finality profile"
+    if observation.get("networkId") != profile.get("networkId") or observation.get("genesisHash") != profile.get("genesisHash"):
+        return "fail", "chain network or genesis differs from signed rail profile"
+    if canonical_bytes(observation.get("transactionRef")) != canonical_bytes(reference):
+        return "fail", "observation transaction reference differs from the transaction"
+    if not _chain_ref_matches_profile(reference, profile):
+        return "fail", "transaction reference is on the wrong profile network"
+    decision, reason, transaction = _verify_merkle_proof(
+        observation.get("transactionInclusionProof"), kind="fixture-transaction-merkle-v1", bytes_field="transactionBytes"
+    )
+    if decision != "pass":
+        return decision, reason
+    if not (_exact_object(transaction, {"networkId", "genesisHash", "transactionRef", "txHash"}, {"eventsRoot"})
+            and ("eventsRoot" not in transaction or _sha256(transaction["eventsRoot"]))):
+        return "error", "malformed raw transaction body"
+    if (
+        transaction.get("networkId") != profile["networkId"]
+        or transaction.get("genesisHash") != profile["genesisHash"]
+        or canonical_bytes(transaction.get("transactionRef")) != canonical_bytes(reference)
+        or transaction.get("txHash") != reference.get("txHash")
+    ):
+        return "fail", "raw transaction does not bind the network or reference"
+    return _verify_inclusion_path(observation, profile, reference, trusted)
 
 
 def _verify_web2_request_event(event: Any, reference: dict, response_hash: str, status_resource: str) -> tuple[str, str]:
@@ -1295,6 +1799,7 @@ def _expected_economics(session: dict, agreement_terms: dict) -> dict:
         "currency": agreement_terms["price"]["currency"],
         "payer": session["payer"],
         "payee": session["payee"],
+        **({"payeeAddress": session["payeeAddress"]} if "payeeAddress" in session else {}),
     }
 
 
@@ -1587,7 +2092,15 @@ def _verify(value: Any, trusted: Any) -> dict:
     if value["evidence"].get("paymentAmount") != agreement_terms.get("price"):
         return _result("fail", "signed evidence payment amount differs from signed agreement")
     expected = _expected_economics(session, agreement_terms)
+    if "payoutBindings" in agreement_terms:
+        expected["payeeAddress"] = next(b["payeeAddress"] for b in agreement_terms["payoutBindings"]
+                                        if b["railId"] == session["railId"] and b["phaseIndex"] == session["phaseIndex"])
     model = profile["model"]
+    if "payoutBindings" in agreement_terms and model != "bft-final":
+        # These historical fixture codecs authenticate the payee's party
+        # identity, not its PB-1 payout address. They cannot establish a
+        # PayeeBoundAgreement's destination match (SB-1 / §9.5.1).
+        return _result("indeterminate", "fixture codec cannot verify the signed payout destination")
     if model in {"block-depth", "commitment-level", "bft-final"}:
         context = value.get("context")
         if not _exact_object(context, {"kind", "observation"}) or context.get("kind") != "chain":
@@ -1595,10 +2108,15 @@ def _verify(value: Any, trusted: Any) -> dict:
         refs = value["evidence"].get("paymentTxRefs")
         if not isinstance(refs, list) or len(refs) != 1:
             return _result("error", "single-chain evidence requires exactly one transaction reference")
+        # This codec's BFT-native rail is pay-dem (RD-5, DEM-7, FV-5).
+        # Another reference kind must never bypass native execution checks.
+        if model == "bft-final" and (not isinstance(refs[0], dict) or refs[0].get("kind") != "demos"):
+            return _result("error", "bft-final native payment requires a Demos transaction reference")
         result, event = _verify_chain_observation(
-            context.get("observation"), profile["settlement"], refs[0], expected, trusted
+            context.get("observation"), profile["settlement"], refs[0], expected, trusted,
+            native_send=model == "bft-final",
         )
-        if result["decision"] == "pass" and event.get("eventType") != "transfer":
+        if result["decision"] == "pass" and model != "bft-final" and event.get("eventType") != "transfer":
             return _result("fail", "single-chain finality selected a non-transfer event")
         return result
     if model == "provider-receipt":

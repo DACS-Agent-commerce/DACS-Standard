@@ -12,6 +12,12 @@ from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from jcs import canonicalize as jcs_canonicalize
+# DACS-4 §9.5.9 DEM-1 / RAV-R3: the DEM rail's signed bft-final profile and the
+# payer's Demos binding entry for its network, as the pay-dem corpus builds them.
+from generate_pay_dem_execution_vectors import (
+    FINALITY_PROFILE, FINALITY, NETWORK, FV5_POLICY, PAYER_KEY, OTHER_NETWORK, OTHER_TX_HASH,
+    binding_entry, failure_proof, retained, claim, nonce_exhaustion_proof,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -115,7 +121,7 @@ def rail_definition(ref: dict, handler: str) -> dict:
             "providerReceiptAttested": True,
             "idempotencyKeys": True,
         }
-    return {
+    definition = {
         "railVersion": ref["railVersion"],
         "railId": ref["railId"],
         "railType": rail_type,
@@ -123,6 +129,15 @@ def rail_definition(ref: dict, handler: str) -> dict:
         "network": network,
         "phaseHandler": handler,
         "parameters": parameters,
+    }
+    if handler == "pay-dem":
+        # DEM-1 and RAV-R3 take the rail's network from this profile: a
+        # pay-dem definition without one names no network and is unselectable.
+        definition["consumerFinalityProfile"] = {
+            "finalityProfileVersion": "1", "model": "bft-final", "settlement": copy.deepcopy(FINALITY_PROFILE),
+        }
+    return {
+        **definition,
         "availability": "live",
         "governance": {
             "proposedBy": STEWARD,
@@ -250,6 +265,10 @@ def make_base(selected: str = "dem", *, ordinary_repeated: bool = False) -> dict
             "listingPublisherClaim": SELLER,
             "readerSupportsPayAlternative": True,
             "supportedHandlers": ["pay-dem", "pay-x402", "pay-ap2"],
+            # The payer's Demos binding (RAV-R3 for a pay-dem rail).
+            "payDemBinding": [binding_entry()],
+            "payerKeyClaims": [claim("key:" + PAYER_KEY)],
+            "payDemReconciliationTrust": copy.deepcopy({"railNetwork": NETWORK, **FINALITY, "fv5Policy": FV5_POLICY}),
             "projectedStep": copy.deepcopy(projected[2]) if not ordinary_repeated else None,
             "agreementSignatureProduced": True,
             "priorPaymentContext": None,
@@ -466,6 +485,15 @@ def attach_prior_payment_context(
         },
     }
 
+    if prior_handler == "pay-dem" and disposition == "closed-cannot-settle":
+        context = value["runtime"]["priorPaymentContext"]
+        context["disposition"]["retainedPayDemTransfer"] = retained(jobId=prior_job_id, phaseIndex=2)
+        retained_proof = failure_proof()
+        proof = {**retained_proof["inclusionProof"],
+                 "executionResult": retained_proof["authentication"]}
+        context["resolution"]["payDemFailureProof"] = proof
+        evidence_refs[0]["contentHash"] = digest(proof)
+
 
 def set_selection(value: dict, ref: dict, handler: str, *, job_id: str | None = None) -> None:
     agreement = value["agreement"]
@@ -634,6 +662,37 @@ def build_cases() -> list[dict]:
              lambda v: v["registry"]["resolutions"][0]["definition"].update({
                  "availability": "disabled"
              }), reason="selected-availability")
+    # RAV-R3: a pay-dem rail is preflighted whatever its availability, live
+    # included, against the payer's Demos binding for the rail's network.
+    add_case(cases, "selected-dem-without-finality-profile-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "a live pay-dem definition without a consumerFinalityProfile names no network and is unselectable",
+             lambda v: v["registry"]["resolutions"][0]["definition"].pop("consumerFinalityProfile"),
+             reason="selected-availability")
+    add_case(cases, "selected-dem-without-payer-binding-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "a live pay-dem rail is unselectable while the payer has no Demos binding",
+             lambda v: v["runtime"].update({"payDemBinding": []}), reason="selected-availability")
+    add_case(cases, "selected-dem-binding-for-another-network-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "a binding only for another network does not cover the rail's network",
+             lambda v: v["runtime"].update({"payDemBinding": [binding_entry(OTHER_NETWORK)]}),
+             reason="selected-availability")
+    add_case(cases, "selected-dem-binding-without-applied-authority-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "a binding for the rail's network without an applied-payment authority fails the preflight",
+             lambda v: v["runtime"]["payDemBinding"][0].pop("appliedPaymentAuthority"),
+             reason="selected-availability")
+    add_case(cases, "selected-dem-binding-without-bft-final-trust-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "without bft-final trust for the rail's network no pay-dem verdict can become final",
+             lambda v: v["runtime"]["payDemBinding"][0].pop("bftFinalTrust"),
+             reason="selected-availability")
+    add_case(cases, "selected-dem-binding-with-unusable-bft-final-trust-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "trust that holds a set under the pinned hash that does not hash to it can never verify the rail",
+             lambda v: v["runtime"]["payDemBinding"][0]["bftFinalTrust"].update({"validatorSets": {
+                 v["registry"]["resolutions"][0]["definition"]["consumerFinalityProfile"]["settlement"]
+                 ["validatorSetRef"]["contentHash"]: {"validators": []}}}),
+             reason="selected-availability")
+    add_case(cases, "selected-dem-binding-without-execution-result-policy-rejected", "fail", "APR-3/RAV-R3/DEM-1",
+             "without an FV-5 execution-result policy no pay-dem failure can be proven",
+             lambda v: v["runtime"]["payDemBinding"][0].pop("executionResultPolicy"),
+             reason="selected-availability")
     add_case(cases, "nonselected-disabled-does-not-select-or-fallback", "pass", "APR-2/APR-3",
              "a valid but disabled nonselected definition does not replace DEM",
              lambda v: v["registry"]["resolutions"][1]["definition"].update({
@@ -699,6 +758,87 @@ def build_cases() -> list[dict]:
     add_case(cases, "fresh-job-after-conclusive-no-settlement", "pass", "APR-6",
              "a proof-backed terminal reconciliation disposition permits the replacement",
              conclusive_no_settlement, base="x402")
+
+    def nonce_terminal(v, string_nonce=False):
+        attach_prior_payment_context(v, "closed-cannot-settle")
+        context = v["runtime"]["priorPaymentContext"]
+        transfer = context["disposition"]["retainedPayDemTransfer"]
+        proof = nonce_exhaustion_proof(transfer)
+        context["resolution"]["payDemFailureProof"] = proof
+        context["disposition"]["reconciliationEvidenceRefs"][0]["contentHash"] = digest(proof)
+        v["runtime"]["payDemReconciliationTrust"]["nonceEnforcement"] = binding_entry()["nonceEnforcement"]
+        if string_nonce:
+            transfer["nonce"] = str(transfer["nonce"])
+    add_case(cases, "fresh-job-after-nonce-exhaustion-number-nonce", "indeterminate", "APR-6/DEM-4",
+             "A numeric retention nonce does not make the unsupported fork-state proof authorize compensation.",
+             nonce_terminal, base="x402", reason="prior-disposition-proof")
+    add_case(cases, "fresh-job-cannot-settle-nonce-exhaustion-string-nonce", "fail", "APR-6/DEM-4",
+             "A decimal string is not the DEM-1 projected nonce in the signed carrier.",
+             lambda v: nonce_terminal(v, True), base="x402", reason="prior-disposition-proof")
+    for name, mutate in (
+        ("string-nonce", lambda c: c["disposition"]["retainedPayDemTransfer"].update(nonce=str(c["disposition"]["retainedPayDemTransfer"]["nonce"]))),
+        ("another-transaction", lambda c: c["disposition"]["retainedPayDemTransfer"].update(txHash=OTHER_TX_HASH)),
+        ("missing-artifact", lambda c: c["resolution"].pop("payDemFailureProof")),
+        ("missing-retention", lambda c: c["disposition"].pop("retainedPayDemTransfer")),
+        ("another-phase", lambda c: c["disposition"]["retainedPayDemTransfer"].update(phaseIndex=1)),
+        ("another-job", lambda c: c["disposition"]["retainedPayDemTransfer"].update(jobId=JOB_AP2)),
+        ("wrong-content-hash", lambda c: c["disposition"]["reconciliationEvidenceRefs"][0].update(contentHash="ab" * 32)),
+    ):
+        def bad_proof(v, mutate=mutate):
+            attach_prior_payment_context(v, "closed-cannot-settle")
+            mutate(v["runtime"]["priorPaymentContext"])
+        add_case(cases, "fresh-job-cannot-settle-proof-for-" + name, "fail", "APR-6/DEM-4",
+                 "An independently authenticated proof must bind the prior session's retained transfer.",
+                 bad_proof, base="x402", reason="prior-disposition-proof")
+    for label, claims in (("session-key-payer", [claim("key:" + PAYER_KEY, "none")]), ("missing-payer-claims", None)):
+        add_case(cases, "selected-dem-" + label + "-rejected", "fail", "RAV-R3",
+                 "Before commitment the payer bundle must control a Demos key claim.",
+                 lambda v, claims=claims: v["runtime"].update(payerKeyClaims=claims), reason="selected-availability")
+
+    def verified_artifact_without_label(v):
+        attach_prior_payment_context(v, "closed-cannot-settle")
+        v["runtime"]["priorPaymentContext"]["resolution"]["reconciliationEvidenceVerified"] = False
+    add_case(cases, "fresh-job-dem-proof-verified-without-label", "pass", "APR-6/DEM-4",
+             "The verifier checks the artifact itself; a supplied success label has no authority.",
+             verified_artifact_without_label, base="x402")
+    for label in ("forged-result", "missing-inclusion", "missing-verifier-trust", "malformed-reference"):
+        def invalid_artifact(v, label=label):
+            attach_prior_payment_context(v, "closed-cannot-settle")
+            context = v["runtime"]["priorPaymentContext"]
+            proof = context["resolution"]["payDemFailureProof"]
+            if label == "forged-result":
+                proof["executionResult"]["attestations"] = []
+            elif label == "missing-inclusion":
+                proof.pop("finalityCertificate")
+            elif label == "malformed-reference":
+                proof["transactionRef"] = ["not-a-reference"]
+            else:
+                v["runtime"].pop("payDemReconciliationTrust")
+            context["disposition"]["reconciliationEvidenceRefs"][0]["contentHash"] = digest(proof)
+        add_case(cases, "fresh-job-cannot-settle-" + label, "fail" if label == "malformed-reference" else "indeterminate", "APR-6/DEM-4",
+                 "Even a hash-bound artifact needs independent result and finality verification.",
+                 invalid_artifact, base="x402", reason="prior-disposition-proof")
+
+    for mismatch in (False, True):
+        def another_native_rail(v, mismatch=mismatch):
+            attach_prior_payment_context(v, "closed-cannot-settle")
+            def rename(value):
+                if isinstance(value, dict):
+                    for key, item in value.items():
+                        if key == "railId" and item == DEM_REF["railId"]:
+                            value[key] = "demos-native:alternate"
+                        else:
+                            rename(item)
+                elif isinstance(value, list):
+                    for item in value:
+                        rename(item)
+            rename(v)
+            if mismatch:
+                v["runtime"]["priorPaymentContext"]["disposition"]["retainedPayDemTransfer"]["txHash"] = OTHER_TX_HASH
+        add_case(cases, "fresh-job-alternate-dem-rail-" + ("wrong-proof" if mismatch else "bound-proof"),
+                 "fail" if mismatch else "pass", "APR-6/DEM-4",
+                 "DEM-4 follows the signed phase handler for every registry railId.",
+                 another_native_rail, base="x402", reason="prior-disposition-proof" if mismatch else None)
 
     def missing_disposition(v):
         v["agreement"]["terms"]["priorPaymentDispositionRef"] = {
@@ -787,6 +927,26 @@ def build_cases() -> list[dict]:
     add_case(cases, "ordinary-repeated-pay-retains-pipe5", "pass", "APR-8/PIPE-5",
              "an ordinary two-payment pipeline remains two independent DEM invocations",
              base="repeated", operation="validate-pipeline")
+    for label in ("unavailable-observation-keys", "stale-head"):
+        def unavailable(v, label=label):
+            attach_prior_payment_context(v, "closed-cannot-settle")
+            trust = v["runtime"]["payDemReconciliationTrust"]["finalityTrust"]
+            if label == "stale-head":
+                trust["verificationTimeMs"] += 7_200_000
+            else:
+                trust["observationAuthorityKeys"] = {}
+        add_case(cases, "fresh-job-cannot-settle-" + label, "indeterminate", "APR-6/FV-8",
+                 "Unavailable verification authorizes no replacement and preserves indeterminate.",
+                 unavailable, base="x402", reason="prior-disposition-proof")
+    for label, address in (("bare", PAYER_KEY), ("prefixed", "0x" + PAYER_KEY),
+                           ("claim", "KEY:" + PAYER_KEY + "?unknown=ok"),
+                           ("substrate-notation", "demos:0x" + PAYER_KEY),
+                           ("uppercase", "0x" + PAYER_KEY.upper())):
+        allowed = label in {"bare", "prefixed", "claim"}
+        add_case(cases, "selected-dem-payout-" + label, "pass" if allowed else "fail", "RAV-R3/PB-1",
+                 "Validate native payout projection before Agreement commitment, including all permitted forms.",
+                 lambda v, address=address: v["agreement"]["terms"]["payoutBindings"][0].update(payeeAddress=address),
+                 reason=None if allowed else "payout-binding")
     return cases
 
 

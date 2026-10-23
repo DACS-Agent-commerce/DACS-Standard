@@ -1969,7 +1969,7 @@
       "id": "pb2-tier1-pay-dem-intrinsic-matches",
       "area": "settlement",
       "spec": "§9.5.1",
-      "summary": "PB-2: For pay-dem, the destination is definitionally the primary claim's Demos address and binds at tier 1.",
+      "summary": "PB-2: pay-dem without a stronger applicable binding uses the co-signed tier-3 payout destination.",
       "status": "candidate",
       "want": "pass"
     },

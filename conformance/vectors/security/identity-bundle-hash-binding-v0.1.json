@@ -233,10 +233,38 @@
                   "acceptedAt": 1899999900000,
                   "anchoring": "in-code"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-                  "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+                  "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
                 }
               }
             }
@@ -1375,10 +1403,38 @@
             "acceptedAt": 1899999900000,
             "anchoring": "in-code"
           },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                },
+                "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
           "signature": {
             "algorithm": "ed25519",
             "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-            "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+            "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
           }
         },
         "amount": {
@@ -2242,10 +2298,38 @@
                   "acceptedAt": 1899999900000,
                   "anchoring": "in-code"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-                  "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+                  "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
                 }
               }
             }
@@ -3405,10 +3489,38 @@
             "acceptedAt": 1899999900000,
             "anchoring": "in-code"
           },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                },
+                "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
           "signature": {
             "algorithm": "ed25519",
             "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-            "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+            "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
           }
         },
         "amount": {
@@ -4279,10 +4391,38 @@
                   "acceptedAt": 1899999900000,
                   "anchoring": "in-code"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-                  "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+                  "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
                 }
               }
             }
@@ -5531,10 +5671,38 @@
             "acceptedAt": 1899999900000,
             "anchoring": "in-code"
           },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                },
+                "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
           "signature": {
             "algorithm": "ed25519",
             "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-            "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+            "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
           }
         },
         "amount": {
@@ -6398,10 +6566,38 @@
                   "acceptedAt": 1899999900000,
                   "anchoring": "in-code"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-                  "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+                  "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
                 }
               }
             }
@@ -7671,10 +7867,38 @@
             "acceptedAt": 1899999900000,
             "anchoring": "in-code"
           },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                },
+                "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
           "signature": {
             "algorithm": "ed25519",
             "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-            "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+            "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
           }
         },
         "amount": {
@@ -8545,10 +8769,38 @@
                   "acceptedAt": 1899999900000,
                   "anchoring": "in-code"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-                  "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+                  "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
                 }
               }
             },
@@ -9903,10 +10155,38 @@
             "acceptedAt": 1899999900000,
             "anchoring": "in-code"
           },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                },
+                "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
           "signature": {
             "algorithm": "ed25519",
             "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-            "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+            "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
           }
         },
         "amount": {
@@ -11158,10 +11438,38 @@
                   "acceptedAt": 1899999900000,
                   "anchoring": "in-code"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-                  "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+                  "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
                 }
               }
             },
@@ -12129,10 +12437,38 @@
                   "acceptedAt": 1899999900000,
                   "anchoring": "in-code"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-                  "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+                  "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
                 }
               }
             },
@@ -13487,10 +13823,38 @@
             "acceptedAt": 1899999900000,
             "anchoring": "in-code"
           },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                },
+                "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
           "signature": {
             "algorithm": "ed25519",
             "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-            "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+            "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
           }
         },
         "amount": {
@@ -14742,10 +15106,38 @@
                   "acceptedAt": 1899999900000,
                   "anchoring": "in-code"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-                  "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+                  "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
                 }
               }
             },
@@ -15840,10 +16232,38 @@
                   "acceptedAt": 1899999900000,
                   "anchoring": "in-code"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-                  "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+                  "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
                 }
               }
             }
@@ -17212,10 +17632,38 @@
             "acceptedAt": 1899999900000,
             "anchoring": "in-code"
           },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                },
+                "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
           "signature": {
             "algorithm": "ed25519",
             "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-            "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+            "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
           }
         },
         "amount": {
@@ -18246,10 +18694,38 @@
                   "acceptedAt": 1899999900000,
                   "anchoring": "in-code"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-                  "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+                  "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
                 }
               }
             }
@@ -19779,10 +20255,38 @@
             "acceptedAt": 1899999900000,
             "anchoring": "in-code"
           },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                },
+                "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
           "signature": {
             "algorithm": "ed25519",
             "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-            "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+            "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
           }
         },
         "amount": {
@@ -20813,10 +21317,38 @@
                   "acceptedAt": 1899999900000,
                   "anchoring": "in-code"
                 },
+                "consumerFinalityProfile": {
+                  "finalityProfileVersion": "1",
+                  "model": "bft-final",
+                  "settlement": {
+                    "kind": "bft-final",
+                    "networkId": "demos:mainnet",
+                    "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+                    "observation": {
+                      "method": "rpc-quorum",
+                      "authorityRefs": [
+                        "rpc-a",
+                        "rpc-b",
+                        "rpc-c"
+                      ],
+                      "threshold": 2,
+                      "maxHeadAgeSec": 60
+                    },
+                    "validatorSetRef": {
+                      "anchor": {
+                        "kind": "storage-program",
+                        "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                      },
+                      "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+                    },
+                    "quorumNumerator": 2,
+                    "quorumDenominator": 3
+                  }
+                },
                 "signature": {
                   "algorithm": "ed25519",
                   "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-                  "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+                  "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
                 }
               }
             }
@@ -22353,10 +22885,38 @@
             "acceptedAt": 1899999900000,
             "anchoring": "in-code"
           },
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "1b32be9e4fd9c133ec3160ee81818027282917b163a9c39a0a9bc422a8eb29f3",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-33ab769c1a8de9be52524fac0ac3f760aef75a7954a0343323848a23d7a7ce74"
+                },
+                "contentHash": "9d67d587c1560895bc9db8f8b58b710bc950d9e11e25a78705a66edd9d98a4cc"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          },
           "signature": {
             "algorithm": "ed25519",
             "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
-            "value": "UFYmHlt82lxK13XaoFeAcSy6EYNTnHTkW5ZPx312BCYE76C-PZCjIpzeG0lrWct5cfYZZW-u2xBHlKI5abfACA"
+            "value": "65in4URwkf2liDI-lAQFcVEP8UTv5hLlQ1AihevzkPHzqLMIFdcLxpAbhhrxus5jhum5LSEmoEYkMrVvTFa3BA"
           }
         },
         "amount": {

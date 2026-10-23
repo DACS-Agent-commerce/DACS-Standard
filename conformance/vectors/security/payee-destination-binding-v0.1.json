@@ -17,8 +17,8 @@
     "cci-lei:984500PBSELLER000010": "BuwkmF-v_71CiQrUMIDkQHwQlKiJPWch4F_Q_DmHhNY",
     "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111": "yra4qKH2-KfQGZVE9e1w-c7fVuKT50z9cHUTdYQWaEE"
   },
-  "hash": "8a5d8060ae4fbaf1e30880014be28e717b7eb1d1efd16d9106c7f264003bdaad",
-  "count": 28,
+  "hash": "ba7599e4ba282dcc3c5f12809079c58d025afa2c4a379b4ae6ef49ccaf649ef4",
+  "count": 30,
   "vectors": [
     {
       "name": "agreement-legacy-reader-accepts-legacy",
@@ -2766,7 +2766,7 @@
       "rule": "PB-2",
       "op": "pre-pay-destination-gate",
       "expected": "pass",
-      "note": "For pay-dem, the destination is definitionally the primary claim's Demos address and binds at tier 1.",
+      "note": "The historical case identifier is retained; pay-dem has no intrinsic destination equality. With no controlled linked claim applicable, the co-signed payout destination binds at tier 3.",
       "listing": {
         "listingId": "did:demos:agent:pb-fixture/payee-binding-dem/1",
         "version": 1,
@@ -2867,8 +2867,8 @@
         }
       },
       "bindingContext": {
-        "strongestApplicableTier": 1,
-        "tier1Intrinsic": true,
+        "strongestApplicableTier": 3,
+        "tier1Intrinsic": false,
         "tier2Applicable": false,
         "tier3AgreementAssertionPresent": true
       },
@@ -2878,9 +2878,9 @@
         "expected": "pass",
         "maySubmitPayment": true,
         "ok": true,
-        "bindingTier": 1,
+        "bindingTier": 3,
         "boundDestination": "0x1111111111111111111111111111111111111111111111111111111111111111",
-        "reason": "tier-1 intrinsic destination binding holds"
+        "reason": "tier-3 co-signed destination assertion holds; no stronger tier applicable"
       }
     },
     {
@@ -3289,6 +3289,271 @@
         "mustNotUseTier3": true,
         "mustNotApplySb3Fallback": true
       }
+    },
+    {
+      "name": "pb2-tier2-pay-dem-controlled-claim-matches",
+      "rule": "PB-2",
+      "op": "pre-pay-destination-gate",
+      "expected": "pass",
+      "note": "A controlled linked Demos claim makes tier 2 applicable; resolution must succeed before payment and cannot fall through to tier 3.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding-dem/1",
+        "version": 1,
+        "contentHash": "a958a0289a8fc2fdddcf6f0ddbdc6ba614e4d8252f7f624aeb3eadea98da4924",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-dem",
+            "parameters": {
+              "rail": "demos-native:DEM"
+            }
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding-dem/1",
+          "version": 1,
+          "contentHash": "a958a0289a8fc2fdddcf6f0ddbdc6ba614e4d8252f7f624aeb3eadea98da4924"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
+            "bundleHash": "sha256:92268255a207f79d786d645be912f5139d3a805479dceec7f1527c500a091822",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller-demos"
+              },
+              "contentHash": "08b921806ccc6214618b6a515eeac1593febd4491ca92fe883332de236be0a29"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "DEM"
+          },
+          "rail": {
+            "railId": "demos-native:DEM"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "demos-native:DEM",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "M2KL4DTkOhT8o2zw25xf-1vdPDuRYStIKzUvjI62JiFakCNyWtpAT3nNx3-7PNTfrGUpJriB2RGEdV8y0evIBQ"
+          },
+          {
+            "party": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
+            "algorithm": "ed25519",
+            "value": "kq-wBGdfTNywHKVpHm4KDGP8P73jsqrCrbf97QiGrKJ_R1UR9E4jJmtHJcnDp9TkC69gbQfCW0K7LrY7IBy5AQ"
+          }
+        ]
+      },
+      "phaseInput": {
+        "jobId": "pb-job-2026-07-14",
+        "railId": "demos-native:DEM",
+        "phaseIndex": 2,
+        "payee": {
+          "bundleHash": "sha256:92268255a207f79d786d645be912f5139d3a805479dceec7f1527c500a091822",
+          "primaryClaim": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
+          "payeeAddress": "0x1111111111111111111111111111111111111111111111111111111111111111"
+        }
+      },
+      "bindingContext": {
+        "strongestApplicableTier": 2,
+        "tier1Intrinsic": false,
+        "tier2Applicable": true,
+        "tier3AgreementAssertionPresent": true,
+        "controlledLinkedClaim": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
+        "verifyResult": {
+          "decision": "pass",
+          "reason": "controlled-linked-claim-resolved"
+        }
+      },
+      "artifactHash": "8b4744d23c3e821b87eaf3b617e1440f01fcd3d54b8495c1697b050f2e65e08d",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
+      "want": {
+        "expected": "pass",
+        "maySubmitPayment": true,
+        "ok": true,
+        "bindingTier": 2,
+        "boundDestination": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "reason": "tier-2 controlled linked claim resolves to signed destination",
+        "recordedVerifyResultEquals": {
+          "decision": "pass",
+          "reason": "controlled-linked-claim-resolved"
+        }
+      }
+    },
+    {
+      "name": "pb2-tier2-pay-dem-unavailable-no-downgrade",
+      "rule": "PB-2",
+      "op": "pre-pay-destination-gate",
+      "expected": "indeterminate",
+      "note": "A controlled linked Demos claim makes tier 2 applicable; resolution must succeed before payment and cannot fall through to tier 3.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding-dem/1",
+        "version": 1,
+        "contentHash": "a958a0289a8fc2fdddcf6f0ddbdc6ba614e4d8252f7f624aeb3eadea98da4924",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-dem",
+            "parameters": {
+              "rail": "demos-native:DEM"
+            }
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding-dem/1",
+          "version": 1,
+          "contentHash": "a958a0289a8fc2fdddcf6f0ddbdc6ba614e4d8252f7f624aeb3eadea98da4924"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
+            "bundleHash": "sha256:92268255a207f79d786d645be912f5139d3a805479dceec7f1527c500a091822",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller-demos"
+              },
+              "contentHash": "08b921806ccc6214618b6a515eeac1593febd4491ca92fe883332de236be0a29"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "DEM"
+          },
+          "rail": {
+            "railId": "demos-native:DEM"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "demos-native:DEM",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "M2KL4DTkOhT8o2zw25xf-1vdPDuRYStIKzUvjI62JiFakCNyWtpAT3nNx3-7PNTfrGUpJriB2RGEdV8y0evIBQ"
+          },
+          {
+            "party": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
+            "algorithm": "ed25519",
+            "value": "kq-wBGdfTNywHKVpHm4KDGP8P73jsqrCrbf97QiGrKJ_R1UR9E4jJmtHJcnDp9TkC69gbQfCW0K7LrY7IBy5AQ"
+          }
+        ]
+      },
+      "phaseInput": {
+        "jobId": "pb-job-2026-07-14",
+        "railId": "demos-native:DEM",
+        "phaseIndex": 2,
+        "payee": {
+          "bundleHash": "sha256:92268255a207f79d786d645be912f5139d3a805479dceec7f1527c500a091822",
+          "primaryClaim": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
+          "payeeAddress": "0x1111111111111111111111111111111111111111111111111111111111111111"
+        }
+      },
+      "bindingContext": {
+        "strongestApplicableTier": 2,
+        "tier1Intrinsic": false,
+        "tier2Applicable": true,
+        "tier3AgreementAssertionPresent": true,
+        "controlledLinkedClaim": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
+        "verifyResult": {
+          "decision": "indeterminate",
+          "reason": "linked-claim-anchor-unavailable"
+        }
+      },
+      "artifactHash": "8b4744d23c3e821b87eaf3b617e1440f01fcd3d54b8495c1697b050f2e65e08d",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
+      "want": {
+        "expected": "indeterminate",
+        "maySubmitPayment": false,
+        "ok": false,
+        "errorClass": "substrate",
+        "sessionTransition": "paused",
+        "failedAt": "payee.primaryClaim.binding",
+        "reason": "linked-claim-anchor-unavailable",
+        "recordedVerifyResultEquals": {
+          "decision": "indeterminate",
+          "reason": "linked-claim-anchor-unavailable"
+        },
+        "mustNotUseTier3": true
+      }
     }
-  ]
+  ],
+  "provenanceNote": "#432 corrects pay-dem tiers and adds controlled-claim cases"
 }

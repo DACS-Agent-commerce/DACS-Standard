@@ -16,7 +16,7 @@ This validator checks each set against its own claims:
 - ``hash`` recomputes as sha256 over the canonical JSON of the ``vectors``
   array. Sets from different authors used slightly different canonical
   encodings (insertion-order vs sorted keys; ASCII-escaped vs raw UTF-8), so
-  any of the four compact-JSON variants is accepted — but the hash MUST match
+  any of the four compact-JSON variants or CORE JCS is accepted — but the hash MUST match
   one of them, so a stale hash after an edit still fails. A string that is
   not valid Unicode (a lone surrogate escape) fails under every variant;
 - every vector carries a unique, non-empty ``name``;
@@ -34,6 +34,11 @@ import hashlib
 import json
 import os
 import sys
+
+try:
+    from scripts.jcs import canonicalize
+except ImportError:  # direct script invocation
+    from jcs import canonicalize
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECURITY_DIR = os.path.join(ROOT, "conformance", "vectors", "security")
@@ -76,7 +81,15 @@ def canonical_encoding(vectors: list, encoding: str) -> bytes:
 
 def canonical_encodings(vectors: list) -> dict[str, bytes]:
     """The accepted canonical encodings of the vectors array (see docstring)."""
-    return {encoding: canonical_encoding(vectors, encoding) for encoding in CANONICAL_ENCODINGS}
+    encodings = {encoding: canonical_encoding(vectors, encoding) for encoding in CANONICAL_ENCODINGS}
+    # CORE JCS compares JSON numbers by value: 100 and 100.0 have the
+    # same authenticated bytes. Preserve historical encodings as well.
+    try:
+        encodings["CORE JCS (RFC 8785)"] = canonicalize(vectors).encode("utf-8")
+    except (ValueError, TypeError, OverflowError):
+        # Some historical negative fixtures intentionally exceed JCS limits.
+        pass
+    return encodings
 
 
 def validate_set(path: str) -> tuple[list[str], int]:
@@ -109,7 +122,7 @@ def validate_set(path: str) -> tuple[list[str], int]:
             "status": "superseded",
             "currentCollisionAuthority": False,
             "normativeScope": (
-                "settlement-tx-id-canonicalisation-and-same-tuple-idempotency-only"
+                "non-demos-settlement-tx-id-canonicalisation-and-same-tuple-idempotency-only"
             ),
             "supersededBy": CURRENT_SB2_SET,
         }

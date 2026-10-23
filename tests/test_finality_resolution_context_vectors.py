@@ -395,14 +395,18 @@ class FinalityResolutionContextTests(unittest.TestCase):
             result = _verify_single_view_finality(candidate, copy.deepcopy(self.base_trusted))
             self.assertEqual("pass", result["decision"], result["reason"])
         self.assertEqual(
-            FRC._projection(views["observer-a"]), FRC._projection(views["observer-b"])
+            FRC._projection(views["observer-a"], certificate_verified=True),
+            FRC._projection(views["observer-b"], certificate_verified=True),
         )
         self.assertEqual("pass", self.execute_vector(case)["decision"])
 
         # The certificate's block and validator set remain finality meaning.
         moved = copy.deepcopy(views["observer-b"])
         moved["observation"]["finalityCertificate"]["blockId"] = "00" * 32
-        self.assertNotEqual(FRC._projection(views["observer-b"]), FRC._projection(moved))
+        self.assertNotEqual(
+            FRC._projection(views["observer-b"], certificate_verified=True),
+            FRC._projection(moved, certificate_verified=True),
+        )
 
         below = self.case("bft-certificate-below-quorum")
         thin = next(
@@ -417,6 +421,57 @@ class FinalityResolutionContextTests(unittest.TestCase):
         result = self.execute_vector(below)
         self.assertEqual("fail", result["decision"], result["reason"])
         self.assertIn("quorum", result["reason"])
+
+    def test_optional_certificates_are_closed_before_non_bft_projection(self):
+        for defect, expected in (("none", "pass"), ("array", "error"),
+                                 ("certificate-extra", "error"), ("signature-extra", "error"),
+                                 ("signature-wire", "error"), ("signature-format", "fail"),
+                                 ("unverified-difference", "indeterminate")):
+            _, value, payload = self.materialized("complete-all-authorities")
+            responses = []
+            for index, response in enumerate(value["context"]["responseArtifacts"]):
+                view = copy.deepcopy(response["response"]["observation"])
+                certificate = {
+                    "kind": "fixture-bft-certificate-v1", "validatorSetHash": "ab" * 32,
+                    "blockId": view["observation"]["inclusionBlock"]["id"], "signatures": [],
+                }
+                if index == 1:
+                    if defect == "array":
+                        certificate["signatures"] = "not-an-array"
+                    elif defect == "certificate-extra":
+                        certificate["extra"] = 1
+                    elif defect in {"signature-extra", "signature-wire", "signature-format", "unverified-difference"}:
+                        signature = {"validatorId": "validator-a", "algorithm": "ed25519",
+                                     "value": base64.urlsafe_b64encode(b"a" * 64).rstrip(b"=").decode()}
+                        if defect == "signature-extra":
+                            signature["extra"] = 1
+                        elif defect == "signature-wire":
+                            signature["value"] += "="
+                        elif defect == "signature-format":
+                            signature["value"] = "AA"
+                        certificate["signatures"] = [signature]
+                view["observation"]["finalityCertificate"] = certificate
+                key_id = response["signature"]["keyId"]
+                key = GEN.Ed25519PrivateKey.from_private_bytes(bytes.fromhex(GEN.AUTHORITY_SEEDS[key_id]))
+                responses.append(GEN.signed_response(
+                    key, authority_id=response["authorityId"], key_id=key_id,
+                    query=value["context"]["query"], checkpoint=response["checkpoint"],
+                    signed_time=response["signedObservationTime"],
+                    arm={"status": "observed", "observation": view}))
+            records = [GEN.acquisition(r, value["context"]["query"]["nonce"], GEN.ACQUIRED_AT)
+                       for r in responses]
+            value["context"]["responseArtifacts"] = responses
+            value["context"]["replay"]["acquisitionRecords"] = records
+            payload["acquisitionRecords"] = records
+            payload["retainedResponses"] = responses
+            with self.subTest(defect=defect):
+                self.assertEqual(expected, self.verify(value, self.authority(payload))["decision"])
+
+    def test_frc_readme_count_matches_the_committed_corpus(self):
+        readme = (VECTOR.parent / "README.md").read_text()
+        self.assertEqual(54, self.data["count"])
+        self.assertTrue("Fifty-four candidate cases execute the all-authorities finality resolution" in readme,
+                        "FRC narrative count differs from the committed corpus")
 
     def test_observation_instant_is_not_finality_meaning(self):
         case = self.case("equivalent-views-observed-at-different-instants")

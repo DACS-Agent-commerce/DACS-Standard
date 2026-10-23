@@ -21,8 +21,8 @@ The format used per release:
   aborts, and check current channel signature versions. The signature gate
   corpus grows 144 → 158; the FV corpus grows 326 → 338.
 - Share HTLC-8 authenticated inclusion-timing checks between settlement and
-  handler submission. The handler corpus grows 10 → 14, with missing, invalid
-  and contradictory timestamp cases alongside actual-finality controls.
+  finality-bound handler submission. The handler corpus grows 10 → 14, with
+  missing, invalid and contradictory timestamp cases alongside actual-finality controls.
 - Check the final canonical pointer size, including its signature when present,
   against the 131,072-byte storage limit. Serialize durable channel-ID updates
   across store instances and retain imported history before CH-6 admission.
@@ -101,8 +101,8 @@ except where a bullet names the earlier check that decides it.
   vectors for Listing, revocation, Agreement, component, rail, bundle, channel,
   recipe and VerifyResult envelopes, with genuine Ed448 out-of-set negatives,
   allowed Ed25519/ECDSA and a second seller claim. The separate HTLC handler
-  corpus requires an authenticated exact source-lock observation before
-  destination submission; elapsed estimated finality alone never permits it.
+  corpus for finality-bound operation requires an authenticated exact source-lock
+  observation before destination submission; elapsed estimated finality alone never permits it.
   This is separate from the settlement evidence schedule bound. CORE defines
   authenticated key metadata and leaves SR-1 internal format to its binding.
   DACS-2 defines RecipeSignature and VerifyResultSignature as ComponentSignature

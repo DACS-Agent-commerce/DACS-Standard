@@ -593,7 +593,7 @@ PROJECTED_HEAD_MEMBERS = ("id", "position", "header")
 PROJECTED_CERTIFICATE_MEMBERS = ("kind", "validatorSetHash", "blockId")
 
 
-def _projection(observation: Any) -> str:
+def _projection(observation: Any, *, certificate_verified: bool = False) -> str:
     """Canonical fixture meaning, compared only after FV verified the view.
 
     An explicit list of finality facts: network, transaction, inclusion,
@@ -619,8 +619,10 @@ def _projection(observation: Any) -> str:
         native.get("authenticatedHead"), PROJECTED_HEAD_MEMBERS
     )
     if "finalityCertificate" in native:
-        meaning["finalityCertificate"] = members(
-            native["finalityCertificate"], PROJECTED_CERTIFICATE_MEMBERS
+        certificate = native["finalityCertificate"]
+        meaning["finalityCertificate"] = (
+            members(certificate, PROJECTED_CERTIFICATE_MEMBERS)
+            if certificate_verified else certificate
         )
     return hash_value(meaning)
 
@@ -848,7 +850,11 @@ def _verify_finality_resolution_context(
             result = legacy_verifier(candidate, authority.base_trusted)
             observed_results.append((
                 response["authorityId"],
-                _projection(response["response"]["observation"]),
+                _projection(
+                    response["response"]["observation"],
+                    certificate_verified=(result.get("decision") == "pass" and
+                        value["rail"]["consumerFinalityProfile"]["model"] == "bft-final"),
+                ),
                 result,
             ))
             if result.get("decision") != "pass":

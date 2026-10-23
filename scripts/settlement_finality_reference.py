@@ -1141,6 +1141,26 @@ def _verify_chain_observation(
         return _result("error", "malformed AuthenticatedChainObservation"), None
     if not _chain_profile_shape(profile):
         return _result("error", "malformed chain finality profile"), None
+    # FRC-8 closure also covers optional certificates on non-BFT models.
+    if profile["kind"] != "bft-final" and "finalityCertificate" in observation:
+        certificate = observation["finalityCertificate"]
+        if not (
+            _exact_object(certificate, {"kind", "validatorSetHash", "blockId", "signatures"})
+            and certificate.get("kind") == "fixture-bft-certificate-v1"
+            and _sha256(certificate.get("validatorSetHash"))
+            and _sha256(certificate.get("blockId"))
+            and isinstance(certificate.get("signatures"), list)
+            and all(
+                _exact_object(s, {"validatorId", "algorithm", "value"})
+                and _nonempty_string(s.get("validatorId"))
+                and s.get("algorithm") == "ed25519"
+                and _signature_wire(s.get("value"))
+                for s in certificate["signatures"]
+            )
+        ):
+            return _result("error", "malformed optional BFT certificate"), None
+        if any(not _signature_encoding(s["value"]) for s in certificate["signatures"]):
+            return _result("fail", "invalid optional BFT signature format"), None
     if observation.get("networkId") != profile.get("networkId") or observation.get("genesisHash") != profile.get("genesisHash"):
         return _result("fail", "chain network or genesis differs from signed rail profile"), None
     # FRC-8 closure below the arm: a malformed member is error before it is

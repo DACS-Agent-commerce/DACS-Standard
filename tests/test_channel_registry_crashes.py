@@ -55,6 +55,7 @@ raise AssertionError("crash point not reached")
 '''
 
 
+@unittest.skipUnless(os.name == "posix", "POSIX process-death persistence fixture")
 class ChannelRegistryCrashTests(unittest.TestCase):
     def test_ch6_process_death_at_every_durable_issuance_transition(self):
         transitions = (

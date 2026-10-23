@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import base64
 import copy
-import fcntl
 import hashlib
 import json
 import os
@@ -345,7 +344,7 @@ class HistoricalAuditState(_VerifierOwnedChannelState):
 
 
 class DurableChannelIdStore:
-    """Fixture CH-6 persistence: used channel identifiers survive a restart.
+    """POSIX CH-6 persistence: used channel identifiers survive a restart.
 
     An identifier is synced and atomically renamed into the store before the
     registry admits it, so a crash cannot lose an identifier already in use.
@@ -374,6 +373,9 @@ class DurableChannelIdStore:
         return self._update(channel_ids, reject_used=False)
 
     def _update(self, incoming, *, reject_used):
+        # This POSIX persistence fixture is independent of the portable oracle.
+        import fcntl
+
         # Lock a stable sidecar, never the data inode replaced by rename.
         # Each instance/process must serialize the entire read/check/write.
         with open(self._path.with_name(self._path.name + ".lock"), "a") as lock:
@@ -977,6 +979,17 @@ def ch6_live_issuer(registry, session_id):
 
 
 class ChannelMessageVectorTests(unittest.TestCase):
+    def test_portable_oracle_runs_without_fcntl(self):
+        code = '''
+import sys, unittest
+sys.modules["fcntl"] = None
+from test_channel_message_vectors import ChannelMessageVectorTests
+suite = unittest.TestSuite([ChannelMessageVectorTests("test_current_entry_point_advances_only_valid_live_state")])
+result = unittest.TextTestRunner().run(suite)
+raise SystemExit(not result.wasSuccessful())
+'''
+        subprocess.run([sys.executable, "-c", code], cwd=ROOT / "tests", check=True)
+
     @classmethod
     def setUpClass(cls):
         cls.document = json.loads(VECTORS.read_text(encoding="utf-8"))
@@ -1358,6 +1371,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be distinct"):
             HistoricalAuditStateIssuer(registry)
 
+    @unittest.skipUnless(os.name == "posix", "POSIX persistence fixture")
     def test_ch6_refuses_a_persisted_channel_id_after_restart(self):
         reused = next(
             item for item in self.document["vectors"]
@@ -1395,6 +1409,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
             with self.subTest(registry=registry), self.assertRaises(TypeError):
                 ch6_live_issuer(registry, channel_id)
 
+    @unittest.skipUnless(os.name == "posix", "POSIX persistence fixture")
     def test_ch6_concurrent_stores_retain_every_admitted_identifier(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "used.json"
@@ -1419,6 +1434,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
                         ch6_live_issuer(restarted, channel_id).issue(channel_id)
             ch6_live_issuer(restarted, "new-after-restart").issue("new-after-restart")
 
+    @unittest.skipUnless(os.name == "posix", "POSIX persistence fixture")
     def test_ch6_two_registries_cannot_both_admit_the_same_identifier(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "used.json"
@@ -1437,6 +1453,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
             with ThreadPoolExecutor(max_workers=2) as pool:
                 self.assertCountEqual(["admitted", "reused"], list(pool.map(issue, issuers)))
 
+    @unittest.skipUnless(os.name == "posix", "POSIX persistence fixture")
     def test_ch6_preloaded_identifiers_are_durable_before_new_issuance(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "used.json"

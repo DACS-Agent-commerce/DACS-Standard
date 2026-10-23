@@ -2088,7 +2088,7 @@ python3 -m unittest tests.test_settlement_finality_verification_vectors -v
 
 ### `finality-resolution-context-v1.json` — DACS-4 §9.7.0 FRC-1..FRC-11
 
-Forty-nine candidate cases execute the all-authorities finality resolution
+Fifty-four candidate cases execute the all-authorities finality resolution
 context over the fixture-only `dacs-finality-synthetic-fixture-v1` binding.
 Every case carries its complete verifier input and names the entry point it
 runs:

@@ -2,7 +2,7 @@
   "set": "pay-dem-execution-v0.1",
   "spec": "DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5",
   "tier": "candidate",
-  "description": "Recovery-gate cases explicitly model every DEM-6 condition using verifier-owned fork trust and serialized reads. Nonce-exhaustion cases authenticate cumulative retained-hash absence and consumed payer nonce at a finalized checkpoint block; they use the separate DEMOS-MAPPING state statement, not an executed-record result. Inclusion does not prove execution. Only a getTxByHash record from a pinned node that decodes under the native-send record profile and binds the retained hash, nonce, block, sender, recipient and OS amount with status confirmed and independent applied-payment authority succeeds; a bound failed record authenticated under FV-5 at its bft-final inclusion is a permanent failure, and a plain RPC read of one is unresolved; anything else is a substrate result without a second broadcast unless every DEM-6 recovery condition holds. FV-5 authentication is FV-5's signed execution result itself (recordRead.executionResult, retainedFailureProof.authentication), which every operation verifies against fv5Policy with the settlement-finality reference's verifier; a flag or label decides nothing. A DEM-4 executed-record failure, its reuse on resume and APR evidence also need FV's bft-final verification of the transaction's inclusion (recordRead.inclusionProof, retainedFailureProof.inclusionProof) in the block that result names, which they verify with that reference's verify_transaction_inclusion against finalityProfile and finalityTrust. Consumer verdicts take FV's own verdict on the presented inclusion when it is fail or error, as the settlement-finality corpus scores the same input. appliedTransferAuthenticated, nodeBuild.source and otherGates (sb1, pb) are abstract inputs that state an authentication result: this corpus pins the decisions over them, not the authentication itself.",
+  "description": "Recovery-gate cases refuse resubmission even when local fork pins and serialized reads agree. Nonce-exhaustion cases refuse terminal authority from fixture state statements at a finalized checkpoint block; they use the separate DEMOS-MAPPING state statement, not an executed-record result. Inclusion does not prove execution. Only a getTxByHash record from a pinned node that decodes under the native-send record profile and binds the retained hash, nonce, block, sender, recipient and OS amount with status confirmed and independent applied-payment authority succeeds; a bound failed record authenticated under FV-5 at its bft-final inclusion is a permanent failure, and a plain RPC read of one is unresolved; anything else is a substrate result without a second submission on this profile. FV-5 authentication is FV-5's signed execution result itself (recordRead.executionResult, retainedFailureProof.authentication), which every operation verifies against fv5Policy with the settlement-finality reference's verifier; a flag or label decides nothing. A DEM-4 executed-record failure, its reuse on resume and APR evidence also need FV's bft-final verification of the transaction's inclusion (recordRead.inclusionProof, retainedFailureProof.inclusionProof) in the block that result names, which they verify with that reference's verify_transaction_inclusion against finalityProfile and finalityTrust. Consumer verdicts take FV's own verdict on the presented inclusion when it is fail or error, as the settlement-finality corpus scores the same input. appliedTransferAuthenticated, nodeBuild.source and otherGates (sb1, pb) are abstract inputs that state an authentication result: this corpus pins the decisions over them, not the authentication itself.",
   "demosProfile": {
     "profile": "DEMOS-MAPPING §A.2 native-send record profile",
     "nodeSource": "kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f45578 (stabilisation)",
@@ -40,7 +40,7 @@
     "finalityProfile": "the rail's signed consumerFinalityProfile.settlement ChainFinalityProfile (kind bft-final, networkId and genesisHash of railNetwork, observation, validatorSetRef, quorumNumerator, quorumDenominator); one of another kind or network verifies nothing",
     "finalityTrust": "the verifier's own trust for that profile: validatorSets (by content hash), observationAuthorityKeys (base64url Ed25519) and verificationTimeMs, its local clock",
     "authenticated": "recordRead member of an earlier draft: a read that says it is FV-5-authenticated. It decides nothing, whoever sets it; the *-fv5-flag-only vectors pin that",
-    "retainedFailureProof": "the DEM-4 proof the handler retained: a nonce-exhaustion artifact (kind, classification, signed authentication, final-block inclusionProof) under DEMOS-MAPPING §A.2, reverified with nonceEnforcement, fv5Policy and finalityTrust; otherwise classification, authentication (FV-5's signed execution result for the proof's own record, stored verbatim; rpc-read for a plain read, and the earlier draft's fv5-bft-final label, are none), inclusionProof (FV's bft-final inclusion observation, stored verbatim), inclusionBlock and the record. A resume and an APR check each verify both themselves, the result against fv5Policy and railNetwork and the inclusion against finalityProfile and finalityTrust in the block the result names (the proof has no inclusion observation of its own); a resume reuses only a proof that verifies and still binds, and APR accepts only such a proof. A retained proof means the phase ended: a resume whose proof does not verify re-reads, and that post-terminal re-read can prove the failure again but is never pass",
+    "retainedFailureProof": "the ordinary DEM-4 proof the handler retained (nonce-exhaustion artifacts are refused on this profile): classification, authentication (FV-5's signed execution result for the proof's own record, stored verbatim; rpc-read for a plain read, and the earlier draft's fv5-bft-final label, are none), inclusionProof (FV's bft-final inclusion observation, stored verbatim), inclusionBlock and the record. A resume and an APR check each verify both themselves, the result against fv5Policy and railNetwork and the inclusion against finalityProfile and finalityTrust in the block the result names (the proof has no inclusion observation of its own); a resume reuses only a proof that verifies and still binds, and APR accepts only such a proof. A retained proof means the phase ended: a resume whose proof does not verify re-reads, and that post-terminal re-read can prove the failure again but is never pass",
     "restartedSinceRetention": "false only when the handler has run without a restart since it retained the transfer; after a (re)start a retained transfer is maybe-broadcast whatever broadcastState was recorded, and anything but false is a restart. The handler derives it, and broadcastState and retentionDurable, from the journal it reads back from stable storage (the start that wrote the retention against its own, 128 random bits the handler draws for each start, which needs no stored state, so no loss or rollback of its store repeats it, and never takes from its caller), never from process-local state; tests/test_pay_dem_crash_restart.py stops a storage-backed reference handler on both sides of every transition and witnesses that derivation",
     "signedTransaction": "the signed transaction itself as the DEM-1 retention holds it, read back from the journal: a confirm request carries these bytes, and a broadcast's validity response must embed them",
     "hashRetainedForOtherPhases": "the other (jobId, phaseIndex) whose stored journals retain the same hash, read from storage like restartedSinceRetention; any entry refuses the egress",
@@ -49,15 +49,15 @@
     "cause": "classify-egress-outcome want member: call:outcome, so the result keeps the step and reply that produced it",
     "consumerAdmissions": "raw txRef and (jobId, phaseIndex) of pay-dem records the consumer admitted earlier. For admit-for-delivery they are the payee's own admissions, which its delivery check presents with the evidence: derive canonical SB-1 IDs before grouping; an admitted reference without an SB-1 ID is error. For resolve-settlement-group they lie outside the presented records, and settlement accounting and the DACS-5 derivation never add them",
     "admissionIndex": "admit-for-delivery: the snapshot (revision, admissions) of the payee's durable admission index read for this check. consumerAdmissions must equal its admissions as a multiset of exact JCS bytes; a missing or malformed snapshot, or a presented history that omits or adds an admission, is error and authorizes no delivery. The payee adds this phase's admission with a write conditional on that revision",
-    "recoveryCheck": "broadcast-gate: verifier-derived record/mempool reads, serialized attempt/terminal state, and independently provisioned forkAuthority; recovery requires every DEM-6 condition and no retained validity response",
+    "recoveryCheck": "broadcast-gate: verifier-derived record/mempool reads, serialized attempt/terminal state, and independently provisioned forkAuthority; the pinned profile never authorizes resubmission from these local inputs",
     "confirmNode": "broadcast-gate: identity of the pinned node that returned this attempt's confirm response",
     "broadcastNode": "broadcast-gate: identity of the pinned node receiving the completing broadcast; must equal confirmNode",
     "currentBlock": "broadcast-gate: safe integer block at completion; from confirm reference_block through reference_block + 1",
-    "recoveryAuthorized": "handler-internal boolean derived under the submission lock after every fresh recovery check; never an external caller or persisted authorization. Corpus recovery inputs use recoveryCheck instead",
+    "recoveryAuthorized": "historical handler-internal retry hint; neither this flag nor recoveryCheck authorizes resubmission on the pinned profile",
     "guards": "checks whose removal makes this vector fail"
   },
   "count": 582,
-  "hash": "72dd60fd4e0d339464f381709d7c2340cac3d44a59faff9f49d7679959df427b",
+  "hash": "a640b92c3e1ef79002103d9bb5a3e5ce472ef10ada9ba9842b3403a3d1acf28f",
   "vectors": [
     {
       "name": "included-confirmed",
@@ -17411,7 +17411,7 @@
       "guards": [
         "no-rebroadcast"
       ],
-      "note": "The node's status index says unknown and there is no record; the handler re-reads and may retry only under DEM-6 retained-byte recovery."
+      "note": "The node's status index says unknown and there is no record; the handler re-reads only under DEM-6."
     },
     {
       "name": "resume-reuses-failure-proof",
@@ -21650,7 +21650,7 @@
       "guards": [
         "no-rebroadcast"
       ],
-      "note": "A crash resumes by re-reading; only a separately authorized DEM-6 attempt may resend the retained bytes."
+      "note": "A crash resumes by re-reading; DEM-6 recovery reads only on this profile."
     },
     {
       "name": "resume-without-proof-confirmed",
@@ -80492,7 +80492,7 @@
         "confirm-egress-may-broadcast",
         "no-rebroadcast"
       ],
-      "note": "After a confirm timeout, error or restart the node may have submitted the bytes; re-reads follow, with retries only under DEM-6 retained-byte recovery."
+      "note": "After a confirm timeout, error or restart the node may have submitted the bytes; read-only recovery follows under DEM-6."
     },
     {
       "name": "replacement-after-interrupted-confirm-refused",
@@ -98853,15 +98853,16 @@
           }
         }
       },
-      "expected": "pass",
+      "expected": "fail",
       "want": {
-        "broadcastPermitted": true
+        "broadcastPermitted": false
       },
       "rule": "DACS-4 §9.5.9 DEM-6",
       "guards": [
-        "first-broadcast-allowed"
+        "recovery-requires-all-conditions",
+        "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-record",
@@ -99018,7 +99019,7 @@
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-mempool",
@@ -99175,7 +99176,7 @@
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-unavailable",
@@ -99332,7 +99333,7 @@
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-fork",
@@ -99489,7 +99490,7 @@
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-network",
@@ -99646,7 +99647,7 @@
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-digest",
@@ -99803,7 +99804,7 @@
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-serialized",
@@ -99960,7 +99961,7 @@
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-terminal",
@@ -100117,7 +100118,7 @@
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-old-response",
@@ -100274,7 +100275,7 @@
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-future-activation",
@@ -100428,11 +100429,10 @@
       },
       "rule": "DACS-4 §9.5.9 DEM-6",
       "guards": [
-        "recovery-fork-active",
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-missing-attestation",
@@ -100582,7 +100582,7 @@
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "recovery-gate-node-build",
@@ -100739,7 +100739,7 @@
         "recovery-requires-all-conditions",
         "retention-before-first-egress"
       ],
-      "note": "Only a serialized fresh retained-byte attempt under every recovery condition is permitted."
+      "note": "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree."
     },
     {
       "name": "egress-recovery-attempt-pre-egress-insufficient-balance",
@@ -100913,7 +100913,7 @@
         "no-rebroadcast",
         "retention-before-first-egress"
       ],
-      "note": "A saved retry arm permits no call without fresh recovery authorization."
+      "note": "A saved retry arm permits no resubmission on this profile."
     },
     {
       "name": "nonce-exhaustion-authenticated",
@@ -101117,15 +101117,16 @@
           }
         }
       },
-      "expected": "pass",
+      "expected": "indeterminate",
       "want": {
-        "reconciliationEvidence": true
+        "reconciliationEvidence": false
       },
       "rule": "DACS-4 §9.5.9 DEM-4/DEM-6",
       "guards": [
-        "apr-evidence-from-authenticated-failure"
+        "apr-evidence-requires-authenticated-failure",
+        "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     },
     {
       "name": "nonce-exhaustion-signature",
@@ -101338,7 +101339,7 @@
         "apr-evidence-requires-authenticated-failure",
         "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     },
     {
       "name": "nonce-exhaustion-network",
@@ -101551,7 +101552,7 @@
         "apr-evidence-requires-authenticated-failure",
         "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     },
     {
       "name": "nonce-exhaustion-genesis",
@@ -101764,7 +101765,7 @@
         "apr-evidence-requires-authenticated-failure",
         "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     },
     {
       "name": "nonce-exhaustion-retention",
@@ -101976,7 +101977,7 @@
       "guards": [
         "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     },
     {
       "name": "nonce-exhaustion-nonce",
@@ -102189,7 +102190,7 @@
         "apr-evidence-requires-authenticated-failure",
         "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     },
     {
       "name": "nonce-exhaustion-present",
@@ -102402,7 +102403,7 @@
         "apr-evidence-requires-authenticated-failure",
         "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     },
     {
       "name": "nonce-exhaustion-unfinalized",
@@ -102598,7 +102599,7 @@
         "apr-evidence-requires-authenticated-failure",
         "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     },
     {
       "name": "nonce-exhaustion-block",
@@ -102811,7 +102812,7 @@
         "apr-evidence-requires-authenticated-failure",
         "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     },
     {
       "name": "nonce-exhaustion-fork",
@@ -103024,7 +103025,7 @@
         "apr-evidence-requires-authenticated-failure",
         "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     },
     {
       "name": "nonce-exhaustion-future-activation",
@@ -103235,10 +103236,9 @@
       "rule": "DACS-4 §9.5.9 DEM-4/DEM-6",
       "guards": [
         "apr-evidence-requires-authenticated-failure",
-        "nonce-exhaustion-fork-active",
         "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     },
     {
       "name": "nonce-exhaustion-contradictory-witness",
@@ -103449,10 +103449,9 @@
       "rule": "DACS-4 §9.5.9 DEM-4/DEM-6",
       "guards": [
         "apr-evidence-requires-authenticated-failure",
-        "nonce-exhaustion-proof-valid",
-        "nonce-exhaustion-witness-excludes-retained"
+        "nonce-exhaustion-proof-valid"
       ],
-      "note": "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."
+      "note": "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."
     }
   ]
 }

@@ -1196,7 +1196,9 @@ def _verify_demos_execution(observation: dict, reference: dict, trusted: dict) -
         return "indeterminate", "independent Demos execution result unavailable", None
     if not _exact_object(proof, {"kind", "networkId", "genesisHash", "blockId", "transactionRef", "record", "attestations"}, {"appliedTransfer"}):
         return "error", "malformed Demos execution result", None
-    if proof["kind"] != policy["kind"] or not isinstance(proof["attestations"], list):
+    if proof["kind"] != policy["kind"]:
+        return "error", "Demos execution result kind differs from policy", None
+    if not isinstance(proof["attestations"], list):
         return "error", "malformed Demos execution result attestations", None
     payload = {key: value for key, value in proof.items() if key != "attestations"}
     digest = hash_value(payload)

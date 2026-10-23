@@ -16,6 +16,8 @@ def nonce_enforcement(network, sealed_genesis, pinned_digest, node_commit=NODE_C
     The network identity and digest are independent provisioning roots. The
     genesis block hash does not authenticate fork configuration. None means
     explicitly unscheduled, whereas an absent fork uses this build's default.
+    This local description authorizes neither resubmission nor a nonce terminal;
+    the pinned profile registers no actual-network effective-fork authority.
     """
     if node_commit != NODE_COMMIT:
         raise ValueError("unsupported node build for nonce enforcement")

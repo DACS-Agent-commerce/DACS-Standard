@@ -94,7 +94,7 @@ class PayDemPaymentAuthorityTests(unittest.TestCase):
                     recovery=handler.RecoveryAuthority(pay.generator.NETWORK))
                 later.recover()
                 calls = handler.read_lines(work / "egress.jsonl")
-                self.assertEqual(["confirm", "broadcast"], [call["call"] for call in calls])
+                self.assertEqual([], calls)
                 self.assertTrue(all(handler.same_signed_bytes(transaction, call["transaction"]) for call in calls))
 
     def test_open_payment_rules_resume_on_verified_success(self):
@@ -139,7 +139,7 @@ class PayDemPaymentAuthorityTests(unittest.TestCase):
         self.assertNotIn("tier-1 intrinsic and tier-2 controlled-claim positive cases", plan)
         self.assertNotIn("`pay-dem` intrinsic addressing binds at tier 1", readme)
         self.assertIn("`identity-bundle-hash-binding-v0.1` corpus is regenerated", changelog)
-        self.assertIn("provisioned effective-fork attestation", settle)
+        self.assertIn("pinned native-send profile has no network-authenticated effective-fork authority", settle)
         mapping = (ROOT / "spec/DEMOS-MAPPING.md").read_text()
         self.assertNotIn("independently authenticated active nonce enforcement", mapping + changelog)
 

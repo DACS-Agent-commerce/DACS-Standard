@@ -25,38 +25,23 @@ class RecoveryFinalityTests(unittest.TestCase):
         return handler.PayerHandler(store, handler.Node(work, 'later'), 'later',
                                    recovery=handler.RecoveryAuthority(pay.generator.NETWORK), **options)
 
-    def test_recovery_balance_cannot_erase_possible_egress(self):
+    def test_possible_egress_stays_open_without_resubmission(self):
         for outcome in ('insufficient-balance', 'refused-not-valid', 'timeout', 'transport-error', 'crash-after-retain'):
             with self.subTest(outcome=outcome), tempfile.TemporaryDirectory() as scratch:
                 work = Path(scratch)
                 if outcome == 'crash-after-retain':
                     first = handler.PayerHandler(handler.Store(work / 'store'), handler.Node(work, 'first'), 'first', crash_at='after-retain')
                     with self.assertRaises(handler.Crashed): first.pay(pay.generator.signed())
-                else: first = self.first(work, outcome)
-                later = self.later(work, first.store)
-                later.node.balance = 'insufficient'
-                later.node.outcomes['confirm'] = 'insufficient-balance'
-                self.assertEqual('substrate', later.recover()['errorClass'])
-                self.assertIsNone(first.store.read(first.journal)['result'])
-                self.assertEqual('pass', self.later(work, first.store).recover()['expected'])
-
-    def test_recovery_crashes_preserve_one_transfer_and_fresh_confirm(self):
-        for point in ('before-recovery-journal', 'after-recovery-journal', 'before-confirm', 'after-confirm',
-                      'after-confirm-journal', 'before-broadcast', 'after-broadcast', 'after-broadcast-journal'):
-            with self.subTest(point=point), tempfile.TemporaryDirectory() as scratch:
-                work = Path(scratch)
-                first = self.first(work)
-                later = self.later(work, first.store, crash_at=point)
-                with self.assertRaises(handler.Crashed): later.recover()
-                final = self.later(work, first.store)
-                self.assertEqual('pass', final.recover()['expected'])
-                self.assertIsNone(first.store.read(first.journal)['result'])
+                else:
+                    first = self.first(work, outcome)
                 calls = handler.read_lines(work / 'egress.jsonl')
-                self.assertTrue(all(handler.same_signed_bytes(pay.generator.signed(), c['transaction']) for c in calls))
-                self.assertTrue(all(c['retainedAtEgress'] for c in calls))
-                self.assertEqual(1, len(list(first.store.journals())))
+                for boot in ('later', 'again'):
+                    later = self.later(work, first.store)
+                    self.assertEqual({'expected': 'indeterminate', **pay.HANDLER_WANT['indeterminate']}, later.recover())
+                    self.assertIsNone(first.store.read(first.journal)['result'])
+                self.assertEqual(calls, handler.read_lines(work / 'egress.jsonl'))
 
-    def test_initial_crash_points_with_recovery_authority_configured(self):
+    def test_initial_crash_points_with_local_fork_pin_send_nothing_on_recovery(self):
         from tests.test_pay_dem_crash_restart import PAYER_POINTS
         for point in PAYER_POINTS:
             with self.subTest(point=point), tempfile.TemporaryDirectory() as scratch:
@@ -64,35 +49,16 @@ class RecoveryFinalityTests(unittest.TestCase):
                 store = handler.Store(work / 'store')
                 first = self.later(work, store, crash_at=point)
                 with self.assertRaises(handler.Crashed): first.pay(pay.generator.signed())
-                final = self.later(work, store)
-                result = final.pay(pay.generator.signed()) if store.read(final.journal) is None else final.recover()
-                self.assertEqual('pass', result['expected'])
-                self.assertEqual(1, len(list(store.journals())))
                 calls = handler.read_lines(work / 'egress.jsonl')
+                final = self.later(work, store)
+                result = final.recover()
+                # Before retention there is no phase to recover. After broadcast,
+                # independently verified execution may resolve the original effect.
+                self.assertIn(result.get('expected'), (None, 'pass', 'indeterminate'))
+                self.assertEqual(calls, handler.read_lines(work / 'egress.jsonl'))
                 self.assertTrue(all(c['retainedAtEgress'] for c in calls))
-                self.assertTrue(all(handler.same_signed_bytes(pay.generator.signed(), c['transaction']) for c in calls))
 
-    def test_saved_recovery_arm_needs_fresh_checks_even_in_the_same_start(self):
-        with tempfile.TemporaryDirectory() as scratch:
-            work = Path(scratch)
-            first = self.first(work)
-            later = self.later(work, first.store)
-            later.node.balance = 'insufficient'
-            self.assertEqual('substrate', later.recover()['errorClass'])
-            calls = handler.read_lines(work / 'egress.jsonl')
-            later.node.balance = 'sufficient'
-            later.recovery.nonce_active = False
-            self.assertEqual('substrate', later.advance()['errorClass'])
-            self.assertEqual('substrate', later.recover()['errorClass'])
-            self.assertEqual(calls, handler.read_lines(work / 'egress.jsonl'))
-            later.recovery.nonce_active = True
-            later.node.pending_state = 'present'
-            self.assertEqual('substrate', later.recover()['errorClass'])
-            self.assertEqual(calls, handler.read_lines(work / 'egress.jsonl'))
-            later.node.pending_state = 'absent'
-            self.assertEqual('pass', later.recover()['expected'])
-
-    def test_nonce_consumption_requires_authenticated_final_absence(self):
+    def test_nonce_terminal_is_refused_even_with_valid_fixture_authentication(self):
         for fault in (None, 'signature', 'network', 'genesis', 'retention', 'nonce', 'present', 'unfinalized', 'block', 'fork'):
             with self.subTest(fault=fault), tempfile.TemporaryDirectory() as scratch:
                 work = Path(scratch)
@@ -100,34 +66,31 @@ class RecoveryFinalityTests(unittest.TestCase):
                 later = self.later(work, first.store)
                 later.recovery.account_nonce = pay.generator.NONCE
                 later.recovery.proof_fault = fault
-                later.node.outcomes['confirm'] = 'refused-not-valid'
+                calls = handler.read_lines(work / 'egress.jsonl')
                 result = later.recover()
-                if fault is not None:
-                    self.assertEqual('substrate', result['errorClass'])
-                    self.assertIsNone(first.store.read(first.journal)['result'])
-                    continue
-                self.assertEqual('permanent', result['errorClass'])
-                entry = first.store.read(first.journal)
-                self.assertEqual('nonce-exhaustion', entry['failureProof']['kind'])
-                self.assertEqual('permanent', later.advance()['errorClass'])
-                self.assertEqual('permanent', self.later(work, first.store).advance()['errorClass'])
-                # Losing trust never reopens the ended phase, even if a later RPC reports success.
-                later.bindings[0]['executionResultPolicy']['authorityKeys'] = {}
-                later.node.relays_confirm = True
-                self.assertEqual('substrate', later.advance()['errorClass'])
-                data = json.loads(apr.VECTORS.read_text())
-                case = next(v for v in data['vectors'] if v['name'] == 'fresh-job-after-conclusive-no-settlement')
-                value = apr.materialize(data, case)
-                value['runtime']['payDemReconciliationTrust']['nonceEnforcement'] = copy.deepcopy(later.bindings[0]['nonceEnforcement'])
-                context = value['runtime']['priorPaymentContext']
-                apr_proof = pay.generator.nonce_exhaustion_proof(context['disposition']['retainedPayDemTransfer'])
-                context['resolution']['payDemFailureProof'] = apr_proof
-                context['disposition']['reconciliationEvidenceRefs'][0]['contentHash'] = apr.digest(apr_proof)
-                aprgen.sign_all(value)
-                self.assertEqual(('pass', None), apr.evaluate(value))
-                context['disposition']['retainedPayDemTransfer']['nonce'] += 1
-                aprgen.sign_all(value)
-                self.assertEqual(('fail', 'prior-disposition-proof'), apr.evaluate(value))
+                self.assertEqual({'expected': 'indeterminate', **pay.HANDLER_WANT['indeterminate']}, result)
+                self.assertEqual(result, later.advance())
+                self.assertEqual(result, self.later(work, first.store).recover())
+                self.assertIsNone(first.store.read(first.journal)['result'])
+                self.assertNotIn('failureProof', first.store.read(first.journal))
+                self.assertEqual(calls, handler.read_lines(work / 'egress.jsonl'))
+
+    def test_saved_nonce_terminal_does_not_authorize_resume_or_compensation(self):
+        value = pay.generator.classify('saved-nonce', 'indeterminate', 'DEM-4', [], '', read=pay.generator.NOT_FOUND)['protocolInput']
+        value['retainedFailureProof'] = pay.generator.nonce_exhaustion_proof(pay.generator.retained())
+        value['nonceEnforcement'] = pay.generator.binding_entry()['nonceEnforcement']
+        self.assertEqual('indeterminate', pay.resume(value, frozenset())[0])
+        self.assertEqual(('indeterminate', {'reconciliationEvidence': False}), pay.apr_evidence(value, frozenset()))
+        data = json.loads(apr.VECTORS.read_text())
+        case = next(v for v in data['vectors'] if v['name'] == 'fresh-job-after-nonce-exhaustion-number-nonce')
+        self.assertEqual(('indeterminate', 'prior-disposition-proof'), apr.evaluate(apr.materialize(data, case)))
+
+    def test_saved_retry_arm_and_caller_flag_grant_no_egress(self):
+        cases = {v['name']: v for v in pay.generator.document()['vectors']}
+        value = pay.generator.decode_exact_members(copy.deepcopy(cases['recovery-gate-allowed']))
+        value['protocolInput'].pop('recoveryCheck')
+        value['protocolInput']['recoveryAuthorized'] = True
+        self.assertEqual(('fail', {'broadcastPermitted': False}), pay.evaluate(value))
 
     def test_nonce_state_quorum_accepts_any_threshold_and_ignores_bad_extras(self):
         proof = pay.generator.nonce_exhaustion_proof(pay.generator.retained())
@@ -157,37 +120,6 @@ class RecoveryFinalityTests(unittest.TestCase):
         value['fv5Policy'] = copy.deepcopy(value['fv5Policy'])
         value['fv5Policy']['authorityKeys']['execution-c'] = value['fv5Policy']['authorityKeys']['execution-b']
         self.assertFalse(pay.nonce_exhaustion_valid(proof, value))
-
-    def test_recovery_fork_attestation_is_bound_and_active(self):
-        for fault in (None, 'integer-valued', 'missing', 'network', 'genesis', 'future', 'digest', 'ambiguous'):
-            with self.subTest(fault=fault), tempfile.TemporaryDirectory() as scratch:
-                work = Path(scratch)
-                first = self.first(work)
-                later = self.later(work, first.store)
-                attestation = later.bindings[0].get('nonceEnforcement')
-                self.assertIsInstance(attestation, dict)
-                if fault == 'integer-valued': attestation['activationHeight'] = 0.0
-                elif fault == 'missing': later.bindings[0].pop('nonceEnforcement')
-                elif fault == 'network': attestation['networkId'] = 'demos:another'
-                elif fault == 'genesis': attestation['genesisHash'] = pay.generator.OTHER_GENESIS['genesisHash']
-                elif fault == 'future': attestation['activationHeight'] = later.node.current_block + 1
-                elif fault == 'digest': attestation['sealedGenesisHash'] = '0' * 64
-                elif fault == 'ambiguous': attestation['activationHeight'] = True
-                self.assertEqual('pass' if fault in (None, 'integer-valued') else 'indeterminate', later.recover()['expected'])
-
-    def test_nonce_terminal_write_survives_both_crash_edges(self):
-        for point in ('before-failure-proof', 'after-failure-proof'):
-            with self.subTest(point=point), tempfile.TemporaryDirectory() as scratch:
-                work = Path(scratch)
-                first = self.first(work)
-                later = self.later(work, first.store, crash_at=point)
-                later.recovery.account_nonce = pay.generator.NONCE
-                calls = handler.read_lines(work / 'egress.jsonl')
-                with self.assertRaises(handler.Crashed): later.recover()
-                final = self.later(work, first.store)
-                final.recovery.account_nonce = pay.generator.NONCE
-                self.assertEqual('permanent', final.recover()['errorClass'])
-                self.assertEqual(calls, handler.read_lines(work / 'egress.jsonl'))
 
     def test_reference_bearing_fixtures_match_generator(self):
         process = subprocess.run([sys.executable, 'scripts/generate_artifact_reference_fixtures.py', '--check'],

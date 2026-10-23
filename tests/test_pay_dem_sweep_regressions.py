@@ -118,7 +118,7 @@ class PayDemSweepRegressions(unittest.TestCase):
             with self.subTest(event_type=event_type):
                 self.assertEqual('error', verify_finality(value, factory.trusted)['decision'])
 
-    def test_deliver_first_payment_can_recover_identical_bytes(self):
+    def test_deliver_first_payment_recovery_is_read_only(self):
         for outcome in ('transport-error', 'timeout', 'refused-not-valid', 'insufficient-balance'):
             with self.subTest(outcome=outcome), tempfile.TemporaryDirectory() as scratch:
                 work = Path(scratch)
@@ -130,10 +130,10 @@ class PayDemSweepRegressions(unittest.TestCase):
                 self.assertEqual('indeterminate', first.pay(tx)['expected'])
                 later = handler.PayerHandler(store, handler.Node(work, 'later'), 'later', recovery=handler.RecoveryAuthority(pay.generator.NETWORK))
                 self.assertEqual('indeterminate', later.advance()['expected'])
-                self.assertEqual('pass', later.recover()['expected'])
+                self.assertEqual('indeterminate', later.recover()['expected'])
                 calls = handler.read_lines(work / 'egress.jsonl')
                 self.assertTrue(all(handler.same_signed_bytes(tx, call['transaction']) for call in calls))
-                self.assertEqual('pass', later.recover()['expected'])
+                self.assertEqual('indeterminate', later.recover()['expected'])
                 self.assertEqual(calls, handler.read_lines(work / 'egress.jsonl'))
 
     def test_recovery_requires_absent_record_mempool_and_active_network_authority(self):
@@ -161,7 +161,7 @@ class PayDemSweepRegressions(unittest.TestCase):
                     self.assertEqual('indeterminate', later.recover()['expected'])
                 self.assertEqual(calls, handler.read_lines(work / 'egress.jsonl'))
 
-    def test_concurrent_recovery_serializes_one_fresh_submission(self):
+    def test_concurrent_recovery_sends_nothing(self):
         from concurrent.futures import ThreadPoolExecutor
         with tempfile.TemporaryDirectory() as scratch:
             work = Path(scratch)
@@ -171,8 +171,8 @@ class PayDemSweepRegressions(unittest.TestCase):
                 recovery=handler.RecoveryAuthority(pay.generator.NETWORK)) for label in ('second', 'third')]
             with ThreadPoolExecutor(max_workers=2) as pool:
                 results = list(pool.map(lambda payer: payer.recover(), later))
-            self.assertEqual(['pass', 'pass'], [r['expected'] for r in results])
-            self.assertEqual(['confirm', 'confirm', 'broadcast'],
+            self.assertEqual(['indeterminate', 'indeterminate'], [r['expected'] for r in results])
+            self.assertEqual(['confirm'],
                              [v['call'] for v in handler.read_lines(work / 'egress.jsonl')])
 
     def test_recovery_never_reopens_a_proven_failure(self):
@@ -194,7 +194,7 @@ class PayDemSweepRegressions(unittest.TestCase):
             with self.assertRaises(handler.Crashed):
                 first.pay(pay.generator.signed())
             later = handler.PayerHandler(first.store, handler.Node(work, 'later'), 'later', recovery=handler.RecoveryAuthority(pay.generator.NETWORK))
-            self.assertEqual('pass', later.recover()['expected'])
+            self.assertEqual('indeterminate', later.recover()['expected'])
 
 
 if __name__ == '__main__':

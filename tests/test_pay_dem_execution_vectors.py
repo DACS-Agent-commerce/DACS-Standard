@@ -43,8 +43,7 @@ WORKFLOW = ROOT / ".github/workflows/validate.yml"
 GUARDS = frozenset({
     "completion-same-node", "completion-reference-window",
     "recovery-requires-all-conditions", "nonce-exhaustion-proof-valid",
-    "recovery-fork-active", "nonce-exhaustion-fork-active",
-    "recovery-attempt-is-possibly-sent", "nonce-exhaustion-witness-excludes-retained",
+    "recovery-attempt-is-possibly-sent",
     # DEM-1
     "sign-allowed-when-configured",
     # DEM-1: an unprojectable party address is refused before signing
@@ -1018,7 +1017,8 @@ def authenticated_proof(proof, protocol_input: dict, off) -> bool:
     if not isinstance(proof, dict):
         return False
     if proof.get("kind") == "nonce-exhaustion":
-        return "nonce-exhaustion-proof-valid" in off or nonce_exhaustion_valid(proof, protocol_input, off)
+        # The fixture codec authenticates no actual-network effective fork.
+        return "nonce-exhaustion-proof-valid" in off
     if "fv5-authentication-is-a-signed-result" in off and proof.get("authentication") == "fv5-bft-final":
         # The wrong implementation takes the handler's label for FV-5.
         return True
@@ -1330,31 +1330,8 @@ def pre_sign_gate(protocol_input: dict, off) -> tuple[str, dict]:
 
 
 def recovery_conditions(value, off=frozenset()):
-    """Abstract reads and verifier-owned provisioning source for corpus recovery.
-    The storage-backed handler derives authorization under its submission lock."""
-    check = value.get("recoveryCheck")
-    if not isinstance(check, dict):
-        return False
-    network = value.get("railNetwork")
-    bindings = value.get("demosBinding")
-    if not isinstance(bindings, list):
-        return False
-    binding = next((b for b in bindings if isinstance(b, dict)
-                    and {k: b.get(k) for k in NETWORK} == network), {})
-    fork = binding.get("nonceEnforcement")
-    source = check.get("forkAuthority")
-    read = check.get("recordRead")
-    return (isinstance(fork, dict) and _jcs_equal(fork, source)
-            and {k: fork.get(k) for k in NETWORK} == network
-            and fork.get("nodeCommit") == generator.NODE_COMMIT
-            and _safe_integer(fork.get("activationHeight"))
-            and isinstance(fork.get("sealedGenesisHash"), str) and HASH.fullmatch(fork["sealedGenesisHash"])
-            and _safe_integer(value.get("currentBlock"))
-            and ("recovery-fork-active" in off or fork["activationHeight"] <= value["currentBlock"])
-            and isinstance(read, dict) and read.get("state") == "not-found"
-            and check.get("mempool") == "absent" and check.get("serialized") is True
-            and check.get("terminal") is False and value.get("confirmResponse") is None
-            and value.get("validityResponse") is None)
+    """No network-authenticated fork-state codec is registered for this profile."""
+    return False
 
 
 def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
@@ -1381,14 +1358,12 @@ def broadcast_gate(protocol_input: dict, off) -> tuple[str, dict]:
         # DEM-6: a transfer retained before a (re)start may have left in a
         # call the crash kept from being journaled, whatever state was recorded.
         state = "maybe-broadcast"
-    if state == "recovery-attempt" and "recoveryCheck" in protocol_input:
+    if state == "recovery-attempt" and ("recoveryCheck" in protocol_input
+                                       or protocol_input.get("recoveryAuthorized") is True):
         if "recovery-requires-all-conditions" not in off and not recovery_conditions(protocol_input, off):
             return refused
         if protocol_input.get("restartedSinceRetention") is False and request == "confirm-retained":
             state = "never-broadcast"
-    if (state == "recovery-attempt" and protocol_input.get("recoveryAuthorized") is True
-            and protocol_input.get("restartedSinceRetention") is False and request == "confirm-retained"):
-        state = "never-broadcast"
     if state == "confirm-sent-interrupted" and "confirm-egress-may-broadcast" in off:
         # The wrong implementation counts only a recorded broadcast.
         state = "never-broadcast"
@@ -2113,7 +2088,7 @@ class PayDemExecutionVectorTests(unittest.TestCase):
                          + [action + "-claim-read-" + label for label in
                             ("upper-key", "mixed-key", "upper-did", "unknown-parameters")
                             for action in ("confirm", "broadcast")]
-                         + ["completing-broadcast-same-node-next-block", "recovery-gate-allowed"], permitted)
+                         + ["completing-broadcast-same-node-next-block"], permitted)
         for name in permitted:
             with self.subTest(name=name):
                 signed_content = self.cases[name]["protocolInput"]["signedTransaction"]["content"]
@@ -3467,8 +3442,8 @@ class PayDemExecutionVectorTests(unittest.TestCase):
         self.assertIn("A transfer found after a restart is possibly broadcast, whatever progress its journal records", spec)
         self.assertIn("neither a missing journal entry nor a fresh start proves that nothing left", spec)
         self.assertNotIn("A crash can fall between a call that carried the signed transaction and the journal entry", spec)
-        self.assertIn("Recovery can complete a deliver-first pipeline (PIPE-4)", spec)
-        self.assertIn("byte-identical retained signed transaction", spec)
+        self.assertIn("Read-only recovery can complete a deliver-first pipeline (PIPE-4)", spec)
+        self.assertIn("MUST NOT resubmit even the byte-identical retained transaction", spec)
         self.assertIn("DEM-5 open payments still have no wall-clock end", spec)
         for name in ("confirm-after-restart-refused", "replacement-after-restart-refused",
                      "broadcast-after-restart-from-confirm-returned-refused", "broadcast-gate-restart-unstated"):

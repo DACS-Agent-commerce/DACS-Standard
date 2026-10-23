@@ -1510,7 +1510,7 @@ step returns: `call` is its `pre-egress-check` (a balance read before any
 `confirm` or broadcast carried the signed bytes), `confirm` or `broadcast`,
 `outcome` what it returned, and `broadcastState` and `restartedSinceRetention`
 what the handler reads back from its journal. Once the bytes may have left,
-every outcome is `substrate` with the retained hash kept; a further submission requires every DEM-6 recovery condition:
+every outcome is `substrate` with the retained hash kept; DEM-6 prohibits a further submission on this profile:
 a `confirm` refused for insufficient balance or otherwise not valid, a
 transport error, a timeout, an unrecognized reply, a broadcast refused by the
 node or by the handler's own DEM-1 check after a valid `confirm`, and an
@@ -1533,7 +1533,7 @@ one; the caller's `--boot` only labels its egress, so a restart that repeats
 it is still a restart. The payer's first retention is a create-if-absent under
 the journal lock, it journals each call as possibly sent before making it,
 and its later journal saves and the payee's index writes are conditional on
-the state they were read as. With no DEM-6 recovery authority configured, after a restart no signed effect leaves; every
+the state they were read as. After a restart no signed effect leaves on the pinned profile; every
 egress carried the bytes the stored journal already held, the journal file,
 its directory and each directory the store created (in its parent) were
 fsynced before the first egress, a new delivery record and then its directory
@@ -2675,12 +2675,10 @@ reproduction for this fixture profile.
 
 The retained `revocation-state-completeness-v0.8.json` corpus records the earlier reference policy; its RSC case outcomes and signed inputs remain unchanged, while trusted profile-admission tuples track the current composed release. `tests/test_rsc_current_admission_v2.py` exercises the unsigned common-state comparison and independent content/native capacity checks, not authentication of those fixture labels. `tests/test_listing_admission_bridge.py` demonstrates that partial checks and caller-supplied new-session or committed-session labels cannot issue a direct capability. The pinned IBH test fixture separately verifies its committed chain before installing a retained historical capability. Full ordered DACS-1 and authenticated committed-session evaluators remain required for general positive admission; historical replay results are not fresh admission authority.
 
-The native-payment reference also exposes explicit DEM-6 `recover`: after record
-and mempool re-reads find no transaction, an independently configured source
-must establish active nonce enforcement for the rail's exact network/genesis.
-Only then may the serialized, journaled attempt send the original retained
-bytes through a fresh same-node confirm/broadcast pair. The native-payment contract and
-recovery regression tests cover this optional path, malformed JSON numbers,
+The native-payment reference exposes read-only DEM-6 `recover`: local genesis
+pins do not authenticate actual-network fork state. Neither resubmission nor a
+nonce-exhaustion terminal is authorized on this profile. The native-payment
+contract and recovery regression tests cover these refusals, malformed JSON numbers,
 verifier-owned applied-payment authentication, and consistently upper-case
 FV evidence. A presented applied-transfer authentication flag is only an
 abstract oracle input; the reference payee replaces it using its own source.

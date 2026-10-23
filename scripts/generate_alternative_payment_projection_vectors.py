@@ -769,9 +769,9 @@ def build_cases() -> list[dict]:
         v["runtime"]["payDemReconciliationTrust"]["nonceEnforcement"] = binding_entry()["nonceEnforcement"]
         if string_nonce:
             transfer["nonce"] = str(transfer["nonce"])
-    add_case(cases, "fresh-job-after-nonce-exhaustion-number-nonce", "pass", "APR-6/DEM-4",
-             "The signed carrier uses DEM-1's numeric nonce projection for an authenticated nonce terminal.",
-             nonce_terminal, base="x402")
+    add_case(cases, "fresh-job-after-nonce-exhaustion-number-nonce", "indeterminate", "APR-6/DEM-4",
+             "A numeric retention nonce does not make the unsupported fork-state proof authorize compensation.",
+             nonce_terminal, base="x402", reason="prior-disposition-proof")
     add_case(cases, "fresh-job-cannot-settle-nonce-exhaustion-string-nonce", "fail", "APR-6/DEM-4",
              "A decimal string is not the DEM-1 projected nonce in the signed carrier.",
              lambda v: nonce_terminal(v, True), base="x402", reason="prior-disposition-proof")

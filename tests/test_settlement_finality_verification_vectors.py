@@ -353,7 +353,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         observation["executionResult"]["record"]["content"]["amount"] = 1
         self.assertEqual("indeterminate", self.evaluate_case(control)["decision"])
         for suffix, reason in (("result-member-missing", "malformed Demos execution result"),
-                               ("result-kind-mismatch", "malformed Demos execution result attestations"),
+                               ("result-kind-mismatch", "Demos execution result kind differs from policy"),
                                ("result-attestations-not-array", "malformed Demos execution result attestations"),
                                ("result-inclusion-block-not-object", "malformed inclusion block for Demos execution result")):
             with self.subTest(case=suffix):

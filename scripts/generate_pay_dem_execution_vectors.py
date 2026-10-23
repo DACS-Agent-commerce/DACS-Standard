@@ -1659,7 +1659,7 @@ def build_vectors() -> list[dict[str, Any]]:
         ),
         classify(
             "transfer-unknown-not-rebroadcast", "indeterminate", "DEM-6", ["no-rebroadcast"],
-            "The node's status index says unknown and there is no record; the handler re-reads and may retry only under DEM-6 retained-byte recovery.",
+            "The node's status index says unknown and there is no record; the handler re-reads only under DEM-6.",
             read=NOT_FOUND, status_index="unknown", inclusion=None,
         ),
         # Recovery and resume.
@@ -1739,7 +1739,7 @@ def build_vectors() -> list[dict[str, Any]]:
         ),
         resume(
             "resume-without-proof-not-found", "indeterminate", "DEM-6", ["no-rebroadcast"],
-            "A crash resumes by re-reading; only a separately authorized DEM-6 attempt may resend the retained bytes.",
+            "A crash resumes by re-reading; DEM-6 recovery reads only on this profile.",
             proof=None, read=NOT_FOUND, status_index="unknown", inclusion=None,
         ),
         resume(
@@ -3086,7 +3086,7 @@ def build_vectors() -> list[dict[str, Any]]:
              confirm_response=validity_response(dict(signed(), content=dict(reversed(list(signed()["content"].items())))))),
         gate("rebroadcast-after-interrupted-confirm-refused", "fail", "DEM-6",
              ["confirm-egress-may-broadcast", "no-rebroadcast"],
-             "After a confirm timeout, error or restart the node may have submitted the bytes; re-reads follow, with retries only under DEM-6 retained-byte recovery.",
+             "After a confirm timeout, error or restart the node may have submitted the bytes; read-only recovery follows under DEM-6.",
              broadcast_state="confirm-sent-interrupted"),
         gate("replacement-after-interrupted-confirm-refused", "fail", "DEM-6",
              ["confirm-egress-may-broadcast", "no-replacement"],
@@ -3347,8 +3347,8 @@ def build_vectors() -> list[dict[str, Any]]:
                             ["first-broadcast-allowed", "submission-completes-own-confirm"])
         vectors.append(vector)
     for fault in (None, "record", "mempool", "unavailable", "fork", "network", "digest", "serialized", "terminal", "old-response", "future-activation", "missing-attestation", "node-build"):
-        vector = gate("recovery-gate-" + (fault or "allowed"), "pass" if fault is None else "fail",
-                      "DEM-6", [], "Only a serialized fresh retained-byte attempt under every recovery condition is permitted.",
+        vector = gate("recovery-gate-" + (fault or "allowed"), "fail",
+                      "DEM-6", [], "The pinned profile prohibits resubmission without network-authenticated effective fork state, even when local recovery checks agree.",
                       request="confirm-retained", broadcast_state="recovery-attempt")
         value = vector["protocolInput"]
         check = {"recordRead": {"state": "not-found"}, "mempool": "absent", "serialized": True,
@@ -3370,9 +3370,7 @@ def build_vectors() -> list[dict[str, Any]]:
         if fault == "terminal": check["terminal"] = True
         if fault == "old-response": value["confirmResponse"] = validity_response(signed())
         value["recoveryCheck"] = check
-        vector["guards"] = (["first-broadcast-allowed"] if fault is None else
-                            ["recovery-requires-all-conditions", "retention-before-first-egress"])
-        if fault == "future-activation": vector["guards"] = sorted(vector["guards"] + ["recovery-fork-active"])
+        vector["guards"] = ["recovery-requires-all-conditions", "retention-before-first-egress"]
         vectors.append(vector)
     vectors.append(egress(
         "egress-recovery-attempt-pre-egress-insufficient-balance", "indeterminate", "DEM-5/DEM-6",
@@ -3381,23 +3379,20 @@ def build_vectors() -> list[dict[str, Any]]:
         call="pre-egress-check", outcome="insufficient-balance", broadcast_state="recovery-attempt"))
     vectors.append(gate(
         "recovery-arm-without-authorization", "fail", "DEM-6", ["no-rebroadcast", "retention-before-first-egress"],
-        "A saved retry arm permits no call without fresh recovery authorization.",
+        "A saved retry arm permits no resubmission on this profile.",
         request="confirm-retained", broadcast_state="recovery-attempt"))
     for fault in (None, "signature", "network", "genesis", "retention", "nonce", "present", "unfinalized", "block", "fork", "future-activation", "contradictory-witness"):
-        expected = "pass" if fault is None else "indeterminate"
+        expected = "indeterminate"
         vectors.append(_vector(
             "nonce-exhaustion-" + (fault or "authenticated"), "apr-reconciliation-evidence",
             {"railNetwork": NETWORK, **FINALITY, "fv5Policy": FV5_POLICY, "retainedTransfer": retained(),
              "nonceEnforcement": dict(binding_entry()["nonceEnforcement"], activationHeight=BLOCK + 1)
                 if fault == "future-activation" else binding_entry()["nonceEnforcement"],
              "retainedFailureProof": nonce_exhaustion_proof(retained(), fault=fault)},
-            expected, {"reconciliationEvidence": fault is None}, "DEM-4/DEM-6",
-            ["apr-evidence-from-authenticated-failure"] if fault is None else
+            expected, {"reconciliationEvidence": False}, "DEM-4/DEM-6",
             ["nonce-exhaustion-proof-valid"] if fault == "retention" else
-            ["apr-evidence-requires-authenticated-failure", "nonce-exhaustion-proof-valid"]
-            + (["nonce-exhaustion-fork-active"] if fault == "future-activation" else
-               ["nonce-exhaustion-witness-excludes-retained"] if fault == "contradictory-witness" else []),
-            "Cumulative record absence and consumed payer nonce require independent state authentication at one finalized block."))
+            ["apr-evidence-requires-authenticated-failure", "nonce-exhaustion-proof-valid"],
+            "The fixture state statement cannot authorize a terminal or compensation on this profile without network-authenticated fork state."))
     return vectors
 
 
@@ -3442,15 +3437,15 @@ def document() -> dict[str, Any]:
         "spec": "DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5",
         "tier": "candidate",
         "description": (
-            "Recovery-gate cases explicitly model every DEM-6 condition using verifier-owned fork trust and serialized reads. "
-            "Nonce-exhaustion cases authenticate cumulative retained-hash absence and consumed payer nonce at a finalized "
+            "Recovery-gate cases refuse resubmission even when local fork pins and serialized reads agree. "
+            "Nonce-exhaustion cases refuse terminal authority from fixture state statements at a finalized "
             "checkpoint block; they use the separate DEMOS-MAPPING state statement, not an executed-record result. "
             "Inclusion does not prove execution. Only a getTxByHash record from a "
             "pinned node that decodes under the native-send record profile and binds "
             "the retained hash, nonce, block, sender, recipient and OS amount with "
             "status confirmed and independent applied-payment authority succeeds; a bound failed record authenticated under FV-5 "
             "at its bft-final inclusion is a permanent failure, and a plain RPC read of one is unresolved; "
-            "anything else is a substrate result without a second broadcast unless every DEM-6 recovery condition holds. "
+            "anything else is a substrate result without a second submission on this profile. "
             "FV-5 authentication is FV-5's signed execution result itself (recordRead.executionResult, "
             "retainedFailureProof.authentication), which every operation verifies against fv5Policy "
             "with the settlement-finality reference's verifier; a flag or label decides nothing. "
@@ -3497,7 +3492,7 @@ def document() -> dict[str, Any]:
             "finalityProfile": "the rail's signed consumerFinalityProfile.settlement ChainFinalityProfile (kind bft-final, networkId and genesisHash of railNetwork, observation, validatorSetRef, quorumNumerator, quorumDenominator); one of another kind or network verifies nothing",
             "finalityTrust": "the verifier's own trust for that profile: validatorSets (by content hash), observationAuthorityKeys (base64url Ed25519) and verificationTimeMs, its local clock",
             "authenticated": "recordRead member of an earlier draft: a read that says it is FV-5-authenticated. It decides nothing, whoever sets it; the *-fv5-flag-only vectors pin that",
-            "retainedFailureProof": "the DEM-4 proof the handler retained: a nonce-exhaustion artifact (kind, classification, signed authentication, final-block inclusionProof) under DEMOS-MAPPING §A.2, reverified with nonceEnforcement, fv5Policy and finalityTrust; otherwise classification, authentication (FV-5's signed execution result for the proof's own record, stored verbatim; rpc-read for a plain read, and the earlier draft's fv5-bft-final label, are none), inclusionProof (FV's bft-final inclusion observation, stored verbatim), inclusionBlock and the record. A resume and an APR check each verify both themselves, the result against fv5Policy and railNetwork and the inclusion against finalityProfile and finalityTrust in the block the result names (the proof has no inclusion observation of its own); a resume reuses only a proof that verifies and still binds, and APR accepts only such a proof. A retained proof means the phase ended: a resume whose proof does not verify re-reads, and that post-terminal re-read can prove the failure again but is never pass",
+            "retainedFailureProof": "the ordinary DEM-4 proof the handler retained (nonce-exhaustion artifacts are refused on this profile): classification, authentication (FV-5's signed execution result for the proof's own record, stored verbatim; rpc-read for a plain read, and the earlier draft's fv5-bft-final label, are none), inclusionProof (FV's bft-final inclusion observation, stored verbatim), inclusionBlock and the record. A resume and an APR check each verify both themselves, the result against fv5Policy and railNetwork and the inclusion against finalityProfile and finalityTrust in the block the result names (the proof has no inclusion observation of its own); a resume reuses only a proof that verifies and still binds, and APR accepts only such a proof. A retained proof means the phase ended: a resume whose proof does not verify re-reads, and that post-terminal re-read can prove the failure again but is never pass",
             "restartedSinceRetention": "false only when the handler has run without a restart since it retained the transfer; after a (re)start a retained transfer is maybe-broadcast whatever broadcastState was recorded, and anything but false is a restart. The handler derives it, and broadcastState and retentionDurable, from the journal it reads back from stable storage (the start that wrote the retention against its own, 128 random bits the handler draws for each start, which needs no stored state, so no loss or rollback of its store repeats it, and never takes from its caller), never from process-local state; tests/test_pay_dem_crash_restart.py stops a storage-backed reference handler on both sides of every transition and witnesses that derivation",
             "signedTransaction": "the signed transaction itself as the DEM-1 retention holds it, read back from the journal: a confirm request carries these bytes, and a broadcast's validity response must embed them",
             "hashRetainedForOtherPhases": "the other (jobId, phaseIndex) whose stored journals retain the same hash, read from storage like restartedSinceRetention; any entry refuses the egress",
@@ -3506,11 +3501,11 @@ def document() -> dict[str, Any]:
             "cause": "classify-egress-outcome want member: call:outcome, so the result keeps the step and reply that produced it",
             "consumerAdmissions": "raw txRef and (jobId, phaseIndex) of pay-dem records the consumer admitted earlier. For admit-for-delivery they are the payee's own admissions, which its delivery check presents with the evidence: derive canonical SB-1 IDs before grouping; an admitted reference without an SB-1 ID is error. For resolve-settlement-group they lie outside the presented records, and settlement accounting and the DACS-5 derivation never add them",
             "admissionIndex": "admit-for-delivery: the snapshot (revision, admissions) of the payee's durable admission index read for this check. consumerAdmissions must equal its admissions as a multiset of exact JCS bytes; a missing or malformed snapshot, or a presented history that omits or adds an admission, is error and authorizes no delivery. The payee adds this phase's admission with a write conditional on that revision",
-            "recoveryCheck": "broadcast-gate: verifier-derived record/mempool reads, serialized attempt/terminal state, and independently provisioned forkAuthority; recovery requires every DEM-6 condition and no retained validity response",
+            "recoveryCheck": "broadcast-gate: verifier-derived record/mempool reads, serialized attempt/terminal state, and independently provisioned forkAuthority; the pinned profile never authorizes resubmission from these local inputs",
             "confirmNode": "broadcast-gate: identity of the pinned node that returned this attempt's confirm response",
             "broadcastNode": "broadcast-gate: identity of the pinned node receiving the completing broadcast; must equal confirmNode",
             "currentBlock": "broadcast-gate: safe integer block at completion; from confirm reference_block through reference_block + 1",
-            "recoveryAuthorized": "handler-internal boolean derived under the submission lock after every fresh recovery check; never an external caller or persisted authorization. Corpus recovery inputs use recoveryCheck instead",
+            "recoveryAuthorized": "historical handler-internal retry hint; neither this flag nor recoveryCheck authorizes resubmission on the pinned profile",
             "guards": "checks whose removal makes this vector fail",
         },
         "count": len(vectors),

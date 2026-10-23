@@ -1931,7 +1931,7 @@
     }
   },
   "count": 77,
-  "hash": "89110c0ffaf78bd6aeffa52a07c1b4629d1dd075bb0e7989903b165222adf5e1",
+  "hash": "34d4e3abbb562587dadb15572c413d4a78bbe14a647daa1d23008f547e6d50df",
   "vectors": [
     {
       "name": "select-dem-projects-pay-dem",
@@ -4864,10 +4864,10 @@
     },
     {
       "name": "fresh-job-after-nonce-exhaustion-number-nonce",
-      "expected": "pass",
+      "expected": "indeterminate",
       "rule": "APR-6/DEM-4",
       "operation": "execute",
-      "note": "The signed carrier uses DEM-1's numeric nonce projection for an authenticated nonce terminal.",
+      "note": "A numeric retention nonce does not make the unsupported fork-state proof authorize compensation.",
       "base": "x402",
       "patch": [
         {
@@ -5183,7 +5183,8 @@
             }
           }
         }
-      ]
+      ],
+      "expectedReason": "prior-disposition-proof"
     },
     {
       "name": "fresh-job-cannot-settle-nonce-exhaustion-string-nonce",

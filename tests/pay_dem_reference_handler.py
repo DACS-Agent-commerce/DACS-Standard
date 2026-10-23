@@ -427,12 +427,9 @@ class RecoveryAuthority:
         self.proof_fault = None
 
     def permits(self, network, attestation, block) -> bool:
-        return (self.network == network and self.nonce_active is True
-                and isinstance(attestation, dict)
-                and attestation == dict(network, nodeCommit=self.node_commit, activationHeight=self.activation_height,
-                                        sealedGenesisHash=self.sealed_genesis_hash)
-                and oracle._safe_integer(attestation.get("activationHeight"))
-                and oracle._safe_integer(block) and self.activation_height <= block)
+        # A local genesis digest cannot authenticate this network's fork state.
+        # The pinned profile registers no authority that can do so.
+        return False
 
     def exhaustion(self, transfer):
         """Independent fixture state source, never node account/RPC labels."""
@@ -770,50 +767,20 @@ class PayerHandler:
             if progress == "confirm-sent-interrupted" else {}))
 
     def recover(self) -> dict[str, Any]:
-        """Explicit DEM-6 retry under this handler's independent fork authority.
-        Serialize with every submission; reuse only the immutable journal bytes.
-        Absence is a retry hint, never a failure or replacement proof."""
+        """DEM-6 recovery is read-only on the pinned native-send profile."""
         with self.store.locked(self.journal + ".submission"):
             entry = self.store.read(self.journal)
             if entry is None or entry.get("result") is not None:
                 return self._advance()
-            result = self._classify(entry)
-            if result["expected"] != "indeterminate":
-                return result
-            tx_hash = entry["retainedTransfer"]["txHash"]
-            binding = next((b for b in self.bindings if binding_network(b) == self.rail_network), {})
-            if (self.recovery is None or not self.recovery.permits(
-                    self.rail_network, binding.get("nonceEnforcement"), self.node.current_block)):
-                return result
-            proof = self.recovery.exhaustion(entry["retainedTransfer"])
-            protocol_input = dict(self._classify_input(entry, {"state": "not-found"}),
-                                  nonceEnforcement=binding.get("nonceEnforcement"))
-            if oracle.nonce_exhaustion_valid(proof, protocol_input):
-                expected, want = oracle.handler_result("fail", protocol_input, self.off)
-                result = {"expected": expected, **want}
-                self._crash("before-failure-proof")
-                self._save(entry, result=result, failureProof=proof)
-                self._crash("after-failure-proof")
-                return result
-            observed = self.node.read(tx_hash)
-            if (not self.recovery.permits(self.rail_network, binding.get("nonceEnforcement"), self.node.current_block)
-                    or not isinstance(observed, dict) or observed.get("state") != "not-found"
-                    or self.node.mempool(tx_hash) != "absent"):
-                return result
-            # Fresh attempt, fresh validity response. A crash before egress
-            # leaves the retained transfer possibly sent, just as before.
-            self._crash("before-recovery-journal")
-            self._save(entry, start=self.start, progress="recovery-attempt", confirmResponse=None)
-            self._crash("after-recovery-journal")
-            return self._advance(recovery_attempt=True)
+            return self._classify(entry)
 
     def advance(self) -> dict[str, Any]:
         with self.store.locked(self.journal + ".submission"):
             return self._advance()
 
     def _advance(self, *, recovery_attempt: bool = False) -> dict[str, Any]:
-        """Continue from the journal; restart is read-only unless `recover`
-        has independently authorized and journaled a fresh retained-byte attempt."""
+        """Continue the initial submission; restart and recovery are read-only.
+        Legacy retry arms cannot authorize another submission on this profile."""
         entry = self.store.read(self.journal)
         if entry is None:
             return {"expected": None, "nothingRetained": True}

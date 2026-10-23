@@ -19,10 +19,10 @@ Native `pay-dem` settlement requires a bound, exactly `confirmed` native-send
 record, its four send edits, independently authenticated committed payment
 balances, and verified `bft-final` inclusion. Inclusion or a status label alone
 does not establish payment. DEM-1..DEM-7 define durable retention before the
-first egress, confirm/broadcast submission, guarded retained-byte recovery,
-proof-backed failure and consumer admission. Recovery requires record/mempool
-re-reads and the binding's provisioned effective-fork attestation of active nonce enforcement; replacements
-remain forbidden. A possibly submitted
+first egress, confirm/broadcast submission, read-only recovery,
+proof-backed failure and consumer admission. Local genesis pins do not authenticate
+actual-network effective fork state; resubmission and nonce-exhaustion terminals
+are unavailable on this profile. Replacements remain forbidden. A possibly submitted
 unresolved transfer remains non-terminal through ST-7 pause expiry until DEM-3 success
 verifies or DEM-4 proves failure; success resumes the remaining pipeline while
 unavailable SR-2 anchoring uses separate PC-7 catch-up retries; elapsed time never authorizes another
@@ -58,13 +58,10 @@ provisioners and reference-proof producers regenerate earlier synthetic attestat
 No production Demos applied-payment proof codec or result authority is registered
 by the synthetic fixtures.
 
-Recovery preserves possibly-sent history through retries and crashes. The binding
-pins both the complete sealed-genesis bytes and the clean node build for
-effective nonce-enforcement activation. An absent genesis override uses the
-pinned build default; explicit unscheduled and future activations permit no retry.
-A quorum-authenticated consumed nonce and cumulative record absence at a finalized
-block can close an unexecuted transfer; APR independently verifies that proof
-against the signed prior retention before a compensating job.
+Recovery preserves possibly-sent history through crashes and performs reads only.
+The complete sealed-genesis fixture and clean build describe local provisioning;
+a revised profile must register verifiable network-bound effective-fork authority
+before resubmission or nonce-exhaustion compensation can be enabled.
 
 The `identity-bundle-hash-binding-v0.1` corpus is regenerated to add signed
 consumer finality profiles to its pay-dem rails; its verdicts are unchanged.
@@ -78,8 +75,8 @@ projects the actual signed transfer, including non-default nonces. Historical
 non-Demos fixture codecs cannot verify a signed payout destination and return
 `indeterminate` for payee-bound agreements.
 
-Conformance: 582 pay-dem vectors (72 pass, 181 fail, 245 indeterminate, 84 error)
-and 154 guards; settlement-finality cases grow from 86 at the merge base to 247,
+Conformance: 582 pay-dem vectors (70 pass, 182 fail, 246 indeterminate, 84 error)
+and 151 guards; settlement-finality cases grow from 86 at the merge base to 247,
 and alternative-payment cases from 45 to 77. Crash/restart, delivery idempotence,
 finality composition and serialized invariant witnesses cover the changes.
 

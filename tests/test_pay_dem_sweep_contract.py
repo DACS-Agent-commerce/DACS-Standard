@@ -21,7 +21,7 @@ class PayDemSweepContractTests(unittest.TestCase):
         self.assertNotIn('end `failed-substrate` without replacement', plan)
         self.assertNotIn('strands the phase at `failed-substrate`', threats)
         self.assertIn('remain non-terminal `substrate-failure-paused`', plan)
-        self.assertIn('retained-byte recovery', threats)
+        self.assertIn('read-only DEM-6 recovery', threats)
 
     def test_unrelated_authorities_never_refute_payment_in_mapping(self):
         mapping = (ROOT / 'spec/DEMOS-MAPPING.md').read_text()

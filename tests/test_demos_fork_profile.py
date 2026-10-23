@@ -42,7 +42,7 @@ class DemosForkProfileTests(unittest.TestCase):
             with self.subTest(height=height):
                 authority, profile = self.authority(height)
                 self.assertEqual(height, profile['activationHeight'])
-                self.assertEqual(height is not None, authority.permits(pay.generator.NETWORK, profile, 41))
+                self.assertFalse(authority.permits(pay.generator.NETWORK, profile, 41))
                 self.assertFalse(authority.permits(pay.generator.OTHER_NETWORK, profile, 41))
 
     def test_provisioning_refuses_wrong_build_tampering_and_ambiguous_overrides(self):
@@ -66,32 +66,8 @@ class DemosForkProfileTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'bounded exact bytes'):
             nonce_enforcement(pay.generator.NETWORK, oversized, hashlib.sha256(oversized).hexdigest())
 
-    def test_actual_genesis_authorizes_both_retry_and_nonce_terminal_after_restart(self):
-        for consumed in (False, True):
-            with self.subTest(consumed=consumed), tempfile.TemporaryDirectory() as scratch:
-                work = Path(scratch)
-                first = handler.PayerHandler(handler.Store(work / 'store'),
-                    handler.Node(work, 'first', confirm='timeout'), 'first')
-                self.assertEqual('substrate', first.pay(pay.generator.signed())['errorClass'])
-                authority = handler.RecoveryAuthority(pay.generator.NETWORK)
-                if consumed:
-                    authority.account_nonce = pay.generator.NONCE
-                later = handler.PayerHandler(first.store, handler.Node(work, 'later'), 'later', recovery=authority)
-                later.bindings[0]['nonceEnforcement']['sealedGenesisHash'] = GENESIS_HASH
-                result = later.recover()
-                self.assertEqual('permanent' if consumed else None, result['errorClass'])
-                self.assertEqual('permanent' if consumed else None, later.advance()['errorClass'])
-                saved = first.store.read(first.journal)
-                if consumed:
-                    proof = saved['failureProof']
-                    self.assertEqual(GENESIS_HASH, proof['authentication']['nonceEnforcement']['sealedGenesisHash'])
-                    resumed = handler.PayerHandler(first.store, handler.Node(work, 'resumed'), 'resumed')
-                    self.assertEqual('permanent', resumed.advance()['errorClass'])
-                self.assertTrue(all(handler.same_signed_bytes(pay.generator.signed(), c['transaction'])
-                                    for c in handler.read_lines(work / 'egress.jsonl')))
-
-    def test_agreed_future_activation_stays_open_without_egress_or_terminal(self):
-        for height, allowed in ((41, True), (42, False)):
+    def test_genesis_pins_never_authorize_retry_or_nonce_terminal(self):
+        for height in (0, 41, 42, None):
             with self.subTest(height=height), tempfile.TemporaryDirectory() as scratch:
                 work = Path(scratch)
                 first = handler.PayerHandler(handler.Store(work / 'store'),
@@ -103,19 +79,17 @@ class DemosForkProfileTests(unittest.TestCase):
                 later.node.current_block = 41
                 later.bindings[0]['nonceEnforcement'] = profile
                 calls = handler.read_lines(work / 'egress.jsonl')
-                result = later.recover()
-                self.assertEqual('permanent' if allowed else 'substrate', result['errorClass'])
+                self.assertEqual('substrate', later.recover()['errorClass'])
                 self.assertEqual(calls, handler.read_lines(work / 'egress.jsonl'))
-                if not allowed:
-                    self.assertIsNone(first.store.read(first.journal)['result'])
-                    self.assertNotIn('failureProof', first.store.read(first.journal))
+                self.assertIsNone(first.store.read(first.journal)['result'])
+                self.assertNotIn('failureProof', first.store.read(first.journal))
 
     def test_equal_future_and_contradictory_witness_corpus_cases_are_independent(self):
         cases = {v['name']: v for v in pay.generator.document()['vectors']}
         for name, guard in (
-                ('recovery-gate-future-activation', 'recovery-fork-active'),
-                ('nonce-exhaustion-future-activation', 'nonce-exhaustion-fork-active'),
-                ('nonce-exhaustion-contradictory-witness', 'nonce-exhaustion-witness-excludes-retained')):
+                ('recovery-gate-future-activation', 'recovery-requires-all-conditions'),
+                ('nonce-exhaustion-future-activation', 'nonce-exhaustion-proof-valid'),
+                ('nonce-exhaustion-contradictory-witness', 'nonce-exhaustion-proof-valid')):
             vector = pay.generator.decode_exact_members(copy.deepcopy(cases[name]))
             with self.subTest(name=name):
                 self.assertNotEqual('pass', pay.evaluate(vector)[0])
@@ -133,7 +107,8 @@ class DemosForkProfileTests(unittest.TestCase):
                     value['runtime']['priorPaymentContext']['disposition']['retainedPayDemTransfer']['nonce'] = nonce
                     aprgen.sign_all(value)
                     allowed = type(nonce) in (int, float) and nonce == pay.generator.NONCE
-                    self.assertEqual(('pass', None) if allowed else ('fail', 'prior-disposition-proof'), apr.evaluate(value))
+                    self.assertEqual((('indeterminate', 'prior-disposition-proof') if 'nonce-exhaustion' in name else ('pass', None))
+                                     if allowed else ('fail', 'prior-disposition-proof'), apr.evaluate(value))
 
     def test_nonce_proof_requires_the_pinned_build_even_when_statement_and_trust_agree(self):
         for commit, allowed in ((pay.generator.NODE_COMMIT, True), ('0' * 40, False), (None, False)):
@@ -149,6 +124,15 @@ class DemosForkProfileTests(unittest.TestCase):
                          'nonceEnforcement': fork}
                 self.assertEqual(allowed, pay.nonce_exhaustion_valid(proof, value))
 
+    def test_malformed_provisioning_inputs_are_refused(self):
+        raw = GENESIS.read_bytes()
+        for network in ({}, [], dict(pay.generator.NETWORK, genesisHash='invalid')):
+            with self.subTest(network=network), self.assertRaisesRegex(ValueError, 'network identity'):
+                nonce_enforcement(network, raw, GENESIS_HASH)
+        for raw in (b'[]', b'{"forks":[]}'):
+            with self.subTest(raw=raw), self.assertRaisesRegex(ValueError, 'object|forks'):
+                nonce_enforcement(pay.generator.NETWORK, raw, hashlib.sha256(raw).hexdigest())
+
     def test_out_of_profile_nonce_is_refused_before_signature(self):
         transfer = pay.generator.retained(nonce=2**53)
         self.assertFalse(pay.complete_transfer(transfer))
@@ -158,7 +142,7 @@ class DemosForkProfileTests(unittest.TestCase):
     def test_restart_plan_distinguishes_resume_and_authorized_recovery(self):
         plan = (ROOT / 'spec/CONFORMANCE-PLAN.md').read_text()
         self.assertIn('plain resume sends nothing automatically', plan)
-        self.assertIn('explicit DEM-6 recovery may resend only identical retained bytes after fresh authorization', plan)
+        self.assertIn('explicit DEM-6 recovery remains read-only on the pinned profile', plan)
         self.assertNotIn('check that no signed effect leaves after the restart', plan)
 
     def test_standard_defines_effective_default_and_numeric_apr_nonce(self):

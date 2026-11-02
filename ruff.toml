@@ -1,0 +1,45 @@
+# Bug-finding rules only. Style is left out on purpose: reformatting would
+# touch most files and clash with open PRs.
+# Run it: python3 -m pip install -r requirements-lint.txt && ruff check .
+#
+# F: mistakes such as undefined or unused names. E9: syntax errors.
+# B023: a function in a loop that reads the loop's variable later.
+[lint]
+select = ["F", "E9", "B023"]
+
+# Issues already in the code when the linter was added. Remove a line once its
+# issues are fixed. Don't add lines to get a pass: fix the new issue, or use a
+# `# noqa: <rule>` comment that says why it's safe.
+[lint.per-file-ignores]
+"conformance/evaluations/pr362-verifyresult-pilot/historical/eval_pr362.py" = ["F401"]
+"conformance/evaluations/pr362-verifyresult-pilot/runner/eval_pr362.py" = ["F401"]
+"scripts/benchmark_finality_resolution_context.py" = ["F401"]
+"scripts/generate_dacs5_reputation_vectors.py" = ["F841"]
+"scripts/generate_evidence_bound_fault_bundle_fixture.py" = ["F841"]
+"scripts/generate_identity_bundle_hash_binding_vectors.py" = ["F841"]
+"scripts/generate_security_vector_index.py" = ["F541"]
+"scripts/run_lifecycle_walkthrough.py" = ["F401"]
+"scripts/sr2_resolution_reference.py" = ["B023"]
+"scripts/validate_artifact_shapes.py" = ["B023"]
+"scripts/verify_htlc9_st8_pack.py" = ["F401"]
+"tests/test_ap2_handler_safety_vectors.py" = ["B023"]
+"tests/test_bundle_settlement_evidence_bijection_vectors.py" = ["B023"]
+"tests/test_current_evidence_boundary_regressions.py" = ["F841"]
+"tests/test_current_use_replay_corpus.py" = ["B023"]
+"tests/test_current_use_reputation_vectors.py" = ["F401"]
+"tests/test_dacs1_vet_golden_inputs.py" = ["B023", "F841"]
+"tests/test_evidence_bound_fault_bundle_compatibility.py" = ["F401"]
+"tests/test_identity_bundle_hash_binding_vectors.py" = ["F841"]
+"tests/test_identity_risk_and_dacsx_pack.py" = ["B023"]
+"tests/test_implementation_readiness_artifacts.py" = ["F401"]
+"tests/test_legacy_agreement_admission_vectors.py" = ["F841"]
+"tests/test_pr333_disposition_precedence_regressions.py" = ["F401", "F841"]
+"tests/test_pr366_feature_interactions.py" = ["F841"]
+"tests/test_pre_review_gate.py" = ["B023"]
+"tests/test_receipt_rederivation_vectors.py" = ["B023", "F401"]
+"tests/test_reputation_authenticated_window_vectors.py" = ["F841"]
+"tests/test_reputation_participation_vectors.py" = ["B023"]
+"tests/test_round12_replay_completeness_vectors.py" = ["F401"]
+"tests/test_round9_ordering_contract_vectors.py" = ["B023"]
+"tests/test_rsc_current_admission_v2.py" = ["B023"]
+"tests/test_settlement_finality_verification_vectors.py" = ["F841"]

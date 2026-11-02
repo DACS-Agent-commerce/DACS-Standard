@@ -114,6 +114,9 @@ jobs:
 
       - name: Verify canonical channel-message vectors are deterministic
         run: python3 scripts/generate_channel_message_vectors.py --check
+
+      - name: Verify Listing string-length vectors are deterministic
+        run: python3 scripts/generate_listing_string_length_vectors.py --check
       - name: Verify IdentityBundle hash binding vectors are deterministic
         run: python3 scripts/generate_identity_bundle_hash_binding_vectors.py --check
 

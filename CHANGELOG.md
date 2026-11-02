@@ -194,6 +194,22 @@ The format used per release:
   marker/LAA/carrier removal, agreement/session/job substitution, or marker/LAA
   disagreement refuses replay fail-closed.
 
+### Fixed — unit of the Listing string bounds (#438)
+
+- **DACS-1 §6.3.4** bounded `displayName`, `title`, `description` and each tag
+  with `max N chars` without saying what a char is. The reference check counts
+  code points of the NFC value; a JavaScript `.length` counts UTF-16 code
+  units; they disagree on any supplementary-plane character (101 emoji: 101
+  vs 202) and on decomposed input. The type now states that every such bound
+  counts Unicode scalar values of the value's CF-1 (NFC) form, the form that
+  is hashed and signed. Boundary vectors
+  (`conformance/vectors/security/listing-string-length-v0.1.json`, generated
+  by `scripts/generate_listing_string_length_vectors.py`) sit at and one over
+  each bound in ASCII, emoji, decomposed and mixed input and carry the four
+  competing counts; `tests/test_listing_string_length_vectors.py` runs them
+  through the reference check and shows which vectors each wrong unit fails.
+  The Unicode version used for NFC is not pinned here (#442).
+
 ### Fixed — DACS-4 v0.8 AP2 receipt references
 
 - **Provider resource and SR-3 transaction are now distinct** (DACS-4 §9.3,

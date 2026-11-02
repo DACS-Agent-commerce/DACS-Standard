@@ -80,30 +80,43 @@ binding in §9.5.8, so `pay-x402` is `partial` and claimed only as
 rail-author duties. Open issue #274 reports that this registry entry cannot
 be resolved as written.
 
-These three examples, `fixed-price-x402-seller.json` and the two
-`fixed-price-pay-dem-*` examples, follow one rule for `ruleRefs`: an
-`implemented` claim names the rules its role implements, whether or not a
-cited case exercises them; its `result`, the capability's `testStatus` and
-the cited cases say how much of that is tested. So both of their seller
-examples name PS-1..PS-3 for fixed-price, and each seller's payment claim
-names the §9.5.8 settlement rules for its rail: the `pay-x402` claim names
-SB-1..SB-3, and the `pay-dem` claim names SB-1 and SB-2, because v0.4
-defines no SB-3 binding for `pay-dem`.
+All six examples follow one rule for `ruleRefs`: an `implemented` claim
+names the rules its role implements, whether or not a cited case exercises
+them; its `result`, the capability's `testStatus` and the cited cases say how
+much of that is tested. So every seller example names PS-1..PS-3 for
+fixed-price, and each seller's payment claim names the §9.5.8 settlement
+rules for its rail: the `pay-x402` claim names SB-1..SB-3, and the `pay-dem`
+claims name SB-1 and SB-2, because v0.4 defines no SB-3 binding for
+`pay-dem`. Rail claims name the §9.4.2 registry entry only, since RD-1..RD-5
+are rail-author duties.
 
-The `pay-dem-rfq-*` and `verifier-indexer.json` examples predate this scoping
-and are not narrowed by it. They pin `9a1ca62`, whose conformance manifest is
-byte-identical to v0.4's. On the same single candidate case,
-`pb2-tier1-pay-dem-intrinsic-matches`, both `pay-dem-rfq-*` examples claim
-`pay-dem` as `conformance-tested` with test status `passed`, and claim the
-DEM rail against RD-1..RD-5; the seller also names PB-1..PB-3.
-`verifier-indexer.json` claims `derive-reputation` as `conformance-tested`
-on two cases, one of them a candidate. Under the scoping above, these would
-be `implemented` claims on `partial` capabilities.
+The `pay-dem-rfq-*` and `verifier-indexer.json` examples pin `9a1ca62`, whose
+conformance manifest is byte-identical to v0.4's. They used to claim more
+than that suite covers: both `pay-dem-rfq-*` examples claimed `pay-dem` as
+`conformance-tested` on the single candidate case
+`pb2-tier1-pay-dem-intrinsic-matches`, and `verifier-indexer.json` claimed
+`derive-reputation` as `conformance-tested` on two cases, one of them the
+candidate `verify-reputation-determinism-receipt`. Those are now
+`implemented` claims on `partial` capabilities. `verifier-indexer.json`'s
+bundle verifier claimed `conformance-tested` on three golden `bundle-*`
+cases while naming SIG-5, which none of them exercises (no cited bundle
+carries an unrecognised field; the suite's one SIG-5 case,
+`settlement-delivery-extra-payment-field-pass`, is decided by the §14.4
+settlement-evidence verifier, a different surface). A `conformance-tested`
+capability claim reports the whole capability, so it is now `implemented` on
+a `partial` capability too, still naming SIG-1, SIG-2 and SIG-5 as the rules
+the role implements. No example makes a `conformant` or `conformance-tested`
+claim.
 
 This scoping is the examples' own choice. IM-4 requires only that cited case
 ids exist in the pinned conformance manifest, and the validator does not check
 whether a cited case is golden or candidate, or whether the cases exercise the
-rules a claim names.
+rules a claim names. The repository's own test
+(`tests/test_implementation_manifests.py`) does check the first of these for
+the examples: a `conformant` or `conformance-tested` claim may cite golden
+cases only, read from the suite manifest at the example's own pin. The
+examples currently make no such claim, so the test proves the rule on a
+promoted copy of one.
 
 Run the dependency-free validator from the repository root:
 

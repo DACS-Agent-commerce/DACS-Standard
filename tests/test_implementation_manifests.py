@@ -10,9 +10,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "validate_implementation_manifests.py"
 EXAMPLE_DIR = ROOT / "conformance" / "implementation-manifests"
 V04_COMMIT = "4bb9e48a1095ab32c06c25b7c0b52018d3ce4091"
-# The examples the README scopes to their evidence, and the older ones it names as not narrowed.
+# The three examples the README scoped first, and the three older ones scoped the same way since #437.
 SCOPED_EXAMPLES = ("fixed-price-x402-seller.json", "fixed-price-pay-dem-seller.json", "fixed-price-pay-dem-buyer.json")
 OLDER_EXAMPLES = ("pay-dem-rfq-buyer.json", "pay-dem-rfq-seller.json", "verifier-indexer.json")
+ALL_EXAMPLES = SCOPED_EXAMPLES + OLDER_EXAMPLES
 
 
 def git_show(commit, path):
@@ -184,12 +185,14 @@ class ImplementationManifestTests(unittest.TestCase):
         # tested. So both seller examples name the same PS-* rules although no
         # cited case exercises PS-1 or PS-2, and each seller payment claim names
         # the §9.5.8 SB-1/SB-2 settlement rules (SB-3 only where the rail defines it).
-        for name in SCOPED_EXAMPLES:
+        for name in ALL_EXAMPLES:
             manifest = load_example(name)
             with self.subTest(example=name):
                 self.assertEqual([claim["id"] for claim in manifest["claims"]
                                   if claim["result"] in {"conformant", "conformance-tested"}], [])
                 self.assertNotIn("passed", {cap["testStatus"] for cap in manifest["capabilities"]})
+                for claim in manifest["claims"]:
+                    self.assertFalse({rule for rule in claim["ruleRefs"] if rule.startswith("RD-")}, claim["id"])
         fixed_price, payment = {}, {}
         for name, pay in (("fixed-price-x402-seller.json", "pay-x402"), ("fixed-price-pay-dem-seller.json", "pay-dem")):
             claims = {claim["capabilityRefs"][0]: claim for claim in load_example(name)["claims"]}
@@ -206,29 +209,28 @@ class ImplementationManifestTests(unittest.TestCase):
         self.assertIn("v0.2 defines one for `pay-x402`; v0.3 adds the `pay-ap2`", sb3)
         self.assertNotIn("pay-dem", sb3)
         flat = " ".join((EXAMPLE_DIR / "README.md").read_text(encoding="utf-8").split())
-        for text in ("These three examples, `fixed-price-x402-seller.json` and the two `fixed-price-pay-dem-*` "
-                     "examples, follow one rule for `ruleRefs`: an `implemented` claim names the rules its role "
-                     "implements, whether or not a cited case exercises them;",
-                     "the `pay-x402` claim names SB-1..SB-3, and the `pay-dem` claim names SB-1 and SB-2, "
+        for text in ("All six examples follow one rule for `ruleRefs`: an `implemented` claim names the rules "
+                     "its role implements, whether or not a cited case exercises them;",
+                     "the `pay-x402` claim names SB-1..SB-3, and the `pay-dem` claims name SB-1 and SB-2, "
                      "because v0.4 defines no SB-3 binding for `pay-dem`.",
+                     "Rail claims name the §9.4.2 registry entry only, since RD-1..RD-5 are rail-author duties.",
                      "Its fixed-price claim, which names PS-1..PS-3, is therefore `partial`"):
             self.assertIn(text, flat)
-        self.assertNotIn("All the examples follow one rule", flat)
+        self.assertNotIn("predate this scoping", flat)
 
-    def test_readme_names_the_older_examples_it_does_not_narrow(self):
-        # Every example is either scoped by the README's rule or named as older
-        # and not narrowed, and what the README says those older ones claim holds.
+    def test_older_examples_are_scoped_like_the_rest(self):
+        # #437: the three older examples pin 9a1ca62 (byte-identical suite to
+        # v0.4) and once claimed `conformance-tested` on candidate cases. They
+        # now follow the same scoping as the fixed-price examples.
         names = {path.name for path in EXAMPLE_DIR.glob("*.json")}
-        self.assertEqual(names, set(SCOPED_EXAMPLES) | set(OLDER_EXAMPLES))
-        self.assertFalse(set(SCOPED_EXAMPLES) & set(OLDER_EXAMPLES))
+        self.assertEqual(names, set(ALL_EXAMPLES))
         v04_suite = git_show(V04_COMMIT, "conformance/MANIFEST.json")
         for name in OLDER_EXAMPLES:
             manifest = load_example(name)
             suite_pin = manifest["conformanceSuite"]
             self.assertEqual((manifest["profile"]["commit"][:7], suite_pin["commit"][:7]), ("9a1ca62", "9a1ca62"))
             self.assertEqual(git_show(suite_pin["commit"], suite_pin["manifestPath"]), v04_suite)
-        suite = json.loads(v04_suite)
-        tiers = {case["id"]: case["status"] for case in suite["cases"]}
+        tiers = {case["id"]: case["status"] for case in json.loads(v04_suite)["cases"]}
 
         def claim_cases(manifest, capability):
             runs = {run["id"]: run for run in manifest["testRuns"]}
@@ -239,23 +241,97 @@ class ImplementationManifestTests(unittest.TestCase):
         for name, role in (("pay-dem-rfq-buyer.json", "buyer"), ("pay-dem-rfq-seller.json", "seller")):
             manifest = load_example(name)
             claim, cap, cases = claim_cases(manifest, "pay-dem")
-            self.assertEqual((claim["result"], cap["testStatus"], cases),
-                             ("conformance-tested", "passed", ["pb2-tier1-pay-dem-intrinsic-matches"]), name)
-            self.assertEqual(tiers["pb2-tier1-pay-dem-intrinsic-matches"], "candidate")
-            self.assertEqual(claim["ruleRefs"], ["PB-1", "PB-2", "PB-3"], name)
+            # The single cited case is a candidate, so the claim cannot be a passing one.
+            self.assertEqual(cases, ["pb2-tier1-pay-dem-intrinsic-matches"], name)
+            self.assertEqual(tiers[cases[0]], "candidate")
+            self.assertEqual((claim["result"], cap["testStatus"]), ("implemented", "partial"), name)
+            self.assertEqual(claim["ruleRefs"], ["DACS-4-9.5.9", "PB-1", "PB-2", "PB-3"]
+                             if role == "buyer" else ["DACS-4-9.5.9", "SB-1", "SB-2"], name)
             rail, _cap, _cases = claim_cases(manifest, "demos-native-dem-rail")
-            self.assertEqual(rail["ruleRefs"], ["RD-1", "RD-2", "RD-3", "RD-4", "RD-5"], name)
-        claim, cap, cases = claim_cases(load_example("verifier-indexer.json"), "derive-reputation")
-        self.assertEqual((claim["result"], cap["testStatus"], len(cases)), ("conformance-tested", "passed", 2))
+            self.assertEqual(rail["ruleRefs"], ["DACS-4-9.4.2"], name)
+        manifest = load_example("verifier-indexer.json")
+        claim, cap, cases = claim_cases(manifest, "derive-reputation")
         self.assertEqual(sorted(tiers[case] for case in cases), ["candidate", "golden"])
+        self.assertEqual((claim["result"], cap["testStatus"]), ("implemented", "partial"))
+        claim, cap, cases = claim_cases(manifest, "verify-attestation-bundle")
+        self.assertEqual({tiers[case] for case in cases}, {"golden"})
+        self.assertEqual(len(cases), 3)
+        # Three golden bundle cases, none carrying an unrecognised field, do not
+        # test the whole capability or SIG-5, which the claim names; the suite's
+        # one SIG-5 case belongs to the §14.4 settlement surface, not to this one.
+        self.assertEqual((claim["result"], cap["testStatus"]), ("implemented", "partial"))
+        self.assertEqual(claim["ruleRefs"], ["SIG-1", "SIG-2", "SIG-5"])
+        suite_cases = {case["id"]: case for case in json.loads(v04_suite)["cases"]}
+        sig5 = [case["id"] for case in suite_cases.values() if "SIG-5" in case["spec"]]
+        self.assertEqual(sig5, ["settlement-delivery-extra-payment-field-pass"])
+        self.assertEqual(suite_cases[sig5[0]]["area"], "settlement")
+        self.assertNotIn(sig5[0], cases)
+        bundle = json.loads(git_show(suite_pin["commit"], "conformance/fixtures/attestation-bundle-0004.json"))
+        self.assertEqual(sorted(bundle), ["agreementRef", "anchoredByRole", "bundleVersion", "finalisedAt", "jobId",
+                                          "listingRef", "outcome", "parties", "phaseSummary", "railRegistryVersion",
+                                          "recipeRegistryVersion", "settlementEvidence", "signatures", "vetRecords"])
         flat = " ".join((EXAMPLE_DIR / "README.md").read_text(encoding="utf-8").split())
-        for text in ("The `pay-dem-rfq-*` and `verifier-indexer.json` examples predate this scoping and are not "
-                     "narrowed by it. They pin `9a1ca62`, whose conformance manifest is byte-identical to v0.4's.",
-                     "both `pay-dem-rfq-*` examples claim `pay-dem` as `conformance-tested` with test status "
-                     "`passed`, and claim the DEM rail against RD-1..RD-5; the seller also names PB-1..PB-3.",
-                     "`verifier-indexer.json` claims `derive-reputation` as `conformance-tested` on two cases, "
-                     "one of them a candidate."):
+        for text in ("They used to claim more than that suite covers:",
+                     "Those are now `implemented` claims on `partial` capabilities.",
+                     "A `conformance-tested` capability claim reports the whole capability, so it is now "
+                     "`implemented` on a `partial` capability too",
+                     "No example makes a `conformant` or `conformance-tested` claim."):
             self.assertIn(text, flat)
+
+    def passing_claims_and_their_case_tiers(self, manifest):
+        # Every case a passing claim cites, with its status in the suite manifest
+        # at the example's own pin, which the validator already resolves.
+        suite_pin = manifest["conformanceSuite"]
+        suite = json.loads(git_show(suite_pin["commit"], suite_pin["manifestPath"]))
+        tiers = {case["id"]: case["status"] for case in suite["cases"]}
+        runs = {run["id"]: run for run in manifest["testRuns"]}
+        return [(claim["id"], case, tiers.get(case, "absent")) for claim in manifest["claims"]
+                if claim["result"] in {"conformant", "conformance-tested"}
+                for ref in claim["evidenceRefs"] for case in runs[ref]["caseIds"]]
+
+    def test_every_passing_claim_in_the_examples_cites_only_golden_cases(self):
+        # #437. IM-4 asks only that a cited case id exist; the examples hold
+        # themselves to golden cases for any `conformant` or `conformance-tested`
+        # claim, because a candidate case is not yet accepted evidence.
+        for name in ALL_EXAMPLES:
+            with self.subTest(example=name):
+                rows = self.passing_claims_and_their_case_tiers(load_example(name))
+                self.assertEqual([row for row in rows if row[2] != "golden"], [], name)
+        # The examples make no passing claim today, so prove the rule on a
+        # promoted copy: the bundle verifier's three cited cases are golden.
+        manifest = load_example("verifier-indexer.json")
+        claim = next(claim for claim in manifest["claims"] if claim["capabilityRefs"] == ["verify-attestation-bundle"])
+        claim["result"] = "conformance-tested"
+        next(cap for cap in manifest["capabilities"] if cap["ref"] == "verify-attestation-bundle")["testStatus"] = "passed"
+        self.assertEqual(self.validate(copy.deepcopy(manifest)), [])
+        rows = self.passing_claims_and_their_case_tiers(manifest)
+        self.assertEqual([row[1] for row in rows], ["bundle-0004-pass", "bundle-required-signer-fail", "bundle-malformed-key-error"])
+        self.assertEqual({row[2] for row in rows}, {"golden"})
+        # Control: the check fails when a passing claim cites a candidate case.
+        run = next(run for run in manifest["testRuns"] if run["id"] == "bundle-verifier-vectors")
+        run["caseIds"] = run["caseIds"] + ["pb2-tier1-pay-dem-intrinsic-matches"]
+        self.assertEqual(self.validate(copy.deepcopy(manifest)), [], "the validator accepts a candidate case")
+        rows = self.passing_claims_and_their_case_tiers(manifest)
+        self.assertEqual([row for row in rows if row[2] != "golden"],
+                         [("claim-bundle-verifier", "pb2-tier1-pay-dem-intrinsic-matches", "candidate")])
+        run["caseIds"].remove("pb2-tier1-pay-dem-intrinsic-matches")
+        # Control: tiers come from the suite at the example's own pin, not from
+        # the working tree. dispute-happy-pass is golden at 9a1ca62 and no longer
+        # golden in the current MANIFEST.json; re-pick the case if that changes.
+        run["caseIds"] = run["caseIds"] + ["dispute-happy-pass"]
+        rows = self.passing_claims_and_their_case_tiers(manifest)
+        self.assertEqual([row for row in rows if row[1] == "dispute-happy-pass"],
+                         [("claim-bundle-verifier", "dispute-happy-pass", "golden")])
+        current = {case["id"]: case["status"] for case in
+                   json.loads((ROOT / "conformance" / "MANIFEST.json").read_text(encoding="utf-8"))["cases"]}
+        self.assertNotEqual(current.get("dispute-happy-pass"), "golden",
+                            "the control case is golden in the working tree too; pick another")
+        head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+                              capture_output=True, text=True, check=True).stdout.strip()
+        manifest["conformanceSuite"]["commit"] = head
+        rows = self.passing_claims_and_their_case_tiers(manifest)
+        self.assertEqual([row[2] for row in rows if row[1] == "dispute-happy-pass"],
+                         [current.get("dispute-happy-pass", "absent")])
 
     def seller_example(self):
         manifest = load_example("fixed-price-pay-dem-seller.json")

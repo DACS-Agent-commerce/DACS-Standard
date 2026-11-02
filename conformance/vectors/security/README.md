@@ -56,6 +56,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 13 | `fail` / `indeterminate` / `pass` |
+| [`htlc-preimage-derivation-v0.1.json`](htlc-preimage-derivation-v0.1.json) | DACS-4 §9.5.4 HTLC-5 / HTLC-6 preimage derivation byte encodings | 6 | `fail` / `pass` |
 | [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 401 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
 | [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 166 | `error` / `fail` / `indeterminate` / `pass` |
@@ -185,6 +186,38 @@ python3 scripts/generate_sealed_auction_completeness_vectors.py --check
 python3 -m unittest tests.test_sealed_auction_completeness_vectors -v
 node scripts/evaluate_sealed_auction_fixture.mjs conformance/vectors/security/sealed-auction-completeness-v0.6.json
 ```
+
+### `htlc-preimage-derivation-v0.1.json` — DACS-4 §9.5.4 HTLC-5 / HTLC-6
+
+6 known-answer vectors pin the byte encodings of the HTLC-5 preimage
+derivation, `HKDF(IKM=buyerSalt, salt=jobId, info=agreementHash, L=32)` with
+SHA-256: IKM is the `buyerSalt` bytes, `salt` the ASCII bytes of the JID-1
+`jobId`, `info` the ASCII bytes of the 64-character lowercase hex
+`agreementHash` (not its 32 decoded bytes), and the preimage the 32 output
+bytes. Three `pass` vectors give the derivation for a 32-byte salt, a 16-byte
+salt (the HTLC-1 minimum) and a second `jobId`; three `fail` vectors give the
+output of one named mistake each (decoded-bytes `info`, uppercase hex `info`,
+`salt`/`info` swapped) so an implementation that derives one of those values
+can see which encoding it got wrong. `want.hashlockSha256Hex` is
+`sha256(preimage)`, the HTLC-6 hashlock for sha256 chains; other chains apply
+their native hash to the same 32 bytes. All inputs are synthetic test
+patterns; no secret material is encoded.
+
+#### Vector schema
+
+| field | meaning |
+|-------|---------|
+| `input` | `buyerSaltHex`, `jobId` and `agreementHash` as a session would hold them |
+| `derivation` | the exact `ikmHex`, `saltHex`, `infoHex` and `length` fed to HKDF |
+| `expected` | `pass`: the only preimage for that input; `fail`: an output that MUST NOT be derived |
+| `want.preimageHex` | the 32 HKDF output bytes |
+| `want.hashlockSha256Hex` | `sha256(preimage)` |
+
+The generator (`scripts/generate_htlc_preimage_derivation_vectors.py`) writes
+HKDF out from RFC 5869 and checks itself against the RFC's test case 1;
+`python3 -m unittest tests.test_htlc_preimage_derivation_vectors -v` recomputes
+every vector with a second HKDF implementation and all three RFC 5869 SHA-256
+test cases.
 
 ### `canonical-json-v0.1.json` — CORE §B.2 RFC 8785 JCS + CF-1
 

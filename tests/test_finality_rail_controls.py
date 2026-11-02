@@ -12,5 +12,11 @@ class FinalityRailControls(unittest.TestCase):
             if case["expected"] == "pass":
                 with self.subTest(name=case["name"]):
                     trust = copy.deepcopy(data["trustedFixturePolicy"])
-                    trust.update(case.get("trustedOverrides", {}))
+                    def overlay(target, source):
+                        for key, value in source.items():
+                            if isinstance(value, dict) and isinstance(target.get(key), dict):
+                                overlay(target[key], value)
+                            else:
+                                target[key] = copy.deepcopy(value)
+                    overlay(trust, case.get("trustedOverrides", {}))
                     self.assertEqual(verify_finality(case["input"], trust)["decision"], "pass")

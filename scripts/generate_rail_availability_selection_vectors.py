@@ -31,6 +31,9 @@ ATTACKER_SEED = hashlib.sha256(
 PRODUCTION_UNSET = object()
 STEWARD_CLAIM = "did:demos:agent:" + "11" * 32
 ATTACKER_CLAIM = "did:demos:agent:" + "22" * 32
+INCOMPLETE_NODE_PIN = "ac8f45f02fc9c25082ce9b83595c2e3916b49c5a"
+# A separate synthetic pin, not a claim that a later production node exists.
+COMPLETE_NODE_PIN = "fixture:post-completion-node"
 
 
 def canonical_bytes(value: object) -> bytes:
@@ -61,7 +64,8 @@ def rail_digest(rail: dict) -> str:
     ).hexdigest()
 
 
-def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=False):
+def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=False, fields=None):
+    """Raw fixture signer, including intentionally inadmissible consumer inputs."""
     key = Ed25519PrivateKey.from_private_bytes(
         ATTACKER_SEED if attacker else STEWARD_SEED
     )
@@ -90,6 +94,7 @@ def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=Fal
             **({"supersedes": version - 1} if version > 1 else {}),
         },
     }
+    rail.update(fields or {})
     digest = rail_digest(rail)
     rail["signature"] = {
         "algorithm": "ed25519",
@@ -97,6 +102,30 @@ def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=Fal
         "value": base64url(key.sign((DOMAIN + digest).encode("ascii"))),
     }
     return rail
+
+
+def issue_rail(rail: dict, *, node_pin: str, trusted_node_capabilities: dict) -> dict:
+    """Fixture steward issuance (DACS-4 §9.4 / DEMOS-MAPPING §A.5).
+
+    Capability snapshots are steward-owned, indexed by its pinned node, and
+    attest complete signed compilation plus a published route registry.
+    This is an offline policy witness, not a production capability codec.
+    """
+    if "signature" in rail or rail.get("availability") not in {
+        "live", "operator_gated", "closed_data", "bilateral", "mocked", "disabled", "failed"
+    }:
+        raise ValueError("malformed unsigned rail")
+    if rail["availability"] == "live" and (
+        rail.get("phaseHandler") == "pay-cross-chain-liquidity-tank"
+        or rail.get("railType") == "cross-chain-liquidity-tank"
+    ):
+        capability = trusted_node_capabilities.get(node_pin)
+        if not isinstance(capability, dict) or any(
+            capability.get(field) is not True
+            for field in ("completeSignedOperation", "routeRegistryPublished")
+        ):
+            raise ValueError("pinned node cannot authorize live tank issuance")
+    return sign_rail(rail["railId"], rail["availability"], rail["railVersion"], fields=rail)
 
 
 def context(
@@ -112,6 +141,7 @@ def context(
     later_registry_rail=None,
     production_source="local-operator-policy",
     counterparty_production_hint=None,
+    node_completed_handlers=None,
 ):
     value = {
         "stewardClaim": STEWARD_CLAIM if steward else None,
@@ -130,6 +160,8 @@ def context(
             "source": production_source,
             "production": production,
         }
+        if node_completed_handlers is not None:
+            value["operatorContext"]["nodeCompletedHandlers"] = node_completed_handlers
     if counterparty_production_hint is not None:
         value["counterpartyProductionHint"] = counterparty_production_hint
     if hint is not None:
@@ -159,6 +191,21 @@ def build() -> dict:
     closed = sign_rail("x402:closed-test", "closed_data")
     bilateral = sign_rail("x402:bilateral-test", "bilateral")
     live_evm = sign_rail("x402:failure-test", "live")
+    # DEMOS-MAPPING A.5: the tank rail is unavailable/experimental, so the
+    # fixture signs it mocked; nothing the node returns can make it live.
+    # A steward-signed operational copy is selectable only when trusted local
+    # operator policy records that the pinned node completes the handler.
+    tank_fields = {
+        "railType": "cross-chain-liquidity-tank",
+        "asset": {"kind": "stablecoin-cross-chain", "canonicalSymbol": "USDC",
+                  "routes": [{"sourceChainId": 11155111, "destChainId": 80002,
+                              "liquidityTankIds": ["fixture-tank-source", "fixture-tank-destination"]}]},
+        "network": {"kind": "cross-chain", "mechanism": "liquidity-tank"},
+        "phaseHandler": "pay-cross-chain-liquidity-tank",
+        "parameters": {"sourceChainId": 11155111, "destChainId": 80002},
+    }
+    tank_mocked = sign_rail("cross-chain-liquidity-tank:USDC", "mocked", fields=tank_fields)
+    tank_live = sign_rail("cross-chain-liquidity-tank:USDC", "live", fields=tank_fields)
     vectors = [
         vector("live-signed-pinned", "pass", "live, steward-signed and pinned is selectable", live_x402),
         vector("disabled-signed", "fail", "RAV-R2: disabled cannot start a new session", disabled),
@@ -226,6 +273,39 @@ def build() -> dict:
             hint="failed",
         ),
         vector(
+            "tank-mocked-node-operation-live-hint",
+            "fail",
+            "DEMOS-MAPPING A.5/RAV-R5: the signed tank rail is mocked; an adapter that reports the node's unsigned, incomplete compiled bridge operation as a live hint cannot make it available for production",
+            tank_mocked,
+            hint="live",
+        ),
+        vector(
+            "tank-live-unsigned",
+            "fail",
+            "DEMOS-MAPPING A.5/RAV-R5: an unsigned tank rail claiming live is not authoritative",
+            unsigned_rail(tank_live),
+        ),
+        vector(
+            "tank-live-signed-node-incomplete",
+            "fail",
+            "DEMOS-MAPPING A.5/DACS-4 §9.4: a steward-signed, pinned live tank rail is not selectable while trusted operator policy does not record that the pinned node completes the tank handler",
+            tank_live,
+        ),
+        vector(
+            "tank-live-signed-node-completes",
+            "pass",
+            "DACS-4 §9.4: fixture-only post-condition after a pinned node commit completes signed operations and publishes routes; trusted operator policy records handler completion (no pinned node does today)",
+            tank_live,
+            node_completed_handlers=["pay-cross-chain-liquidity-tank"],
+        ),
+        vector(
+            "tank-live-node-capability-malformed",
+            "error",
+            "the trusted node-completed handler list must be an array of handler names",
+            tank_live,
+            node_completed_handlers="pay-cross-chain-liquidity-tank",
+        ),
+        vector(
             "malformed-rail",
             "error",
             "missing availability and railVersion is malformed",
@@ -239,6 +319,13 @@ def build() -> dict:
             sign_rail("x402:default", "experimental"),
         ),
     ]
+    for availability in ("operator_gated", "closed_data", "bilateral"):
+        rail = sign_rail("cross-chain-liquidity-tank:USDC", availability, fields=tank_fields)
+        vectors.append(vector(
+            "tank-" + availability.replace("_", "-") + "-signed-node-incomplete",
+            "fail", "RAV-R1: operator preflight cannot replace trusted node completion",
+            rail, preflight=True,
+        ))
     return {
         "set": "rail-availability-selection-v0.1",
         "spec": "DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6)",
@@ -251,7 +338,28 @@ def build() -> dict:
             "digest": "sha256(canonical complete unsigned RailDefinition)",
             "signature": "RailSignature.algorithm=ed25519; value is unpadded Base64URL Ed25519(dacs-rail:v1: || lowercase-hex digest)",
             "productionContext": "trusted local-operator-policy input; counterparty and discovery hints are non-authoritative",
+            "nodeCompletedHandlers": "trusted local-operator-policy list of handlers the pinned node completes; required before any operational pay-cross-chain-liquidity-tank availability is selectable (DEMOS-MAPPING A.5)",
             "generator": "scripts/generate_rail_availability_selection_vectors.py",
+        },
+        "stewardIssuance": {
+            "spec": "DACS-4 §9.4; DEMOS-MAPPING §A.5 (live issuance only)",
+            "railTemplate": "tank-live-signed-node-incomplete (signature omitted)",
+            "capabilityAuthority": "steward-owned snapshots, never candidate/operator preflight",
+            "incompleteNodeSource": "https://github.com/kynesyslabs/node/blob/" + INCOMPLETE_NODE_PIN + "/src/libs/network/manageNativeBridge.ts",
+            "incompleteNodeOutput": {"content": None, "signature": {"type": "", "data": ""}, "routeRegistry": None},
+            "completeNodeScope": "synthetic later pin only; no production completion is claimed",
+            "trustedNodeCapabilities": {
+                INCOMPLETE_NODE_PIN: {"completeSignedOperation": False, "routeRegistryPublished": False},
+                COMPLETE_NODE_PIN: {"completeSignedOperation": True, "routeRegistryPublished": True},
+            },
+            "vectors": [
+                {"name": "live-incomplete-node-refused", "availability": "live", "nodePin": INCOMPLETE_NODE_PIN, "expected": "fail"},
+                {"name": "live-complete-later-fixture-node", "availability": "live", "nodePin": COMPLETE_NODE_PIN, "expected": "pass"},
+                {"name": "live-unknown-node-refused", "availability": "live", "nodePin": "fixture:unknown-node", "expected": "fail"},
+                *({"name": availability + "-issuance-allowed", "availability": availability,
+                   "nodePin": INCOMPLETE_NODE_PIN, "expected": "pass"}
+                  for availability in ("mocked", "disabled", "failed", "operator_gated", "closed_data", "bilateral")),
+            ],
         },
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),
         "count": len(vectors),

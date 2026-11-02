@@ -6254,6 +6254,110 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             ),
         )
 
+    def test_same_claim_alternative_methods_are_or_on_the_aggregate_path(self):
+        # DACS-2 §7.12 and CRQ-4: with no selected method, one qualified pass
+        # of any permitted method satisfies the member.  The signed lei@1
+        # recipe lists tlsnotary as an alternative to consensus-backed-proxy;
+        # the record commits a current proxy fail and a tlsnotary pass.
+        def commit_alternative_pass(value, document):
+            self._replace_committed(
+                value, document, self._committed_index(value, "domain"),
+                lambda artifact: artifact.update(decision="pass"),
+            )
+            source = value["resolvedResults"][self._committed_index(value, "lei")]
+            self.assertEqual(
+                ("consensus-backed-proxy", "fail"),
+                (source["artifact"]["method"], source["artifact"]["decision"]),
+            )
+            alternative = copy.deepcopy(source)
+            artifact = alternative["artifact"]
+            artifact.update(
+                method="tlsnotary", decision="pass",
+                reason="deterministic alternative-lei pass",
+            )
+            attestation = artifact["attestation"]
+            attestation.pop("signer")
+            attestation["anchor"]["locator"] += ":tlsnotary"
+            attestation["contentHash"] = hashlib.sha256(
+                b"dacs-363:alternative-lei:pass"
+            ).hexdigest()
+            alternative["ref"]["anchor"]["locator"] += ":tlsnotary"
+            alternative = resign_result(
+                alternative, fixture_private_key("authority"), AUTHORITY_REF
+            )
+            context = document["trustedContext"]
+            context["authenticatedResultArtifacts"].append({
+                "ref": copy.deepcopy(alternative["ref"]),
+                "serializedArtifactHash": alternative["serializedArtifactHash"],
+            })
+            context["authenticatedSourceAttestations"].append({
+                "attestation": copy.deepcopy(attestation),
+                "resolvedSourceHash": attestation["contentHash"],
+                "scheme": "lei",
+                "method": "tlsnotary",
+                "recipeVersion": 1,
+                "resultSigner": AUTHORITY_REF,
+            })
+            requirement = value["authority"]["vetInput"]["requirement"]
+            context["authenticatedResultProvenance"].append({
+                "ref": copy.deepcopy(alternative["ref"]),
+                "serializedArtifactHash": alternative["serializedArtifactHash"],
+                "currentProductions": [{
+                    "invocation": value["authority"]["invocation"],
+                    "requirementHash": hash_hex(requirement),
+                    "memberHash": hash_hex(requirement["required"][0]),
+                }],
+                "cachedOrigins": [],
+            })
+            value["resolvedResults"].append(alternative)
+            value["record"]["dealSpecific"].append(copy.deepcopy(alternative["ref"]))
+
+        name = "vet-cross-accumulator-fail-over-error"
+        self.assertEqual(
+            {"decision": "pass", "reasons": []},
+            self._replay_aggregate(name, commit_alternative_pass, "pass"),
+        )
+
+        # Wrong implementation: corroboration requires a qualified pass from
+        # every committed method of the claim instead of one.
+        module = sys.modules[__name__]
+        original = module.classify_member
+
+        def corroborating(
+            value, req, recipes, result_context, decision_time, exact_ref=None,
+            *, registered_schemes=None,
+        ):
+            parameters = req.get("parameters") or {}
+            methods = sorted({
+                item["artifact"].get("method")
+                for item in committed_results(value, req)
+            }) if value.get(COMMITTED_RESULTS_ONLY) else []
+            if (
+                req.get("verificationRequired") is not False
+                and "verificationMethod" not in parameters
+                and len(methods) >= 2
+            ):
+                for method in methods:
+                    selected = dict(
+                        req, parameters=dict(parameters, verificationMethod=method)
+                    )
+                    decision = original(
+                        value, selected, recipes, result_context, decision_time,
+                        exact_ref, registered_schemes=registered_schemes,
+                    )
+                    if decision != "pass":
+                        return decision
+                return "pass"
+            return original(
+                value, req, recipes, result_context, decision_time, exact_ref,
+                registered_schemes=registered_schemes,
+            )
+
+        # It refuses the record that the Standard's OR semantics accept.
+        with mock.patch.object(module, "classify_member", corroborating):
+            refused = self._replay_aggregate(name, commit_alternative_pass, "pass")
+        self.assertNotEqual("pass", refused["decision"])
+
     def test_every_committed_result_needs_a_verified_member(self):
         invalid = {"decision": "error", "reasons": ["aggregation authority invalid"]}
 

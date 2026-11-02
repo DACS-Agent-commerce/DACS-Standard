@@ -21,6 +21,34 @@
       "latestByScheme": { "domain": 4, "key": 3 },
       "latestByFamily": { "domain": { "domain-tls-control": 4 }, "key": { "self-signed": 3 } },
       "versionsByFamily": { "domain": { "domain-tls-control": { "4": "live" } }, "key": { "self-signed": { "1": "live", "2": "live", "3": "disabled" } } }
+    },
+    {
+      "recipeRegistryVersion": 10,
+      "latestByScheme": { "lei": 1 },
+      "latestByFamily": { "lei": { "consensus-backed-proxy": 1 } },
+      "versionsByFamily": { "lei": { "consensus-backed-proxy": { "1": "live" } } },
+      "recipeDefinitions": [{ "scheme": "lei", "recipeVersion": 1, "defaultMethod": { "kind": "consensus-backed-proxy" }, "alternatives": [{ "kind": "tlsnotary" }] }]
+    },
+    {
+      "recipeRegistryVersion": 11,
+      "latestByScheme": { "lei": 2 },
+      "latestByFamily": { "lei": { "consensus-backed-proxy": 1, "tlsnotary": 2 } },
+      "versionsByFamily": { "lei": { "consensus-backed-proxy": { "1": "live" }, "tlsnotary": { "2": "live" } } },
+      "recipeDefinitions": [{ "scheme": "lei", "recipeVersion": 1, "defaultMethod": { "kind": "consensus-backed-proxy" }, "alternatives": [{ "kind": "tlsnotary" }] }, { "scheme": "lei", "recipeVersion": 2, "defaultMethod": { "kind": "tlsnotary" } }]
+    },
+    {
+      "recipeRegistryVersion": 12,
+      "latestByScheme": { "lei": 2 },
+      "latestByFamily": { "lei": { "consensus-backed-proxy": 2 } },
+      "versionsByFamily": { "lei": { "consensus-backed-proxy": { "1": "live", "2": "live" } } },
+      "recipeDefinitions": [{ "scheme": "lei", "recipeVersion": 1, "defaultMethod": { "kind": "consensus-backed-proxy" }, "alternatives": [{ "kind": "tlsnotary" }] }, { "scheme": "lei", "recipeVersion": 2, "defaultMethod": { "kind": "consensus-backed-proxy" } }]
+    },
+    {
+      "recipeRegistryVersion": 13,
+      "latestByScheme": { "lei": 2 },
+      "latestByFamily": { "lei": { "consensus-backed-proxy": 1, "tlsnotary": 2 } },
+      "versionsByFamily": { "lei": { "consensus-backed-proxy": { "1": "live" }, "tlsnotary": { "2": "live" } } },
+      "recipeDefinitions": [{ "scheme": "lei", "recipeVersion": 1, "defaultMethod": { "kind": "consensus-backed-proxy" }, "alternatives": [{ "kind": "tlsnotary" }] }]
     }
   ],
   "publicKeys": {
@@ -30,6 +58,10 @@
   "authenticatedSessionStarts": {
     "job-crq-001-v7": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
     "job-crq-001-v9": { "jobId": "job-crq-001", "recipeRegistryVersion": 9 },
+    "job-crq-001-v10": { "jobId": "job-crq-001", "recipeRegistryVersion": 10 },
+    "job-crq-001-v11": { "jobId": "job-crq-001", "recipeRegistryVersion": 11 },
+    "job-crq-001-v12": { "jobId": "job-crq-001", "recipeRegistryVersion": 12 },
+    "job-crq-001-v13": { "jobId": "job-crq-001", "recipeRegistryVersion": 13 },
     "job-crq-001-v999": { "jobId": "job-crq-001", "recipeRegistryVersion": 999 }
   },
   "replayBundles": {
@@ -127,8 +159,8 @@
       "results": [{ "ref": { "anchor": { "kind": "storage-program", "locator": "dacs2:verify-result:job-crq-001:key" }, "contentHash": "26caa227bebf58a7d7eb113953f05609cce893ab33c9b7579c3d43c266b26a43", "recipeVersion": 2 }, "result": { "resultVersion": "1", "scheme": "key", "identifier": "did:demos:seller", "recipeVersion": 2, "method": "self-signed", "decision": "pass", "reason": "synthetic possession proof verified", "attestation": { "anchor": { "kind": "storage-program", "locator": "dacs2:attestation:job-crq-001:key" }, "contentHash": "8888888888888888888888888888888888888888888888888888888888888888", "signer": "did:demos:buyer" }, "data": { "possessionVerified": true }, "fetchedAt": 1750000004000, "verifiedAt": 1750000005000, "validUntil": 1750000065000, "signature": { "algorithm": "ed25519", "signer": "did:demos:buyer", "value": "1PnOzmJzcqAbQoRuEauBsnp94Xd60ZJdP4ECbSGlTr0uunoVKTCYLjGwx6Pu43OYpXEwXDthfSdTtkAtYfL8Cg" } } }]
     }
   },
-  "hash": "61274f17fe15b330d0a0a24e5bd7be138cdfc31a9414f6d8ab130ae9b76bac56",
-  "count": 36,
+  "hash": "10957fac4883dceeeb79cc18a7d1036cdb8b8173e50a6fea8a9ff981cc2d3ee4",
+  "count": 42,
   "vectors": [
     {
       "name": "vet-claim-requirement-exact-match-pass",
@@ -590,6 +622,78 @@
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true, "verificationMethod": "self-signed" } }] },
         "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }],
         "resultReuse": [{ "kind": "cross-session", "originatingParametersAuthenticated": false }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-default-pass-alternative-fail-is-or",
+      "expected": "pass",
+      "note": "same-claim alternatives are OR, not corroboration: with no selected method a qualified consensus-backed-proxy pass satisfies the member although the recipe's tlsnotary alternative currently fails",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v10", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 10, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 10 } } },
+        "requirement": { "required": [{ "scheme": "lei", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "lei", "method": "consensus-backed-proxy", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 }, { "scheme": "lei", "method": "tlsnotary", "decision": "fail", "recipeVersion": 1, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-default-fail-alternative-pass-is-or",
+      "expected": "pass",
+      "note": "with no selected method a qualified pass from the tlsnotary alternative satisfies the member although the default consensus-backed-proxy method currently fails",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v10", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 10, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 10 } } },
+        "requirement": { "required": [{ "scheme": "lei", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "lei", "method": "consensus-backed-proxy", "decision": "fail", "recipeVersion": 1, "verifiedAt": 1750000005000 }, { "scheme": "lei", "method": "tlsnotary", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-selected-alternative-excludes-default-pass",
+      "expected": "fail",
+      "note": "a listing that selects tlsnotary excludes the default-method pass, so only the failing tlsnotary result participates",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v10", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 10, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 10 } } },
+        "requirement": { "required": [{ "scheme": "lei", "verificationRequired": true, "parameters": { "verificationMethod": "tlsnotary" } }] },
+        "resolvedResults": [{ "scheme": "lei", "method": "consensus-backed-proxy", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 }, { "scheme": "lei", "method": "tlsnotary", "decision": "fail", "recipeVersion": 1, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-alternative-ownership-ambiguous",
+      "expected": "error",
+      "note": "two admitted lei families at distinct versions both list tlsnotary (consensus-backed-proxy v1 as an alternative, tlsnotary v2 as its default), so the passing tlsnotary result has no unique owning family",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v11", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 11, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 11 } } },
+        "requirement": { "required": [{ "scheme": "lei", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "lei", "method": "consensus-backed-proxy", "decision": "fail", "recipeVersion": 1, "verifiedAt": 1750000005000 }, { "scheme": "lei", "method": "tlsnotary", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-alternative-ownership-definition-missing",
+      "expected": "error",
+      "note": "the admitted inventory lists lei tlsnotary v2, but its definition body is absent, so the only listed owner of tlsnotary cannot be shown unique",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v13", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 13, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 13 } } },
+        "requirement": { "required": [{ "scheme": "lei", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "lei", "method": "consensus-backed-proxy", "decision": "fail", "recipeVersion": 1, "verifiedAt": 1750000005000 }, { "scheme": "lei", "method": "tlsnotary", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-explicit-pin-lacks-alternative",
+      "expected": "error",
+      "note": "the requirement pins lei recipe version 2, which does not list the tlsnotary method of the passing result",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v12", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 12, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 12 } } },
+        "requirement": { "required": [{ "scheme": "lei", "verificationRequired": true, "recipeVersion": 2 }] },
+        "resolvedResults": [{ "scheme": "lei", "method": "consensus-backed-proxy", "decision": "fail", "recipeVersion": 2, "verifiedAt": 1750000005000 }, { "scheme": "lei", "method": "tlsnotary", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     }
   ]

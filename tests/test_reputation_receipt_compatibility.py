@@ -22,13 +22,13 @@ class ReceiptCompatibilityTests(unittest.TestCase):
         self.assertEqual(store.records[(record["jobId"], record["nonce"])]["status"], "consumed")
         self.assertEqual(spa.ChallengeStore([record], duration).consume_presented(challenge, record["expiresAt"] - 1), "pass")
 
-    def test_adapter_limit_does_not_reclassify_unavailable_signature_algorithm(self):
+    def test_decoded_format_precedes_unavailable_algorithm_without_adapter_byte_limit(self):
         encoded = base64.urlsafe_b64encode(b"x" * (evidence.FIXTURE_MAX_DECODED_BYTES + 1)).rstrip(b"=").decode("ascii")
-        for algorithm in ("ecdsa-secp256k1", "sr1-aggregate"):
+        for algorithm, expected in (("ecdsa-secp256k1", "fail"), ("sr1-aggregate", "indeterminate")):
             self.assertEqual(evidence.verify_detached_signature_status(
-                {"algorithm": algorithm, "signer": spa_fixtures.ADAPTER, "value": encoded},
+                {"algorithm": algorithm, "signer": "did:example:unresolved-adapter", "value": encoded},
                 domain="fixture-compatibility:", digest="ab" * 32, signer_field="signer",
-            ), "indeterminate")
+            ), expected)
         self.assertIsNone(evidence.decode_canonical_object(encoded))
 
     def test_decimal_height_and_optional_block_members(self):

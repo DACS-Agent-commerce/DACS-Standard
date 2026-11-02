@@ -14,6 +14,7 @@ non-pass, and that each LAB negative is rejected only by its named guard.
 from __future__ import annotations
 
 import base64
+import contextlib
 import copy
 import hashlib
 import json
@@ -91,7 +92,7 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
         cls.cases = {vector["name"]: vector for vector in cls.data["vectors"]}
 
     def test_set_hash_binds_the_complete_replay_inputs(self):
-        self.assertEqual(13, self.data["count"])
+        self.assertEqual(36, self.data["count"])
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         encoded = canonical(self.data["vectors"])
         self.assertEqual(
@@ -519,15 +520,32 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
                 return ("pass", "missing era evidence treated as historical")
             return original_guard(bundle, evidence, dependencies, verifier_config)
 
+        original_proof = D5._verify_synthetic_anchor_proof
+
+        def history_blind(proof, verifier_config):
+            outcome = original_proof(proof, verifier_config)
+            if outcome[1].startswith("native anchor history is pruned"):
+                return ("pass", "history disposition ignored")
+            return outcome
+
         lab3 = mock.patch.object(D5, "validate_legacy_bundle_admission", side_effect=without_lab3)
         lab4 = mock.patch.object(D5, "_strictly_before", return_value=True)
+        lab4_history = mock.patch.object(
+            D5, "_verify_synthetic_anchor_proof", side_effect=history_blind
+        )
         lab6 = mock.patch.object(D5, "validate_legacy_bundle_admission", side_effect=without_lab6)
         mutants = {
             "buyer-seller-role-rebinding": lab3,
             "seller-buyer-role-rebinding": lab3,
             "fresh-post-checkpoint-legacy-creation": lab4,
             "post-checkpoint-anchor-without-pre-checkpoint-proof": lab4,
+            "equal-position-legacy-anchor": lab4,
+            "cross-domain-legacy-anchor": lab4,
+            "pruned-legacy-anchor-history": lab4_history,
+            "reorganized-legacy-anchor-history": lab4_history,
+            "unorderable-legacy-anchor-history": lab4_history,
             "missing-era-proof": lab6,
+            **self._lab_authority_mutants(),
         }
         self.assertEqual(
             set(mutants),
@@ -546,6 +564,233 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
                     metrics = result["derivation"]["metrics"]
                     self.assertEqual(0.0, metrics["counterpartyFaultRate"])
                     self.assertEqual(0.0, metrics["counterpartyAdjustedCompletionRate"])
+
+    def test_lab4_positions_are_compared_inside_one_order_domain(self):
+        """LAB-4: (height, index) in one authenticated order, strictly earlier."""
+        checkpoint = self._era(self.cases["same-height-earlier-index-legacy-anchor"])[
+            "checkpointReceipt"
+        ]["position"]
+        self.assertEqual(
+            {"orderDomain": "fixture-ledger-v1", "height": 100, "index": 2}, checkpoint
+        )
+        positions = {
+            name: self._era(self.cases[name])["historicalAnchorReceipt"]["position"]
+            for name in (
+                "same-height-earlier-index-legacy-anchor",
+                "equal-position-legacy-anchor",
+                "cross-domain-legacy-anchor",
+            )
+        }
+        self.assertEqual(
+            {"orderDomain": "fixture-ledger-v1", "height": 100, "index": 1},
+            positions["same-height-earlier-index-legacy-anchor"],
+        )
+        self.assertEqual(checkpoint, positions["equal-position-legacy-anchor"])
+        self.assertNotEqual(
+            checkpoint["orderDomain"], positions["cross-domain-legacy-anchor"]["orderDomain"]
+        )
+
+        def height_only(left, right):
+            # Wrong implementation: the intra-position order is ignored.
+            left, right = left.get("position"), right.get("position")
+            if left.get("orderDomain") != right.get("orderDomain"):
+                return None
+            return left["height"] < right["height"]
+
+        control = self.cases["same-height-earlier-index-legacy-anchor"]
+        self.assertEqual("pass", execute(control["replay"])["decision"])
+        with mock.patch.object(D5, "_strictly_before", side_effect=height_only):
+            self.assertEqual("fail", execute(control["replay"])["decision"])
+
+    def _era(self, vector):
+        role_request = vector["replay"]["request"]["roles"]["buyer"]
+        native = role_request["selectionContext"]["candidateBindings"][0]["nativeAddress"]
+        return role_request["legacyEraEvidenceByNativeAddress"][native]
+
+    def _lab_authority_mutants(self):
+        """One bounded wrong implementation per LAB-1..LAB-3 and BB-7 negative."""
+        original_guard = D5.validate_legacy_bundle_admission
+
+        class FieldBlindReceipt(dict):
+            """Signed receipt bytes unchanged; one join field reads as expected."""
+
+            def get(self, key, default=None):
+                if key == self.blind_field:
+                    return self.expected
+                return dict.get(self, key, default)
+
+        def field_blind(field):
+            def without_join(bundle, evidence, dependencies, verifier_config):
+                receipt = evidence.get("historicalAnchorReceipt") if isinstance(evidence, dict) else None
+                if isinstance(receipt, dict):
+                    original = evidence["originalMapping"]
+                    evidence = dict(evidence)
+                    blind = FieldBlindReceipt(receipt)
+                    blind.blind_field = field
+                    blind.expected = {
+                        "subjectId": evidence["resolvedJobId"],
+                        "contentHash": evidence["bundleContentHash"],
+                        "logicalAddress": original["binding"]["logicalAddress"],
+                        "nativeAddress": original["binding"]["nativeAddress"],
+                        "transactionRef": original["anchorTransaction"],
+                        "writer": original["writer"],
+                        "nonce": original["nonce"],
+                    }[field]
+                    evidence["historicalAnchorReceipt"] = blind
+                return original_guard(bundle, evidence, dependencies, verifier_config)
+
+            return mock.patch.object(
+                D5, "validate_legacy_bundle_admission", side_effect=without_join
+            )
+
+        real_hash = D5.legacy_checkpoint_hash
+        real_signature = D5._checkpoint_signature_valid
+        vector = self.cases["checkpoint-content-hash-mismatch"]
+        candidate = self._era(vector)["checkpointCandidates"][0]
+        forged = vector["replay"]["dependencies"]["checkpointsByNativeAddress"][
+            candidate["nativeAddress"]
+        ]
+
+        @contextlib.contextmanager
+        def checkpoint_hash_blind():
+            # The artifact is not compared with the committed content hash,
+            # but its steward signature is still verified over its own bytes.
+            def blind(checkpoint):
+                if canonical(checkpoint) == canonical(forged):
+                    return candidate["checkpointContentHash"]
+                return real_hash(checkpoint)
+
+            def signature_over_real_hash(checkpoint, signer, public_keys):
+                with mock.patch.object(D5, "legacy_checkpoint_hash", real_hash):
+                    return real_signature(checkpoint, signer, public_keys)
+
+            with mock.patch.object(D5, "legacy_checkpoint_hash", side_effect=blind), \
+                    mock.patch.object(
+                        D5, "_checkpoint_signature_valid",
+                        side_effect=signature_over_real_hash,
+                    ):
+                yield
+
+        def binding_signature_blind(binding, substrate, signer, public_keys):
+            # The binding's own signer field is trusted; its signature is not.
+            return (
+                isinstance(binding, dict)
+                and binding.get("substrate") == substrate
+                and binding.get("signer") == signer
+            )
+
+        real_mapping = D5._verify_original_binding_mapping
+
+        def mapping_without_bytes_join(*args):
+            outcome = real_mapping(*args)
+            if outcome == ("fail", "historical original mapping resolves different bundle bytes"):
+                return ("pass", "LAB-2 original bytes join omitted")
+            return outcome
+
+        def original_candidates(keep):
+            def mapping(bundle, evidence, original, receipt, dependencies,
+                        verifier_config, role_map, signer_map):
+                context = original["selectionContext"]
+                original = {**original, "selectionContext": {
+                    **context,
+                    "candidateBindings": [
+                        item for item in context["candidateBindings"]
+                        if keep(item, evidence, dependencies, verifier_config)
+                    ],
+                }}
+                return real_mapping(bundle, evidence, original, receipt, dependencies,
+                                    verifier_config, role_map, signer_map)
+
+            return mock.patch.object(
+                D5, "_verify_original_binding_mapping", side_effect=mapping
+            )
+
+        def verifies(item, evidence, dependencies, verifier_config):
+            # BB-6 read as dropping an authorized candidate that fails BB-4.
+            return D5.verify_legacy_binding(
+                item, verifier_config.get("publicKeys"),
+                expected_jobid=evidence["resolvedJobId"],
+                expected_role=evidence["resolvedRole"],
+            )["ok"]
+
+        def retrievable(item, evidence, dependencies, verifier_config):
+            return item.get("nativeAddress") in dependencies["bundlesByNativeAddress"]
+
+        def request_party_map():
+            # LAB-2 read as trusting the party map carried in the request.
+            def mapping(bundle, evidence, original, receipt, dependencies,
+                        verifier_config, role_map, signer_map):
+                return real_mapping(bundle, evidence, original, receipt, dependencies,
+                                    verifier_config, role_map,
+                                    original["selectionContext"]["partyMap"])
+
+            return mock.patch.object(
+                D5, "_verify_original_binding_mapping", side_effect=mapping
+            )
+
+        def request_budget():
+            # LAB-2 read as trusting the per-signer budget carried in the request.
+            def mapping(bundle, evidence, original, receipt, dependencies,
+                        verifier_config, role_map, signer_map):
+                verifier_config = {
+                    **verifier_config, "bb6Budget": original["selectionContext"]["budget"],
+                }
+                return real_mapping(bundle, evidence, original, receipt, dependencies,
+                                    verifier_config, role_map, signer_map)
+
+            return mock.patch.object(
+                D5, "_verify_original_binding_mapping", side_effect=mapping
+            )
+
+        real_role = D5._resolve_current_use_role
+
+        def current_retrievable(job, role, role_request, dependencies, verifier_config,
+                                current_key_authority, trusted_context):
+            context = role_request.get("selectionContext")
+            if isinstance(context, dict):
+                role_request = {**role_request, "selectionContext": {
+                    **context,
+                    "candidateBindings": [
+                        item for item in context["candidateBindings"]
+                        if item.get("nativeAddress") in dependencies["bundlesByNativeAddress"]
+                    ],
+                }}
+            return real_role(job, role, role_request, dependencies, verifier_config,
+                             current_key_authority, trusted_context)
+
+        return {
+            "historical-receipt-other-job": field_blind("subjectId"),
+            "historical-receipt-other-logical-address": field_blind("logicalAddress"),
+            "historical-receipt-other-native-address": field_blind("nativeAddress"),
+            "historical-receipt-other-content-hash": field_blind("contentHash"),
+            "historical-receipt-other-anchor-transaction": field_blind("transactionRef"),
+            "historical-receipt-other-writer": field_blind("writer"),
+            "historical-receipt-other-nonce": field_blind("nonce"),
+            "checkpoint-signed-by-non-steward": mock.patch.object(
+                D5, "_checkpoint_signature_valid", return_value=True
+            ),
+            "checkpoint-content-hash-mismatch": checkpoint_hash_blind(),
+            "checkpoint-binding-not-steward-signed": mock.patch.object(
+                D5, "_checkpoint_binding_valid", side_effect=binding_signature_blind
+            ),
+            "historical-bb6-authorized-candidate-invalid": original_candidates(verifies),
+            "historical-bb6-candidate-not-dereferenceable": original_candidates(retrievable),
+            "historical-original-party-map-not-authenticated": request_party_map(),
+            "historical-original-budget-differs": request_budget(),
+            "historical-original-mapping-other-bytes": mock.patch.object(
+                D5, "_verify_original_binding_mapping", side_effect=mapping_without_bytes_join
+            ),
+            # LAB-2 read as accepting the presented original binding without
+            # reproducing BB-6 over the other authorized candidates.
+            "historical-original-selection-not-reproducible": original_candidates(
+                lambda item, evidence, dependencies, verifier_config:
+                    item.get("nativeAddress")
+                    == evidence["originalMapping"]["binding"]["nativeAddress"]
+            ),
+            "current-bb6-candidate-not-dereferenceable": mock.patch.object(
+                D5, "_resolve_current_use_role", side_effect=current_retrievable
+            ),
+        }
 
 
 if __name__ == "__main__":

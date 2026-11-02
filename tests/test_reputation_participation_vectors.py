@@ -1135,6 +1135,7 @@ class ReputationParticipationVectorTests(unittest.TestCase):
             "spa-commit-proposal-wrong-job",
             "spa-commit-proposal-wrong-listing",
             "spa-commit-proposal-invalid-signature",
+            "spa-commit-proposal-algorithm-unavailable",
             "spa-commit-proposal-source-unavailable",
             "spa-commit-proposer-substitution",
             "spa-commit-obligor-already-cosigned",
@@ -1389,7 +1390,6 @@ class ReputationParticipationVectorTests(unittest.TestCase):
             with self.subTest(rejected_proposal=name):
                 self.assertEqual(evaluate(self.vectors[name])["expected"], "fail")
         for name in (
-            "spa-commit-proposal-algorithm-unavailable",
             "spa-commit-proposal-source-unavailable",
             "spa-commit-proposal-signature-missing",
         ):
@@ -1413,14 +1413,14 @@ class ReputationParticipationVectorTests(unittest.TestCase):
 
     def test_supported_unavailable_and_unknown_algorithms_are_distinct(self):
         for name in (
-            "spa-supported-channel-algorithm-unavailable",
             "spa-supported-receipt-algorithm-unavailable",
-            "spa-rating-supported-algorithm-unavailable",
             "spa-rating-ed25519-claim-resolution-unavailable",
         ):
             with self.subTest(vector=name):
                 self.assertEqual(evaluate(self.vectors[name])["expected"], "indeterminate")
-        for name in ("spa-unknown-channel-algorithm", "spa-rating-unknown-algorithm"):
+        for name in ("spa-unknown-channel-algorithm", "spa-rating-unknown-algorithm",
+                     "spa-supported-channel-algorithm-unavailable",
+                     "spa-rating-supported-algorithm-unavailable"):
             with self.subTest(vector=name):
                 self.assertEqual(evaluate(self.vectors[name])["expected"], "fail")
 
@@ -1611,7 +1611,7 @@ class ReputationParticipationVectorTests(unittest.TestCase):
             "spa-rfq-turn-hash-mismatch": "fail",
             "spa-rfq-source-message-unavailable": "indeterminate",
             "spa-rfq-duplicate-exact-source": "fail",
-            "spa-supported-channel-algorithm-unavailable": "indeterminate",
+            "spa-supported-channel-algorithm-unavailable": "fail",
         }
         for name, expected in expectations.items():
             with self.subTest(vector=name):

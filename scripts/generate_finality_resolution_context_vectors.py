@@ -26,8 +26,10 @@ try:
         with_acquisition,
     )
     from scripts.generate_settlement_finality_verification_vectors import (
+        BFT_CERTIFICATE_DOMAIN,
         FixtureFactory,
         OBSERVED_AT,
+        nonminimal_b64u,
     )
     from scripts.jcs import canonicalize
 except ImportError:
@@ -44,8 +46,10 @@ except ImportError:
         with_acquisition,
     )
     from generate_settlement_finality_verification_vectors import (
+        BFT_CERTIFICATE_DOMAIN,
         FixtureFactory,
         OBSERVED_AT,
+        nonminimal_b64u,
     )
     from jcs import canonicalize
 
@@ -56,6 +60,7 @@ OUTPUT = (
     / "finality-resolution-context-v1.json"
 )
 JOB_ID = "01K50M2V4W8Z7J6N5P3T1H9GQC"
+BFT_JOB_ID = "01K50M2V4W8Z7J6N5P3T1H9GQD"
 ISSUED_AT = 1_900_000_000_000
 ACQUIRED_AT = 1_900_000_005_000
 EXPIRES_AT = 1_900_000_006_000
@@ -90,9 +95,11 @@ def signed_response(
     arm: dict,
     signed_time: int | float = OBSERVED_AT,
     transport_metadata: dict | None = None,
+    version: str = "1",
+    extra_members: dict | None = None,
 ) -> dict:
     response = {
-        "finalityObservationResponseVersion": "1",
+        "finalityObservationResponseVersion": version,
         "authorityId": authority_id,
         "queryHash": hash_value(query),
         "policy": copy.deepcopy(query["resolutionPolicy"]),
@@ -107,6 +114,7 @@ def signed_response(
     }
     if transport_metadata is not None:
         response["transportMetadata"] = copy.deepcopy(transport_metadata)
+    response.update(copy.deepcopy(extra_members or {}))
     digest = response_signature_hash(response)
     response["signature"]["value"] = b64u(
         key.sign((RESPONSE_DOMAIN + digest).encode("ascii"))
@@ -138,7 +146,7 @@ def checkpoint_for(observation: dict) -> dict:
 
 
 def serialize_authority(authority) -> dict:
-    return {
+    payload = {
         "authenticated": authority.authenticated,
         "policy": authority.policy,
         "issuedQuery": authority.issued_query,
@@ -149,6 +157,10 @@ def serialize_authority(authority) -> dict:
         "acquisitionRecords": list(authority.acquisition_records),
         "retainedResponses": list(authority.retained_responses),
     }
+    if authority.mode != "current":
+        payload["mode"] = authority.mode
+        payload["replayValue"] = authority.replay_value
+    return payload
 
 
 def build_authority(
@@ -214,6 +226,54 @@ def resolved_input(
         "context": context_for(authority, transported),
     }
     return {"value": value, "authority": serialize_authority(authority)}
+
+
+def replace_seat(
+    value: dict, payload: dict, variant: dict, authority_id: str
+) -> dict:
+    """Replace one seat's transported, retained and acquired response."""
+    value = copy.deepcopy(value)
+    payload = copy.deepcopy(payload)
+    response = copy.deepcopy(variant["response"])
+    value["context"]["responseArtifacts"] = [
+        item for item in value["context"]["responseArtifacts"]
+        if item["authorityId"] != authority_id
+    ] + [response]
+    payload["retainedResponses"] = [
+        item for item in payload["retainedResponses"]
+        if item["authorityId"] != authority_id
+    ] + [copy.deepcopy(response)]
+    payload["acquisitionRecords"] = [
+        item for item in payload["acquisitionRecords"]
+        if item["authorityId"] != authority_id
+    ] + [copy.deepcopy(variant["acquisition"])]
+    value["context"]["replay"]["acquisitionRecords"] = copy.deepcopy(
+        payload["acquisitionRecords"]
+    )
+    return {"value": value, "authority": payload}
+
+
+def replay_record(value: dict, payload: dict) -> dict:
+    """The FRC-9 record a current decision retains for later replay."""
+    union = {
+        canonicalize(response): response
+        for response in (
+            value["context"]["responseArtifacts"] + payload["retainedResponses"]
+        )
+    }
+    return {
+        "finalityResolutionReplayVersion": "1",
+        "context": copy.deepcopy(value["context"]),
+        "policy": copy.deepcopy(payload["policy"]),
+        "policySource": copy.deepcopy(payload["policySource"]),
+        "authoritySetSource": copy.deepcopy(payload["authoritySetSource"]),
+        "checkpointSource": copy.deepcopy(payload["checkpointSource"]),
+        "acquisitionRecords": copy.deepcopy(payload["acquisitionRecords"]),
+        "retainedResponses": [
+            copy.deepcopy(union[key])
+            for key in sorted(union, key=lambda item: item.encode("utf-8"))
+        ],
+    }
 
 
 def document() -> dict:
@@ -580,28 +640,683 @@ def document() -> dict:
         copy.deepcopy(value)
     )
 
+    # Every case is materialized as the exact verifier input so a third party
+    # can execute it from the JSON alone; ``positive`` and ``variants`` remain
+    # as the building blocks the focused tests mutate.
+    positive_payload = serialize_authority(authority)
+    nonce = authority.issued_query["nonce"]
+    variants = {
+        "conflictingResponse": {
+            "response": conflict_response,
+            "acquisition": acquisition(conflict_response, nonce, ACQUIRED_AT),
+        },
+        "checkpointMismatchResponse": {
+            "response": checkpoint_mismatch_response,
+            "acquisition": acquisition(
+                checkpoint_mismatch_response, nonce, ACQUIRED_AT
+            ),
+        },
+        "contradictoryResponse": {
+            "response": contradiction_response,
+            "acquisition": acquisition(contradiction_response, nonce, ACQUIRED_AT),
+        },
+        "unavailableResponse": {
+            "response": unavailable_response,
+            "acquisition": acquisition(unavailable_response, nonce, ACQUIRED_AT),
+        },
+        "futureResponse": {
+            "response": future_response,
+            "acquisition": acquisition(future_response, nonce, ACQUIRED_AT),
+        },
+        "staleResponse": {
+            "response": stale_response,
+            "acquisition": acquisition(stale_response, nonce, ACQUIRED_AT),
+        },
+        "otherQueryResponse": {
+            "response": other_query_response,
+            "acquisition": acquisition(other_query_response, nonce, ACQUIRED_AT),
+        },
+    }
+    retained_conflict_payload = copy.deepcopy(positive_payload)
+    retained_conflict_payload["retainedResponses"].append(
+        copy.deepcopy(conflict_response)
+    )
+    retained_conflict_payload["acquisitionRecords"].append(
+        copy.deepcopy(variants["conflictingResponse"]["acquisition"])
+    )
+    retained_conflict_value = copy.deepcopy(value)
+    retained_conflict_value["context"]["replay"]["acquisitionRecords"] = (
+        copy.deepcopy(retained_conflict_payload["acquisitionRecords"])
+    )
+    composite_relationship_input = {
+        "relationship": copy.deepcopy(relationship),
+        "legs": [
+            {
+                "legId": leg["legId"],
+                "value": copy.deepcopy(leg["value"]),
+                "authority": copy.deepcopy(leg["authority"]),
+            }
+            for leg in composite_legs
+        ],
+    }
+    unavailable_leg_input = copy.deepcopy(composite_relationship_input)
+    destination = composite_legs[1]
+    unavailable_leg = replace_seat(
+        destination["value"], destination["authority"],
+        destination["unavailableVariant"], "observer-b",
+    )
+    unavailable_leg_input["legs"][1].update(unavailable_leg)
+    replay_payload = with_acquisition(
+        authority,
+        records=positive_payload["acquisitionRecords"],
+        retained_responses=replay_record(value, positive_payload)["retainedResponses"],
+        mode="replay",
+        replay_value=value,
+    )
+
+    # FRC-1: the signed profile selects the capability, so neither the
+    # positive single-view observation nor #416's competing fork view may
+    # be verified through the historical single-view contract.
+    single_view_value = copy.deepcopy(value)
+    single_view_value["context"] = copy.deepcopy(
+        response_a["response"]["observation"]
+    )
+    fork_view_value = copy.deepcopy(conflicting_heads_input["value"])
+    fork_view_value["context"] = copy.deepcopy(
+        conflicting_head_response["response"]["observation"]
+    )
+    # FRC-1: a resolution context under a signed profile that does not
+    # select the capability is refused before its query is compared.
+    uncapable = copy.deepcopy(base_value)
+    del uncapable["rail"]["consumerFinalityProfile"]["finalityResolutionCapability"]
+    factory.rebind_rail(uncapable)
+    uncapable_value = {
+        "evidence": copy.deepcopy(uncapable["evidence"]),
+        "rail": copy.deepcopy(uncapable["rail"]),
+        "agreement": copy.deepcopy(uncapable["agreement"]),
+        "context": copy.deepcopy(value["context"]),
+    }
+    # FRC-8: a genuinely signed observer-a response of an unknown version.
+    unknown_version_response = signed_response(
+        keys["observer-a-key"],
+        authority_id="observer-a",
+        key_id="observer-a-key",
+        query=authority.issued_query,
+        checkpoint=checkpoint,
+        arm={"status": "observed", "observation": observation},
+        transport_metadata={"arrivalSequence": 2, "channel": "fixture-a"},
+        version="2",
+    )
+    unknown_version_input = replace_seat(
+        value,
+        positive_payload,
+        {
+            "response": unknown_version_response,
+            "acquisition": acquisition(
+                unknown_version_response, nonce, ACQUIRED_AT
+            ),
+        },
+        "observer-a",
+    )
+    # FRC-8: the response arm is a closed observed/unavailable union.
+    unknown_status_response = signed_response(
+        keys["observer-a-key"],
+        authority_id="observer-a",
+        key_id="observer-a-key",
+        query=authority.issued_query,
+        checkpoint=checkpoint,
+        arm={"status": "finalized", "observation": observation},
+        transport_metadata={"arrivalSequence": 2, "channel": "fixture-a"},
+    )
+    unknown_status_input = replace_seat(
+        value,
+        positive_payload,
+        {
+            "response": unknown_status_response,
+            "acquisition": acquisition(
+                unknown_status_response, nonce, ACQUIRED_AT
+            ),
+        },
+        "observer-a",
+    )
+    # FRC-2: the query was issued for the signed evidence E1; a second
+    # genuinely signed evidence E2 for the same transaction is presented.
+    other_evidence_value = copy.deepcopy(value)
+    other_evidence_value["evidence"]["observedAt"] = OBSERVED_AT + 1
+    factory.resign_evidence(other_evidence_value["evidence"])
+
+    def verify_input(case_value: dict, payload: dict) -> dict:
+        return {"value": copy.deepcopy(case_value), "authority": copy.deepcopy(payload)}
+
+    # FRC-8: the response and both arms are closed member sets.  Each
+    # response is genuinely signed and acquired; only one member is extra.
+    def closed_member_input(authority_id: str, arm: dict, **options) -> dict:
+        response = signed_response(
+            keys[authority_id + "-key"],
+            authority_id=authority_id,
+            key_id=authority_id + "-key",
+            query=authority.issued_query,
+            checkpoint=checkpoint,
+            arm=arm,
+            **options,
+        )
+        return replace_seat(
+            value, positive_payload,
+            {"response": response, "acquisition": acquisition(response, nonce, ACQUIRED_AT)},
+            authority_id,
+        )
+
+    response_extra_member_input = closed_member_input(
+        "observer-a", {"status": "observed", "observation": observation},
+        transport_metadata={"arrivalSequence": 2, "channel": "fixture-a"},
+        extra_members={"finalityHint": "final"},
+    )
+    observed_arm_extra_member_input = closed_member_input(
+        "observer-a",
+        {"status": "observed", "observation": observation, "finalityHint": "final"},
+        transport_metadata={"arrivalSequence": 2, "channel": "fixture-a"},
+    )
+    unavailable_arm_extra_member_input = closed_member_input(
+        "observer-b",
+        {"status": "unavailable", "reason": "maintenance", "retryAfterMs": 1000},
+        signed_time=ACQUIRED_AT - 100,
+    )
+    # FRC-8: the one optional member is typed `object`; a signed scalar or
+    # null in its place is outside the closed type.
+    transport_metadata_scalar_input = closed_member_input(
+        "observer-a", {"status": "observed", "observation": observation},
+        transport_metadata=7,
+    )
+    transport_metadata_null_input = closed_member_input(
+        "observer-a", {"status": "observed", "observation": observation},
+        extra_members={"transportMetadata": None},
+    )
+    # FRC-8: observer-b's view carries only the threshold's two RPC
+    # signatures where observer-a's carries all three.  Both are sufficient
+    # authentication of one head, path, transaction and event.
+    threshold_observation = copy.deepcopy(observation)
+    threshold_attestations = threshold_observation["observation"]["authorityEvidence"]["attestations"]
+    threshold_attestations[:] = threshold_attestations[:profile["observation"]["threshold"]]
+    threshold_set_input = closed_member_input(
+        "observer-b", {"status": "observed", "observation": threshold_observation},
+        transport_metadata={"arrivalSequence": 1, "channel": "fixture-b"},
+    )
+    # FRC-8: observer-b saw the same head two seconds later, so its RPC
+    # quorum signs a later observedAt.  The instant is freshness evidence.
+    later_observation = copy.deepcopy(observation)
+    later_observation["observation"]["authenticatedHead"]["observedAt"] += 2000
+    factory.sign_chain_authority(later_observation["observation"])
+    later_instant_input = closed_member_input(
+        "observer-b", {"status": "observed", "observation": later_observation},
+        transport_metadata={"arrivalSequence": 1, "channel": "fixture-b"},
+    )
+
+    # FRC-8 on a bft-final rail: each observer carries a validator
+    # certificate over the same inclusion block.  observer-a's holds all
+    # three validators in reverse order, observer-b's the canonical {a, b}
+    # (75 of 100 against 2/3).  Below quorum, {a} alone does not verify.
+    bft_value = factory.model_input("bft-final", job_id=BFT_JOB_ID)
+    bft_value["rail"]["consumerFinalityProfile"][
+        "finalityResolutionCapability"
+    ] = CAPABILITY
+    factory.rebind_rail(bft_value)
+    base_trusted["sessionAuthorityByJob"][BFT_JOB_ID] = copy.deepcopy(
+        factory.trusted["sessionAuthorityByJob"][BFT_JOB_ID]
+    )
+    bft_observation = copy.deepcopy(bft_value["context"])
+    bft_checkpoint = checkpoint_for(bft_observation)
+    bft_authority = build_authority(
+        bft_value,
+        base_trusted,
+        policy,
+        bft_checkpoint,
+        nonce="fixture-query-nonce-392-bft",
+        policy_source=policy_source,
+        authority_set_source=authority_set_source,
+        checkpoint_source=source_ref("checkpoint", bft_checkpoint),
+    )
+    bft_nonce = bft_authority.issued_query["nonce"]
+
+    def bft_view(signers) -> dict:
+        view = copy.deepcopy(bft_observation)
+        certificate = view["observation"]["finalityCertificate"]
+        certificate["signatures"] = [
+            {
+                "validatorId": signer,
+                "algorithm": "ed25519",
+                "value": factory.sign_digest(
+                    signer, BFT_CERTIFICATE_DOMAIN, certificate["blockId"]
+                ),
+            }
+            for signer in signers
+        ]
+        return view
+
+    def bft_input(views: dict) -> dict:
+        responses = [
+            signed_response(
+                keys[authority_id + "-key"],
+                authority_id=authority_id,
+                key_id=authority_id + "-key",
+                query=bft_authority.issued_query,
+                checkpoint=bft_checkpoint,
+                arm={"status": "observed", "observation": view},
+            )
+            for authority_id, view in views.items()
+        ]
+        return resolved_input(
+            bft_value, bft_authority, responses, responses,
+            [acquisition(response, bft_nonce, ACQUIRED_AT) for response in responses],
+        )
+
+    bft_equivalent_input = bft_input({
+        "observer-a": bft_view(("validator-c", "validator-b", "validator-a")),
+        "observer-b": bft_view(("validator-a", "validator-b")),
+    })
+    bft_below_quorum_input = bft_input({
+        "observer-a": bft_view(("validator-c", "validator-b", "validator-a")),
+        "observer-b": bft_view(("validator-a",)),
+    })
+
+    # FRC-5: each verifier-local acquisition record names the issued nonce,
+    # an obtained status, one response hash and the signed responder.
+    def with_records(mutate) -> dict:
+        payload = copy.deepcopy(positive_payload)
+        mutate(payload["acquisitionRecords"])
+        case_value = copy.deepcopy(value)
+        case_value["context"]["replay"]["acquisitionRecords"] = copy.deepcopy(
+            payload["acquisitionRecords"]
+        )
+        return verify_input(case_value, payload)
+
+    def observer_a_record(records: list) -> dict:
+        return next(item for item in records if item["authorityId"] == "observer-a")
+
+    other_nonce_input = with_records(
+        lambda records: observer_a_record(records).__setitem__("queryNonce", "fixture-query-nonce-other")
+    )
+    not_obtained_input = with_records(
+        lambda records: observer_a_record(records).__setitem__("status", "failed")
+    )
+    duplicate_record_input = with_records(
+        lambda records: records.append(copy.deepcopy(observer_a_record(records)))
+    )
+    other_responder_input = with_records(
+        lambda records: observer_a_record(records).__setitem__("authorityId", "observer-b")
+    )
+
+    # FV entry: malformed verifier-owned policy material is error, not missing.
+    malformed_policy_payload = copy.deepcopy(positive_payload)
+    malformed_policy_payload["policy"]["authorities"][0]["verificationKeys"][0][
+        "publicKey"
+    ] = "not-a-key"
+
+    # FRC-9: the replay record's version discriminator is closed.
+    unknown_replay = replay_record(value, positive_payload)
+    unknown_replay["finalityResolutionReplayVersion"] = "2"
+
+    # FRC-4 / CORE SIG-6: observer-a's response signature value changes and
+    # the verifier records the response as it acquired it.
+    def observer_a_signature(signature_value) -> dict:
+        case_value = copy.deepcopy(value)
+        payload = copy.deepcopy(positive_payload)
+        acquired_hash = None
+        for container in (case_value["context"]["responseArtifacts"], payload["retainedResponses"]):
+            for response in container:
+                if response["authorityId"] == "observer-a":
+                    response["signature"]["value"] = signature_value(response["signature"]["value"])
+                    acquired_hash = response_hash(response)
+        observer_a_record(payload["acquisitionRecords"])["responseHash"] = acquired_hash
+        case_value["context"]["replay"]["acquisitionRecords"] = copy.deepcopy(
+            payload["acquisitionRecords"]
+        )
+        return verify_input(case_value, payload)
+
+    nonminimal_signature_input = observer_a_signature(nonminimal_b64u)
+    invalid_signature_input = observer_a_signature(lambda _: b64u(bytes(range(64))))
+
+    # FRC-2: the transported query is not the one the verifier issued.
+    transported_query_value = copy.deepcopy(value)
+    transported_query_value["context"]["query"]["nonce"] = "fixture-query-nonce-transported"
+
+    # FRC-2: the verifier's own policy source record does not hash the policy.
+    policy_source_payload = copy.deepcopy(positive_payload)
+    policy_source_payload["policySource"]["contentHash"] = "00" * 32
+    policy_source_value = copy.deepcopy(value)
+    policy_source_value["context"]["replay"]["policySource"] = copy.deepcopy(
+        policy_source_payload["policySource"]
+    )
+
+    # FRC-5: local acquisition time against the query boundary and the
+    # verifier decision time.
+    outside_boundary_input = with_records(
+        lambda records: observer_a_record(records).__setitem__(
+            "acquiredAt", EXPIRES_AT + 1
+        )
+    )
+    after_decision_payload = copy.deepcopy(positive_payload)
+    after_decision_payload["verificationTimeMs"] = min(
+        record["acquiredAt"] for record in positive_payload["acquisitionRecords"]
+    ) - 1
+
+    # FRC-9: a replay authority without its recorded commerce inputs.
+    replay_without_value = copy.deepcopy(serialize_authority(replay_payload))
+    replay_without_value["replayValue"] = None
+
+    # FV entry: each structural rule of the verifier-owned policy is error.
+    def malformed_policy(mutate) -> dict:
+        payload = copy.deepcopy(positive_payload)
+        mutate(payload["policy"])
+        return verify_input(value, payload)
+
+    def seat(index):
+        return lambda policy: policy["authorities"][index]
+
+    policy_cases = [
+        ("resolution-authority-policy-authorities-empty",
+         "the authenticated verifier-owned policy configures no authority",
+         lambda policy: policy.__setitem__("authorities", [])),
+        ("resolution-authority-policy-duplicate-authority-id",
+         "two seats of the authenticated verifier-owned policy share one authorityId",
+         lambda policy: seat(1)(policy).__setitem__("authorityId", seat(0)(policy)["authorityId"])),
+        ("resolution-authority-policy-duplicate-key-id",
+         "one seat lists the same verification key twice",
+         lambda policy: seat(0)(policy)["verificationKeys"].append(copy.deepcopy(seat(0)(policy)["verificationKeys"][0]))),
+        ("resolution-authority-policy-seat-without-keys",
+         "one seat of the authenticated verifier-owned policy has no verification key",
+         lambda policy: seat(0)(policy).__setitem__("verificationKeys", [])),
+        ("resolution-authority-policy-key-algorithm-unknown",
+         "one seat key names an unregistered algorithm",
+         lambda policy: seat(0)(policy)["verificationKeys"][0].__setitem__("algorithm", "secp256k1")),
+        ("resolution-authority-policy-unavailable-reasons-duplicate",
+         "the policy lists one unavailable reason twice",
+         lambda policy: policy["unavailableReasons"].append(policy["unavailableReasons"][0])),
+    ]
+
+    # FV entry on the replay and composite entry points.
+    malformed_replay_authority = copy.deepcopy(serialize_authority(replay_payload))
+    malformed_replay_authority["policy"]["authorities"][0]["verificationKeys"][0][
+        "publicKey"
+    ] = "not-a-key"
+    malformed_leg_input = copy.deepcopy(composite_relationship_input)
+    malformed_leg_input["legs"][1]["authority"]["policy"]["authorities"][0][
+        "verificationKeys"
+    ][0]["publicKey"] = "not-a-key"
+
     vectors = [
-        {"name": "complete-all-authorities", "expected": "pass"},
-        {"name": "retained-same-authority-conflict", "expected": "indeterminate"},
+        {"name": "complete-all-authorities", "expected": "pass",
+         "operation": "verify",
+         "note": "both configured authorities sign the same native view for the "
+                 "verifier-issued query; transport order and metadata differ",
+         "input": verify_input(value, positive_payload)},
+        {"name": "retained-same-authority-conflict", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "a retained, separately acquired observer-a response with a "
+                 "different native view conflicts with the transported one",
+         "input": verify_input(retained_conflict_value, retained_conflict_payload)},
         {"name": "fv-conflicting-authenticated-heads", "expected": "indeterminate",
+         "operation": "verify",
          "note": "two configured authorities sign individually valid views whose "
                  "heads are competing sibling-fork blocks at the checkpoint height",
          "input": conflicting_heads_input},
         {"name": "fv-reorg-unresolved", "expected": "indeterminate",
+         "operation": "verify",
          "note": "a retained pre-reorganisation response conflicts with the same "
                  "authority's later replacement-fork response; both authorities "
                  "agree on the replacement and transport omits the retained view",
          "input": reorg_input},
-        {"name": "native-checkpoint-mismatch", "expected": "fail"},
-        {"name": "authenticated-economic-contradiction", "expected": "fail"},
-        {"name": "configured-authority-unavailable", "expected": "indeterminate"},
-        {"name": "signed-time-after-acquisition", "expected": "fail"},
-        {"name": "stale-signed-observation", "expected": "indeterminate"},
-        {"name": "response-for-other-query", "expected": "indeterminate"},
-        {"name": "distinct-composite-legs", "expected": "pass"},
-        {"name": "composite-leg-unavailable", "expected": "indeterminate"},
-        {"name": "recorded-policy-replay", "expected": "pass"},
+        {"name": "native-checkpoint-mismatch", "expected": "fail",
+         "operation": "verify",
+         "note": "observer-a's signed native head is not at the pinned checkpoint",
+         "input": replace_seat(
+             value, positive_payload,
+             variants["checkpointMismatchResponse"], "observer-a",
+         )},
+        {"name": "authenticated-economic-contradiction", "expected": "fail",
+         "operation": "verify",
+         "note": "observer-a's signed native event contradicts the signed "
+                 "agreement amount",
+         "input": replace_seat(
+             value, positive_payload,
+             variants["contradictoryResponse"], "observer-a",
+         )},
+        {"name": "configured-authority-unavailable", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "observer-b signs an explicit registered unavailable response",
+         "input": replace_seat(
+             value, positive_payload,
+             variants["unavailableResponse"], "observer-b",
+         )},
+        {"name": "signed-time-after-acquisition", "expected": "fail",
+         "operation": "verify",
+         "note": "observer-a's signed observation time is after the verifier's "
+                 "local acquisition",
+         "input": replace_seat(
+             value, positive_payload, variants["futureResponse"], "observer-a",
+         )},
+        {"name": "stale-signed-observation", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "observer-a's signed observation is older than the policy's "
+                 "maximum age at acquisition",
+         "input": replace_seat(
+             value, positive_payload, variants["staleResponse"], "observer-a",
+         )},
+        {"name": "response-for-other-query", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "observer-b's only response answers another query, so its "
+                 "configured seat stays empty",
+         "input": replace_seat(
+             value, positive_payload, variants["otherQueryResponse"], "observer-b",
+         )},
+        {"name": "distinct-composite-legs", "expected": "pass",
+         "operation": "verify-composite",
+         "note": "each leg passes its own complete authority gate under its own "
+                 "profile, subject and checkpoint",
+         "input": composite_relationship_input},
+        {"name": "composite-leg-unavailable", "expected": "indeterminate",
+         "operation": "verify-composite",
+         "note": "the destination leg's observer-b seat is explicitly unavailable",
+         "input": unavailable_leg_input},
+        {"name": "recorded-policy-replay", "expected": "pass",
+         "operation": "replay",
+         "note": "the recorded replay authority re-evaluates the retained record; "
+                 "the result is historical, not a current finality decision",
+         "input": {
+             "replayRecord": replay_record(value, positive_payload),
+             "authority": serialize_authority(replay_payload),
+         }},
+        {"name": "frc1-single-view-under-capability", "expected": "error",
+         "operation": "verify",
+         "note": "the signed profile selects finality-resolution-context-v1; a "
+                 "single-view chain context is refused, never verified as a "
+                 "historical single-view input",
+         "input": verify_input(single_view_value, positive_payload)},
+        {"name": "frc1-fork-view-under-capability", "expected": "error",
+         "operation": "verify",
+         "note": "presenting only observer-b's competing-fork view from "
+                 "fv-conflicting-authenticated-heads cannot bypass the conflict "
+                 "through the single-view contract",
+         "input": verify_input(
+             fork_view_value, conflicting_heads_input["authority"]
+         )},
+        {"name": "frc1-context-without-signed-capability", "expected": "error",
+         "operation": "verify",
+         "note": "the steward re-signed the rail without the capability; a "
+                 "resolution context cannot be consumed under that profile",
+         "input": verify_input(uncapable_value, positive_payload)},
+        {"name": "response-version-unknown", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires a response "
+                 "whose finalityObservationResponseVersion is \"2\"",
+         "input": unknown_version_input},
+        {"name": "response-status-unknown", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires a response "
+                 "whose arm status is outside observed/unavailable",
+         "input": unknown_status_input},
+        {"name": "issued-query-other-evidence", "expected": "fail",
+         "operation": "verify",
+         "note": "the query was issued for one signed evidence record; another "
+                 "validly signed evidence for the same transaction is presented "
+                 "with that query and its responses",
+         "input": verify_input(other_evidence_value, positive_payload)},
+        {"name": "response-extra-member", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires a response "
+                 "carrying an extra top-level member",
+         "input": response_extra_member_input},
+        {"name": "response-observed-arm-extra-member", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires an observed "
+                 "arm carrying an extra member",
+         "input": observed_arm_extra_member_input},
+        {"name": "response-unavailable-arm-extra-member", "expected": "error",
+         "operation": "verify",
+         "note": "observer-b genuinely signs and the verifier acquires an "
+                 "unavailable arm carrying an extra member",
+         "input": unavailable_arm_extra_member_input},
+        {"name": "response-transport-metadata-not-object", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires a response "
+                 "whose optional transportMetadata is the integer 7",
+         "input": transport_metadata_scalar_input},
+        {"name": "response-transport-metadata-null", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a genuinely signs and the verifier acquires a response "
+                 "whose optional transportMetadata is null",
+         "input": transport_metadata_null_input},
+        {"name": "equivalent-sufficient-authentication-sets", "expected": "pass",
+         "operation": "verify",
+         "note": "observer-a's view carries three RPC signatures and observer-b's "
+                 "the threshold's two over the same head, path, transaction and "
+                 "event; which sufficient set authenticates a view is not a "
+                 "finality conflict",
+         "input": threshold_set_input},
+        {"name": "equivalent-views-observed-at-different-instants", "expected": "pass",
+         "operation": "verify",
+         "note": "observer-b's RPC quorum signs the same head two seconds after "
+                 "observer-a's; the observation instant is freshness evidence, "
+                 "not a finality conflict",
+         "input": later_instant_input},
+        {"name": "bft-equivalent-certificate-signature-sets", "expected": "pass",
+         "operation": "verify",
+         "note": "on a bft-final rail observer-a's certificate carries validators "
+                 "c, b and a in that order and observer-b's the sufficient a and b "
+                 "over the same inclusion block; neither order nor set is a "
+                 "finality conflict",
+         "input": bft_equivalent_input},
+        {"name": "bft-certificate-below-quorum", "expected": "fail",
+         "operation": "verify",
+         "note": "on a bft-final rail observer-b's certificate carries only "
+                 "validator a (40 of 100 against 2/3); each view is still "
+                 "verified on its own",
+         "input": bft_below_quorum_input},
+        {"name": "acquisition-record-other-nonce", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a's verifier-local acquisition record names another "
+                 "query nonce than the issued query",
+         "input": other_nonce_input},
+        {"name": "acquisition-record-not-obtained", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a's verifier-local acquisition record status is not "
+                 "obtained",
+         "input": not_obtained_input},
+        {"name": "acquisition-record-duplicate-response-hash", "expected": "error",
+         "operation": "verify",
+         "note": "two verifier-local acquisition records name observer-a's "
+                 "response hash",
+         "input": duplicate_record_input},
+        {"name": "acquisition-authority-differs-from-responder", "expected": "fail",
+         "operation": "verify",
+         "note": "the verifier-local acquisition record for observer-a's signed "
+                 "response names observer-b",
+         "input": other_responder_input},
+        {"name": "resolution-authority-policy-malformed", "expected": "error",
+         "operation": "verify",
+         "note": "the authenticated verifier-owned policy names a seat key that is "
+                 "not a 32-byte Base64URL value",
+         "input": verify_input(value, malformed_policy_payload)},
+        {"name": "replay-record-version-unknown", "expected": "error",
+         "operation": "replay",
+         "note": "the retained replay record's finalityResolutionReplayVersion "
+                 "is \"2\"",
+         "input": {
+             "replayRecord": unknown_replay,
+             "authority": serialize_authority(replay_payload),
+         }},
+        {"name": "response-signature-nonminimal-base64url", "expected": "error",
+         "operation": "verify",
+         "note": "observer-a's response signature decodes to the genuine bytes but "
+                 "is not the minimal Base64URL spelling, so it fails the SIG-6 wire "
+                 "stage (CORE §B.7 SIG-7 error); the verifier acquired it as "
+                 "transported",
+         "input": nonminimal_signature_input},
+        {"name": "response-signature-invalid", "expected": "fail",
+         "operation": "verify",
+         "note": "observer-a's response carries a well-formed signature over other "
+                 "bytes; the verifier acquired it as transported",
+         "input": invalid_signature_input},
+        {"name": "transported-query-differs", "expected": "fail",
+         "operation": "verify",
+         "note": "the transported query names another nonce than the query the "
+                 "verifier issued",
+         "input": verify_input(transported_query_value, positive_payload)},
+        {"name": "resolution-policy-source-differs", "expected": "fail",
+         "operation": "verify",
+         "note": "the verifier's policy source record does not hash the "
+                 "authenticated policy it holds",
+         "input": verify_input(policy_source_value, policy_source_payload)},
+        {"name": "response-acquired-outside-query-boundary", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "the verifier-local record acquires observer-a's response after "
+                 "the issued query expired",
+         "input": outside_boundary_input},
+        {"name": "response-acquired-after-decision-time", "expected": "indeterminate",
+         "operation": "verify",
+         "note": "the verifier decision time precedes every local acquisition",
+         "input": verify_input(value, after_decision_payload)},
+        {"name": "replay-commerce-inputs-unavailable", "expected": "indeterminate",
+         "operation": "replay",
+         "note": "the recorded replay authority lacks its recorded commerce inputs",
+         "input": {
+             "replayRecord": replay_record(value, positive_payload),
+             "authority": replay_without_value,
+         }},
+        {"name": "replay-authority-policy-malformed", "expected": "error",
+         "operation": "replay",
+         "note": "the recorded replay authority's policy names a seat key that is "
+                 "not a 32-byte Base64URL value",
+         "input": {
+             "replayRecord": replay_record(value, positive_payload),
+             "authority": malformed_replay_authority,
+         }},
+        {"name": "composite-leg-authority-policy-malformed", "expected": "error",
+         "operation": "verify-composite",
+         "note": "the destination leg's verifier-owned policy names a seat key "
+                 "that is not a 32-byte Base64URL value",
+         "input": malformed_leg_input},
     ]
+    for path in (
+        ("observation",), ("observation", "transactionRef"),
+        ("observation", "inclusionBlock"), ("observation", "authenticatedHead"),
+        ("observation", "authorityEvidence"),
+    ):
+        nested = copy.deepcopy(observation)
+        node = nested
+        for part in path:
+            node = node[part]
+        node["unexpectedMember"] = 1
+        vectors.append({
+            "name": "response-nested-extra-member-" + "-".join(path),
+            "expected": "error", "operation": "verify",
+            "note": "a genuinely signed and acquired observed response retains an extra member below its arm",
+            "input": closed_member_input("observer-a", {"status": "observed", "observation": nested}),
+        })
+    vectors.extend(
+        {"name": name, "expected": "error", "operation": "verify", "note": note,
+         "input": malformed_policy(mutate)}
+        for name, note, mutate in policy_cases
+    )
     return {
         "set": "finality-resolution-context-v1",
         "tier": "candidate",
@@ -618,60 +1333,13 @@ def document() -> dict:
         "baseTrusted": base_trusted,
         "positive": {
             "value": value,
-            "authority": serialize_authority(authority),
+            "authority": positive_payload,
             "want": {
                 "decision": "pass",
                 "finalityClass": "profile-final",
             },
         },
-        "variants": {
-            "conflictingResponse": {
-                "response": conflict_response,
-                "acquisition": acquisition(
-                    conflict_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-            "checkpointMismatchResponse": {
-                "response": checkpoint_mismatch_response,
-                "acquisition": acquisition(
-                    checkpoint_mismatch_response,
-                    authority.issued_query["nonce"],
-                    ACQUIRED_AT,
-                ),
-            },
-            "contradictoryResponse": {
-                "response": contradiction_response,
-                "acquisition": acquisition(
-                    contradiction_response,
-                    authority.issued_query["nonce"],
-                    ACQUIRED_AT,
-                ),
-            },
-            "unavailableResponse": {
-                "response": unavailable_response,
-                "acquisition": acquisition(
-                    unavailable_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-            "futureResponse": {
-                "response": future_response,
-                "acquisition": acquisition(
-                    future_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-            "staleResponse": {
-                "response": stale_response,
-                "acquisition": acquisition(
-                    stale_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-            "otherQueryResponse": {
-                "response": other_query_response,
-                "acquisition": acquisition(
-                    other_query_response, authority.issued_query["nonce"], ACQUIRED_AT
-                ),
-            },
-        },
+        "variants": variants,
         "composite": {
             "relationship": relationship,
             "legs": composite_legs,

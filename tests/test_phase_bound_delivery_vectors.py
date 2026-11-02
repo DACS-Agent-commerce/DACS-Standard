@@ -2744,6 +2744,30 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             vector for vector in self.data["vectors"] if vector["name"] == name
         ))
 
+    def test_pde5_comparison_cases_are_otherwise_valid(self):
+        """Each well-formed PDE-5 mismatch case is re-signed: the delivery
+        evidence has its closed shape and a genuine signature, the bundle
+        signatures verify and the outer reference resolves. Only the PDE-5
+        join it names (credentialRef, renewalSeq, cleartext digest or
+        renewal address) can reject it."""
+        for name in (
+            "credential-ref-mismatch",
+            "credential-access-model-mismatch",
+            "credential-renewal-mismatch",
+            "credential-cleartext-digest-mismatch",
+            "credential-ciphertext-hash-substitution",
+            "entitlement-record-at-other-renewal-address",
+        ):
+            case = self._vector(name)
+            artifact = case["evidenceRecords"][0]["artifact"]
+            with self.subTest(case=name):
+                self.assertEqual(evaluate(case), "fail")
+                self.assertTrue(exact_delivery_evidence_shape(artifact))
+                self.assertTrue(verify_signature(artifact, DELIVERY_DOMAIN))
+                self.assertTrue(verify_bundle_signatures(case["bundle"]))
+                supplied = case["bundle"]["settlementEvidence"][0]
+                self.assertEqual(resolve_evidence(case, supplied)[0], "pass")
+
     def test_credential_field_mutation_vectors_reach_signature_guard(self):
         names = tuple(self.CREDENTIAL_FIELD_MUTATIONS)
         absent = object()

@@ -17,6 +17,7 @@ from reputation_evidence import (
     encode_canonical_object,
     jcs_hash,
 )
+from secp256k1_fixture import deterministic_ecdsa_signature, fixture_private_value
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -103,6 +104,22 @@ def sign_artifact(
     }
 
 
+def sign_artifact_ecdsa(unsigned: dict, signer: str, domain: str) -> dict:
+    """A registered-algorithm signature the fixture resolver cannot verify,
+    carried in its CORE §B.7 encoding (canonical DER, low S)."""
+    digest = artifact_hash(unsigned)
+    payload = (domain + digest).encode("ascii")
+    return {
+        **copy.deepcopy(unsigned),
+        "signature": {
+            "algorithm": "ecdsa-secp256k1",
+            "signer": signer,
+            "value": b64url(deterministic_ecdsa_signature(ECDSA_FIXTURE_VALUE, payload)),
+        },
+    }
+
+
+ECDSA_FIXTURE_VALUE = fixture_private_value(b"dacs-395-ecdsa-unavailable")
 BUYER_KEY = private_key("dacs-395-buyer")
 SELLER_KEY = private_key("dacs-395-seller")
 OUTSIDER_KEY = private_key("dacs-395-outsider")
@@ -766,8 +783,11 @@ def channel_changed(base: dict, mutate, *, algorithm: str = "ed25519") -> dict:
     unsigned = copy.deepcopy(item["authenticatedChannelMessages"][0])
     unsigned.pop("signature", None)
     mutate(unsigned)
-    message = sign_artifact(unsigned, BUYER_KEY, BUYER, CHANNEL_DOMAIN)
-    message["signature"]["algorithm"] = algorithm
+    if algorithm == "ecdsa-secp256k1":
+        message = sign_artifact_ecdsa(unsigned, BUYER, CHANNEL_DOMAIN)
+    else:
+        message = sign_artifact(unsigned, BUYER_KEY, BUYER, CHANNEL_DOMAIN)
+        message["signature"]["algorithm"] = algorithm
     item["authenticatedChannelMessages"] = [message]
     admission = item["participationEvidence"]["admission"]
     admission["obligation"]["source"]["messageHash"] = artifact_hash(message)
@@ -1060,10 +1080,9 @@ def build_vectors() -> list[dict]:
     unrelated_unsigned = copy.deepcopy(CHANNEL_MESSAGE)
     unrelated_unsigned.pop("signature")
     unrelated_unsigned["body"]["proposedTermsHash"] = "13" * 32
-    unrelated_unavailable = sign_artifact(
-        unrelated_unsigned, BUYER_KEY, BUYER, CHANNEL_DOMAIN
+    unrelated_unavailable = sign_artifact_ecdsa(
+        unrelated_unsigned, BUYER, CHANNEL_DOMAIN
     )
-    unrelated_unavailable["signature"]["algorithm"] = "ecdsa-secp256k1"
     unrelated_sources["authenticatedChannelMessages"].append(unrelated_unavailable)
     vectors.append(vector(
         "spa-rfq-unrelated-malformed-and-unavailable-sources-ignored", "pass",
@@ -1157,7 +1176,7 @@ def build_vectors() -> list[dict]:
         ("spa-commit-proposal-wrong-listing", "fail", "the authenticated Agreement proposal must pin the exact admission Listing", proposal_changed(commit, lambda agreement: agreement["listingRef"].__setitem__("contentHash", "91" * 32))),
         ("spa-commit-proposal-wrong-pattern", "fail", "the authenticated Agreement pattern must match the Listing negotiation phase", proposal_changed(commit, lambda agreement: agreement.__setitem__("derivedFromPattern", "fixed-price"))),
         ("spa-commit-proposal-invalid-signature", "fail", "a malformed proposer signature cannot authenticate pre-cosign Agreement authority", changed(commit, lambda x: x["proposedAgreement"]["signatures"][0].__setitem__("value", "A" * 86))),
-        ("spa-commit-proposal-algorithm-unavailable", "indeterminate", "a registered Agreement signature algorithm unavailable to the fixture resolver does not become invalid", changed(commit, lambda x: x["proposedAgreement"]["signatures"][0].__setitem__("algorithm", "sr1-aggregate"))),
+        ("spa-commit-proposal-algorithm-unavailable", "fail", "the Agreement algorithm contradicts its authenticated key: Ed25519 signer (SIG-7 step 3)", changed(commit, lambda x: x["proposedAgreement"]["signatures"][0].__setitem__("algorithm", "sr1-aggregate"))),
         ("spa-commit-proposal-source-unavailable", "indeterminate", "missing proposed Agreement source authority cannot establish a co-signature obligation", changed(commit, lambda x: x.__setitem__("proposedAgreement", None))),
         ("spa-commit-proposal-signature-missing", "indeterminate", "an Agreement-shaped proposal without a proposer signature has unavailable source authority", proposal_changed(commit, lambda agreement: None, signers=[])),
         ("spa-commit-proposer-substitution", "fail", "even a valid obligor signature cannot substitute the exact opposite proposer", copy.deepcopy(commit)),
@@ -1214,7 +1233,7 @@ def build_vectors() -> list[dict]:
         ("spa-forged-outcome-evidence", "indeterminate", "producer-created outcome evidence cannot establish abort causality", changed(base, lambda x: x["knownOutcomeEvidence"][0]["signature"].__setitem__("value", "A" * 86))),
         ("spa-conflicting-outcome-evidence", "indeterminate", "conflicting trusted exact outcome events are non-countable", copy.deepcopy(base)),
         ("spa-publication-after-deadline-without-outcome", "indeterminate", "late publication still supplies no nonresponse authority", changed(base, lambda x: x.__setitem__("knownOutcomeEvidence", []))),
-        ("spa-supported-channel-algorithm-unavailable", "indeterminate", "a registered ChannelMessage algorithm unavailable to the fixture resolver is not invalid", channel_changed(base, lambda message: None, algorithm="ecdsa-secp256k1")),
+        ("spa-supported-channel-algorithm-unavailable", "fail", "the channel algorithm contradicts its authenticated key: Ed25519 signer (SIG-7 step 3)", channel_changed(base, lambda message: None, algorithm="ecdsa-secp256k1")),
         ("spa-unknown-channel-algorithm", "fail", "an unregistered ChannelMessage algorithm is rejected", channel_changed(base, lambda message: None, algorithm="future-signature")),
         ("spa-roster-role-list-resigned", "fail", "a signed list-valued roster role is malformed without escaping an exception", copy.deepcopy(base)),
         ("spa-roster-role-object-resigned", "fail", "a signed object-valued roster role is malformed without escaping an exception", copy.deepcopy(base)),
@@ -1589,7 +1608,7 @@ def build_vectors() -> list[dict]:
         vector("spa-rating-target-object", "fail", "an object-valued target is malformed without escaping an exception", rating_changed(rate, lambda x: x["rating"].__setitem__("target", {"claim": SELLER}), resign=True), excluded),
         vector("spa-rating-duplicate-buyer-role", "fail", "the shared global roster gate rejects duplicate roles", copy.deepcopy(rate), excluded),
         vector("spa-rating-listing-unavailable", "indeterminate", "unavailable Listing authority cannot establish the rate phase", changed(rate, lambda x: x["listing"].__setitem__("verificationDisposition", "indeterminate")), excluded),
-        vector("spa-rating-supported-algorithm-unavailable", "indeterminate", "a registered RatingRecord algorithm unavailable to the fixture resolver is not mislabeled invalid", changed(rate, lambda x: x["rating"]["signature"].__setitem__("algorithm", "sr1-aggregate")), excluded),
+        vector("spa-rating-supported-algorithm-unavailable", "fail", "the rating algorithm contradicts its authenticated key: Ed25519 signer (SIG-7 step 3)", changed(rate, lambda x: x["rating"]["signature"].__setitem__("algorithm", "sr1-aggregate")), excluded),
         vector("spa-rating-ed25519-claim-resolution-unavailable", "indeterminate", "an Ed25519 signature whose claim-key resolution is unavailable to the fixture resolver is not mislabeled invalid", changed(rate, lambda x: x["rating"]["signature"].__setitem__("signer", "did:example:unresolved-rater")), excluded),
         vector("spa-rating-unknown-algorithm", "fail", "an unregistered RatingRecord signature algorithm is rejected", changed(rate, lambda x: x["rating"]["signature"].__setitem__("algorithm", "future-signature")), excluded),
         vector("spa-rating-algorithm-list", "fail", "a list-valued signature algorithm is malformed without escaping an exception", changed(rate, lambda x: x["rating"]["signature"].__setitem__("algorithm", ["ed25519"])), excluded),

@@ -622,6 +622,9 @@ type VerifyResult = {
 
 }
 
+type VerifyResultSignature = ComponentSignature
+type RecipeSignature = ComponentSignature
+
 type AttestationRef = {
 
   anchor: { kind: "storage-program" | "ipfs" | "https"; locator: string }
@@ -763,7 +766,7 @@ type WarningCode =
 
 **Presence evidence is the signed bundle, not a verification artifact.** Under DACS-1 PCR-6, the producer evaluates every `verificationRequired = false` member directly against the exact `IdentityBundle` supplied as `bundleToVet`. It MUST NOT call a verification recipe, create a `VerifyResult`, or add a `VerifyResultRef` to `freshness` or `dealSpecific` solely to represent that member. A reference needed by a separate `verificationRequired = true` member remains valid evidence for that verified member; it does not turn the presence decision into a verification decision. A genuinely passing-and-fresh pre-attested reference on the claim may still count independently under the ordinary DACS-1 verified-claim and tier rules.
 
-The wire shape of `CompositeVerificationRecord` is unchanged. Its existing `bundleHash` is the binding: a strict consumer replays aggregation with the original signed `IdentityBundle` as companion input, recomputes its DACS-1 bundle hash, and requires exact equality with `record.bundleHash`. The consumer likewise recomputes the RFC 8785 hash of the exact `BundleRequirement` and requires equality with `record.requirementHash`. If the exact bundle is unavailable, the record MUST NOT be accepted as proof that a presence-only member passed; the reliance decision is `indeterminate` until the bundle is available. An invalid bundle presentation, hash mismatch, malformed claim/reference, invalid composite signature, or aggregation mismatch MUST cause rejection.
+The wire shape of `CompositeVerificationRecord` is unchanged. Its existing `bundleHash` is the binding: a strict consumer replays aggregation with the original signed `IdentityBundle` as companion input, recomputes its DACS-1 bundle hash, and requires exact equality with `record.bundleHash`. The consumer likewise recomputes the RFC 8785 hash of the exact `BundleRequirement` and requires equality with `record.requirementHash`. If the exact bundle is unavailable, the record MUST NOT be accepted as proof that a presence-only member passed; the reliance decision is `indeterminate` until the bundle is available. An invalid bundle presentation, hash mismatch, malformed claim/reference, invalid composite signature, or aggregation mismatch MUST cause rejection. For this composite-reliance procedure, an invalid composite signature is `error` (the containing-decision mapping permitted by CORE §B.7 SIG-7).
 
 The current session challenge binds that `IdentityBundle` presentation and the
 outer Vet invocation admission; it does not add current `jobId`, nonce, session,

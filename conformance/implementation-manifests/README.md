@@ -83,8 +83,8 @@ be resolved as written.
 All six examples follow one rule for `ruleRefs`: an `implemented` claim
 names the rules its role implements, whether or not a cited case exercises
 them; its `result`, the capability's `testStatus` and the cited cases say how
-much of that is tested. So every seller example names PS-1..PS-3 for
-fixed-price, and each seller's payment claim names the §9.5.8 settlement
+much of that is tested. So every fixed-price seller example names
+PS-1..PS-3 for fixed-price, and each seller's payment claim names the §9.5.8 settlement
 rules for its rail: the `pay-x402` claim names SB-1..SB-3, and the `pay-dem`
 claims name SB-1 and SB-2, because v0.4 defines no SB-3 binding for
 `pay-dem`. Rail claims name the §9.4.2 registry entry only, since RD-1..RD-5

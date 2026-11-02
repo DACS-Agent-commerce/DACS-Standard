@@ -120,6 +120,9 @@ class ImplementationManifestTests(unittest.TestCase):
         readme = (EXAMPLE_DIR / "README.md").read_text(encoding="utf-8")
         self.assertIn("does not check\nwhether a cited case is golden or candidate", readme)
         self.assertIn("RD-1..RD-5 are rail-author duties (§9.4.3, §9.10)", readme)
+        # Only the two fixed-price sellers name PS-1..PS-3; the RFQ seller names RFQ-1..RFQ-4.
+        self.assertIn("every fixed-price seller example names PS-1..PS-3", " ".join(readme.split()))
+        self.assertNotIn("every seller example names PS-1..PS-3", " ".join(readme.split()))
         flat = " ".join(readme.split())
         for text in ("PB-1..PB-3 appear only in the buyer example",
                      "four of the six golden v0.4 settlement cases",

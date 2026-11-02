@@ -698,13 +698,36 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_phase_bound_delivery_vectors.py",
         "test": "PhaseBoundDeliveryVectorTests.test_credential_field_vectors_reject_delivery_signature_bypass",
     },
+    "pr432-pay-dem-inclusion-only-witness": {
+        "file": "tests/test_pay_dem_execution_vectors.py",
+        "test": "PayDemExecutionVectorTests.test_inclusion_only_implementation_is_rejected",
+    },
+    "pr432-pay-dem-guard-removal-witness": {
+        "file": "tests/test_pay_dem_execution_vectors.py",
+        "test": "PayDemExecutionVectorTests.test_every_vector_fails_when_each_named_guard_is_removed",
+    },
+    "pr432-pay-dem-own-call-outcome-witness": {
+        "file": "tests/test_pay_dem_execution_vectors.py",
+        "test": "PayDemExecutionVectorTests.test_own_call_outcomes_after_the_first_egress_are_substrate",
+    },
+    "pr432-pay-dem-admission-index-witness": {
+        "file": "tests/test_pay_dem_execution_vectors.py",
+        "test": "PayDemExecutionVectorTests.test_payee_history_is_the_snapshot_of_its_durable_admission_index",
+    },
+    "pr432-pay-dem-crash-restart-witness": {
+        "file": "tests/test_pay_dem_crash_restart.py",
+        "test": "PayDemCrashRestartTests.test_every_wrong_payer_handler_is_caught",
+    },
+    "pr432-pay-dem-payee-restart-witness": {
+        "file": "tests/test_pay_dem_crash_restart.py",
+        "test": "PayDemCrashRestartTests.test_payee_never_delivers_a_reused_hash_across_a_restart",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"
-# Registered tests normally finish in seconds. Two minutes leaves substantial
-# room for a slow CI worker while keeping one stalled target from hanging the
-# complete gate indefinitely.
-SELECTED_TEST_TIMEOUT_SECONDS = 120
+# The exhaustive pay-dem guard-removal witness takes about two minutes on
+# slower workers. Five minutes leaves headroom while still bounding a stall.
+SELECTED_TEST_TIMEOUT_SECONDS = 300
 SELECTED_TEST_CLEANUP_TIMEOUT_SECONDS = 5
 EXACT_UNITTEST_SUMMARY = {
     "errors": 0,

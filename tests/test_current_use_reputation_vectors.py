@@ -719,6 +719,26 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         result = self.derive([request])
         self.assertEqual("pass", result["decision"], result["reason"])
 
+    def test_native_volume_requires_applied_payment_authority(self):
+        def remove_transition(value):
+            changed = 0
+            if isinstance(value, dict):
+                if "executionResult" in value:
+                    value["executionResult"].pop("appliedTransfer", None)
+                    self.factory.finality.sign_execution_result(value)
+                    changed += 1
+                for child in value.values():
+                    changed += remove_transition(child)
+            elif isinstance(value, list):
+                for child in value:
+                    changed += remove_transition(child)
+            return changed
+
+        self.assertGreater(remove_transition(self.fixture["dependencies"]), 0)
+        result = self.derive([self.fixture["currentRequestsByModel"]["bft-final"]])
+        self.assertEqual("indeterminate", result["decision"], result["reason"])
+        self.assertIsNone(result["derivation"])
+
     def test_all_six_finality_models_execute_with_volume_and_rating_metrics(self):
         expected_models = set(generator.MODELS)
         observed = set()

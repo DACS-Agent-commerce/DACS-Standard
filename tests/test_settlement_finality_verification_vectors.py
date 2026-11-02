@@ -1,4 +1,5 @@
 import base64
+from scripts.demos_identity import demos_key_claim
 import copy
 import hashlib
 import json
@@ -32,7 +33,10 @@ from frozen_dacs5_v05_reader import (  # noqa: E402
     pointer_type as frozen_pointer_type,
 )
 from scripts.jcs import canonicalize  # noqa: E402
-from scripts.settlement_finality_reference import verify_finality  # noqa: E402
+from scripts.settlement_finality_reference import (  # noqa: E402
+    DEM_AMOUNT_RE, bft_final_trust, verify_finality, _demos_committed_change, _demos_native_send, _demos_os_spelling,
+    _demos_send_edits_match,
+)
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 import dacs5_reference as D5  # noqa: E402
 import scripts.generate_settlement_finality_verification_vectors as finality_fixtures  # noqa: E402
@@ -167,7 +171,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.assertEqual(86, self.data["count"])
+        self.assertEqual(247, self.data["count"])
         encoded = canonicalize(self.data["vectors"]).encode("utf-8")
         self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
         self.assertEqual(self.data["count"], len(self.cases))
@@ -205,6 +209,738 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                     case["want"]["finalityClass"], result.get("finalityClass")
                 )
         self.assertEqual({"pass", "fail", "indeterminate", "error"}, set(observed.values()))
+
+    def test_demos_record_cases_bind_every_dem7_dimension(self):
+        # DACS-4 §9.5.9 DEM-7 under FV-5: each case is an authentic
+        # BFT-final block that differs from the passing control in one
+        # execution-record dimension.
+        control = self.cases["fv-bft-final-canonical-success"]
+        self.assertEqual("pass", self.evaluate_case(control)["decision"])
+        contradicts = ("fail", "contradicts the signed reference or phase (DEM-7)")
+        undecodable = ("indeterminate", "does not decode as a native send (DEM-7)")
+        expected = {
+            "fv-bft-final-included-execution-failed": ("fail", "failed execution (DEM-7)"),
+            "fv-bft-final-execution-pending": ("indeterminate", "not an execution result (DEM-7)"),
+            "fv-bft-final-execution-included-alias": ("indeterminate", "not an execution result (DEM-7)"),
+            "fv-bft-final-execution-success-alias": ("indeterminate", "not an execution result (DEM-7)"),
+            "fv-bft-final-event-wrong-payee": ("pass", "chain observation verified"),
+            "fv-bft-final-event-wrong-payer": ("pass", "chain observation verified"),
+            "fv-bft-final-event-wrong-amount": ("pass", "chain observation verified"),
+            "fv-bft-final-record-wrong-payee": contradicts,
+            "fv-bft-final-record-wrong-payer": contradicts,
+            "fv-bft-final-record-wrong-amount": contradicts,
+            "fv-bft-final-record-wrong-record-hash": contradicts,
+            "fv-bft-final-record-wrong-record-block": contradicts,
+            "fv-bft-final-record-wrong-block": ("fail", "authenticated inclusion block (DEM-7)"),
+            "fv-bft-final-record-wrong-hash": ("fail", "differs from signed evidence"),
+            "fv-bft-final-record-missing": ("indeterminate", "execution result unavailable"),
+            "fv-bft-final-record-noncanonical-nonce": undecodable,
+            "fv-bft-final-record-missing-nonce": undecodable,
+            "fv-bft-final-record-send-recipient-mismatch": undecodable,
+            "fv-bft-final-record-send-amount-mismatch": undecodable,
+            "fv-bft-final-record-not-native-send": undecodable,
+            "fv-bft-final-record-non-native-type": undecodable,
+            "fv-bft-final-record-uppercase-recipient": undecodable,
+            "fv-bft-final-record-uppercase-send-argument": undecodable,
+            "fv-bft-final-record-unpinned-node": ("indeterminate", "semantics are not pinned (DEM-7)"),
+        }
+        demos_cases = {
+            name for name in self.cases
+            if name.startswith(("fv-bft-final-record-", "fv-bft-final-execution-", "fv-bft-final-event-"))
+        }
+        self.assertTrue((set(expected) - {"fv-bft-final-included-execution-failed"}).issubset(demos_cases))
+        for name, (decision, reason) in expected.items():
+            with self.subTest(case=name):
+                case = self.cases[name]
+                self.assertEqual("bft-final", case["input"]["rail"]["consumerFinalityProfile"]["model"])
+                self.assertNotEqual(
+                    (control["input"], control.get("trustedOverrides")),
+                    (case["input"], case.get("trustedOverrides")),
+                )
+                result = self.evaluate_case(case)
+                self.assertEqual((case["expected"], decision), (result["decision"], result["decision"]))
+                self.assertIn(reason, result["reason"])
+
+    def test_demos_control_passes_only_with_a_bound_native_send_record(self):
+        # The independent execution-result attestation carries the Demos
+        # native-send record in the node's wire form, and it binds the
+        # signed reference, the parties' Demos keys and 5 DEM in OS.
+        control = self.cases["fv-bft-final-canonical-success"]
+        proof = control["input"]["context"]["observation"]["transactionInclusionProof"]
+        encoded = proof["transactionBytes"]
+        body = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+        self.assertNotIn("status", body)
+        self.assertNotIn("record", body)
+        self.assertEqual(control["input"]["evidence"]["paymentTxRefs"][0]["txHash"], body["txHash"])
+        record = control["input"]["context"]["observation"]["executionResult"]["record"]
+        reference = control["input"]["evidence"]["paymentTxRefs"][0]
+        keys = {
+            claim: base64.urlsafe_b64decode(key + "=" * (-len(key) % 4)).hex()
+            for claim, key in self.trust["partyKeys"].items()
+        }
+        self.assertEqual((reference["txHash"], reference["blockNumber"], "confirmed"),
+                         (record["hash"], record["blockNumber"], record["status"]))
+        content = record["content"]
+        self.assertEqual("0x" + keys["did:demos:buyer"], content["from"])
+        self.assertEqual("0x" + keys["did:demos:seller"], content["to"])
+        self.assertEqual(5_000_000_000, content["amount"])
+        self.assertIsInstance(content["nonce"], str)
+        self.assertEqual(["native", {"nativeOperation": "send", "args": [keys["did:demos:seller"], "5000000000"]}], content["data"])
+        self.assertEqual(
+            "kynesyslabs/node@61b8e75aa8db5e408c49e1c3a89db4d673f45578", self.trust["demosRecordProfile"]
+        )
+        # Without the record, the same authentic block does not pass.
+        self.assertEqual("indeterminate", self.evaluate_case(self.cases["fv-bft-final-record-missing"])["decision"])
+
+    def test_raw_transaction_body_binding_has_independent_negative_cases(self):
+        cases = [case for name, case in self.cases.items() if "-transaction-body-" in name]
+        self.assertEqual(15, len(cases))
+        for case in cases:
+            with self.subTest(case=case["name"]):
+                result = self.evaluate_case(case)
+                expected = "pass" if case["name"] == "fv-bft-final-transaction-body-eventsRoot" else "fail"
+                self.assertEqual(expected, result["decision"])
+                if expected == "fail":
+                    self.assertIn("raw transaction does not bind", result["reason"])
+
+    def test_fractional_dem_conversion_is_exact(self):
+        for suffix, expected in (("fractional-amount-binds", "pass"), ("fractional-underpayment", "fail"),
+                                 ("one-os-amount-binds", "pass"), ("amount-below-os-precision", "error"), ("amount-not-dem", "error")):
+            with self.subTest(case=suffix):
+                result = self.evaluate_case(self.cases["fv-bft-final-" + suffix])
+                self.assertEqual(expected, result["decision"])
+                if expected == "error":
+                    self.assertIn("phase lacks a DEM amount", result["reason"])
+
+    def test_execution_contradictions_wait_for_the_bft_final_path(self):
+        # A signed failure or contradiction about a block that no certificate
+        # finalizes refutes nothing: it is as unresolved as a success there.
+        # With the canonical certificate restored the same result is `fail`.
+        canonical = self.cases["fv-bft-final-canonical-success"]["input"]["context"]["observation"]
+        for suffix in ("record-wrong-payee-certificate-withheld", "execution-failed-certificate-withheld",
+                       "record-wrong-hash-certificate-withheld"):
+            with self.subTest(case=suffix):
+                case = self.cases["fv-bft-final-" + suffix]
+                self.assertNotIn("finalityCertificate", case["input"]["context"]["observation"])
+                result = self.evaluate_case(case)
+                self.assertEqual("indeterminate", result["decision"])
+                self.assertNotIn("Demos", result["reason"])
+                finalized = copy.deepcopy(case)
+                finalized["input"]["context"]["observation"]["finalityCertificate"] = copy.deepcopy(
+                    canonical["finalityCertificate"])
+                self.assertEqual("fail", self.evaluate_case(finalized)["decision"])
+        control = copy.deepcopy(self.cases["fv-bft-final-canonical-success"])
+        control["input"]["context"]["observation"].pop("finalityCertificate")
+        self.assertEqual("indeterminate", self.evaluate_case(control)["decision"])
+
+    def test_execution_result_needs_independent_authentication(self):
+        # A result below its policy's threshold of verifying distinct keys,
+        # and a threshold-signed result for another block, network or
+        # transaction, authenticate nothing for this reference: indeterminate,
+        # the verdict the pay-dem corpus gives the same results.
+        for suffix, expected in (("result-policy-unavailable", "indeterminate"), ("result-unsigned", "indeterminate"),
+                                 ("result-quorum-missing", "indeterminate"), ("result-status-tampered", "indeterminate"),
+                                 ("result-other-block", "indeterminate"), ("result-other-transaction", "indeterminate"),
+                                 ("result-other-network", "indeterminate"), ("result-other-genesis", "indeterminate"),
+                                 ("result-forged-confirmed", "indeterminate"),
+                                 ("result-duplicate-signer", "indeterminate"),
+                                 ("result-attestation-malformed", "indeterminate")):
+            with self.subTest(case=suffix):
+                self.assertEqual(expected, self.evaluate_case(self.cases["fv-bft-final-" + suffix])["decision"])
+        # Reusing the valid BFT block while substituting the entire result cannot authenticate it.
+        control = copy.deepcopy(self.cases["fv-bft-final-canonical-success"])
+        observation = control["input"]["context"]["observation"]
+        observation["executionResult"]["record"]["content"]["amount"] = 1
+        self.assertEqual("indeterminate", self.evaluate_case(control)["decision"])
+        for suffix, reason in (("result-member-missing", "malformed Demos execution result"),
+                               ("result-kind-mismatch", "Demos execution result kind differs from policy"),
+                               ("result-attestations-not-array", "malformed Demos execution result attestations"),
+                               ("result-inclusion-block-not-object", "malformed inclusion block for Demos execution result")):
+            with self.subTest(case=suffix):
+                result = self.evaluate_case(self.cases["fv-bft-final-" + suffix])
+                self.assertEqual("error", result["decision"])
+                self.assertIn(reason, result["reason"])
+
+    def test_execution_result_attestations_are_counted_never_a_veto(self):
+        # Appending an attestation outside the signed payload, under an
+        # unknown name or a spare policy key, or one that is no signature
+        # object, changes nothing: a relayer or one faulty authority cannot
+        # turn an executed payment into fail or error.
+        for suffix in ("result-extra-unknown-attestation", "result-spare-key-bad-signature",
+                       "result-extra-malformed-attestation"):
+            with self.subTest(case=suffix):
+                self.assertEqual("pass", self.evaluate_case(self.cases["fv-bft-final-" + suffix])["decision"])
+        canonical = self.cases["fv-bft-final-canonical-success"]
+        attestations = canonical["input"]["context"]["observation"]["executionResult"]["attestations"]
+        for extra in ({"authorityRef": "execution-c", "algorithm": "ed25519", "value": "AAAA"},
+                      {"authorityRef": "execution-a", "algorithm": "ed25519", "value": attestations[1]["value"]},
+                      {"authorityRef": "execution-c", "algorithm": "rsa", "value": attestations[0]["value"]}):
+            with self.subTest(extra=extra):
+                case = copy.deepcopy(canonical)
+                case["input"]["context"]["observation"]["executionResult"]["attestations"].append(extra)
+                self.assertEqual("pass", self.evaluate_case(case)["decision"])
+        # Only verifying distinct policy keys count toward the threshold.
+        case = copy.deepcopy(canonical)
+        observation = case["input"]["context"]["observation"]["executionResult"]
+        observation["attestations"] = [observation["attestations"][0],
+                                       dict(observation["attestations"][0], authorityRef="execution-b")]
+        self.assertEqual("indeterminate", self.evaluate_case(case)["decision"])
+        # A malformed entry is not counted, like one that does not verify
+        # (b981129 returned error for any of these): with the threshold met
+        # it changes nothing, and alone it authenticates nothing.
+        for extra in ({"authorityRef": 7}, {}, [], "execution-c", None,
+                      {"authorityRef": "execution-c", "algorithm": "ed25519"}):
+            with self.subTest(malformed=extra):
+                case = copy.deepcopy(canonical)
+                case["input"]["context"]["observation"]["executionResult"]["attestations"].append(extra)
+                self.assertEqual("pass", self.evaluate_case(case)["decision"])
+                case["input"]["context"]["observation"]["executionResult"]["attestations"] = [extra]
+                self.assertEqual("indeterminate", self.evaluate_case(case)["decision"])
+        # Attestations that are not an array are a malformed result: error.
+        case = copy.deepcopy(canonical)
+        case["input"]["context"]["observation"]["executionResult"]["attestations"] = {"authorityRef": "execution-a"}
+        self.assertEqual("error", self.evaluate_case(case)["decision"])
+
+    def test_trust_that_cannot_verify_the_profile_refutes_nothing(self):
+        # The verifier checks its own trust before judging evidence, with the
+        # check DACS-4 DEM-1's gate shares (bft_final_trust): keys that do not
+        # decode or alias one key and a set that is not the pinned one are
+        # error, too few authorities indeterminate, and never fail (b981129
+        # failed the evidence on undecodable keys).
+        for name, expected in (("fv-trust-observation-keys-undecodable", "error"),
+                               ("fv-trust-observation-keys-aliased", "error"),
+                               ("fv-trust-observation-keys-unavailable", "indeterminate"),
+                               ("fv-trust-validator-set-not-pinned", "error")):
+            with self.subTest(case=name):
+                case = self.cases[name]
+                self.assertEqual(expected, case["expected"])
+                self.assertEqual(expected, self.evaluate_case(case)["decision"])
+                bft = copy.deepcopy(self.cases["fv-bft-final-canonical-success"])
+                profile = bft["input"]["rail"]["consumerFinalityProfile"]["settlement"]
+                trusted = merge(self.trust, case["trustedOverrides"])
+                self.assertEqual(expected, bft_final_trust(profile, trusted)[0])
+                self.assertEqual(expected, self.evaluate_case(dict(bft, trustedOverrides=case["trustedOverrides"]))
+                                 ["decision"])
+        control = self.cases["fv-bft-final-canonical-success"]
+        profile = control["input"]["rail"]["consumerFinalityProfile"]["settlement"]
+        self.assertEqual("pass", bft_final_trust(profile, self.trust)[0])
+        # Keys for fewer than the profile's threshold of its authorities.
+        keys = self.trust["observationAuthorityKeys"]
+        below = dict(self.trust, observationAuthorityKeys={"rpc-a": keys["rpc-a"]})
+        self.assertEqual("indeterminate", bft_final_trust(profile, below)[0])
+        self.assertEqual("indeterminate", verify_finality(control["input"], below)["decision"])
+
+    def test_confirmed_record_requires_authenticated_committed_payment(self):
+        # A carried applied transfer is part of the signed result: one that
+        # contradicts the record it was signed with authenticates nothing.
+        for suffix, expected in (("missing", "indeterminate"), ("zero-credit", "indeterminate"),
+                                 ("zero-debit", "indeterminate"), ("wrong-hash", "indeterminate"),
+                                 ("wrong-block", "indeterminate"), ("wrong-sender", "indeterminate"),
+                                 ("wrong-recipient", "indeterminate")):
+            with self.subTest(suffix=suffix):
+                case = self.cases["fv-bft-final-applied-transfer-" + suffix]
+                record = case["input"]["context"]["observation"]["executionResult"]["record"]
+                self.assertEqual("confirmed", record["status"])
+                # The send's own edits are present: only the authority varies.
+                self.assertTrue(_demos_send_edits_match(record["content"]))
+                outcome = self.evaluate_case(case)
+                self.assertEqual(expected, outcome["decision"])
+                if suffix != "missing":
+                    self.assertIn("applied transfer contradicts its own record, so the signed result authenticates nothing", outcome["reason"])
+        # An authenticated applied transfer that does not decode is indeterminate, not a contradiction.
+        for suffix in ("extra-member", "numeric-debit", "noncanonical-credit",
+                       "committed-balances-missing", "committed-balances-numeric"):
+            with self.subTest(suffix=suffix):
+                result = self.evaluate_case(self.cases["fv-bft-final-applied-transfer-" + suffix])
+                self.assertEqual("indeterminate", result["decision"])
+                self.assertIn("Demos applied transfer does not decode", result["reason"])
+        control = copy.deepcopy(self.cases["fv-bft-final-canonical-success"])
+        control["input"]["context"]["observation"]["executionResult"]["appliedTransfer"]["payeeCreditOs"] = "0"
+        # An edited applied transfer is outside its signatures: no key verifies
+        # it, so it authenticates nothing and refutes nothing.
+        result = self.evaluate_case(control)
+        self.assertEqual("indeterminate", result["decision"])
+        self.assertIn("quorum unavailable", result["reason"])
+
+    def test_applied_transfer_is_the_change_of_committed_balances(self):
+        """Every Demos authority (except the deliberately inconsistent one) is
+        the change of the committed balances it authenticates; on a passing
+        case those balances actually moved by the phase amount. A confirmed
+        record with all four edits signed with committed balances that did not
+        move contradicts itself, and figures copied over unchanged balances
+        prove nothing: both are `indeterminate`."""
+        checked = 0
+        for name, case in self.cases.items():
+            result = case["input"].get("context", {}).get("observation", {}).get("executionResult")
+            proof = result.get("appliedTransfer") if isinstance(result, dict) else None
+            if not isinstance(proof, dict) or name in {
+                    "fv-bft-final-applied-transfer-not-committed-change",
+                    "fv-bft-final-applied-transfer-committed-balances-missing",
+                    "fv-bft-final-applied-transfer-committed-balances-numeric",
+                    "fv-bft-final-applied-transfer-numeric-debit",
+                    "fv-bft-final-applied-transfer-noncanonical-credit"}:
+                continue
+            with self.subTest(name=name):
+                self.assertEqual(_demos_committed_change(proof["committedBalances"]),
+                                 (proof["payerDebitOs"], proof["payeeCreditOs"]))
+                if case["expected"] == "pass":
+                    self.assertTrue(_demos_send_edits_match(result["record"]["content"]))
+                    balances = proof["committedBalances"]
+                    self.assertNotEqual(balances["payerBeforeOs"], balances["payerAfterOs"])
+                    self.assertNotEqual(balances["payeeBeforeOs"], balances["payeeAfterOs"])
+                checked += 1
+        self.assertGreater(checked, 20)
+        for suffix, expected, reason in (
+            ("confirmed-four-edits-uncommitted-payment", "indeterminate", "applied transfer contradicts its own record"),
+            ("applied-transfer-not-committed-change", "indeterminate", "not the change of its committed balances"),
+        ):
+            with self.subTest(suffix=suffix):
+                case = self.cases["fv-bft-final-" + suffix]
+                result = case["input"]["context"]["observation"]["executionResult"]
+                self.assertEqual("confirmed", result["record"]["status"])
+                self.assertTrue(_demos_send_edits_match(result["record"]["content"]))
+                outcome = self.evaluate_case(case)
+                self.assertEqual(expected, outcome["decision"])
+                self.assertIn(reason, outcome["reason"])
+        # The fixture authority follows the scenario's committed state, not
+        # the record: forging the record's edits leaves it unchanged.
+        factory = finality_fixtures.FixtureFactory()
+        value = factory.model_input("bft-final")
+        observation = value["context"]["observation"]
+        encoded = observation["selectedEventProof"]["eventBytes"]
+        event = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+        want = observation["executionResult"]["appliedTransfer"]
+        for label, mutate in (
+            ("forged-edits", lambda c: [edit.__setitem__("amount", "7") for edit in c["gcr_edits"][:2]]),
+            ("no-edits", lambda c: c.pop("gcr_edits")),
+            ("other-amount", lambda c: c.__setitem__("amount", 6_000_000_000)),
+        ):
+            with self.subTest(record=label):
+                forged = copy.deepcopy(observation["executionResult"]["record"])
+                mutate(forged["content"])
+                rebuilt = factory.chain_observation(
+                    value["rail"]["consumerFinalityProfile"]["settlement"],
+                    value["evidence"]["paymentTxRefs"][0], event, "bft-final", record=forged)
+                got = rebuilt["executionResult"]["appliedTransfer"]
+                for member in ("payerDebitOs", "payeeCreditOs", "committedBalances"):
+                    self.assertEqual(want[member], got[member])
+        self.assertEqual(factory.committed_change(factory.committed()), ("5000000000", "5000000000"))
+        self.assertEqual(factory.committed_change(factory.committed("rolled-back")), ("0", "0"))
+        # Oversized committed balances decide by decimal arithmetic.
+        self.assertIsNone(_demos_committed_change({"payerBeforeOs": "0", "payerAfterOs": "1", "feeOs": "0",
+                                                   "payeeBeforeOs": "0", "payeeAfterOs": "0"}))
+        oversized = "9" * 4301
+        self.assertEqual((oversized, oversized), _demos_committed_change(
+            factory.committed(amount_os=oversized, payer_before="1" + "0" * 4320)))
+
+    def test_confirmed_no_op_send_never_settles(self):
+        """The pinned node applies an edit-less send as a successful no-op. The
+        passing record carries its send's four edits; a confirmed result
+        signed with the no-op's unchanged committed balances contradicts
+        itself, and an authority reporting a payment for it proves nothing:
+        both are `indeterminate`."""
+        control = self.cases["fv-bft-final-canonical-success"]
+        result = control["input"]["context"]["observation"]["executionResult"]
+        self.assertTrue(_demos_send_edits_match(result["record"]["content"]))
+        for suffix, expected, reason in (
+            ("missing-edits", "indeterminate", "applied transfer contradicts its own record, so the signed result authenticates nothing"),
+            ("empty-edits", "indeterminate", "applied transfer contradicts its own record, so the signed result authenticates nothing"),
+            ("copied-authority", "indeterminate", "does not carry exactly its send's four edits"),
+        ):
+            with self.subTest(suffix=suffix):
+                case = self.cases["fv-bft-final-confirmed-no-op-" + suffix]
+                record = case["input"]["context"]["observation"]["executionResult"]["record"]
+                self.assertEqual("confirmed", record["status"])
+                self.assertFalse(_demos_send_edits_match(record["content"]))
+                outcome = self.evaluate_case(case)
+                self.assertEqual(expected, outcome["decision"])
+                self.assertIn(reason, outcome["reason"])
+        # Each edit member and its JSON type are compared; the order of an
+        # edit's members is not authenticated (JCS sorts them), so it is not.
+        content = result["record"]["content"]
+        for label, mutate in (
+            ("payment-only", lambda c: c.__setitem__("gcr_edits", c["gcr_edits"][:2])),
+            ("credit-elsewhere", lambda c: c["gcr_edits"][1].__setitem__("account", c["from"])),
+            ("boolean-nonce", lambda c: c["gcr_edits"][3].__setitem__("amount", True)),
+            ("rollback", lambda c: c["gcr_edits"][0].__setitem__("isRollback", True)),
+        ):
+            with self.subTest(edits=label):
+                changed = copy.deepcopy(content)
+                mutate(changed)
+                self.assertFalse(_demos_send_edits_match(changed))
+        reordered = copy.deepcopy(content)
+        reordered["gcr_edits"][0] = dict(reversed(list(reordered["gcr_edits"][0].items())))
+        self.assertTrue(_demos_send_edits_match(reordered))
+        self.assertEqual(canonicalize(content), canonicalize(reordered))
+
+    def test_demos_claims_ignore_parameters_and_take_two_schemes_only(self):
+        """DACS-1 §6.3.1: a reader ignores a `?<parameters>` suffix, and the
+        canonical identity is the scheme and identifier. DEMOS-MAPPING §A.2
+        names exactly `key:<hex>` and `did:demos:agent:<hex>`."""
+        key = "ab" * 32
+        for claim, expected in (
+            ("key:" + key, ("key", key)),
+            ("key:" + key + "?jurisdiction=US", ("key", key)),
+            ("key:" + key + "?a=1&b=2", ("key", key)),
+            ("did:demos:agent:" + key, ("did", key)),
+            ("did:demos:agent:" + key + "?jurisdiction=US", ("did", key)),
+            ("did:example:123", None),
+            ("future-scheme:opaque?z=1&a=2", None),
+        ):
+            with self.subTest(claim=claim):
+                self.assertEqual(expected, demos_key_claim(claim))
+        for claim in ("key:demos:agent:" + key, "did:" + key, "key:0x" + key,
+                      "key:" + key.upper(), "key:" + key + "x", key):
+            with self.subTest(malformed_claim=claim), self.assertRaises(ValueError):
+                demos_key_claim(claim)
+        for name, expected in (
+            ("fv-bft-final-payer-key-claim-unknown-parameters", "pass"),
+            ("fv-bft-final-payer-key-claim-demos-agent-form", "error"),
+        ):
+            with self.subTest(case=name):
+                self.assertEqual(expected, self.evaluate_case(self.cases[name])["decision"])
+
+    def test_demos_record_decides_in_dem7_order(self):
+        """DEM-7: the FV-10 verdict of the inclusion, then `error` for a
+        malformed phase value or claim, then the record. A record that does not
+        decode or whose semantics are unpinned is never reached by a malformed
+        claim, and a forged certificate is `fail` whatever the claim is."""
+        for name, expected in (
+            ("fv-bft-final-payer-key-claim-malformed-record-undecodable", "error"),
+            ("fv-bft-final-payer-key-claim-malformed-semantics-unpinned", "error"),
+            ("fv-bft-final-payer-key-claim-malformed-certificate-forged", "fail"),
+            ("fv-bft-final-malformed-claim-inclusion-below-threshold", "error"),
+        ):
+            with self.subTest(case=name):
+                self.assertEqual(expected, self.evaluate_case(self.cases[name])["decision"])
+        # The same inputs with well-formed claims keep the record's own verdict.
+        undecodable = copy.deepcopy(self.cases["fv-bft-final-payer-key-claim-malformed-record-undecodable"])
+        undecodable["trustedOverrides"] = {}
+        self.assertEqual("indeterminate", self.evaluate_case(undecodable)["decision"])
+
+    def test_fee_separated_record_follows_the_dem7_order(self):
+        """A fee-separated record establishes no payment. A confirmed result
+        signed with committed balances that did not move contradicts itself
+        and authenticates nothing, as the pay-dem oracle reads it; one that
+        reports the payment leaves the record `indeterminate` too."""
+        for name, expected, reason in (
+            ("fv-bft-final-confirmed-fee-separated-edits", "indeterminate",
+             "does not carry exactly its send's four edits"),
+            ("fv-bft-final-confirmed-fee-separated-edits-uncommitted-payment", "indeterminate",
+             "applied transfer contradicts its own record, so the signed result authenticates nothing"),
+        ):
+            with self.subTest(case=name):
+                case = self.cases[name]
+                record = case["input"]["context"]["observation"]["executionResult"]["record"]
+                self.assertEqual("confirmed", record["status"])
+                self.assertGreater(len(record["content"]["gcr_edits"]), 4)
+                self.assertFalse(_demos_send_edits_match(record["content"]))
+                outcome = self.evaluate_case(case)
+                self.assertEqual((expected, expected), (case["expected"], outcome["decision"]))
+                self.assertIn(reason, outcome["reason"])
+
+    def test_execution_result_only_on_a_demos_native_send(self):
+        case = self.cases["fv-block-depth-execution-result-not-native-send"]
+        result = self.evaluate_case(case)
+        self.assertEqual("error", result["decision"])
+        self.assertIn("malformed AuthenticatedChainObservation", result["reason"])
+
+    def test_native_record_json_numbers_are_compared_by_integral_value(self):
+        record = copy.deepcopy(self.cases["fv-bft-final-canonical-success"]["input"]["context"]["observation"]["executionResult"]["record"])
+        projection = _demos_native_send(record)
+        record["content"]["nonce"] = 7.0
+        record["content"]["amount"] = float(record["content"]["amount"])
+        record["blockNumber"] = float(record["blockNumber"])
+        self.assertEqual(projection, _demos_native_send(record))
+        for value in (True, 7.5, -1, float("inf"), float("nan"), 2**53):
+            with self.subTest(value=value):
+                record["content"]["nonce"] = value
+                self.assertIsNone(_demos_native_send(record))
+        # The safe-integer bounds themselves decode.
+        for value in (0, 2**53 - 1):
+            with self.subTest(bound=value):
+                record["content"]["nonce"] = value
+                self.assertEqual(str(value), _demos_native_send(record)["nonce"])
+        # blockNumber is a JSON number, never a decimal string, even a canonical one.
+        record["content"]["nonce"] = 7
+        for value in (str(projection["blockNumber"]), True):
+            with self.subTest(block=value):
+                record["blockNumber"] = value
+                self.assertIsNone(_demos_native_send(record))
+
+    def test_record_spellings_that_project_alike_bind(self):
+        # DEMOS-MAPPING §A.2: each spelling the node may serve projects to the
+        # same value, so a passing record witnesses every one of them.
+        def record(name):
+            return self.cases[name]["input"]["context"]["observation"]["executionResult"]["record"]
+
+        passing = [record(name) for name, case in self.cases.items()
+                   if case["expected"] == "pass" and name.startswith("fv-bft-final-")
+                   and "executionResult" in (case["input"]["context"]["observation"] or {})]
+        contents = [r["content"] for r in passing]
+        for label, present in (
+            ("prefixed send argument", lambda c: c["data"][1]["args"][0].startswith("0x")),
+            ("bare send argument", lambda c: not c["data"][1]["args"][0].startswith("0x")),
+            ("prefixed parties", lambda c: c["from"].startswith("0x") and c["to"].startswith("0x")),
+            ("bare parties", lambda c: not c["from"].startswith("0x") and not c["to"].startswith("0x")),
+            ("string nonce", lambda c: isinstance(c["nonce"], str)),
+            ("integer nonce", lambda c: isinstance(c["nonce"], int)),
+            ("number amount", lambda c: isinstance(c["amount"], int)),
+            ("string amount", lambda c: isinstance(c["amount"], str)),
+            ("2^53 - 1 number amount", lambda c: c["amount"] == 2**53 - 1),
+        ):
+            with self.subTest(spelling=label):
+                self.assertTrue(any(present(c) for c in contents))
+        # T is the send argument with 0x prefixed only when absent: a prefixed
+        # argument's credit edit names it once, and a second prefix is no payment.
+        content = record("fv-bft-final-send-argument-prefixed")["content"]
+        argument = content["data"][1]["args"][0]
+        self.assertEqual("0x" + self.cases["fv-bft-final-canonical-success"]["input"]["context"]["observation"]
+                         ["executionResult"]["record"]["content"]["data"][1]["args"][0], argument)
+        self.assertEqual(argument, content["gcr_edits"][1]["account"])
+        self.assertTrue(_demos_send_edits_match(content))
+        for name, decision, reason in (
+            ("fv-bft-final-send-argument-prefixed", "pass", "chain observation verified"),
+            ("fv-bft-final-send-argument-prefixed-credit-double-prefix", "indeterminate", "does not carry exactly its send's four edits"),
+            ("fv-bft-final-unprefixed-parties-bind", "pass", "chain observation verified"),
+            ("fv-bft-final-integer-nonce-binds", "pass", "chain observation verified"),
+            ("fv-bft-final-string-amount-binds", "pass", "chain observation verified"),
+            ("fv-bft-final-safe-max-number-amount-binds", "pass", "chain observation verified"),
+        ):
+            with self.subTest(case=name):
+                result = self.evaluate_case(self.cases[name])
+                self.assertEqual((decision, decision), (self.cases[name]["expected"], result["decision"]))
+                self.assertIn(reason, result["reason"])
+        doubled = copy.deepcopy(content)
+        doubled["gcr_edits"][1]["account"] = "0x" + argument
+        self.assertFalse(_demos_send_edits_match(doubled))
+        # One past the bound does not decode; JCS cannot carry it in the corpus.
+        bound = copy.deepcopy(record("fv-bft-final-safe-max-number-amount-binds"))
+        self.assertEqual(str(2**53 - 1), _demos_native_send(bound)["amountOs"])
+        bound["content"].update(amount=2**53, data=["native", {"nativeOperation": "send", "args": [bound["content"]["data"][1]["args"][0], str(2**53)]}])
+        self.assertIsNone(_demos_native_send(bound))
+
+    def test_oversized_demos_decimals_return_a_decision(self):
+        # Canonical decimals longer than Python's int() digit limit (4300)
+        # compare by spelling: each read path decides and none raises.
+        oversized = "9" * 4301
+        for name, expected, reason in (
+            ("fv-bft-final-record-oversized-amount", "fail", "contradicts the signed reference or phase"),
+            ("fv-bft-final-record-oversized-send-argument", "indeterminate", "does not decode as a native send"),
+            ("fv-bft-final-applied-transfer-oversized-debit", "indeterminate", "applied transfer contradicts its own record, so the signed result authenticates nothing"),
+        ):
+            with self.subTest(name=name):
+                result = self.evaluate_case(self.cases[name])
+                self.assertEqual(expected, result["decision"])
+                self.assertIn(reason, result["reason"])
+        record = copy.deepcopy(self.cases["fv-bft-final-canonical-success"]["input"]["context"]["observation"]["executionResult"]["record"])
+        record["content"]["nonce"] = oversized
+        self.assertEqual(oversized, _demos_native_send(record)["nonce"])
+        for spelling, amount_os in (("9" * 4301 + ".5", "9" * 4301 + "500000000"), ("1.5", "1500000000"),
+                                    ("0.000000001", "1"), ("5", "5000000000"), ("0", "0")):
+            with self.subTest(amount=spelling[:12]):
+                self.assertEqual(amount_os, _demos_os_spelling(DEM_AMOUNT_RE.match(spelling)))
+
+    def test_execution_result_policy_counts_distinct_keys(self):
+        # A malformed trusted policy is rejected before any result is read.
+        for suffix in ("threshold-zero", "threshold-above-keys", "duplicate-key", "key-malformed"):
+            with self.subTest(case=suffix):
+                result = self.evaluate_case(self.cases["fv-bft-final-result-policy-" + suffix])
+                self.assertEqual("error", result["decision"])
+                self.assertIn("malformed Demos execution-result policy", result["reason"])
+        unsigned = self.cases["fv-bft-final-result-policy-threshold-zero"]
+        self.assertEqual([], unsigned["input"]["context"]["observation"]["executionResult"]["attestations"])
+        # One key under two names, with its one signature copied: two aliases are one authority.
+        aliased = self.cases["fv-bft-final-result-policy-duplicate-key"]
+        attestations = aliased["input"]["context"]["observation"]["executionResult"]["attestations"]
+        self.assertEqual(["execution-a", "execution-b"], [item["authorityRef"] for item in attestations])
+        self.assertEqual(attestations[0]["value"], attestations[1]["value"])
+        keys = merge(self.trust, aliased["trustedOverrides"])["demosExecutionPolicy"]["authorityKeys"]
+        self.assertEqual(keys["execution-a"], keys["execution-b"])
+        # Under the default policy the copied signature does not verify for
+        # execution-b, so one key counts: below the threshold, not a veto.
+        self.assertEqual("indeterminate", verify_finality(aliased["input"], self.trust)["decision"])
+        for suffix, expected in (("all-of-n", "pass"), ("other-kind", "indeterminate")):
+            with self.subTest(case=suffix):
+                self.assertEqual(expected, self.evaluate_case(self.cases["fv-bft-final-result-policy-" + suffix])["decision"])
+        all_of_n = self.cases["fv-bft-final-result-policy-all-of-n"]
+        self.assertEqual(3, len(all_of_n["input"]["context"]["observation"]["executionResult"]["attestations"]))
+
+    def test_demos_sender_binds_the_payer_bundle_key_claims(self):
+        """The sender binds a controlled Demos key claim of the payer's pinned
+        bundle, the authenticated source a consumer holds: any of them binds,
+        the primary party signer binds only as such a claim, and another
+        payer's claims, or none, resolve nothing."""
+        for suffix, expected in (("distinct", "pass"), ("any-of-bundle", "pass"), ("wrong", "fail"),
+                                 ("unavailable", "indeterminate"), ("other-payer", "indeterminate"),
+                                 ("payer-missing", "indeterminate"), ("claims-empty", "error"),
+                                 ("claims-malformed", "error"), ("claim-not-an-object", "error"),
+                                 ("claim-not-a-string", "error"), ("claim-control-array", "error"),
+                                 ("claim-control-object", "error"),
+                                 ("claim-control-unknown", "error"), ("claim-extra-member", "error")):
+            with self.subTest(case=suffix):
+                result = self.evaluate_case(self.cases["fv-bft-final-payer-key-claim-" + suffix])
+                self.assertEqual(expected, result["decision"])
+                if suffix in {"unavailable", "other-payer", "payer-missing"}:
+                    self.assertIn("payer bundle Demos key claims unavailable", result["reason"])
+                if suffix in {"claims-empty", "claims-malformed", "claim-not-an-object", "claim-not-a-string",
+                              "claim-control-array", "claim-control-object",
+                              "claim-control-unknown", "claim-extra-member"}:
+                    self.assertIn("malformed payer bundle Demos key claims", result["reason"])
+        CLAIMS = finality_fixtures.CLAIMS
+        # Another payer's claims hold the sender's key: only the payer binding rejects it.
+        other = self.cases["fv-bft-final-payer-key-claim-other-payer"]
+        merged = merge(self.trust, other["trustedOverrides"])["demosPayerKeyClaims"]
+        self.assertIsNone(merged[CLAIMS["buyer"]])
+        self.assertIn(self.trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0], merged[CLAIMS["seller"]])
+        # A Demos key claim is a DACS-1 ClaimReference (DEMOS-MAPPING §A.2):
+        # `key:<hex>` binds, and so does nothing else. A bare or 0x spelling is
+        # an address, not a claim; a DID is a Demos key claim that DACS-1
+        # step (6) cannot control. Malformed claim spellings are errors, while
+        # well-formed claims with no controlled Demos key are indeterminate.
+        distinct = self.cases["fv-bft-final-payer-key-claim-distinct"]
+        trust = merge(self.trust, distinct.get("trustedOverrides") or {})
+        claim = trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0]["claim"]
+        self.assertTrue(claim.startswith("key:"))
+        key = claim.removeprefix("key:")
+        for spelling, expected in (("key:" + key, "pass"), (key, "error"), ("0x" + key, "error"),
+                                   ("did:demos:agent:" + key, "indeterminate"),
+                                   ("key:" + key.upper(), "error"), ("key:0x" + key, "error"),
+                                   ("DID:demos:agent:" + key, "indeterminate"), ("KEY:" + key, "pass")):
+            with self.subTest(claim=spelling):
+                spelled = copy.deepcopy(trust)
+                spelled["demosPayerKeyClaims"][CLAIMS["buyer"]][0]["claim"] = spelling
+                self.assertEqual(expected, verify_finality(distinct["input"], spelled)["decision"])
+
+    def test_control_is_the_mechanism_dacs1_defines_for_the_claims_scheme(self):
+        """DACS-1 §6.3.2 step (6) gives each scheme its own control mechanism:
+        the exact `key:` claim's own presentation signature, SR-1 linkage for
+        `cci-xm:`, holder-binding for a credential, a GCR binding for `domain:`.
+        A Demos key claim is controlled only by the one that applies to its
+        scheme. `did:demos:agent:` has none, so every label on it controls
+        nothing, whichever verifier runs the corpus."""
+        CLAIMS = finality_fixtures.CLAIMS
+        sender = self.cases["fv-bft-final-payer-key-claim-distinct"]
+        trust = merge(self.trust, sender.get("trustedOverrides") or {})
+        key = trust["demosPayerKeyClaims"][CLAIMS["buyer"]][0]["claim"].removeprefix("key:")
+        controls = ("presentation-signature", "sr1-linkage", "holder-binding", "demos-gcr-domain", "none")
+        decided = {}
+        for scheme, reference in (("key", "key:" + key), ("did", "did:demos:agent:" + key),
+                                  ("cci-xm", "cci-xm:demos:mainnet:0x" + key), ("bare", key), ("0x", "0x" + key)):
+            for control in controls:
+                spelled = copy.deepcopy(trust)
+                spelled["demosPayerKeyClaims"][CLAIMS["buyer"]] = [{"claim": reference, "control": control}]
+                decided[scheme, control] = verify_finality(sender["input"], spelled)["decision"]
+        # Exactly one pair is control, and it is the exact key: claim's signature.
+        self.assertEqual({("key", "presentation-signature")},
+                         {pair for pair, decision in decided.items() if decision == "pass"})
+        self.assertEqual({"pass", "indeterminate", "error"}, set(decided.values()))
+        self.assertEqual({(scheme, control) for scheme in ("bare", "0x") for control in controls},
+                         {pair for pair, decision in decided.items() if decision == "error"})
+        # The corpus pins every pair that matters for a Demos key, and a spec
+        # that names the mechanism for the scheme (DACS-1 step (6)).
+        for name in ("did-presentation-signature", "did-holder-binding", "key-sr1-linkage", "key-holder-binding",
+                     "cci-xm-sr1-linkage", "bare-hex-signature", "0x-hex-signature"):
+            with self.subTest(case=name):
+                self.assertEqual("error" if name in {"bare-hex-signature", "0x-hex-signature"} else "indeterminate",
+                                 self.cases["fv-bft-final-payer-key-claim-" + name]["expected"])
+        mapping = (ROOT / "spec" / "DEMOS-MAPPING.md").read_text(encoding="utf-8")
+        dacs1 = (ROOT / "spec" / "DACS-1-IDENTIFY.md").read_text(encoding="utf-8")
+        self.assertIn("the exact `key:` claim's own **bundle presentation signature**", dacs1)
+        self.assertIn("only the exact `key:` claim's own bundle presentation signature", mapping)
+        self.assertIn("`did:demos:agent:` claim has no step (6) mechanism", mapping)
+
+    def test_a_claim_or_control_of_the_wrong_type_is_error_not_a_crash(self):
+        """A trusted claim whose `claim` or `control` is not a string (a JSON
+        array or object is not hashable) is malformed input: `error`, from the
+        reference itself and not from a wrapper around an exception."""
+        CLAIMS = finality_fixtures.CLAIMS
+        value = self.cases["fv-bft-final-payer-key-claim-distinct"]
+        trust = merge(self.trust, value.get("trustedOverrides") or {})
+        for field, bad in (("control", []), ("control", {}), ("control", 1), ("control", None),
+                           ("claim", []), ("claim", {}), ("claim", 1)):
+            with self.subTest(field=field, bad=bad):
+                broken = copy.deepcopy(trust)
+                broken["demosPayerKeyClaims"][CLAIMS["buyer"]][0][field] = bad
+                result = verify_finality(value["input"], broken)
+                self.assertEqual("error", result["decision"])
+                # The reference's own malformed-claims decision, not a wrapper's generic one.
+                self.assertIn("malformed payer bundle Demos key claims", result["reason"])
+
+    def test_a_listed_demos_key_binds_only_with_a_control_proof(self):
+        """A payer's bundle can list another party's Demos key (DACS-1 §6.3.2
+        step 6: resolution alone establishes no control). That party's transfer
+        binds nothing for the payer, whichever way the claim is spelled or
+        listed, and the same claim binds once its control is proved."""
+        CLAIMS = finality_fixtures.CLAIMS
+        listed = self.cases["fv-bft-final-payer-key-claim-listed-not-controlled"]
+        trust = merge(self.trust, listed["trustedOverrides"])
+        claims = trust["demosPayerKeyClaims"][CLAIMS["buyer"]]
+        foreign = [claim for claim in claims if claim["control"] == "none"]
+        self.assertEqual(1, len(foreign))
+        self.assertEqual("fail", verify_finality(listed["input"], trust)["decision"])
+        key = foreign[0]["claim"]
+        key = key.removeprefix("key:")
+        for spelling in ("key:" + key, "did:demos:agent:" + key):
+            with self.subTest(listed=spelling):
+                spelled = copy.deepcopy(trust)
+                spelled["demosPayerKeyClaims"][CLAIMS["buyer"]] = [
+                    claim if claim["control"] != "none" else dict(claim, claim=spelling) for claim in claims]
+                self.assertEqual("fail", verify_finality(listed["input"], spelled)["decision"])
+        # Control proved by the key: claim's own presentation signature: the
+        # same listing now binds. A mechanism DACS-1 defines for another
+        # scheme proves nothing for a key: claim.
+        for control, expected in (("presentation-signature", "pass"), ("sr1-linkage", "indeterminate"),
+                                  ("holder-binding", "indeterminate")):
+            with self.subTest(control=control):
+                proved = copy.deepcopy(trust)
+                for claim in proved["demosPayerKeyClaims"][CLAIMS["buyer"]]:
+                    claim["control"] = control
+                self.assertEqual(expected, verify_finality(listed["input"], proved)["decision"])
+        # Only the uncontrolled claim: nothing binds, so no sender is authenticated.
+        alone = self.cases["fv-bft-final-payer-key-claim-none-controlled"]
+        self.assertEqual("indeterminate", self.evaluate_case(alone)["decision"])
+        self.assertIn("controls no Demos key claim", self.evaluate_case(alone)["reason"])
+        # The payer's own transfer is undisturbed by the extra listed key, and
+        # claims that are no Demos key are skipped rather than refused.
+        for name in ("listed-beside-controlled", "non-demos-skipped"):
+            with self.subTest(case=name):
+                self.assertEqual("pass", self.evaluate_case(self.cases["fv-bft-final-payer-key-claim-" + name])["decision"])
+        # A bundle presented by a session key has no key: signature of its own.
+        self.assertEqual("indeterminate", self.evaluate_case(
+            self.cases["fv-bft-final-payer-key-claim-session-key-presentation"])["decision"])
+        # A listed DID names a key and proves nothing about it.
+        self.assertEqual("fail", self.evaluate_case(
+            self.cases["fv-bft-final-payer-key-claim-did-listed-sender"])["decision"])
+
+    def test_phase_errors_and_fv10_come_before_the_bundle_claims_verdict(self):
+        """DEM-7 orders its decisions: malformed input (`error`), then FV-10's
+        `fail`/`error` on the presented inclusion, then a bundle that controls
+        no Demos key claim (`indeterminate`), then the record. A bundle with no
+        controlled claim therefore turns neither into `indeterminate`."""
+        for name, expected in (("none-controlled-amount-not-dem", "error"),
+                               ("none-controlled-inclusion-body-mismatch", "fail")):
+            with self.subTest(case=name):
+                result = self.evaluate_case(self.cases["fv-bft-final-payer-key-claim-" + name])
+                self.assertEqual(expected, result["decision"])
+        # The same two inputs under the usual claims decide the same.
+        for name, expected in (("amount-not-dem", "error"), ("transaction-body-txHash", "fail")):
+            self.assertEqual(expected, self.evaluate_case(self.cases["fv-bft-final-" + name])["decision"])
+
+    def test_trusted_overrides_do_not_depend_on_merge_semantics(self):
+        # A runner may replace or deep-merge an overridden member; the decision is the same.
+        for case in self.data["vectors"]:
+            overrides = case.get("trustedOverrides") or {}
+            if any(isinstance(value, dict) and isinstance(self.trust.get(key), dict) for key, value in overrides.items()):
+                with self.subTest(case=case["name"]):
+                    replaced = dict(copy.deepcopy(self.trust), **copy.deepcopy(overrides))
+                    self.assertEqual(case["expected"], verify_finality(case["input"], replaced)["decision"])
+                    self.assertEqual(case["expected"], self.evaluate_case(case)["decision"])
+
+    def test_malformed_native_record_is_indeterminate(self):
+        for suffix in ("record-not-object", "record-content-not-object", "record-ed25519-address-mismatch"):
+            with self.subTest(case=suffix):
+                self.assertEqual("indeterminate", self.evaluate_case(self.cases["fv-bft-final-" + suffix])["decision"])
 
     def test_every_finality_model_has_a_legitimate_control(self):
         controls = {

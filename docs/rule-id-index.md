@@ -23,6 +23,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CUAW-* | Exclusive composed current-use authenticated-window admission, all-job occurrence, and complete replay | §10.5.1 | §14.5 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |
 | DCR-* | Canonical DNS-domain identity, Demos legacy alias compatibility, deduplication, metadata, and control boundary | §6.3.1 | §14.1 |
+| DEM-* | `pay-dem` retained transfer, bound execution record, confirmed-only success, proven failure, unresolved execution with guarded retained-byte recovery, and consumer admission | §9.5.9 | §14.4 |
 | DGCR-* | Persistent Demos GCR domain verification | §7.3.10 | §14.2 |
 | DPA-* | Attested-payload listing coherence, exact-byte method proof, commerce binding, success closure, and minor-safe record typing | §9.6.3 | §14.4 |
 | FP-* | Final settlement data and transitive evidence/bundle propagation | §9.7 | §14.4 |

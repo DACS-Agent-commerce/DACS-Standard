@@ -42,6 +42,12 @@ def registered_domains(spec_text: str) -> set[str]:
         "**Payload shape — single-hash vs composite.**",
     )
     domains = extract_domains(registry)
+    # Fixture policies are documented separately from the production table.
+    marker = "**Synthetic conformance-only domain (not a production policy).**"
+    fixture_start = spec_text.find(marker)
+    if fixture_start != -1:
+        fixture_end = spec_text.find("\n\n", fixture_start)
+        domains |= extract_domains(spec_text[fixture_start:fixture_end])
     # Non-signature hash-domain tags are registered in prose immediately after
     # the signature registry table — deliberately NOT in the signature table,
     # since they are hash preimages, not signature `signed_bytes` (SIG-1 does

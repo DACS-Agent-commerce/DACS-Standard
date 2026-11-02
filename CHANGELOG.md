@@ -13,6 +13,73 @@ The format used per release:
 
 ## [Unreleased]
 
+### Changed — native DEM execution and finality
+
+Native `pay-dem` settlement requires a bound, exactly `confirmed` native-send
+record, its four send edits, independently authenticated committed payment
+balances, and verified `bft-final` inclusion. Inclusion or a status label alone
+does not establish payment. DEM-1..DEM-7 define durable retention before the
+first egress, confirm/broadcast submission, read-only recovery,
+proof-backed failure and consumer admission. Local genesis pins do not authenticate
+actual-network effective fork state; resubmission and nonce-exhaustion terminals
+are unavailable on this profile. Replacements remain forbidden. A possibly submitted
+unresolved transfer remains non-terminal through ST-7 pause expiry until DEM-3 success
+verifies or DEM-4 proves failure; success resumes the remaining pipeline while
+unavailable SR-2 anchoring uses separate PC-7 catch-up retries; elapsed time never authorizes another
+payment. The Demos mapping pins the node/SDK semantics and the one-block window
+for completing broadcast to the same node.
+
+The payer must control a Demos key claim in its pinned bundle; any such key is
+eligible. The payee destination comes from the phase's signed payout binding,
+which may differ from the party signing key, and must project before Agreement
+signature. Legacy destinations require their separate authenticated effect
+authority. Demos hashes are exactly 64 lower-case hexadecimal digits without a
+prefix; upper-case and `0x` spellings are errors, with no legacy normalization.
+RAV-R3 requires a signed consumer finality profile and the payer's complete
+network binding before selection, including for `live` rails.
+
+FV-5 authenticates the execution result independently of transaction inclusion,
+with a domain-separated result policy. Native sends impose no synthetic event
+job binding or success status. Malformed phase claims and results retain their
+four-value verdict through delivery and APR composition. Unrelated payment
+proofs cannot refute this transaction. APR dispositions carry the prior phase
+orchestrator's signed `retainedPayDemTransfer`, and independently verify both
+the failed execution and its finalized inclusion before replacement.
+
+Compatibility: these rules form part of the existing unreleased DACS-4 v0.8
+candidate. Earlier inclusion-only Demos FV fixtures need independently
+authenticated execution results and an explicit destination authority. The old
+raw transaction body shape is now `error`; native inclusion bodies carry
+`txHash` rather than an execution `status`. Existing
+agreements and evidence keep their signature domains; the optional disposition
+retention carrier is required for new pay-dem `closed-cannot-settle` records.
+Nonce-enforcement attestations carry `nodeCommit` with the complete-file digest;
+provisioners and reference-proof producers regenerate earlier synthetic attestations.
+No production Demos applied-payment proof codec or result authority is registered
+by the synthetic fixtures.
+
+Recovery preserves possibly-sent history through crashes and performs reads only.
+The complete sealed-genesis fixture and clean build describe local provisioning;
+a revised profile must register verifiable network-bound effective-fork authority
+before resubmission or nonce-exhaustion compensation can be enabled.
+
+The `identity-bundle-hash-binding-v0.1` corpus is regenerated to add signed
+consumer finality profiles to its pay-dem rails; its verdicts are unchanged.
+
+PB-2 corpus migration: 30 cases, with tier 3 for the historical pay-dem
+case and two tier-2 controls.
+
+The reference payee uses the FV-5-carried record independently of stale RPC
+data. Claim grammar is checked before non-Demos claims are skipped. Retention
+projects the actual signed transfer, including non-default nonces. Historical
+non-Demos fixture codecs cannot verify a signed payout destination and return
+`indeterminate` for payee-bound agreements.
+
+Conformance: 582 pay-dem vectors (70 pass, 182 fail, 246 indeterminate, 84 error)
+and 151 guards; settlement-finality cases grow from 86 at the merge base to 247,
+and alternative-payment cases from 45 to 77. Crash/restart, delivery idempotence,
+finality composition and serialized invariant witnesses cover the changes.
+
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
 - **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened

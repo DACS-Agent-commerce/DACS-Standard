@@ -881,6 +881,14 @@ SIG-6 encoding.
 
 For composite-payload separators each appended value MUST be a fixed-length hex sha256 digest (or, for `session_key`, the fixed-length hex public key) so the concatenation is unambiguously parseable. This is the sanctioned exception to the single-`artifact_hash` shape; these separators are first-class registry entries, not `dacs-x-` extensions.
 
+**Synthetic conformance-only domain (not a production policy).** The
+FV-5 `fixture-independent-results-v1` execution-result policy uses
+"dacs-fixture-demos-execution:v1:" followed by the lowercase-hex SHA-256
+of its CORE JCS payload, excluding `attestations` (§9.7.0). This tag
+reproduces synthetic conformance signatures only; it registers no production
+execution-result authority or policy. Production extensions remain subject to
+SIG-4.
+
 **Non-signature hash-domain tags.** The table above registers *signature* domain separators (SIG-1 scopes to signatures). Five further `dacs-*:v1:` tags domain-separate normative hashes that are not signature payloads:
 
 - `dacs-sealed-bid:v1:` — the historical sealed-envelope commitment preimage `sha256("dacs-sealed-bid:v1:" || sha256(canonical_JCS(bid)) || salt)` (§8.4.3; frozen);

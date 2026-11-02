@@ -371,7 +371,7 @@ class Sb2CollisionAuthorityVectorTests(unittest.TestCase):
                 "status": "superseded",
                 "currentCollisionAuthority": False,
                 "normativeScope": (
-                    "settlement-tx-id-canonicalisation-and-same-tuple-idempotency-only"
+                    "non-demos-settlement-tx-id-canonicalisation-and-same-tuple-idempotency-only"
                 ),
                 "supersededBy": "sb2-collision-authority-v0.8",
             },

@@ -11,6 +11,11 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from scripts.jcs import canonicalize as jcs_canonicalize
 
+try:
+    from tests import test_pay_dem_execution_vectors as pay_dem
+except ImportError:  # unittest discovery with tests/ on sys.path
+    import test_pay_dem_execution_vectors as pay_dem
+
 
 ROOT = Path(__file__).resolve().parents[1]
 VECTORS = ROOT / "conformance/vectors/security/alternative-payment-projection-v0.1.json"
@@ -192,7 +197,7 @@ def canonical_key(value):
     return jcs_canonicalize(value)
 
 
-def verify_prior_payment_context(vector):
+def verify_prior_payment_context(vector, resolved=None):
     agreement = vector["agreement"]
     disposition_ref = agreement.get("terms", {}).get("priorPaymentDispositionRef")
     if disposition_ref is None:
@@ -298,12 +303,72 @@ def verify_prior_payment_context(vector):
             return "fail", "prior-disposition-proof"
         return "pass", None
     if state == "closed-cannot-settle":
+        # Dispatch by the authenticated prior definition's handler, never by
+        # one registry railId: any pay-dem rail has the same DEM-4 obligation.
+        if resolved is None:
+            verdict, reason, resolved, _ = listing_gate(vector)
+            if verdict != "pass":
+                return verdict, reason
+        prior_definition = resolved.get(canonical_key(prior_selection))
+        if not isinstance(prior_definition, dict):
+            return "indeterminate", "prior-definition-unavailable"
+        native_dem = prior_definition.get("phaseHandler") == "pay-dem"
         if (
             not isinstance(evidence_refs, list)
             or not evidence_refs
-            or not resolution.get("reconciliationEvidenceVerified")
+            or (not native_dem
+                and not resolution.get("reconciliationEvidenceVerified"))
         ):
             return "fail", "prior-disposition-proof"
+        if native_dem:
+            transfer = disposition.get("retainedPayDemTransfer")
+            proof = resolution.get("payDemFailureProof")
+            if (not pay_dem.complete_transfer(transfer)
+                    or transfer["jobId"] != prior_agreement.get("jobId")
+                    or transfer["phaseIndex"] != phase_index
+                    or not isinstance(proof, dict)
+                    or not any(ref.get("contentHash") == digest(proof) for ref in evidence_refs if isinstance(ref, dict))):
+                return "fail", "prior-disposition-proof"
+            trust = vector["runtime"].get("payDemReconciliationTrust")
+            consumer_profile = prior_definition.get("consumerFinalityProfile")
+            signed_profile = consumer_profile.get("settlement") if isinstance(consumer_profile, dict) else None
+            if (not isinstance(trust, dict) or not isinstance(signed_profile, dict)
+                    or trust.get("finalityProfile") != signed_profile
+                    or trust.get("railNetwork") != {k: signed_profile.get(k) for k in ("networkId", "genesisHash")}):
+                return "indeterminate", "prior-disposition-proof"
+            try:
+                artifact = proof
+                if artifact.get("kind") == "nonce-exhaustion":
+                    if not pay_dem.valid_failure_proof(artifact, transfer, frozenset()):
+                        return "fail", "prior-disposition-proof"
+                    verdict, _ = pay_dem.apr_evidence({**trust, "retainedTransfer": transfer,
+                        "retainedFailureProof": artifact}, frozenset())
+                    return ("pass", None) if verdict == "pass" else (verdict, "prior-disposition-proof")
+                result = artifact.get("executionResult")
+                reference = artifact.get("transactionRef")
+                policy = trust.get("fv5Policy")
+                if (result is not None and not pay_dem.demos_execution_result_shape(result)):
+                    return "error", "prior-disposition-proof"
+                policy_verdict = pay_dem.demos_execution_policy(policy)[0]
+                if policy_verdict == "error" or (policy_verdict == "pass" and isinstance(result, dict)
+                                                and result.get("kind") != policy.get("kind")):
+                    return "error", "prior-disposition-proof"
+                if not isinstance(result, dict) or not isinstance(reference, dict):
+                    return "fail", "prior-disposition-proof"
+                # The resolved artifact is the FV observation with its signed
+                # executionResult. Project both halves without rebuilding them.
+                inclusion = {k: v for k, v in artifact.items() if k != "executionResult"}
+                held = {"classification": "permanent", "authentication": result,
+                        "record": result.get("record"), "inclusionProof": inclusion,
+                        "inclusionBlock": reference.get("blockNumber")}
+                if not pay_dem.valid_failure_proof(held, transfer, frozenset()):
+                    return "fail", "prior-disposition-proof"
+                verdict, _ = pay_dem.apr_evidence({**trust, "retainedTransfer": transfer,
+                    "retainedFailureProof": held}, frozenset())
+            except (KeyError, TypeError, ValueError):
+                verdict = "indeterminate"
+            if verdict != "pass":
+                return verdict, "prior-disposition-proof"
         return "pass", None
     return "fail", "prior-disposition-state"
 
@@ -423,6 +488,29 @@ def listing_gate(vector):
     return "pass", None, resolved, alternative_index
 
 
+def pay_dem_preflight(definition, runtime):
+    """DACS-4 RAV-R3 for a `pay-dem` rail, whatever its availability: the
+    rail's network is its signed `consumerFinalityProfile.settlement`
+    (`bft-final`), and the payer's Demos binding for that network must hold
+    every DEM-1 member, its bft-final trust covering that signed profile.
+    The pay-dem corpus's own preflight decides."""
+    profile = definition.get("consumerFinalityProfile")
+    settlement = profile.get("settlement") if isinstance(profile, dict) else None
+    # The ConsumerFinalityProfile's version and model are signed too: model
+    # MUST equal the settlement profile's kind.
+    if not (isinstance(settlement, dict) and settlement.get("kind") == "bft-final"
+            and profile.get("finalityProfileVersion") == "1" and profile.get("model") == settlement.get("kind")):
+        return False
+    verdict, _ = pay_dem.rail_preflight({
+        "availability": definition.get("availability"),
+        "railNetwork": {key: settlement.get(key) for key in ("networkId", "genesisHash")},
+        "finalityProfile": settlement,
+        "demosBinding": runtime.get("payDemBinding"),
+        "payerKeyClaims": runtime.get("payerKeyClaims"),
+    }, frozenset())
+    return verdict == "pass"
+
+
 def project_and_bind(vector, resolved, alternative_index):
     listing = vector["listing"]
     agreement = vector["agreement"]
@@ -444,7 +532,16 @@ def project_and_bind(vector, resolved, alternative_index):
         return "fail", "selected-availability", None
     if availability == "mocked":
         return "fail", "selected-availability", None
-    if availability in {"operator_gated", "closed_data", "bilateral"} and not vector["runtime"].get("operatorPreflightOk"):
+    # RAV-R3's runtime preflights gate selection, before the Agreement is
+    # signed. An APR-6 retry reconciles the selected rail and an APR-7 audit
+    # reruns APR-1..4 without the payer's private configuration: neither
+    # re-runs them (a missing pay-dem binding at settle is DEM-1's RAV-R4).
+    preflighted = vector["operation"] not in {"retry", "verify-bundle"}
+    if (preflighted and availability in {"operator_gated", "closed_data", "bilateral"}
+            and not vector["runtime"].get("operatorPreflightOk")):
+        return "fail", "selected-availability", None
+    if (preflighted and definition.get("phaseHandler") == "pay-dem"
+            and not pay_dem_preflight(definition, vector["runtime"])):
         return "fail", "selected-availability", None
 
     effective = copy.deepcopy(listing["pipeline"])
@@ -469,6 +566,9 @@ def project_and_bind(vector, resolved, alternative_index):
         for binding in bindings if isinstance(binding, dict)
     )
     if len(actual_bindings) != len(bindings) or actual_bindings != expected_bindings:
+        return "fail", "payout-binding", None
+    if definition.get("phaseHandler") == "pay-dem" and any(
+            pay_dem.party_address(binding.get("payeeAddress"), frozenset()) is None for binding in bindings):
         return "fail", "payout-binding", None
     return "pass", None, effective
 
@@ -514,7 +614,7 @@ def evaluate(vector, effects=None):
             return "fail", "fallback-forbidden"
         return "fail", "fresh-job-required"
 
-    verdict, reason = verify_prior_payment_context(vector)
+    verdict, reason = verify_prior_payment_context(vector, resolved)
     if verdict != "pass":
         return verdict, reason
 
@@ -577,6 +677,15 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
         cls.vectors = [materialize(cls.data, vector) for vector in cls.data["vectors"]]
         cls.by_name = {vector["name"]: vector for vector in cls.vectors}
 
+    def test_dem_failure_artifact_uses_the_fv_observation_shape(self):
+        """DEM-4 carries the FV observation itself through AttestationRef."""
+        context = self.by_name["fresh-job-after-conclusive-no-settlement"]["runtime"]["priorPaymentContext"]
+        artifact = context["resolution"]["payDemFailureProof"]
+        self.assertIsInstance(artifact["executionResult"]["record"], dict)
+        self.assertEqual(artifact["transactionRef"], artifact["executionResult"]["transactionRef"])
+        self.assertEqual(artifact["inclusionBlock"]["id"], artifact["executionResult"]["blockId"])
+        self.assertEqual(digest(artifact), context["disposition"]["reconciliationEvidenceRefs"][0]["contentHash"])
+
     def test_generated_file_is_current(self):
         result = subprocess.run(
             [sys.executable, str(GENERATOR), "--check"], cwd=ROOT,
@@ -597,6 +706,71 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
                 self.assertEqual(verdict, vector["expected"])
                 if "expectedReason" in vector:
                     self.assertEqual(reason, vector["expectedReason"])
+
+    def test_a_pay_dem_selection_is_preflighted_whatever_its_availability(self):
+        """DACS-4 RAV-R3/DEM-1: a `live` pay-dem rail is selected only with a
+        bft-final consumerFinalityProfile and the payer's Demos binding for
+        that network; this corpus and the pay-dem `rail-preflight` give one
+        answer for one input."""
+        refused = {"selected-dem-without-finality-profile-rejected", "selected-dem-without-payer-binding-rejected",
+                   "selected-dem-binding-for-another-network-rejected",
+                   "selected-dem-binding-without-applied-authority-rejected",
+                   "selected-dem-binding-without-bft-final-trust-rejected",
+                   "selected-dem-binding-with-unusable-bft-final-trust-rejected",
+                   "selected-dem-binding-without-execution-result-policy-rejected"}
+        for name in refused:
+            with self.subTest(name=name):
+                vector = self.by_name[name]
+                self.assertEqual("live", vector["registry"]["resolutions"][0]["definition"]["availability"])
+                self.assertEqual(("fail", "selected-availability"), evaluate(vector))
+        selecting = [vector for vector in self.vectors if vector["expected"] == "pass" and vector["base"] == "dem"]
+        self.assertTrue(selecting)
+        for vector in selecting:
+            with self.subTest(name=vector["name"]):
+                definition = vector["registry"]["resolutions"][0]["definition"]
+                self.assertEqual("pay-dem", definition["phaseHandler"])
+                self.assertTrue(pay_dem_preflight(definition, vector["runtime"]))
+                # A profile of another version, or whose model is not its
+                # settlement kind, names no network the preflight trusts.
+                for change in ({"finalityProfileVersion": "2"}, {"finalityProfileVersion": 1},
+                               {"model": "block-depth"}):
+                    changed = copy.deepcopy(definition)
+                    changed["consumerFinalityProfile"].update(change)
+                    self.assertFalse(pay_dem_preflight(changed, vector["runtime"]), change)
+                # The same selection without the profile or the binding refuses.
+                for strip in ("profile", "binding"):
+                    stripped = copy.deepcopy(vector)
+                    if strip == "profile":
+                        stripped["registry"]["resolutions"][0]["definition"].pop("consumerFinalityProfile")
+                    else:
+                        stripped["runtime"]["payDemBinding"] = []
+                    self.assertFalse(pay_dem_preflight(stripped["registry"]["resolutions"][0]["definition"],
+                                                       stripped["runtime"]), strip)
+
+    def test_retry_and_audit_never_rerun_runtime_preflights(self):
+        """RAV-R3's runtime preflights gate selection before the Agreement is
+        signed, by the payer side that holds the configuration. An APR-6 retry
+        reconciles the selected rail and an APR-7 audit reruns APR-1..4
+        without the payer's private Demos binding or the operator's
+        configuration: removing them changes neither result. Selection still
+        refuses without them."""
+        checked = 0
+        for vector in self.vectors:
+            if vector["operation"] not in {"retry", "verify-bundle"}:
+                continue
+            with self.subTest(name=vector["name"]):
+                stripped = copy.deepcopy(vector)
+                stripped["runtime"]["payDemBinding"] = []
+                stripped["runtime"]["operatorPreflightOk"] = False
+                self.assertEqual(evaluate(vector), evaluate(stripped))
+                checked += 1
+        self.assertGreaterEqual(checked, 8)
+        retry = copy.deepcopy(self.by_name["same-rail-retry-reconciles-without-authorization"])
+        retry["runtime"]["payDemBinding"] = []
+        self.assertEqual("pass", evaluate(retry)[0])
+        selection = copy.deepcopy(self.by_name["select-dem-projects-pay-dem"])
+        selection["runtime"]["payDemBinding"] = []
+        self.assertEqual(("fail", "selected-availability"), evaluate(selection))
 
     def test_all_failure_and_indeterminate_paths_are_pre_authorization(self):
         for vector in self.vectors:

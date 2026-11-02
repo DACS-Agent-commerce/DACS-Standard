@@ -36,7 +36,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | Set | Spec surface | Vectors | Verdicts used |
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
-| [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
+| [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 77 | `fail` / `indeterminate` / `pass` |
 | [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.8 current composed profile (JID-1 boundary declared at v0.7): §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 66 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 26 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
@@ -66,7 +66,8 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
-| [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
+| [`pay-dem-execution-v0.1.json`](pay-dem-execution-v0.1.json) | DACS-4 §9.5.9 DEM-1..DEM-7; DEMOS-MAPPING §A.2 native-send record profile; §9.5.1 PC-4/PC-7; §9.5.8 SB-2; §9.7.0 FV-5 | 582 | `error` / `fail` / `indeterminate` / `pass` |
+| [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 30 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
@@ -91,7 +92,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 86 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification.json`](settlement-finality-verification.json) | DACS-4 unallocated finality proposal §9.7.0 FV-1..FV-10; DACS-5 typed finality consumer | 247 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -380,14 +381,21 @@ python3 -m unittest tests.test_sr2_resolution_vectors -v
 
 ### `alternative-payment-projection-v0.1.json` — §9.9.1 APR-1..APR-8
 
-45 candidate vectors make the Listing-only `pay-alternative` projection
+77 candidate vectors make the Listing-only `pay-alternative` projection
 executable across DACS-1, DACS-3, DACS-4, and DACS-5. Deterministic Ed25519
 fixtures sign the Listing, complete DEM/x402/AP2 rail definitions, payee-bound
 Agreements, evidence-bound bundles, and prior-payment dispositions. The cases
 cover full-reference membership, optional snapshot-selected versions,
 same-snapshot registry resolution, supported non-recursive handlers,
 array-order independence, original-index projection, exact payout keys, and
-concrete evidence/bundle kinds.
+concrete evidence/bundle kinds. The DEM definition carries a `bft-final`
+`consumerFinalityProfile` and the runtime the payer's Demos binding
+(`payDemBinding`): DACS-4 RAV-R3 preflights a `pay-dem` rail whatever its
+availability, with the pay-dem corpus's own `rail-preflight` check, so a
+`live` DEM selection without the profile, without a binding, with a binding
+for another network, or without an applied-payment authority, `bft-final`
+trust or an FV-5 execution-result policy is rejected
+(`selected-dem-*-rejected`, reason `selected-availability`).
 
 Negative and recovery cases reject malformed or repeated choice slots,
 concrete payment siblings, same-railId reference substitution, caller-supplied
@@ -1245,6 +1253,383 @@ python3 scripts/generate_sb2_collision_authority_vectors.py --check
 python3 -m unittest tests.test_sb2_collision_authority_vectors -v
 ```
 
+### `pay-dem-execution-v0.1.json` — §9.5.9 DEM-1..DEM-7
+
+552 candidate vectors pin native-DEM settlement on execution, not inclusion.
+Every `signedTransaction`, `confirmResponse`, `validityResponse` and `record`
+member is carried as its exact JSON text (a string the runner parses,
+keeping member order), because member order is part of its meaning; the
+set `hash` covers those bytes, so a member-sorting round trip of the file
+changes no result.
+The node's status index may label a transaction `included` while its
+transaction record is `failed`, so the index is never decisive. Records use
+the node's `getTxByHash` shape (`hash`, `blockNumber`, `status`, `content`)
+and are compared through the DEMOS-MAPPING §A.2 native-send record profile:
+a string or integer nonce, a numeric (up to 2^53 − 1) or string OS amount, and
+`0x`-prefixed or bare party keys and `send` recipient arguments project to the
+same values; a prefixed argument's credit edit carries a single `0x`. Three
+`node2-*` vectors and `consumer-node2-confirmed-refused` copy two read-only node2 records, one `confirmed` and one `failed` with status index
+`included`. `demosProfile` names the pinned node source commit, the build
+attestation that pins it, and the SDK package; the live records are
+observations, not that pin. Each read carries `nodeBuild`, the build
+attestation the Demos binding configuration holds for the node that served
+it. Only `source: "binding-attestation"` of exactly that commit with
+`tree: "clean"` is pinned; a self-reported build, an attested testnet
+`ac8f45f` build and a dirty-tree build each leave the record unbound, on the
+handler and the consumer path. Records carry the members the node stores
+with a send (`timestamp`, fees and the send's four `gcr_edits`).
+
+A consumer binds the record's sender to a controlled Demos key claim of the
+payer's pinned party bundle, and the payer's DEM-1 gates sign and send only for
+a paying key that is one (DEMOS-MAPPING §A.2): one predicate on both sides. A
+Demos key claim is a DACS-1 ClaimReference, exactly `key:<64 lower-case hex>` or
+`did:demos:agent:<64 lower-case hex>`; bare and `0x` hex are address spellings,
+not claims and make a bundle claim malformed (`error`); a well-formed `cci-xm:`
+identifier is no Demos key claim and is skipped. A Demos key claim is controlled
+only by the DACS-1 §6.3.2 step (6) mechanism defined for its scheme: the exact
+`key:` claim's own bundle presentation signature. A `did:demos:agent:` claim has
+no mechanism, so it never counts as controlled, and a bundle presented by a
+session key has no signature of its own `key:` claim.
+
+A phase's optional `payerKeyClaims` is the corpus's model of the verifier's own
+check of that bundle (which the corpus does not carry): the bundle's claims as
+`{claim, control}`, where `claim` is a ClaimReference and `control` the step (6)
+mechanism the check found for that exact claim (`presentation-signature`,
+`sr1-linkage`, `holder-binding`, `demos-gcr-domain`) or `none` for a claim the
+bundle only lists. A label is not proof: a mechanism DACS-1 defines for another
+scheme controls nothing. Without `payerKeyClaims` the corpus's bundle holds one
+`key:` claim for `payerPayingKey`, controlled by its presentation signature;
+that default is a fixture convention, not a rule. A key the bundle only lists
+does not bind (`consumer-sender-listed-not-controlled`,
+`delivery-sender-listed-not-controlled`, `consumer-did-claim-names-another-sender`
+are `fail`; `consumer-no-controlled-claim` and the `consumer-claim-*` cases for
+a DID, a wrong mechanism, bare or `0x` hex, a `cci-xm:` claim and a
+session-key presentation are `indeterminate`), another controlled claim does
+(`consumer-sender-another-controlled-claim`), and a claim that is no Demos key
+claim is skipped (`consumer-non-demos-claim-skipped`). A claim or control that
+is not a string is `error` (`consumer-claim-control-*`). Decisions are made in
+order: FV-10's `fail`/`error` on a presented inclusion first
+(`consumer-*-bft-final-certificate-forged` with a bundle that controls nothing
+or is malformed), then an `error` for a malformed phase value or claim, then
+`indeterminate` for a bundle with no controlled claim, then the record. The
+payer's gates use the same predicate: `sign-paying-key-*`, `confirm-paying-key-*`
+and `broadcast-paying-key-*` are `error` (`permanent` before signing) for a
+paying key that is listed only, a DID claim only, controlled by a wrong
+mechanism, absent from the bundle or in a malformed bundle, and
+`sign-with-key-claim-paying-key`, `confirm-from-key-claim-paying-key` and
+`broadcast-from-key-claim-paying-key` pass a `key:` paying key.
+
+A `classify-execution` case passes only for a record from a pinned node that
+decodes and whose projected hash, nonce, sender, recipient and OS amount
+equal the retained signed transfer, whose block equals the inclusion
+observation, whose status is exactly `confirmed`, and whose committed payment debit and payee credit have independently authenticated state-transition authority. That authority must name the phase's pinned `network` (`networkId`, `genesisHash`) and the inclusion observation's `blockId`; one from another network, genesis or block ID at the same height, or one with no observed block ID to compare, is `indeterminate`. The live confirmed RPC sample remains indeterminate without that authority. The record must also carry the four edits of its send: the pinned node applies a send whose edits are missing or empty as a successful no-op, so `confirmed-no-op-*` cases stay `indeterminate` whether the authority shows the unchanged committed balances or reports a payment. Carrying the four edits is not payment either: `confirmed-four-edits-uncommitted-payment` stays `indeterminate` when the committed balances did not move. A record bound the same
+way with status `failed` is a durable `permanent` failure without
+`settlementFinality` only when it is authenticated under FV-5 at its
+`bft-final` inclusion. That authentication has two halves, and the case
+verifies both with the settlement-finality reference's own code. One is
+FV-5's signed execution result itself (`recordRead.executionResult`), checked
+against the trusted `fv5Policy`. It needs the policy's threshold of distinct
+authority keys, names `railNetwork` and the inclusion observation's
+`blockId`, references the record's own hash and block, and carries exactly
+the record read. It may carry the settlement-finality corpus's signed
+`appliedTransfer`, which must then be the change of its committed balances
+and bind the record: its transaction, block and parties, and the OS amount
+for a `confirmed` record or nothing for a `failed` one (`*-fv-form-result*`,
+guard `fv5-result-applied-transfer-binds-record`). The other is FV's
+`bft-final` verification of the transaction's inclusion
+(`recordRead.inclusionProof`, `verify_transaction_inclusion`): the
+transaction proof, inclusion block, authenticated head and ancestry and BFT
+certificate, under the rail's signed `finalityProfile` and the verifier's own
+`finalityTrust`, in the block the result names. A verifying result whose
+inclusion is missing, unfinalized, under a forged certificate, absent from
+the block, off the authenticated head, in another block or under another
+network's profile is no proof (`included-failed-bft-final-*`, guards
+`failure-requires-bft-final-inclusion`, `bft-final-inclusion-verified`,
+`bft-final-inclusion-binds-result-block`). A read that only says it is authenticated
+(`authenticated: true`, the earlier draft's flag), a forged or under-signed
+result, and a result for another network, block or record are plain reads
+(`included-failed-fv5-*`, guards `fv5-authentication-is-a-signed-result`,
+`fv5-result-signed`, `fv5-result-binds-rail-network`,
+`fv5-result-binds-block-id`, `fv5-result-binds-record`). DEM-7 cases
+(`consumer-failed-fv5-*`) and delivery (`delivery-record-fv5-*`) verify the
+same result. DEM-7's refusal and delivery need the same inclusion half
+(`consumer-failed-bft-final-*`,
+`consumer-wrong-payee-authenticated-bft-final-inclusion-unfinalized`,
+`delivery-bft-final-*`; guards
+`consumer-refutation-requires-bft-final-inclusion` and
+`delivery-requires-bft-final-inclusion`), as the FV reference verifies the
+path before any execution result decides. A consumer verdict takes FV's own
+verdict on the presented inclusion: missing, unfinalized or in another block
+it shows nothing and refutes nothing (`indeterminate`), and under a forged
+certificate, absent from the block or off the authenticated head FV scores it
+`fail`, which is then the DEM-7 and delivery verdict, as the
+settlement-finality corpus scores the same input (guard
+`consumer-takes-fv-inclusion-verdict`). The FV gate is verified from the
+evidence, never a caller verdict: `otherGates` carries only `sb1` and `pb`.
+Payer success needs it too (PC-7): a bound `confirmed` record with its
+applied payment whose inclusion is missing, unfinalized, under a forged
+certificate, absent from the block, off the authenticated head, in another
+block or under another network's profile is `substrate`
+(`included-confirmed-bft-final-*`,
+`resume-without-proof-confirmed-bft-final-inclusion-unfinalized`, guard
+`success-requires-bft-final-inclusion`). A plain RPC read of it is
+`indeterminate`, even over committed balances that show the payment applied
+(`failed-plain-read-over-applied-payment`, guard
+`failure-requires-authentication`): a stale or dishonest pinned node can
+serve `failed` for a transfer that executed. The unbound `failed-*` cases
+carry a verifying FV-5 result and the transfer's `bft-final` inclusion, so
+the binding refuses them; the inclusion half also refuses a record of another
+hash or block, and without an inclusion observation, FV-5 has no block ID to
+bind. Missing, unavailable, pending, aliased, case-variant,
+mismatched, undecodable (missing, boolean, fractional or leading-zero
+numbers, a `0x` hash, upper-case keys, a non-native `content.type`, an inconsistent `send` payload) and
+unpinned-node records are `ok: false` with `errorClass: "substrate"`. They keep
+the retained hash and remain non-terminal without a replacement payment when
+the ST-7 pause maximum passes (the pay-dem open-payment exception). No handler result, including success, authorizes
+delivery or settlement accounting; only `admit-for-delivery` does.
+
+`resume-phase` cases reuse a valid retained failure proof without a node
+read, refuse to reuse one corrupted in its nonce, recipient, block or status
+or whose `authentication` is not FV-5's signed result for its own record on
+the rail's network (a plain-read proof, guard
+`resume-requires-authenticated-proof`; the earlier draft's `fv5-bft-final`
+label and a forged, under-signed or other-network or other-record result,
+`resume-failure-proof-fv5-*`; a retained `inclusionProof` that does not
+verify or is of another block, `resume-failure-proof-bft-final-*`), and
+recover a confirmed transfer by re-reading the retained hash when no failure
+proof is retained. A retained proof means the phase ended: a re-read that
+replaces a proof that does not verify is post-terminal, so a confirmed record
+with its applied payment is `indeterminate`, never `pass`, after a plain-read
+failure and after a proof that no longer verifies (guard
+`terminal-never-reopens`). `apr-reconciliation-evidence` cases accept a DEM-4
+proof as APR `closed-cannot-settle` evidence only when the APR check itself
+verifies its `authentication` as FV-5's signed result for its failed record
+on `railNetwork` under `fv5Policy`, and its `inclusionProof` as the
+transaction's `bft-final` inclusion in the block that result names (APR-6's
+authenticated inclusion and finality); a plain RPC read, a label and every
+proof whose result or inclusion does not verify are `indeterminate`
+(`apr-evidence-failure-proof-fv5-*`, `apr-evidence-failure-proof-bft-final-*`).
+`pre-sign-gate` cases check DEM-1 before demosdk `pay()`/`sign()`: their
+input holds no signed transaction, and a binding without pinned nodes, an
+applied-payment authority, a `gasFeeSeparation` attestation (from the rail
+network's sealed genesis, with `activationHeight: null`), `bftFinalTrust`
+that the FV reference's own trust check (`bft_final_trust`) passes for
+`finalityProfile` (its pinned validator set, hashing to the pinned content
+hash with well-formed members, and keys that decode for its observation
+threshold of authorities, each a distinct key) or an `executionResultPolicy`
+the FV reference applies, for `railNetwork`, is `signPermitted: false` with `ok: false` and
+`errorClass: "substrate"` (RAV-R4), never `permanent`
+(`sign-without-bft-final-trust`, `sign-with-bft-final-trust-*`,
+`sign-without-execution-result-policy`, `sign-with-*-execution-result-policy*`).
+Without either of the last two, DEM-3 success and a DEM-4 proof are
+unreachable, so a transfer sent under the binding would debit the payer and
+could only end unresolved. A binding that attests the fork
+scheduled and one that attests nothing are each refused: with the fork active
+the pinned node stores fee-distribution edits before the send's four, so
+`confirmed-fee-separated-edits`, `consumer-fee-separated-edits` and FV
+`fv-bft-final-confirmed-fee-separated-edits` stay `indeterminate` although
+their last four edits are the send's and the authority reports the payment.
+`broadcast-gate` cases check DEM-1 at the first egress of the signed bytes,
+either the demosdk `confirm` request or the broadcast. These are the only
+submission route: an SR-3 proxy submission and a wallet call that submits the
+signed bytes without `confirm` are refused even for a durable, authentic
+retention. They allow that egress
+only for a complete, durable DEM-1 retention for the authenticated phase, under
+a binding that configures pinned nodes, an applied-payment authority,
+`bft-final` trust and an FV-5 execution-result policy and attests
+`gasFeeSeparation` unscheduled. After
+a `confirm`, they allow only the broadcast that completes the same
+uninterrupted submission, never a second `confirm`; after an interrupted
+`confirm`, they refuse a resend of either call and a replacement. After a
+restart (`restartedSinceRetention` anything but `false`) a retained transfer is
+maybe-broadcast whatever `broadcastState` was recorded, so a `confirm`, the
+broadcast completing a `confirm` that returned before the restart, and a
+replacement are each refused (guard `restart-is-maybe-broadcast`). A `confirm` request carries `signedTransaction`; a demosdk
+`broadcast` carries `validityResponse`, the `RPCResponseWithValidityData` whose
+embedded transaction the pinned node executes. A broadcast passes only when
+that payload is exactly `confirmResponse`, the response this submission's
+`confirm` returned, with `result` 200, `valid: true` and an embedded
+`content`, `hash` and `signature` that serialize as `signedTransaction`; a
+missing or stale response, one embedding another amount, nonce or member
+order, one reporting the transfer invalid, and a broadcast with no `confirm`
+of its own are refused. The signed transaction is the
+demosdk 4.0.16 envelope: `hash` is SHA-256 over `JSON.stringify(content)` and
+the `ed25519` `signature` by `content.from` covers the UTF-8 hash. The passing
+case carries every member the pinned node checks at admission: a positive integer
+`timestamp`, `from_ed25519_address`, the fee object in the node's member order, and the four native-send
+`gcr_edits` the node regenerates. They refuse
+an unsigned transaction, an upper-case `hash`, a signature that verifies only once respelled
+(upper-case or unprefixed hex, an extra member), numeric, missing or noncanonical signed OS amounts or
+fees, a missing fee object, a fee object with reordered, missing or extra
+members, a non-string `rpc_address`, a string `nonce`, a missing, zero, negative, fractional or string `timestamp`, a missing or
+mismatched `from_ed25519_address`, missing or forged `gcr_edits`, an incorrect phase DEM-to-OS conversion, a hash or signature made over other content, a
+signature by another key or of another type, a transfer retained for another
+job or phase, from another paying key, to another destination or for another
+amount, signed values that differ from the retained values or do not decode
+(a pre-`osDenomination` numeric `send` amount, an upper-case recipient), a
+hash retained for another phase, and any second or replacement broadcast.
+Decimals are compared by canonical spelling, so a 4,301-digit record amount
+or nonce, applied debit, phase amount or consumer amount reaches a decision.
+`admit-evidence` cases apply DEM-7 alone, for consumers including the payee
+before delivery: their result is `dem7GatePassed` and never authorizes
+delivery. An authenticated contradiction or authenticated `failed` record is
+`fail` under FV-5, and so is an authenticated applied-payment authority that
+contradicts the bound values of a `confirmed` record (including the unchanged
+balances of a no-op, or of a record carrying all four edits whose apply
+committed nothing), while an unauthenticated mismatched or `failed` read stays
+`indeterminate`. The authority's contradiction is `fail` only with the
+`bft-final` inclusion of the presented reference in the block the authority
+names, and it is checked against that verified block, never the plain
+observation: without that inclusion, under each of its six failures, an
+authority about another block, and an observation naming another block ID
+than the honest authority's are each `indeterminate`
+(`consumer-*-bft-final-inclusion-missing`,
+`consumer-four-edits-uncommitted-payment-bft-final-*`,
+`consumer-applied-transfer-other-block-id`, `*-stale-observed-block-refutes-nothing`;
+guard `consumer-contradiction-requires-bft-final-inclusion`). A `failed` record keeps its own outcome whatever the
+authority reports. The record
+hash, block, payer, payee and amount are each bound under their own guard. `admit-for-delivery`
+cases authorize delivery only when DEM-7 passes on an FV-5-authenticated
+record and the FV, SB-1 and PB verdicts pass, and when the payee has not
+already admitted the same `demos:{txHash}` for another `(jobId, phaseIndex)`
+(SB-2; `pay-dem` has no settlement-side job binding). The payee's delivery
+check presents its own admissions (`consumerAdmissions`) with the evidence,
+and they are projected through SB-1 first: the same canonical hash collides;
+Demos has no legacy hash spelling, and an admitted reference that cannot be projected is
+`error`. Those admissions are the snapshot of the payee's durable admission
+index (`admissionIndex`: `revision` and `admissions`), and the presented list
+must equal it as a multiset of exact JCS bytes. A presented history that omits
+an indexed admission (`delivery-history-omits-indexed-admission`, which a
+restart with process-local history would produce), one that adds an
+unindexed admission, a missing index and a malformed revision are each
+`error` and authorize no delivery (guards `delivery-history-is-admission-index`
+and `delivery-requires-admission-index`).
+
+`classify-egress-outcome` cases give the PC-4 class once the handler's own
+step returns: `call` is its `pre-egress-check` (a balance read before any
+`confirm` or broadcast carried the signed bytes), `confirm` or `broadcast`,
+`outcome` what it returned, and `broadcastState` and `restartedSinceRetention`
+what the handler reads back from its journal. Once the bytes may have left,
+every outcome is `substrate` with the retained hash kept; DEM-6 prohibits a further submission on this profile:
+a `confirm` refused for insufficient balance or otherwise not valid, a
+transport error, a timeout, an unrecognized reply, a broadcast refused by the
+node or by the handler's own DEM-1 check after a valid `confirm`, and an
+accepted broadcast whose record is not yet read. Only insufficient balance
+found by a `pre-egress-check` on an un-restarted journal recording
+`never-broadcast` is `permanent`, with `executionState: "not-sent"`; the same
+check after a restart or an interrupted `confirm` is `substrate`, because the
+short balance can be the transfer's own debit. Each result carries `cause`
+(`call:outcome`). Guards `post-egress-refusal-is-unresolved` and
+`call-error-is-unresolved` catch an implementation that follows the bare PC-4
+`permanent` or `transient` rows after the bytes left.
+
+`tests/test_pay_dem_crash_restart.py` runs a storage-backed reference payer
+handler and payee (`tests/pay_dem_reference_handler.py`) that take every state
+input of these decisions from what they read back from storage. It stops
+them, one process per start, on each side of every transition and restarts
+them from storage. Each start draws its identifier as 128 random bits, which
+need no stored state, so losing or restoring the payer's store never repeats
+one; the caller's `--boot` only labels its egress, so a restart that repeats
+it is still a restart. The payer's first retention is a create-if-absent under
+the journal lock, it journals each call as possibly sent before making it,
+and its later journal saves and the payee's index writes are conditional on
+the state they were read as. After a restart no signed effect leaves on the pinned profile; every
+egress carried the bytes the stored journal already held, the journal file,
+its directory and each directory the store created (in its parent) were
+fsynced before the first egress, a new delivery record and then its directory
+entry are fsynced before `deliver` returns, and one hash is delivered for at most one
+`(jobId, phaseIndex)` and at most once for it, including under two
+concurrent checks; a hash retained for one phase never leaves for another,
+read from the stored journals (`hashRetainedForOtherPhases`). A call that
+carries the bytes and then raises an error the handler does not model, and
+is resumed in the same start, is not repeated and never ends `permanent`;
+two concurrent starts of one phase send one transfer; and a payee whose
+index is lost, corrupted or rolled back after a delivery delivers nothing
+more (its index is provisioned once, never by a check). The payer's re-read
+takes its FV-5 result, `bft-final` inclusion and applied payment from sources
+other than the node, which answer from the chain state they observe
+(`--executed`), never from the record the node serves; the oracle verifies
+the result and inclusion against the payer's configured trust. A source that
+signs under the policy's authority names with other keys (`--fv5 forged`),
+or signs a failure in a block no certificate finalizes (`--fv5 unfinalized`),
+leaves a failed record `substrate` and stores nothing terminal, before and
+after a restart; so does a node that serves `failed` for an executed transfer.
+A DEM-4 proof stores the signed result and the inclusion verbatim, and a
+resume verifies both again: a label, a forgery, an edited result, a signed
+result of another record, another network's result, and a missing,
+unfinalized or other-block inclusion are re-read instead, and when that
+re-read serves a confirmed record with its applied payment, the phase stays
+ended: nothing is returned as success, written or sent. A crash on either
+side of the pre-egress `permanent` refusal write sends nothing. A restart
+after every stored document but the journals is lost, or restored from an
+older copy, sends nothing at any crash point. A payee that stops between an
+admission's rename and its directory fsync, or between a delivery record's
+write and its fsync or its directory's, flushes what it finds before relying
+on it when it restarts, and delivers once. Twenty-three wrong
+variants each fail it: a process-local journal, a journal written after
+`confirm`, progress journaled only after a call returns, restart taken from
+saved progress, no fsync, no fsync of a new directory's parent, an unlocked
+first retention, a journal blind to other phases, a per-phase rather than
+store-wide retention lock, the rail's network taken from the binding, the
+node's own authentication claim taken for FV-5, a DEM-4 result not journaled
+with its proof, an FV-5 result taken without verifying its signatures, a
+signed failure taken without its `bft-final` inclusion, the caller's start
+value taken as the start identifier, a start counter that a lost or restored
+store resets, an ended phase re-derived from a re-read, a process-local
+admission index, an unconditional index write, a lost index read as empty, a
+delivery on every check, a new delivery record whose directory entry is not
+fsynced and an index entry or delivery record trusted before it is flushed.
+
+`phase.payeeAddress` and `phase.payerPayingKey` are DEMOS-MAPPING §A.2 pay-dem
+party addresses: a bare or `0x` Demos key, a `key:` ClaimReference or a
+`did:demos:agent:` DID over 64 lower-case hex digits, compared by the key they
+project to. The
+`broadcast-to-*`, `consumer-*-payee-address-*` and `delivery-*-payee-address`
+/ `delivery-from-0x-paying-key` cases pass a genuine payment under each
+spelling the PB and APR corpora use, and upper-case, `did:demos:agent:0x`
+and 20-byte addresses are `error` (guard `phase-party-address-projects`).
+`rail-preflight` cases apply RAV-R3 to a `pay-dem` rail whatever its
+availability, before selection and so before Agreement signature; a binding
+found missing at settle is `pre-sign-gate` `substrate` under RAV-R4 (guard
+`binding-refusal-is-rail-unavailable`).
+The three gates read the binding "for the phase's network" from two inputs:
+`railNetwork`, the pinned RailDefinition's `consumerFinalityProfile.settlement`
+network and genesis, and `demosBinding`, the payer's configuration with one
+entry per network whose members each name the network or genesis they were
+configured or attested for. The gate uses the entry for `railNetwork`
+(guard `binding-network-is-rail-network`) and holds a member only when it
+names exactly that network (guards `pinned-nodes-bind-rail-network`,
+`applied-authority-binds-rail-network`, `fork-attestation-binds-rail-genesis`).
+`*-with-binding-for-another-network`, `*-binding-for-replaced-genesis`,
+`*-pinned-nodes-for-another-network`, `*-applied-authority-for-another-network`
+and `*-fork-attestation-of-another-genesis` refuse at sign, `confirm`,
+broadcast and preflight; `*-rail-network-entry-among-several` pass with the
+rail's entry behind another network's. `classify-execution`, `resume-phase`
+and `admit-*` bind the applied-payment authority to the same `railNetwork`.
+
+`project-settlement-id` cases derive `demos:{txHash}` from raw references, and reject a malformed or non-canonical Demos hash, `0x` prefix and upper case included: a Demos reference has no legacy spelling, so no flag collapses one. `resolve-settlement-group` derives both raw IDs before grouping: one hash under two jobs leaves both indeterminate, a non-canonical spelling in the set makes the group `error`, and distinct hashes pass. Admitted references retain their raw transaction references rather than a prefiltered same-hash tuple list. Settlement accounting and the DACS-5 derivation group only the presented `records`: `sb2-demos-unpresented-admission-not-added` passes although the consumer once admitted the same hash for another job outside that set (guard `sb2-presented-set-only`), so a re-run from the presented set reproduces the result.
+
+The synthetic `appliedTransfer` attests `networkId`, `genesisHash`, `blockId`, `txHash`, `blockNumber`, `sender`, `recipient`, `payerDebitOs`, `payeeCreditOs` and `committedBalances` (`payerBeforeOs`, `payerAfterOs`, `payeeBeforeOs`, `payeeAfterOs`, `feeOs`). The handler and consumer cases compare every member: a test requires, on both paths, a refused vector that differs from the passing control in that member alone, where a varied debit or credit carries the committed balances it is the change of. All amounts are canonical OS strings. The debit must be `payerBeforeOs - payerAfterOs - feeOs` and the credit `payeeAfterOs - payeeBeforeOs`, compared by exact decimal arithmetic; figures that are not that change establish nothing (`indeterminate`, guard `applied-transfer-is-committed-change`). Both must equal the payment amount. In the FV corpus the independent-result signature covers this transition together with the network, block identity and full record, and an authenticated transfer that does not decode is `indeterminate`. The generators take the committed balances from each scenario's own pre-state and outcome (`applied`, `rolled-back` or `no-op`, with an explicit amount), never from the record's amount, status or edits; a test rewrites a record's edits and amount and checks that the fixture authority does not move. `confirmed-four-edits-uncommitted-payment` and its consumer and FV counterparts carry a record with all four send edits over unchanged committed balances: the handler is `indeterminate`; a separate relevant applied-payment contradiction makes the consumer `fail`, while a signed FV result contradicting its own record is `indeterminate`. The `*-fee-separated-edits-uncommitted-payment` counterparts apply the same distinction to a fee-separated record: a relevant separate contradiction makes DEM-7 `fail`; a self-contradictory signed FV result and the handler stay `indeterminate`. Partial and reordered edit lists (`confirmed-partial-edits`, `confirmed-reordered-edit-members` and counterparts) are refused even with a paying authority. Production authorities must verify committed state application rather than infer it from the record.
+
+Each vector's `guards` lists exactly the oracle checks whose removal changes
+its result. The test asserts that list for every vector and that every guard
+is named at least once. The expected handler results are written out in the
+test, the corpus `hash` is SHA-256 over the RFC 8785 JCS form of `vectors`,
+and the test runs the generator's `--check` against both the committed file
+and a stale copy. The consumer path through the FV reference is the
+`settlement-finality-verification.json#fv-bft-final-*` cases, which bind an
+authenticated native-send record: a failed record, non-executed statuses,
+undecodable records, an unpinned verifier, and wrong payee, payer, amount,
+block and hash.
+
+Regenerate and execute with:
+
+```sh
+python3 scripts/generate_pay_dem_execution_vectors.py --write
+python3 scripts/generate_pay_dem_execution_vectors.py --check
+python3 -m unittest tests.test_pay_dem_execution_vectors -v
+```
+
 ### `commitment-anchor-authority-v0.3.json` — §8.6 CA-6/CA-7
 
 Four vectors distinguish agreement authority from physical SR-2 ownership. Buyer- and
@@ -1284,7 +1669,7 @@ Coverage:
   as `permanent`.
 - **PB-2 payout binding tiers** — a resolved tier-2 binding cannot be downgraded to
   a different phase destination; a matching controlled linked claim binds at tier
-  2; `pay-dem` intrinsic addressing binds at tier 1; an applicable-but-unresolvable
+  2; `pay-dem` binds at tier 3 unless a tier-2 controlled claim applies; an applicable-but-unresolvable
   tier-2 binding pauses instead of falling through to tier 3; a resolver `error`
   remains `error`.
 - **PB-3 gate separation** — an SB-3 binding result cannot bypass PB-2 and a
@@ -1356,6 +1741,14 @@ payment. This set is candidate data only; cross-run convergence and any golden
 promotion remain pending.
 
 ### `legacy-agreement-admission-v0.8.json` — §9.5.1 LAA-1..LAA-7 / §8.6 CA-10
+
+The `txHash` values in this corpus's payment references (such as
+`"transition-tx-a"`) are shape placeholders, not canonical SB-1 spellings.
+Each vector carries the abstract `settlementFinalityValid` input, so the
+rail's own reference rules, including SB-1's canonical `demos` spelling,
+are not applied here. A verifier that applied them to these placeholders
+would answer `error`; LAA decisions here are about the Agreement and
+transition, not the reference.
 
 One hundred sixty-six candidate cases execute the governed transition from legacy
 `AgreementDocument` payment authority to the payee-bound artifacts
@@ -1897,7 +2290,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `settlement-finality-verification.json` — unallocated #392 FV-1..FV-10
 
-Sixty-seven candidate cases execute consumer-verifiable settlement finality for
+247 candidate cases execute consumer-verifiable settlement finality for
 block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
 liquidity-tank profiles. The consumer derives the model and strength from the
 exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
@@ -1908,7 +2301,68 @@ bodies, Merkle relations, every ancestry link, independently pinned Ed25519
 observation/provider authorities, and weighted BFT certificates. Cases cover
 network, genesis, transaction/index, proof/root/path, quorum/key, freshness,
 provider-byte/attestation, malformed-nested-input and production-codec-unavailable
-failures. Provider capture passes only as `provisional-provider-capture`.
+failures. A `pay-dem` inclusion leaf binds the transaction identity, without
+committing a later execution status. Its separate `executionResult` contains
+`kind`, `networkId`, `genesisHash`, `blockId`, `transactionRef`, the full Demos
+`record`, `appliedTransfer`, and `attestations`. The verifier's independent
+`demosExecutionPolicy` pins result authority keys and a threshold of distinct
+keys. A policy whose threshold is not positive or exceeds its keys, or whose
+keys do not decode or repeat one key under two names, is `error` before any
+result is read.
+Each signature covers `dacs-fixture-demos-execution:v1:` followed by the SHA-256
+of the JCS result object without `attestations`. Result authorities attest the
+outcome of independently validated execution under the pinned node semantics;
+they are separate from block validators and head observation authorities.
+The policy also authenticates the independently verified committed payment debit and payee credit in `appliedTransfer`, with the committed balances (`committedBalances`) they must be the change of; neither `confirmed` nor an edit list alone proves application. Missing applied authority, and figures that are not the change of the committed balances, are `indeterminate`. A signed result whose own applied transfer contradicts its record authenticates nothing and is `indeterminate`: that covers a `confirmed` record whose transaction lacks its send's four edits over unchanged committed balances (a no-op apply, and an authority that reports payment for it), a `confirmed` record that carries all four edits over unchanged committed balances (`fv-bft-final-confirmed-four-edits-uncommitted-payment`), a payment signed beside a `failed` record, and another transaction, block, party or amount. `fail` is for an authenticated record that binds a different sender, recipient, amount, transaction or block than the phase. A partial edit list is `indeterminate`; the order of an edit's members is not signed (JCS sorts members), so reordering them changes nothing (`fv-bft-final-confirmed-reordered-edit-members` passes). Only the `bft-final` native-send path accepts `executionResult`; on any other model the member is malformed (`error`). Record and applied-transfer decimals are compared by canonical spelling, so an amount, send argument or debit longer than a runtime's integer-parsing limit still yields its decision. The policy authenticates record content, status and applied transfer and binds them to the
+same network, block identity and transaction. A production binding must specify
+its own result commitment, verified replay or authenticated result policy; these
+fixture keys are not production authority and the pinned node does not supply
+this synthetic receipt. A plain RPC result or BFT inclusion proof cannot replace it.
+Missing result authentication is `indeterminate`. So is tampering, which leaves
+fewer than the threshold of attestations verifying, and so is a threshold-signed
+result for another network, genesis, block or transaction, which is no result
+for this reference. Attestations are counted, never a veto: one that is no
+attestation object, names no policy key, repeats a counted key or does not
+verify adds nothing, so `fv-bft-final-result-extra-unknown-attestation`,
+`fv-bft-final-result-spare-key-bad-signature` and
+`fv-bft-final-result-extra-malformed-attestation` pass, and
+`fv-bft-final-result-attestation-malformed` (one valid signature left) is
+`indeterminate`. Only an `attestations` member that is not an array is
+`error`. The verifier checks its own trust before any evidence: observation
+keys that do not decode or alias one key and a validator set that is not the
+pinned one are `error`, and missing keys are `indeterminate`, never `fail`
+(`fv-trust-*`). DACS-4 DEM-1's gate applies the same check
+(`bft_final_trust`). Only after result authentication does DEM-7 decode and
+bind hash, block, recipient, amount and the sender to a controlled Demos key
+claim of the payer's pinned party bundle. Trusted `demosPayerKeyClaims`, keyed
+by payer, is verifier configuration that models the verifier's own check of
+that bundle (DEMOS-MAPPING §A.2): each claim is `{claim, control}`, `claim` a
+DACS-1 ClaimReference and `control` the step (6) mechanism that check found
+for it (`presentation-signature`, `sr1-linkage`, `holder-binding`,
+`demos-gcr-domain`) or `none` for a claim the bundle only lists. Only a `key:`
+claim's `presentation-signature` is control of a Demos key claim; a
+`did:demos:agent:` claim has none, SR-1 linkage controls a `cci-xm:` claim, and
+bare or `0x` hex is no ClaimReference. Claims for another payer are
+unavailable, well-formed claims that are no Demos key claim are skipped,
+malformed ClaimReference grammar or a non-string claim or control is `error`, and a bundle with no controlled Demos
+key claim is `indeterminate` (after FV-10's `fail`/`error` and a phase's own
+`error`).
+Cases cover a controlled claim distinct from the party signer, any controlled
+claim of the bundle, another party's key that the bundle lists without proof
+of control (its transfer is `fail`), a sender the bundle does not claim, one
+case per scheme and mechanism (`fv-bft-final-payer-key-claim-did-*`,
+`-key-sr1-linkage`, `-cci-xm-*`, `-bare-hex-*`, `-0x-hex-*`,
+`-session-key-presentation`), claims
+for another payer or none, malformed claim entries, FV-10 and a malformed phase
+before the claims' verdict,
+result-policy thresholds and aliased keys, malformed results,
+exact fractional DEM-to-OS conversion,
+record spellings that project alike (a `0x`-prefixed `send` argument, bare
+party keys, an integer nonce, a string amount and a 2^53 − 1 number amount; a
+prefixed argument's credit edit carries a single `0x`),
+undecodable records, and deterministic result contradictions with a withheld
+BFT certificate. `fv-bft-final-canonical-success` is the positive control.
+Provider capture passes only as `provisional-provider-capture`.
 HTLC carries four independently verified source-lock/source-claim/
 destination-lock/destination-reveal arms and recomputes contract, per-chain
 hashlock, preimage, amount and timelock relations from authenticated bytes.
@@ -2220,3 +2674,11 @@ reproduction for this fixture profile.
 ### RSC policy compatibility
 
 The retained `revocation-state-completeness-v0.8.json` corpus records the earlier reference policy; its RSC case outcomes and signed inputs remain unchanged, while trusted profile-admission tuples track the current composed release. `tests/test_rsc_current_admission_v2.py` exercises the unsigned common-state comparison and independent content/native capacity checks, not authentication of those fixture labels. `tests/test_listing_admission_bridge.py` demonstrates that partial checks and caller-supplied new-session or committed-session labels cannot issue a direct capability. The pinned IBH test fixture separately verifies its committed chain before installing a retained historical capability. Full ordered DACS-1 and authenticated committed-session evaluators remain required for general positive admission; historical replay results are not fresh admission authority.
+
+The native-payment reference exposes read-only DEM-6 `recover`: local genesis
+pins do not authenticate actual-network fork state. Neither resubmission nor a
+nonce-exhaustion terminal is authorized on this profile. The native-payment
+contract and recovery regression tests cover these refusals, malformed JSON numbers,
+verifier-owned applied-payment authentication, and consistently upper-case
+FV evidence. A presented applied-transfer authentication flag is only an
+abstract oracle input; the reference payee replaces it using its own source.

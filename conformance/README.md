@@ -191,6 +191,7 @@ The output map describes the intended DACS-X step-3 policy boundary: a full tran
 - `MANIFEST.json` — the case index: every vector's `id`, `area`, spec `§`, summary, `status`, provenance `reason`, and pinned `want`.
 - `fixtures/attestation-bundle-0004.json` — the full byte-stable completed §10.4 AttestationBundle fixture.
 - `fixtures/attestation-bundle-0004-seller.json` — the same `jobId` as DACS-VERIFY-0004 with a divergent `failed-counterparty` outcome; it verifies independently and has a different bundle hash.
+  Both fixtures' payment references use the shape placeholder `demos-testnet:tx-dacs-verify-0004-*` for a Demos `txHash`; it is not a canonical SB-1 spelling (64 lower-case hexadecimal digits), so DACS-4 SB-1 would treat it as malformed. The fixtures exercise bundle structure and signatures, not settlement finality.
 - `fixtures/attestation-bundle-htlc9.json` — the full byte-stable HTLC-9 asymmetric-settlement fixture.
 - `fixtures/evidence-bound-fault-bundle-compatibility-v0.4.json` — deterministic signed listing/EBFAB fixture covering bundle and extended-pointer domains, discriminator/type-swap refusal, cross-type replay, signed-but-SEB-invalid rejection, EBFAB/EBFAB member divergence, and EBFAB authority across every older bundle type. The checked-in signed fixture includes the #333-P01 supported-selector-plus-inert-member case and is regenerated from the integrated source.
 - `fixtures/identity/dacs1-vet-golden-inputs-v0.1.json` — complete,
@@ -234,7 +235,10 @@ The output map describes the intended DACS-X step-3 policy boundary: a full tran
 - `vectors/golden.json` — pinned outputs: deterministic signature, logical-address encoding, bundle refs/hashes, the §14.4 settlement decision map, and the §14.5 verify verdict/reputation maps. The file also retains proposed dispute/disclosure decision maps/seeds, but those rows are candidate output-only expectations until #99/#351 supply their public inputs and executable contracts.
 - `vectors/security/artifact-reference-shapes-v0.1.json` — the exact
   `AttestationRef` / `ChainTxRef` shape oracle used by
-  `scripts/validate_artifact_shapes.py`.
+  `scripts/validate_artifact_shapes.py`. It checks wire shape only, not the
+  SB-1 spelling of a string member: its `txref-demos` `txHash` is a shape
+  placeholder, and the canonical Demos spelling is checked by the
+  `pay-dem-execution-v0.1` `project-settlement-id` cases.
 - `vectors/golden.json` provenance strings name the verifier-side runner used to construct complex inputs.
 
 The reference-bearing shared fixtures are regenerated with:

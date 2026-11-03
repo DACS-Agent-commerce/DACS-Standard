@@ -5,7 +5,7 @@
   "description": "Pins the canonical cci-humanpassport address form and the cci-tlsn claim with its web2 storage projection. Only the identifier-bearing fields are modelled; other fields a valid stored entry carries do not change the identifier.",
   "provenance": {
     "issue": "DACS-Agent-commerce/DACS-Standard#439 and #440",
-    "generator": "hand-authored normative examples; independently recomputed by tests/test_cci_native_identifier_rows_vectors.py"
+    "generator": "hand-authored normative examples; checked by the rule predicates in tests/test_cci_native_identifier_rows_vectors.py (not by a reference implementation)"
   },
   "count": 15,
   "hash": "a258bfb62758c9aba01c3ea0d49c1db00b53524d1578547cde27fd68ebe2a482",

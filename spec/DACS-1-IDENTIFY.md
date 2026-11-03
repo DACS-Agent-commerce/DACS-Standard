@@ -70,7 +70,7 @@ The v0.1 scheme registry is organised along two axes: (a) **CCI-native** schemes
 | cci-nomis:<address> | nomis | Nomis wallet score subject | Done |
 | cci-humanpassport:<address> | humanpassport | verified EVM address, the address Demos stores for the identity: `0x` + 40 lowercase hex; a checksum-case or uppercase-hex spelling is lowercased under CF-2 and any other shape is not an identifier | Done |
 | cci-ethos:<id> | ethos | Ethos profile id | Done |
-| cci-tlsn:<proof-hash> | web2 (proof type `tlsn`) | TLSNotary proof commitment: 64 lowercase hex; the node stores it on a web2 identity entry with proof type `tlsn`, and that entry projects to this claim and, separately, to its `cci-web2` claim | Done — DACS-2 MUST treat as a CCI claim, NOT as an external tlsnotary method |
+| cci-tlsn:<proof-hash> | web2 (proof type `tlsn`) | TLSNotary proof commitment: 64 lowercase hex (an uppercase-hex spelling is lowercased under CF-2 and any other shape is not an identifier); the node stores it on a web2 identity entry with proof type `tlsn`, and that entry projects to this claim and, separately, to its `cci-web2` claim | Done — DACS-2 MUST treat as a CCI claim, NOT as an external tlsnotary method |
 | cci-lei:<20-char> | lei (NEW) | uppercase LEI | Deferred — later version, not v0.1 |
 | cci-finra-crd:<digits> | finra-crd (NEW) | digits only, no leading zeros | Deferred — later version, not v0.1 |
 | cci-sam-uei:<12-char> | sam-uei (NEW) | uppercase UEI | Deferred — later version, not v0.1 |

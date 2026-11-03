@@ -1,0 +1,208 @@
+{
+  "set": "cci-native-identifier-rows-v0.8",
+  "spec": "DACS-1 §6.3.1 cci-humanpassport and cci-tlsn identifier rows",
+  "tier": "candidate",
+  "description": "Pins the canonical cci-humanpassport address form and the cci-tlsn claim with its web2 storage projection. Only the identifier-bearing fields are modelled; other fields a valid stored entry carries do not change the identifier.",
+  "provenance": {
+    "issue": "DACS-Agent-commerce/DACS-Standard#439 and #440",
+    "generator": "hand-authored normative examples; independently recomputed by tests/test_cci_native_identifier_rows_vectors.py"
+  },
+  "count": 15,
+  "hash": "a258bfb62758c9aba01c3ea0d49c1db00b53524d1578547cde27fd68ebe2a482",
+  "vectors": [
+    {
+      "name": "humanpassport-lowercase-address-is-canonical",
+      "expected": "pass",
+      "row": "humanpassport",
+      "stored": {"humanpassport": [{"address": "0xabcdef0123abcdef0123abcdef0123abcdef0123"}]},
+      "want": {
+        "expected": "pass",
+        "cciHumanpassport": ["cci-humanpassport:0xabcdef0123abcdef0123abcdef0123abcdef0123"]
+      }
+    },
+    {
+      "name": "humanpassport-checksum-case-address-canonicalises-to-lowercase",
+      "expected": "pass",
+      "row": "humanpassport",
+      "stored": {"humanpassport": [{"address": "0xAbCdEf0123AbCdEf0123AbCdEf0123AbCdEf0123"}]},
+      "want": {
+        "expected": "pass",
+        "cciHumanpassport": ["cci-humanpassport:0xabcdef0123abcdef0123abcdef0123abcdef0123"]
+      }
+    },
+    {
+      "name": "humanpassport-uppercase-hex-address-canonicalises-to-lowercase",
+      "expected": "pass",
+      "row": "humanpassport",
+      "stored": {"humanpassport": [{"address": "0xABCDEF0123ABCDEF0123ABCDEF0123ABCDEF0123"}]},
+      "want": {
+        "expected": "pass",
+        "cciHumanpassport": ["cci-humanpassport:0xabcdef0123abcdef0123abcdef0123abcdef0123"]
+      }
+    },
+    {
+      "name": "humanpassport-opaque-proof-id-is-not-an-identifier",
+      "expected": "fail",
+      "row": "humanpassport",
+      "stored": {"humanpassport": [{"address": "humanity-proof-0001"}]},
+      "want": {"expected": "fail", "cciHumanpassport": []}
+    },
+    {
+      "name": "humanpassport-address-without-0x-prefix-is-rejected",
+      "expected": "fail",
+      "row": "humanpassport",
+      "stored": {"humanpassport": [{"address": "abcdef0123abcdef0123abcdef0123abcdef0123"}]},
+      "want": {"expected": "fail", "cciHumanpassport": []}
+    },
+    {
+      "name": "humanpassport-uppercase-0X-prefix-is-rejected",
+      "expected": "fail",
+      "row": "humanpassport",
+      "stored": {"humanpassport": [{"address": "0Xabcdef0123abcdef0123abcdef0123abcdef0123"}]},
+      "want": {"expected": "fail", "cciHumanpassport": []}
+    },
+    {
+      "name": "humanpassport-short-address-is-rejected",
+      "expected": "fail",
+      "row": "humanpassport",
+      "stored": {"humanpassport": [{"address": "0xabcdef0123abcdef0123abcdef0123abcdef012"}]},
+      "want": {"expected": "fail", "cciHumanpassport": []}
+    },
+    {
+      "name": "humanpassport-long-address-is-rejected",
+      "expected": "fail",
+      "row": "humanpassport",
+      "stored": {"humanpassport": [{"address": "0xabcdef0123abcdef0123abcdef0123abcdef01234"}]},
+      "want": {"expected": "fail", "cciHumanpassport": []}
+    },
+    {
+      "name": "humanpassport-non-hex-address-is-rejected",
+      "expected": "fail",
+      "row": "humanpassport",
+      "stored": {"humanpassport": [{"address": "0xabcdef0123abcdef0123abcdef0123abcdef012g"}]},
+      "want": {"expected": "fail", "cciHumanpassport": []}
+    },
+    {
+      "name": "tlsn-web2-entry-projects-to-cci-tlsn-and-cci-web2",
+      "expected": "pass",
+      "row": "tlsn",
+      "stored": {
+        "web2": {
+          "github": [
+            {
+              "username": "example-user",
+              "proofType": "tlsn",
+              "proofHash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "pass",
+        "cciWeb2": ["cci-web2:github:example-user"],
+        "cciTlsn": ["cci-tlsn:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"]
+      }
+    },
+    {
+      "name": "tlsn-uppercase-proof-hash-canonicalises-to-lowercase",
+      "expected": "pass",
+      "row": "tlsn",
+      "stored": {
+        "web2": {
+          "discord": [
+            {
+              "username": "example-user",
+              "proofType": "tlsn",
+              "proofHash": "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "pass",
+        "cciWeb2": ["cci-web2:discord:example-user"],
+        "cciTlsn": ["cci-tlsn:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"]
+      }
+    },
+    {
+      "name": "tlsn-web2-entry-without-tlsn-proof-type-has-no-cci-tlsn",
+      "expected": "fail",
+      "row": "tlsn",
+      "stored": {
+        "web2": {
+          "github": [
+            {
+              "username": "example-user",
+              "proofType": "gist",
+              "proofHash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "cciWeb2": ["cci-web2:github:example-user"],
+        "cciTlsn": []
+      }
+    },
+    {
+      "name": "tlsn-short-proof-hash-has-no-cci-tlsn",
+      "expected": "fail",
+      "row": "tlsn",
+      "stored": {
+        "web2": {
+          "github": [
+            {
+              "username": "example-user",
+              "proofType": "tlsn",
+              "proofHash": "0123456789abcdef"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "cciWeb2": ["cci-web2:github:example-user"],
+        "cciTlsn": []
+      }
+    },
+    {
+      "name": "tlsn-0x-prefixed-proof-hash-has-no-cci-tlsn",
+      "expected": "fail",
+      "row": "tlsn",
+      "stored": {
+        "web2": {
+          "github": [
+            {
+              "username": "example-user",
+              "proofType": "tlsn",
+              "proofHash": "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "cciWeb2": ["cci-web2:github:example-user"],
+        "cciTlsn": []
+      }
+    },
+    {
+      "name": "tlsn-missing-proof-hash-has-no-cci-tlsn",
+      "expected": "fail",
+      "row": "tlsn",
+      "stored": {
+        "web2": {
+          "github": [
+            {"username": "example-user", "proofType": "tlsn"}
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "cciWeb2": ["cci-web2:github:example-user"],
+        "cciTlsn": []
+      }
+    }
+  ]
+}

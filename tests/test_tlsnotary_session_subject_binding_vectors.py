@@ -1,8 +1,10 @@
+import copy
 import hashlib
 import json
 import re
 import unicodedata
 import unittest
+from encodings.idna import nameprep
 from pathlib import Path
 
 
@@ -12,6 +14,34 @@ VECTORS = (
     / "tlsnotary-session-subject-binding-v0.1.json"
 )
 SPEC = ROOT / "spec" / "DACS-2-VET.md"
+
+
+class OracleRefusal(ValueError):
+    """The reduced oracle cannot check this label faithfully to IDNA2008."""
+
+
+# Characters IDNA2003 maps or splits differently from IDNA2008: sharp s, final
+# sigma, ZWNJ, ZWJ, and the ideographic full stop (a label separator only in
+# IDNA2003).
+IDNA_DIVERGENT = frozenset("ßς‌‍。")
+
+
+def refuse_unfaithful_label(text):
+    """Raise OracleRefusal for a non-ASCII character the oracle cannot check.
+
+    A character passes only if it is not in IDNA_DIVERGENT and IDNA2003
+    nameprep leaves it as its own lowercase form; a character nameprep maps
+    to anything else (case folding, NFKC, deletion) or prohibits is refused.
+    """
+    for char in text:
+        if char.isascii():
+            continue
+        try:
+            mapped = nameprep(char)
+        except UnicodeError as error:
+            raise OracleRefusal(f"nameprep rejects {char!r}") from error
+        if char in IDNA_DIVERGENT or mapped != char or char != char.lower():
+            raise OracleRefusal(f"IDNA2003 and IDNA2008 may differ on {char!r}")
 
 
 def session_nonce(bundle):
@@ -25,14 +55,14 @@ def canonical(scheme, identifier):
     """CF-2(b): NFC, then the scheme's identifier rule; None if it cannot apply.
 
     For domain this is DCR-1 (lowercase A-label). The standard library's idna
-    codec (IDNA2003 ToASCII) stands in for IDNA2008 so no dependency is needed;
-    it agrees on these lowercase labels. It lowercases before ToASCII, which
-    strict IDNA2008 does not, so every U-label subject must already be
-    lowercase (see test_u_label_subjects_are_already_lowercase).
+    codec (IDNA2003 ToASCII) stands in for IDNA2008 so no dependency is needed.
+    It is only faithful where the two agree, so refuse_unfaithful_label raises
+    OracleRefusal for any character where they may differ.
     """
     text = unicodedata.normalize("NFC", identifier)
     if scheme != "domain":
         return text
+    refuse_unfaithful_label(text)
     try:
         return text.encode("idna").decode("ascii").lower()
     except UnicodeError:
@@ -78,7 +108,7 @@ def evaluate(vector):
     if not subject_ok(vector):
         return "fail", "subject-match", None
     if "subject" in vector["recipe"]["dataMap"]:
-        return "pass", None, "account-belongs-to-presenter"
+        return "pass", None, "proof-subject-matches-claim"
     return "pass", None, "proof-presented-in-session"
 
 
@@ -109,6 +139,37 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
                 continue
             with self.subTest(name):
                 self.assertEqual(subject, subject.lower())
+
+    def test_oracle_refuses_labels_it_cannot_check_faithfully(self):
+        # IDNA2003 maps these differently from IDNA2008 (DCR-1): "ß.example"
+        # becomes "ss.example" instead of "xn--zca.example". Raising keeps the
+        # oracle from passing "ss.example" against "ß.example".
+        for subject in ("ß.example", "ς.example", "a‌b.example",
+                        "a‍b.example", "a。b.example"):
+            with self.subTest(subject):
+                with self.assertRaises(OracleRefusal):
+                    canonical("domain", subject)
+                vector = copy.deepcopy(self.vectors["subject-declared-and-matches"])
+                vector["scheme"] = "domain"
+                vector["identifier"] = "ss.example"
+                vector["proof"]["subject"] = subject
+                for bundle in vector["bundles"]:
+                    for entry in bundle["claims"]:
+                        entry["identifier"] = "ss.example"
+                with self.assertRaises(OracleRefusal):
+                    evaluate(vector)
+
+    def test_every_u_label_subject_in_the_corpus_is_accepted_by_the_oracle(self):
+        checked = []
+        for name, vector in self.vectors.items():
+            subject = vector["proof"]["subject"]
+            if (vector["scheme"] != "domain" or not isinstance(subject, str)
+                    or subject.isascii()):
+                continue
+            with self.subTest(name):
+                canonical("domain", subject)
+                checked.append(name)
+        self.assertTrue(checked)
 
     def test_every_vector_matches_the_step_predicates(self):
         for name, vector in self.vectors.items():
@@ -151,7 +212,7 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
                 declared = "subject" in vector["recipe"]["dataMap"]
                 self.assertEqual(
                     vector["establishes"],
-                    "account-belongs-to-presenter"
+                    "proof-subject-matches-claim"
                     if declared else "proof-presented-in-session",
                 )
 
@@ -192,6 +253,9 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
         self.assertIn("a bundle for this session carried its commitment", section)
         self.assertIn("lowercase hex", section)
         self.assertIn("`subject` entry", section)
+        self.assertIn("equals the claimed identifier", section)
+        self.assertIn("does not show that the presenter controls the account", section)
+        self.assertIn("Neither result establishes account control", section)
 
 
 if __name__ == "__main__":

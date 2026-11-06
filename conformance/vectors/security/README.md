@@ -2271,23 +2271,28 @@ subject match (step 6).
   `domain`, the DCR-1 lower-case A-label) by CF-3. A different value, an entry
   that resolves to nothing, or a value that cannot be canonicalised under the
   claim's scheme → `fail`. A recipe without the entry skips the step.
-- **Limited result:** `establishes` is `account-belongs-to-presenter` only when
-  the subject match ran; otherwise a `pass` is `proof-presented-in-session`
-  (valid proof, commitment carried by a bundle for this session).
+- **Limited result:** `establishes` is `proof-subject-matches-claim` only when
+  the subject match ran (the disclosed subject equals the claimed identifier
+  and a bundle for this session carried the commitment); otherwise a `pass` is
+  `proof-presented-in-session` (valid proof, commitment carried by a bundle for
+  this session). Neither result establishes that the presenter controls the
+  account.
 
 The vectors model only the fields the steps read. They do not test signature
 verification; the presentation signature is outside this set. The test's
 predicates need no dependency: for `domain` it uses Python's built-in `idna`
-codec (IDNA2003) in place of IDNA2008, which agrees on these lowercase labels;
-every U-label subject in the set is already lowercase, because IDNA2003
-lowercases before ToASCII and strict IDNA2008 rejects an uppercase letter.
+codec (IDNA2003) in place of IDNA2008. The oracle refuses (raises) any U-label
+containing a character the two codecs treat differently (U+00DF, U+03C2,
+U+200C, U+200D) or that IDNA2003 nameprep would map to anything other than its
+lowercase form, so it cannot give a false pass; every U-label subject in the
+set is accepted by it.
 
 #### Vector schema
 | field | meaning |
 |-------|---------|
 | `name` | stable case id |
 | `expected` / `failedStep` | verdict, and the deciding step (`session-binding` \| `subject-match`, `null` on `pass`) |
-| `establishes` | on `pass`: `account-belongs-to-presenter` \| `proof-presented-in-session` |
+| `establishes` | on `pass`: `proof-subject-matches-claim` \| `proof-presented-in-session` |
 | `scheme`, `identifier` | the claim's scheme and identifier |
 | `issuedNonce` | the verifier's challenge for this session |
 | `recipe` | `dataMap`; a `subject` key is the subject entry |

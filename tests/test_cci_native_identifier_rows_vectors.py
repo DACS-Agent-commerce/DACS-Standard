@@ -84,7 +84,20 @@ def tlsn_projection(identities):
     return {"cciWeb2": web2_claims, "cciTlsn": tlsn_claims}
 
 
+def tlsn_requirement_satisfied(stored, requirement, supplied):
+    """The supplied proof must equal the proof stored with the registered entry whose proof hash is H."""
+    for platform, entries in stored.get("web2", {}).items():
+        for entry in entries:
+            registered = tlsn_projection({"web2": {platform: [entry]}})["cciTlsn"]
+            if requirement in registered and entry.get("proof") == supplied:
+                return True
+    return False
+
+
 def evaluate(vector):
+    if vector["row"] == "tlsn-requirement":
+        satisfied = tlsn_requirement_satisfied(vector["stored"], vector["requirement"], vector["supplied"])
+        return {"expected": "pass" if satisfied else "fail", "satisfied": satisfied}
     if vector["row"] == "humanpassport":
         claims = humanpassport_claims(vector["stored"]["humanpassport"])
         return {
@@ -202,6 +215,28 @@ class CciNativeIdentifierRowsVectorTests(unittest.TestCase):
         self.assertNotIn("humanity proof id", shape)
         self.assertIn("verified EVM address", shape)
         self.assertIn("`0x` + 40 lowercase hex", shape)
+        self.assertIn("(a lowercase `0x`, hex digits in any letter case)", shape)
+        self.assertNotIn("(any letter case)", shape)
+        self.assertIn("necessary, not sufficient", shape)
+        for field in ("score", "passingScore", "verifiedAt", "verificationMethod", "stamps", "expiresAt"):
+            self.assertIn(field, self.data["description"])
+
+    def test_tlsn_requirement_needs_the_proof_stored_with_the_registered_hash(self):
+        by_name = {vector["name"]: vector for vector in self.vectors_for("tlsn-requirement")}
+        stored = by_name["tlsn-requirement-is-satisfied-by-the-proof-stored-with-its-hash"]
+        other = by_name["tlsn-requirement-is-not-satisfied-by-a-valid-proof-stored-under-another-hash"]
+        self.assertEqual("pass", stored["expected"])
+        self.assertEqual("fail", other["expected"])
+        self.assertEqual(stored["requirement"], other["requirement"])
+        self.assertEqual(stored["stored"], other["stored"])
+        hashes = {e["proof"]: e["proofHash"] for e in stored["stored"]["web2"]["github"]}
+        self.assertEqual(stored["requirement"], f"cci-tlsn:{hashes[stored['supplied']]}")
+        self.assertNotEqual(hashes[stored["supplied"]], hashes[other["supplied"]])
+        self.assertIn(other["supplied"], hashes)
+        vet = (ROOT / "spec" / "DACS-2-VET.md").read_text(encoding="utf-8")
+        self.assertIn("MUST be the proof stored with the registered web2 entry whose proof hash is `H`", vet)
+        self.assertIn("a valid proof that is not that stored proof MUST NOT satisfy the requirement", vet)
+        self.assertIn("subject comparison for `cci-tlsn` is specified in §7.3.3", vet)
 
     def test_tlsn_row_distinguishes_claim_from_web2_storage(self):
         scheme, context, shape, _status = table_row(self.dacs1, "cci-tlsn:")

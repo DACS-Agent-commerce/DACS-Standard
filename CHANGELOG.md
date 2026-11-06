@@ -193,7 +193,11 @@ The format used per release:
   `tlsnotary` method (§7.3.3); a registered `cci-tlsn` claim does not stand in
   for that verification. This reverses the earlier DACS-2 note: an
   implementation that refused the `tlsnotary` method for a registered
-  `cci-tlsn` commitment must now run it instead.
+  `cci-tlsn` commitment must now run it instead. For a requirement on a
+  registered `cci-tlsn:H`, the supplied proof MUST be the proof stored with the
+  web2 entry whose proof hash is `H`; a valid proof that is not that stored
+  proof does not satisfy it.
+- `cci-humanpassport` address shape: necessary, not sufficient; `0x` lowercase.
 - A candidate vector set pins both rows; its rule predicates, not the reference
   parser, check it.
 

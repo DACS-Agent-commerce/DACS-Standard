@@ -2278,7 +2278,9 @@ subject match (step 6).
 The vectors model only the fields the steps read. They do not test signature
 verification; the presentation signature is outside this set. The test's
 predicates need no dependency: for `domain` it uses Python's built-in `idna`
-codec (IDNA2003) in place of IDNA2008, which agrees on the vectors' labels.
+codec (IDNA2003) in place of IDNA2008, which agrees on these lowercase labels;
+every U-label subject in the set is already lowercase, because IDNA2003
+lowercases before ToASCII and strict IDNA2008 rejects an uppercase letter.
 
 #### Vector schema
 | field | meaning |

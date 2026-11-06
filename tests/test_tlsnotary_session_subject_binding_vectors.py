@@ -26,7 +26,9 @@ def canonical(scheme, identifier):
 
     For domain this is DCR-1 (lowercase A-label). The standard library's idna
     codec (IDNA2003 ToASCII) stands in for IDNA2008 so no dependency is needed;
-    it agrees on the labels these vectors use.
+    it agrees on these lowercase labels. It lowercases before ToASCII, which
+    strict IDNA2008 does not, so every U-label subject must already be
+    lowercase (see test_u_label_subjects_are_already_lowercase).
     """
     text = unicodedata.normalize("NFC", identifier)
     if scheme != "domain":
@@ -97,6 +99,16 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
             ).encode("utf-8")
         ).hexdigest()
         self.assertEqual(document["hash"], digest)
+
+    def test_u_label_subjects_are_already_lowercase(self):
+        # IDNA2003 lowercases before ToASCII; strict IDNA2008 rejects an
+        # uppercase letter. Lowercase subjects make both codecs agree.
+        for name, vector in self.vectors.items():
+            subject = vector["proof"]["subject"]
+            if not isinstance(subject, str) or subject.isascii():
+                continue
+            with self.subTest(name):
+                self.assertEqual(subject, subject.lower())
 
     def test_every_vector_matches_the_step_predicates(self):
         for name, vector in self.vectors.items():

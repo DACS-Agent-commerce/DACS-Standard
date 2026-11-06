@@ -650,6 +650,8 @@ type ListingTerms = {
 }
 ```
 
+**String bounds.** Every `max N chars` bound in this type counts Unicode scalar values of the value's CF-1 (NFC) form (CORE §B.2), the form that is hashed and signed: not UTF-16 code units, UTF-8 bytes, or the code points of a decomposed input. So 101 emoji is 101, and 200 decomposed `e` + U+0301 is 200. `listingId` is URL-safe ASCII, where every unit coincides; `tags` are bounded per tag. This fixes the unit only; the Unicode version used for NFC is a separate question (#442). Boundary vectors: `conformance/vectors/security/listing-string-length-v0.1.json`.
+
 **Rule-reference locations.** In `conflictOfLawsRule` and the auction
 `selectionRule` (§8.4.3, §9.3), `<uri>` is a nonempty RFC 3986 URI-reference:
 an absolute URI or a relative reference, including a substrate storage identifier

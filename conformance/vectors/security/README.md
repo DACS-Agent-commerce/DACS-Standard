@@ -64,6 +64,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
 | [`listing-rail-registry-resolution-v0.4.json`](listing-rail-registry-resolution-v0.4.json) | DACS-1 §6.3.4 LRR-1..LRR-6; DACS-4 §9.4.3 | 29 | `fail` / `indeterminate` / `pass` |
+| [`listing-string-length-v0.1.json`](listing-string-length-v0.1.json) | DACS-1 §6.3.4 Listing `max N chars` bounds: Unicode scalar values of the CF-1 (NFC) form | 13 | `fail` / `pass` |
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
@@ -247,6 +248,34 @@ python3 scripts/generate_canonical_json_vectors.py --write
 python3 scripts/generate_canonical_json_vectors.py --check
 python3 -m unittest tests.test_canonical_json_vectors -v
 ```
+
+### `listing-string-length-v0.1.json` — DACS-1 §6.3.4 `max N chars` bounds
+
+13 boundary vectors pin the unit of the Listing type's `max N chars` bounds:
+Unicode scalar values of the value's CF-1 (NFC) form. Each vector names one
+field (`displayName`, `title`, `description`, or one `tag`), a value, the
+verdict, and four counts (`scalarValuesNfc`, `scalarValuesAsReceived`,
+`utf16CodeUnits`, `utf8Bytes`), so an implementation that gets a vector wrong
+can see which unit it used. The values sit at and one over each bound in
+ASCII, in supplementary-plane emoji (one scalar value, two UTF-16 code units,
+four bytes), in decomposed `e` + U+0301 (two code points before NFC, one
+after), and in a mix that is exactly 200 only after NFC. A UTF-16 count fails
+five of the `pass` vectors, a pre-NFC count fails two, a byte count fails more.
+
+#### Vector schema
+
+| field | meaning |
+|-------|---------|
+| `field` | which Listing string the value replaces (`displayName`, `title`, `description`, `tag`) |
+| `limit` | the §6.3.4 bound for that field |
+| `value` | the string as received (JSON-escaped where needed) |
+| `counts` | the value's length under the pinned unit and the three wrong ones |
+| `expected` | `pass` or `fail` for the bound, counting `counts.scalarValuesNfc` |
+
+`python3 -m unittest tests.test_listing_string_length_vectors -v` runs every
+vector through the reference shape check on the pinned IBH fixture Listing and
+shows, by swapping the reference's counting unit, exactly which vectors a
+UTF-16 or pre-NFC count gets wrong.
 
 ### `raw-json-profile-v0.1.json` — CORE §B.2 CF-5
 

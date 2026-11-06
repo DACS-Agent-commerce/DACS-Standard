@@ -196,7 +196,7 @@ class CciNativeIdentifierRowsVectorTests(unittest.TestCase):
 
     def test_tlsn_row_sends_the_proof_to_the_tlsnotary_method(self):
         _scheme, _context, _shape, status = table_row(self.dacs1, "cci-tlsn:")
-        self.assertIn("DACS-2 verifies that proof with the `tlsnotary` method (§7.3.3)", status)
+        self.assertIn("DACS-2 verifies the TLSNotary proof the presenter supplies with the `tlsnotary` method (§7.3.3)", status)
         self.assertNotIn("NOT as an external tlsnotary method", status)
         vet = (ROOT / "spec" / "DACS-2-VET.md").read_text(encoding="utf-8")
         self.assertNotIn("does NOT re-run the external tlsnotary method", vet)

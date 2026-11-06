@@ -176,7 +176,7 @@ The format used per release:
   corrective release pin and complete module tuple are recorded on the affected
   evidence.
 
-### Changed — DACS-1 §6.3.1 `cci-humanpassport` and `cci-tlsn` identifier rows (#439, #440)
+### Changed — DACS-1 §6.3.1 `cci-humanpassport` and `cci-tlsn` identifier rows; DACS-2 note on the `cci-tlsn` claim (#439, #440)
 
 - **`cci-humanpassport`** — the identifier is the verified EVM address of the
   stored `humanpassport` entry, emitted as `0x` + 40 lowercase hex, not an opaque
@@ -184,8 +184,11 @@ The format used per release:
 - **`cci-tlsn`** — the claim is stored on a web2 identity entry with proof type
   `tlsn` (7 storage contexts carry the 8 CCI-native schemes) and projects to a
   64-lowercase-hex `cci-tlsn` claim and, separately, to its `cci-web2` claim.
-  DACS-2 verifies the named proof with its `tlsnotary` method (§7.3.3); a
-  registered `cci-tlsn` claim does not stand in for that verification.
+  DACS-2 verifies the TLSNotary proof the presenter supplies with its
+  `tlsnotary` method (§7.3.3); a registered `cci-tlsn` claim does not stand in
+  for that verification. This reverses the earlier DACS-2 note: an
+  implementation that refused the `tlsnotary` method for a registered
+  `cci-tlsn` commitment must now run it instead.
 - A candidate vector set pins both rows; its rule predicates, not the reference
   parser, check it.
 

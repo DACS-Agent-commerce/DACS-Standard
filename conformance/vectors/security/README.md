@@ -56,7 +56,6 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 13 | `fail` / `indeterminate` / `pass` |
-| [`holder-binding-tlsnotary-v0.1.json`](holder-binding-tlsnotary-v0.1.json) | DACS §7.3.3 (subject match, session binding); §6.3.2; CORE §B.8 | 13 | `fail` / `indeterminate` / `pass` |
 | [`htlc-preimage-derivation-v0.1.json`](htlc-preimage-derivation-v0.1.json) | DACS-4 §9.5.4 HTLC-5 / HTLC-6 preimage derivation byte encodings | 6 | `fail` / `pass` |
 | [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 401 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
@@ -99,6 +98,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
 | [`sr2-logical-native-resolution-v0.1.json`](sr2-logical-native-resolution-v0.1.json) | CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2 | 39 | `fail` / `indeterminate` / `pass` |
+| [`tlsnotary-session-subject-binding-v0.1.json`](tlsnotary-session-subject-binding-v0.1.json) | DACS §7.3.3 (session binding, subject match); §6.3.2; PSP-3; CORE §B.8, CF-2, CF-3 | 14 | `fail` / `pass` |
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
@@ -2247,43 +2247,50 @@ python3 scripts/generate_identity_bundle_hash_binding_vectors.py --check
 python3 -m unittest tests.test_identity_bundle_hash_binding_vectors -v
 ```
 
-### `holder-binding-tlsnotary-v0.1.json` — §7.3.3 steps 5–6 (subject match, session binding)
+### `tlsnotary-session-subject-binding-v0.1.json` — §7.3.3 steps 4 and 6 (session binding, subject match)
 
-13 vectors for the two `tlsnotary` steps that tie a notarised proof to its claim
-subject and to the current session, matching the §7.3.2 verifiable-credential
-steps 5–6:
+14 vectors for the two `tlsnotary` checks that tie a notarised proof to the
+current session and, when the recipe declares it, to the claim subject. Steps
+run in order and the first failing step decides: binding (step 4) before
+subject match (step 6).
 
-- **Subject match (step 5):** the identity the disclosed segments establish
-  MUST equal the claim's identifier canonically (NFC, CORE CF-2/CF-3); a
-  different subject → `fail`; segments that disclose no subject value →
-  `indeterminate`.
-- **Session binding (step 6):** `holderProof` MUST verify and its challenge MUST
-  cover both the current session nonce and this proof's commitment. A challenge
-  over another session's nonce, another proof's commitment, a signature that
-  does not verify, or an absent `holderProof` → `fail`.
-- **Nonce choice:** the current nonce is the §6.3.2 disjunction — the SIWD
-  `Nonce` for a `siwd`-presented bundle, else the top-level `sessionNonce`.
-  A binding over the top-level value inside a SIWD bundle (or over the SIWD
-  value inside a per-claim bundle) → `fail`.
+- **Session binding (step 4):** the proof commitment MUST appear as
+  `metadata.tlsnotaryProofCommitment` in the `BundleClaim` entry for the claim
+  in the bundle admitted for this session. A missing value, a value only in
+  another session's bundle, or a value only in another claim's entry → `fail`.
+  No signature is added: the bundle's presentation signature already covers the
+  entry and the nonce.
+- **Nonce choice:** the session's bundle is the one whose nonce, per the §6.3.2
+  disjunction (SIWD `Nonce` for a `siwd` bundle, else top-level `sessionNonce`),
+  matches the verifier's challenge.
+- **Subject match (step 6):** runs only when `parserRules.dataMap` declares a
+  `subject` entry. The value and the claim identifier are compared after CORE
+  CF-2(b) canonicalisation (NFC; lowercase for `domain`) by CF-3. A different
+  value, or an entry that resolves to nothing → `fail`. A recipe without the
+  entry skips the step.
+- **Limited result:** `establishes` is `account-belongs-to-presenter` only when
+  the subject match ran; otherwise a `pass` is `proof-presented-in-session`.
 
-The vectors model only the fields the two steps read; the signature itself is
-reduced to the boolean outcome of verifying it under the presenter key, so the
-predicates are dependency-free.
+The vectors model only the fields the steps read. They do not test signature
+verification; the presentation signature is outside this set. The predicates
+are dependency-free.
 
 #### Vector schema
 | field | meaning |
 |-------|---------|
 | `name` | stable case id |
-| `expected` | §7.5.1 verdict of steps 5–6 |
-| `identifier` | the claim's identifier |
-| `proof` | `commitment` (the proof commitment) and `subject` (the value `parserRules.dataMap.subject` resolves to, `null` if not disclosed) |
-| `bundle` | `presentation` (`siwd` \| `per-claim`), optional top-level `sessionNonce`, optional `siwd.nonce` |
-| `holderProof` | optional; `challenge.sessionNonce`, `challenge.proofCommitment`, `signatureVerifies` |
+| `expected` / `failedStep` | verdict, and the deciding step (`session-binding` \| `subject-match`, `null` on `pass`) |
+| `establishes` | on `pass`: `account-belongs-to-presenter` \| `proof-presented-in-session` |
+| `scheme`, `identifier` | the claim's scheme and identifier |
+| `issuedNonce` | the verifier's challenge for this session |
+| `recipe` | `dataMap`; a `subject` key is the subject entry |
+| `proof` | `commitment`, and `subject` (the value `dataMap.subject` resolves to, `null` if nothing) |
+| `bundles` | presented bundles: `presentation`, optional `sessionNonce`, optional `siwd.nonce`, `claims[]` of `identifier` and optional `tlsnotaryProofCommitment` |
 
 Execute with:
 
 ```sh
-python3 -m unittest tests.test_holder_binding_tlsnotary_vectors -v
+python3 -m unittest tests.test_tlsnotary_session_subject_binding_vectors -v
 ```
 
 ## Status

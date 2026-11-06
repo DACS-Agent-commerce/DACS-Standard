@@ -13,23 +13,25 @@ The format used per release:
 
 ## [Unreleased]
 
-### Changed — `tlsnotary` method binds the proof to its subject and session
+### Changed — `tlsnotary` method binds the proof to its session and, when declared, its subject
 
-- **Subject match and session binding** (DACS-2 §7.3.3; CORE §B.8) — the
-  `tlsnotary` procedure is now numbered steps like §7.3.2 and adds the two
-  checks the `verifiable-credential` method already has. Step 5 requires the
-  identity the disclosed segments establish (the `subject` entry of
-  `parserRules.dataMap`) to match the claim's identifier canonically. Step 6
-  requires a `holderProof` (new `TLSNotaryMethodInput` field, type
-  `TLSNotaryHolderProof`) signed by the presenter key over a challenge that
-  includes the session nonce (the §6.3.2 SIWD-or-top-level disjunction, CORE
-  SN-1..4) and the proof commitment. A mismatching subject or a binding that
-  is absent or covers another nonce or commitment is `fail`; segments that do
-  not disclose a subject are `indeterminate`; parser failures remain `error`.
-  The existing proof, notary-signature, `sessionTemplate`, anchor and parser
-  steps are kept. Candidate vector set
-  `holder-binding-tlsnotary-v0.1` (13 vectors) exercises the
-  predicates. No signature domain is added.
+- **Session binding and subject match** (DACS-2 §7.3.3; PSP-3; CORE §B.8) — the
+  `tlsnotary` procedure is now numbered steps like §7.3.2, run in order with
+  the first failing step deciding. Step 4 requires the proof commitment to
+  appear as `metadata.tlsnotaryProofCommitment` (string) in the presenter's
+  signed `BundleClaim` entry for the claim, in the bundle admitted for this
+  session (nonce per the §6.3.2 SIWD-or-top-level disjunction); no signature,
+  signature domain or nonce consumption is added. Step 6 compares the value of
+  the reserved `subject` `dataMap` entry (PSP-3) with the claim identifier
+  under CORE CF-2(b)/CF-3 and runs only when the recipe declares that entry.
+  Without it, a `pass` establishes only that a valid proof was presented in
+  this session. A binding or subject mismatch is `fail`; parser failures stay
+  `error`. Candidate vector set `tlsnotary-session-subject-binding-v0.1`
+  (14 vectors) exercises the predicates.
+- **Compatibility.** `TLSNotaryMethodInput` and the DACS-1 `IdentityBundle`
+  shape are unchanged. The new rules tighten the unreleased v0.6 candidate;
+  a producer of a tlsnotary claim adds one key to the existing scheme-specific
+  `metadata` map.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

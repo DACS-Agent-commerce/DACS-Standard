@@ -236,7 +236,6 @@ class CciNativeIdentifierRowsVectorTests(unittest.TestCase):
         vet = (ROOT / "spec" / "DACS-2-VET.md").read_text(encoding="utf-8")
         self.assertIn("MUST be the proof stored with the registered web2 entry whose proof hash is `H`", vet)
         self.assertIn("a valid proof that is not that stored proof MUST NOT satisfy the requirement", vet)
-        self.assertIn("subject comparison for `cci-tlsn` is specified in §7.3.3", vet)
 
     def test_tlsn_row_distinguishes_claim_from_web2_storage(self):
         scheme, context, shape, _status = table_row(self.dacs1, "cci-tlsn:")

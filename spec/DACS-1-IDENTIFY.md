@@ -57,7 +57,7 @@ Parameters       := key1=value1 [ "&" key2=value2 ]*
 **Canonical form and identity (rules CF-2, CF-3).** A ClaimReference has a *canonical byte form* (the bytes embedded whenever it appears inside a hashed or signed document) and a *canonical identity* (the `(Scheme, Identifier)` pair used for matching, reputation keying, and the §7.3.2 replay defence). Both rules are defined in **CORE §B.1**; CF-2's identifier normalisation uses the per-scheme identifier rules below.
 
 **Registered schemes (v0.1) — two-axis registry**
-The v0.1 scheme registry is organised along two axes: (a) **CCI-native** schemes — one per Demos CCI context, with the identifier directly addressing the relevant slot in GCRMain.identities; (b) **Stor-backed credential** schemes — schemes whose verification result is anchored as a Storage Program written by a DACS-2 attestation.
+The v0.1 scheme registry is organised along two axes: (a) **CCI-native** schemes — each maps to a Demos CCI storage context in GCRMain.identities, with the identifier addressing the relevant slot in that context (`cci-tlsn` shares the `web2` context: its identifier is the proof hash of a web2 entry with proof type `tlsn`); (b) **Stor-backed credential** schemes — schemes whose verification result is anchored as a Storage Program written by a DACS-2 attestation.
 
 **CCI-native schemes** — map to Demos CCI contexts (7 storage contexts in production today, carrying 8 schemes because `cci-tlsn` is stored on a `web2` identity entry, + 6 to-add for DACS-1 v0.1):
 
@@ -68,9 +68,9 @@ The v0.1 scheme registry is organised along two axes: (a) **CCI-native** schemes
 | cci-pqc:<algorithm>:<pubkey> | pqc | falcon / ml-dsa | Done |
 | cci-ud:<domain> | ud | Unstoppable Domain | Done |
 | cci-nomis:<address> | nomis | Nomis wallet score subject | Done |
-| cci-humanpassport:<address> | humanpassport | verified EVM address, the address of the stored `humanpassport` entry (the node does not fix its letter case): the producer emits `0x` + 40 lowercase hex when it projects the entry to a claim; a ClaimReference with any other identifier form is not canonical under CF-2(b), and a stored value that is not `0x` + 40 hex projects to no claim | Done |
+| cci-humanpassport:<address> | humanpassport | verified EVM address, the address of the stored `humanpassport` entry (the node does not fix its letter case): the producer emits `0x` + 40 lowercase hex when it projects the entry to a claim; it trims surrounding whitespace from the stored value, a trimmed value of that shape (any letter case) projects to the lowercase claim, and any other value projects to no claim | Done |
 | cci-ethos:<id> | ethos | Ethos profile id | Done |
-| cci-tlsn:<proof-hash> | web2 (proof type `tlsn`) | TLSNotary proof commitment: 64 lowercase hex, which the producer emits when it projects a stored entry to a claim (a ClaimReference with any other identifier form is not canonical under CF-2(b), and a stored hash that is not 64 hex projects to no `cci-tlsn` claim); the node stores it on a web2 identity entry with proof type `tlsn`, and that entry projects to this claim and, separately, to its `cci-web2` claim | Done — DACS-2 MUST treat as a CCI claim, NOT as an external tlsnotary method |
+| cci-tlsn:<proof-hash> | web2 (proof type `tlsn`) | TLSNotary proof commitment: 64 lowercase hex, which the producer emits when it projects a stored entry to a claim (it trims surrounding whitespace from the stored hash, a trimmed value of 64 hex in any letter case projects to the lowercase claim, and any other value projects to no `cci-tlsn` claim); the node stores it on a web2 identity entry with proof type `tlsn`, and that entry projects to this claim and, separately, to its `cci-web2` claim | Done — DACS-2 MUST treat as a CCI claim, NOT as an external tlsnotary method |
 | cci-lei:<20-char> | lei (NEW) | uppercase LEI | Deferred — later version, not v0.1 |
 | cci-finra-crd:<digits> | finra-crd (NEW) | digits only, no leading zeros | Deferred — later version, not v0.1 |
 | cci-sam-uei:<12-char> | sam-uei (NEW) | uppercase UEI | Deferred — later version, not v0.1 |

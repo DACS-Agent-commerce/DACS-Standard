@@ -27,6 +27,8 @@ def humanpassport_claims(stored_entries):
     claims = []
     for entry in stored_entries:
         address = entry.get("address")
+        if isinstance(address, str):
+            address = address.strip()
         if not isinstance(address, str) or HUMANPASSPORT_ADDRESS_RE.fullmatch(address) is None:
             continue
         claims.append(f"cci-humanpassport:{address.lower()}")
@@ -44,12 +46,14 @@ def tlsn_projection(identities):
                 continue
             web2_claims.append(f"cci-web2:{platform}:{username}")
             proof_hash = entry.get("proofHash")
+            if isinstance(proof_hash, str):
+                proof_hash = proof_hash.strip().lower()
             if (
                 entry.get("proofType") == "tlsn"
                 and isinstance(proof_hash, str)
-                and PROOF_HASH_RE.fullmatch(proof_hash.lower()) is not None
+                and PROOF_HASH_RE.fullmatch(proof_hash) is not None
             ):
-                tlsn_claims.append(f"cci-tlsn:{proof_hash.lower()}")
+                tlsn_claims.append(f"cci-tlsn:{proof_hash}")
     return {"cciWeb2": web2_claims, "cciTlsn": tlsn_claims}
 
 
@@ -98,6 +102,7 @@ class CciNativeIdentifierRowsVectorTests(unittest.TestCase):
         for name in (
             "humanpassport-checksum-case-address-canonicalises-to-lowercase",
             "humanpassport-uppercase-hex-address-canonicalises-to-lowercase",
+            "humanpassport-whitespace-padded-address-is-trimmed-then-canonical",
         ):
             self.assertEqual(canonical, by_name[name]["want"]["cciHumanpassport"], name)
         for name in (
@@ -127,6 +132,9 @@ class CciNativeIdentifierRowsVectorTests(unittest.TestCase):
         self.assertEqual(1, len(projected["want"]["cciWeb2"]))
         uppercase = by_name["tlsn-uppercase-proof-hash-canonicalises-to-lowercase"]
         self.assertEqual("pass", uppercase["expected"])
+        padded = by_name["tlsn-whitespace-padded-proof-hash-is-trimmed-then-canonical"]
+        self.assertEqual("pass", padded["expected"])
+        self.assertEqual(projected["want"]["cciTlsn"], padded["want"]["cciTlsn"])
         for name in (
             "tlsn-web2-entry-without-tlsn-proof-type-has-no-cci-tlsn",
             "tlsn-short-proof-hash-has-no-cci-tlsn",
@@ -174,8 +182,11 @@ class CciNativeIdentifierRowsVectorTests(unittest.TestCase):
     def test_rows_state_producer_side_canonical_form(self):
         for prefix in ("cci-humanpassport:", "cci-tlsn:"):
             _scheme, _context, shape, _status = table_row(self.dacs1, prefix)
-            self.assertIn("CF-2(b)", shape, prefix)
+            self.assertIn("lowercase", shape, prefix)
+            self.assertIn("the producer emits", shape, prefix)
+            self.assertIn("trims surrounding whitespace", shape, prefix)
             self.assertNotIn("lowercased under CF-2", shape, prefix)
+            self.assertNotIn("CF-2", shape, prefix)
 
     def test_tlsn_row_keeps_dacs2_claim_boundary(self):
         _scheme, _context, _shape, status = table_row(self.dacs1, "cci-tlsn:")

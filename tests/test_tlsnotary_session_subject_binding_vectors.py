@@ -4,7 +4,6 @@ import json
 import re
 import unicodedata
 import unittest
-from encodings.idna import nameprep
 from pathlib import Path
 
 
@@ -23,25 +22,26 @@ class OracleRefusal(ValueError):
 # Characters IDNA2003 maps or splits differently from IDNA2008: sharp s, final
 # sigma, ZWNJ, ZWJ, and the ideographic full stop (a label separator only in
 # IDNA2003).
-IDNA_DIVERGENT = frozenset("ßς‌‍。")
+IDNA_DIVERGENT = frozenset("ßς\u200c\u200d。")
+
+# The only non-ASCII characters (after NFC) the oracle accepts. Each is a
+# lowercase letter that IDNA2008 permits (PVALID) and that IDNA2003 leaves
+# unchanged, so both give the same A-label. Anything else is refused rather
+# than guessed: IDNA2003 accepts symbols such as U+1F600 that IDNA2008
+# disallows.
+ORACLE_SUPPORTED = frozenset("éü")
 
 
 def refuse_unfaithful_label(text):
     """Raise OracleRefusal for a non-ASCII character the oracle cannot check.
 
-    A character passes only if it is not in IDNA_DIVERGENT and IDNA2003
-    nameprep leaves it as its own lowercase form; a character nameprep maps
-    to anything else (case folding, NFKC, deletion) or prohibits is refused.
+    A non-ASCII character passes only if it is in ORACLE_SUPPORTED; every
+    other one (IDNA_DIVERGENT included) is refused.
     """
     for char in text:
-        if char.isascii():
+        if char.isascii() or char in ORACLE_SUPPORTED:
             continue
-        try:
-            mapped = nameprep(char)
-        except UnicodeError as error:
-            raise OracleRefusal(f"nameprep rejects {char!r}") from error
-        if char in IDNA_DIVERGENT or mapped != char or char != char.lower():
-            raise OracleRefusal(f"IDNA2003 and IDNA2008 may differ on {char!r}")
+        raise OracleRefusal(f"the reduced oracle does not check {char!r}")
 
 
 def session_nonce(bundle):
@@ -155,8 +155,9 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
         # IDNA2003 maps these differently from IDNA2008 (DCR-1): "ß.example"
         # becomes "ss.example" instead of "xn--zca.example". Raising keeps the
         # oracle from passing "ss.example" against "ß.example".
-        for subject in ("ß.example", "ς.example", "a‌b.example",
-                        "a‍b.example", "a。b.example"):
+        for subject in ("ß.example", "ς.example", "a\u200cb.example",
+                        "a\u200db.example", "a。b.example", "\U0001f600.example",
+                        "Ü.example"):
             with self.subTest(subject):
                 with self.assertRaises(OracleRefusal):
                     canonical("domain", subject)

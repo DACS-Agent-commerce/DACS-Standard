@@ -2286,11 +2286,11 @@ subject match (step 6).
 The vectors model only the fields the steps read. They do not test signature
 verification; the presentation signature is outside this set. The test's
 predicates need no dependency: for `domain` it uses Python's built-in `idna`
-codec (IDNA2003) in place of IDNA2008. The oracle refuses (raises) any U-label
-containing a character the two codecs treat differently (U+00DF, U+03C2,
-U+200C, U+200D) or that IDNA2003 nameprep would map to anything other than its
-lowercase form, so it cannot give a false pass; every U-label subject in the
-set is accepted by it.
+codec (IDNA2003) in place of IDNA2008. The oracle accepts only ASCII and a
+short listed set of non-ASCII lowercase letters on which both give the same
+A-label (`é`, `ü`), and refuses (raises on) every other character, for example
+U+00DF, U+03C2, U+200C, U+200D or a symbol such as U+1F600 that IDNA2008
+disallows. Every U-label subject in the set is accepted by it.
 
 #### Vector schema
 | field | meaning |

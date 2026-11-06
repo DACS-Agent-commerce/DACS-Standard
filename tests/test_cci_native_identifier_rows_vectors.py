@@ -20,6 +20,12 @@ DACS1 = ROOT / "spec" / "DACS-1-IDENTIFY.md"
 
 HUMANPASSPORT_ADDRESS_RE = re.compile(r"0x[0-9a-fA-F]{40}\Z")
 PROOF_HASH_RE = re.compile(r"[0-9a-f]{64}\Z")
+# The code points ECMAScript String.prototype.trim removes (WhiteSpace and LineTerminator), which is the
+# trim the rows name. Python str.strip() differs: it strips U+0085 and U+001C..U+001F but not U+FEFF.
+TRIM_CHARS = (
+    "\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005"
+    "\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+)
 
 
 def humanpassport_claims(stored_entries):
@@ -28,7 +34,7 @@ def humanpassport_claims(stored_entries):
     for entry in stored_entries:
         address = entry.get("address")
         if isinstance(address, str):
-            address = address.strip()
+            address = address.strip(TRIM_CHARS)
         if not isinstance(address, str) or HUMANPASSPORT_ADDRESS_RE.fullmatch(address) is None:
             continue
         claims.append(f"cci-humanpassport:{address.lower()}")
@@ -47,7 +53,7 @@ def tlsn_projection(identities):
             web2_claims.append(f"cci-web2:{platform}:{username}")
             proof_hash = entry.get("proofHash")
             if isinstance(proof_hash, str):
-                proof_hash = proof_hash.strip().lower()
+                proof_hash = proof_hash.strip(TRIM_CHARS).lower()
             if (
                 entry.get("proofType") == "tlsn"
                 and isinstance(proof_hash, str)

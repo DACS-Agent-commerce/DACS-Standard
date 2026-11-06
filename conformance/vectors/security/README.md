@@ -98,7 +98,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
 | [`sr2-logical-native-resolution-v0.1.json`](sr2-logical-native-resolution-v0.1.json) | CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2 | 39 | `fail` / `indeterminate` / `pass` |
-| [`tlsnotary-session-subject-binding-v0.1.json`](tlsnotary-session-subject-binding-v0.1.json) | DACS §7.3.3 (session binding, subject match); §6.3.2; PSP-3; CORE §B.8, CF-2, CF-3 | 14 | `fail` / `pass` |
+| [`tlsnotary-session-subject-binding-v0.1.json`](tlsnotary-session-subject-binding-v0.1.json) | DACS §7.3.3 (session binding, subject match); §6.3.2; PSP-3; CORE §B.8, CF-2, CF-3 | 19 | `fail` / `pass` |
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
@@ -2249,15 +2249,17 @@ python3 -m unittest tests.test_identity_bundle_hash_binding_vectors -v
 
 ### `tlsnotary-session-subject-binding-v0.1.json` — §7.3.3 steps 4 and 6 (session binding, subject match)
 
-14 vectors for the two `tlsnotary` checks that tie a notarised proof to the
+19 vectors for the two `tlsnotary` checks that tie a notarised proof to the
 current session and, when the recipe declares it, to the claim subject. Steps
 run in order and the first failing step decides: binding (step 4) before
 subject match (step 6).
 
-- **Session binding (step 4):** the proof commitment MUST appear as
-  `metadata.tlsnotaryProofCommitment` in the `BundleClaim` entry for the claim
-  in the bundle admitted for this session. A missing value, a value only in
-  another session's bundle, or a value only in another claim's entry → `fail`.
+- **Session binding (step 4):** the proof commitment (lowercase hex) MUST
+  appear, as an exactly equal string, as `metadata.tlsnotaryProofCommitment` in
+  every `BundleClaim` entry for the claim in the bundle admitted for this
+  session. A missing or non-string value, a different spelling (hex case), a
+  value only in another session's bundle or another claim's entry, or one of two
+  entries for the claim lacking it → `fail`.
   No signature is added: the bundle's presentation signature already covers the
   entry and the nonce.
 - **Nonce choice:** the session's bundle is the one whose nonce, per the §6.3.2
@@ -2265,15 +2267,18 @@ subject match (step 6).
   matches the verifier's challenge.
 - **Subject match (step 6):** runs only when `parserRules.dataMap` declares a
   `subject` entry. The value and the claim identifier are compared after CORE
-  CF-2(b) canonicalisation (NFC; lowercase for `domain`) by CF-3. A different
-  value, or an entry that resolves to nothing → `fail`. A recipe without the
-  entry skips the step.
+  CF-2(b) canonicalisation (NFC and the scheme's own identifier rule; for
+  `domain`, the DCR-1 lower-case A-label) by CF-3. A different value, an entry
+  that resolves to nothing, or a value that cannot be canonicalised under the
+  claim's scheme → `fail`. A recipe without the entry skips the step.
 - **Limited result:** `establishes` is `account-belongs-to-presenter` only when
-  the subject match ran; otherwise a `pass` is `proof-presented-in-session`.
+  the subject match ran; otherwise a `pass` is `proof-presented-in-session`
+  (valid proof, commitment carried by a bundle for this session).
 
 The vectors model only the fields the steps read. They do not test signature
-verification; the presentation signature is outside this set. The predicates
-are dependency-free.
+verification; the presentation signature is outside this set. The test's
+predicates need no dependency: for `domain` it uses Python's built-in `idna`
+codec (IDNA2003) in place of IDNA2008, which agrees on the vectors' labels.
 
 #### Vector schema
 | field | meaning |

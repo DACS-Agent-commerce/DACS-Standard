@@ -17,21 +17,26 @@ The format used per release:
 
 - **Session binding and subject match** (DACS-2 §7.3.3; PSP-3; CORE §B.8) — the
   `tlsnotary` procedure is now numbered steps like §7.3.2, run in order with
-  the first failing step deciding. Step 4 requires the proof commitment to
-  appear as `metadata.tlsnotaryProofCommitment` (string) in the presenter's
-  signed `BundleClaim` entry for the claim, in the bundle admitted for this
-  session (nonce per the §6.3.2 SIWD-or-top-level disjunction); no signature,
-  signature domain or nonce consumption is added. Step 6 compares the value of
-  the reserved `subject` `dataMap` entry (PSP-3) with the claim identifier
-  under CORE CF-2(b)/CF-3 and runs only when the recipe declares that entry.
-  Without it, a `pass` establishes only that a valid proof was presented in
-  this session. A binding or subject mismatch is `fail`; parser failures stay
-  `error`. Candidate vector set `tlsnotary-session-subject-binding-v0.1`
-  (14 vectors) exercises the predicates.
-- **Compatibility.** `TLSNotaryMethodInput` and the DACS-1 `IdentityBundle`
-  shape are unchanged. The new rules tighten the unreleased v0.6 candidate;
-  a producer of a tlsnotary claim adds one key to the existing scheme-specific
-  `metadata` map.
+  the first failing step deciding. Step 4 requires the proof commitment (lowercase
+  hex) to appear, as an exactly equal string, as
+  `metadata.tlsnotaryProofCommitment` in every signed `BundleClaim` entry for
+  the claim in the bundle admitted for this session (nonce per the §6.3.2
+  SIWD-or-top-level disjunction); no signature, signature domain or nonce
+  consumption is added. Step 6 compares the value of the reserved `subject`
+  `dataMap` entry (PSP-3, which now carves out that entry's unresolved case)
+  with the claim identifier under CORE CF-2(b)/CF-3, using the scheme's own
+  identifier rule (DCR-1 A-label for `domain`), and runs only when the recipe
+  declares that entry. Without it, a `pass` establishes only that the proof is
+  valid and a bundle for this session carried its commitment, with no session
+  binding beyond VP-C1. A binding or subject failure, or a subject that cannot
+  be canonicalised, is `fail`; parser failures stay `error`. Candidate vector
+  set `tlsnotary-session-subject-binding-v0.1` (19 vectors) exercises the
+  predicates.
+- **Compatibility.** The `TLSNotaryMethodInput` fields and the DACS-1
+  `IdentityBundle` shape are unchanged; step 4 reads the admitted `bundleToVet`
+  and the verifier's issued challenge from the Vet invocation (§7.7.3). The new
+  rules tighten the unreleased v0.6 candidate; a producer of a tlsnotary claim
+  adds one key to the existing scheme-specific `metadata` map.
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

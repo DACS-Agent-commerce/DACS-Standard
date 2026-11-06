@@ -22,25 +22,37 @@ def session_nonce(bundle):
 
 
 def canonical(scheme, identifier):
-    """CF-2(b): NFC, then the scheme's identifier rule (domain: lowercase)."""
+    """CF-2(b): NFC, then the scheme's identifier rule; None if it cannot apply.
+
+    For domain this is DCR-1 (lowercase A-label). The standard library's idna
+    codec (IDNA2003 ToASCII) stands in for IDNA2008 so no dependency is needed;
+    it agrees on the labels these vectors use.
+    """
     text = unicodedata.normalize("NFC", identifier)
-    return text.lower() if scheme == "domain" else text
+    if scheme != "domain":
+        return text
+    try:
+        return text.encode("idna").decode("ascii").lower()
+    except UnicodeError:
+        return None
 
 
 def binding_ok(vector):
-    """Step 4: the commitment is in this session's bundle entry for the claim."""
+    """Step 4: every claim entry in this session's bundle carries the commitment."""
     scheme, identifier = vector["scheme"], vector["identifier"]
+    wanted = canonical(scheme, identifier)
+    found = False
     for bundle in vector["bundles"]:
         if session_nonce(bundle) != vector["issuedNonce"]:
             continue
         for entry in bundle["claims"]:
-            if canonical(scheme, entry["identifier"]) != canonical(
-                scheme, identifier
-            ):
+            if canonical(scheme, entry["identifier"]) != wanted:
                 continue
-            if entry.get("tlsnotaryProofCommitment") == vector["proof"]["commitment"]:
-                return True
-    return False
+            value = entry.get("tlsnotaryProofCommitment")
+            if not isinstance(value, str) or value != vector["proof"]["commitment"]:
+                return False
+            found = True
+    return found
 
 
 def subject_ok(vector):
@@ -49,7 +61,10 @@ def subject_ok(vector):
         return True
     subject = vector["proof"]["subject"]
     scheme = vector["scheme"]
-    return subject is not None and canonical(scheme, subject) == canonical(
+    if not isinstance(subject, str):
+        return False
+    disclosed = canonical(scheme, subject)
+    return disclosed is not None and disclosed == canonical(
         scheme, vector["identifier"]
     )
 
@@ -103,6 +118,11 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
             "subject-declared-and-differs": ("fail", "subject-match"),
             "no-subject-entry-pass-is-session-only": ("pass", None),
             "bad-binding-and-mismatching-subject": ("fail", "session-binding"),
+            "subject-matches-after-domain-a-label": ("pass", None),
+            "subject-not-canonicalisable-under-scheme": ("fail", "subject-match"),
+            "commitment-not-a-string": ("fail", "session-binding"),
+            "commitment-differs-in-hex-case": ("fail", "session-binding"),
+            "duplicate-entries-one-lacks-commitment": ("fail", "session-binding"),
         }
         for name, (verdict, step) in required.items():
             with self.subTest(name):
@@ -157,7 +177,8 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
         self.assertIn("the first failing step decides the verdict", section)
         self.assertIn("metadata.tlsnotaryProofCommitment", section)
         self.assertNotIn("holderProof", section)
-        self.assertIn("a valid proof was presented in this session", section)
+        self.assertIn("a bundle for this session carried its commitment", section)
+        self.assertIn("lowercase hex", section)
         self.assertIn("`subject` entry", section)
 
 

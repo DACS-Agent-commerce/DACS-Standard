@@ -200,6 +200,10 @@ class CciNativeIdentifierRowsVectorTests(unittest.TestCase):
         self.assertNotIn("NOT as an external tlsnotary method", status)
         vet = (ROOT / "spec" / "DACS-2-VET.md").read_text(encoding="utf-8")
         self.assertNotIn("does NOT re-run the external tlsnotary method", vet)
+        for name in ("CORE.md", "DEMOS-MAPPING.md", "DACS-1-IDENTIFY.md", "DACS-2-VET.md"):
+            text = (ROOT / "spec" / name).read_text(encoding="utf-8")
+            self.assertNotIn("cci-tlsn claims name", text, name)
+            self.assertNotIn("verifies the named proof", text, name)
 
 
 if __name__ == "__main__":

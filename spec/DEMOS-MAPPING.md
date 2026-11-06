@@ -111,7 +111,7 @@ Because this binding has no qualifying pre-consensus `accepted` evidence, a DACS
 - 🟡 DAHR signing-model clarification — current docs show **hash commitments only**, with no validator signature over the response body. v0.1 treats this as a **consensus-anchored hash commitment** model. If Kynesys upgrades DAHR to validator-sign the response body itself, DACS-2 v0.2 may strengthen the claim.
 - 🟡 CompositeVerificationRecord Storage Program schema.
 - 🟡 oauth-attested method depends on a Demos-side OAuth attester. If not built, the method is 🔵 third-party.
-- 🔵 W3C Verifiable Credentials, TLSNotary (external proof library; DACS-2’s `tlsnotary` method also verifies the proofs that 🟢 cci-tlsn:* claims name), zkTLS (Reclaim, Pluto), ACME challenges for domain-tls-control.
+- 🔵 W3C Verifiable Credentials, TLSNotary (external proof library; DACS-2’s `tlsnotary` method also verifies the TLSNotary proof a presenter supplies for a 🟢 cci-tlsn:* claim), zkTLS (Reclaim, Pluto), ACME challenges for domain-tls-control.
 
 **DAHR-backed AP2 receipt binding (normative Demos binding).** For DACS-4
 §9.5.6 AP2-2, the transaction reference MUST use the distinct `ap2-sr3` arm.

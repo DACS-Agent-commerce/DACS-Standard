@@ -41,11 +41,11 @@
     {
       "id": "claim-pay-dem-seller",
       "level": "capability",
-      "result": "conformance-tested",
+      "result": "implemented",
       "roles": ["seller"],
       "modules": ["DACS-4"],
       "capabilityRefs": ["pay-dem"],
-      "ruleRefs": ["PB-1", "PB-2", "PB-3"],
+      "ruleRefs": ["DACS-4-9.5.9", "SB-1", "SB-2"],
       "evidenceRefs": ["pay-dem-vectors"]
     },
     {
@@ -55,7 +55,7 @@
       "roles": ["seller"],
       "modules": ["DACS-4"],
       "capabilityRefs": ["demos-native-dem-rail"],
-      "ruleRefs": ["RD-1", "RD-2", "RD-3", "RD-4", "RD-5"],
+      "ruleRefs": ["DACS-4-9.4.2"],
       "evidenceRefs": ["pay-dem-vectors"]
     }
   ],
@@ -79,7 +79,7 @@
       "roles": ["seller"],
       "supportStatus": "implemented",
       "availability": "operator_gated",
-      "testStatus": "passed",
+      "testStatus": "partial",
       "evidenceRefs": ["pay-dem-vectors"]
     },
     {

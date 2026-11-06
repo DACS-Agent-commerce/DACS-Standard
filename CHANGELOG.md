@@ -183,7 +183,10 @@ The format used per release:
   humanity proof id.
 - **`cci-tlsn`** — the claim is stored on a web2 identity entry with proof type
   `tlsn` (7 storage contexts carry the 8 CCI-native schemes) and projects to a
-  64-lowercase-hex `cci-tlsn` claim and, separately, to its `cci-web2` claim.
+  64-lowercase-hex `cci-tlsn` claim and, separately, to its `cci-web2` claim,
+  but only when its context is `github`, `discord` or `telegram`, its `username`
+  is non-blank and its `userId` is a non-blank string or a safe integer; an
+  entry failing any of these projects to no `cci-tlsn` claim.
   DACS-2 verifies the TLSNotary proof the presenter supplies with its
   `tlsnotary` method (§7.3.3); a registered `cci-tlsn` claim does not stand in
   for that verification. This reverses the earlier DACS-2 note: an

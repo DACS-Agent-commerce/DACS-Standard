@@ -44,7 +44,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 54 | `fail` / `indeterminate` / `pass` |
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
-| [`cci-native-identifier-rows-v0.8.json`](cci-native-identifier-rows-v0.8.json) | DACS-1 §6.3.1 cci-humanpassport and cci-tlsn identifier rows | 19 | `fail` / `pass` |
+| [`cci-native-identifier-rows-v0.8.json`](cci-native-identifier-rows-v0.8.json) | DACS-1 §6.3.1 cci-humanpassport and cci-tlsn identifier rows | 24 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
@@ -647,7 +647,7 @@ Run the dependency-free executable predicate with
 
 ### `cci-native-identifier-rows-v0.8.json` — §6.3.1 `cci-humanpassport` and `cci-tlsn` rows
 
-19 candidate vectors pin two CCI-native identifier rows to what the Demos node
+24 candidate vectors pin two CCI-native identifier rows to what the Demos node
 stores. Each vector models a stored node identity entry, not a ClaimReference,
 and the claims a producer emits when it projects that entry. The rule
 predicates in the test below check them. The reference parser
@@ -671,7 +671,9 @@ A TLSNotary commitment is stored on a web2 identity entry with proof type
 lowercase hex, the form the producer emits, including for an uppercase-hex or
 whitespace-padded stored hash) and, separately, to its `cci-web2:<platform>:<username>` claim. An
 entry with another proof type, or with a missing, short, or `0x`-prefixed hash,
-still yields its `cci-web2` claim and no `cci-tlsn` claim. The set's
+still yields its `cci-web2` claim and no `cci-tlsn` claim, as does one with a
+context outside `github`, `discord` and `telegram`, or a missing or blank
+`userId` (a blank `username` yields neither claim). The set's
 `provenance.storageSources` cites the node and SDK source for each storage fact.
 Run the dependency-free executable predicate with
 `python3 -m unittest tests.test_cci_native_identifier_rows_vectors -v`.

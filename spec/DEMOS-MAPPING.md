@@ -14,8 +14,8 @@ A mapping of which substrate primitives are live today, what extensions are need
 
 ### A.1 SR-1 — Cross-Context Identities (CCI)
 
-- 🟢 8 native contexts in production: xm, web2, pqc, ud, nomis, humanpassport, ethos, tlsn. Stored in GCRMain.identities. SDK methods getXmIdentities, getWeb2Identities, addXmIdentity, addTwitterIdentity, etc. SIWD (wallet_signIn, EIP-4361-style) for presentation.
-- ⚪ 6 new CCI contexts for regulatory identity: lei, finra-crd, sam-uei, fedramp, naics, cmmc. **Deferred to a later version — not part of v0.1.** Each needs a GCR routine following the pattern of the existing 8 reference implementations. Until they ship, regulatory credentials on Demos are carried via the stor-cred extensibility surface below and verified through DACS-2.
+- 🟢 7 native contexts in production: xm, web2, pqc, ud, nomis, humanpassport, ethos. Stored in GCRMain.identities. TLSNotary-verified identities (`cci-tlsn`) are stored on `web2` entries with proof type `tlsn`, not in a separate context. SDK methods getXmIdentities, getWeb2Identities, addXmIdentity, addTwitterIdentity, etc. SIWD (wallet_signIn, EIP-4361-style) for presentation.
+- ⚪ 6 new CCI contexts for regulatory identity: lei, finra-crd, sam-uei, fedramp, naics, cmmc. **Deferred to a later version — not part of v0.1.** Each needs a GCR routine following the pattern of the existing 7 reference implementations. Until they ship, regulatory credentials on Demos are carried via the stor-cred extensibility surface below and verified through DACS-2.
 - 🔵 ERC-8004 token references; W3C DIDs (carried via claim references; verified through DACS-2).
 
 **Demos agent DID profile.** DACS implementations use the self-certifying
@@ -107,11 +107,11 @@ Because this binding has no qualifying pre-consensus `accepted` evidence, a DACS
 
 ### A.3 SR-3 — DAHR (Data Agnostic HTTPS Relay)
 
-- 🟢 Live via demos.web2.createDahr() → dahr.startProxy(…). Returns IWeb2Result with responseHash, responseHeadersHash, txHash. One on-chain web2Request tx per call. GCR routines per CCI context handle native-claim validation (including tlsn).
+- 🟢 Live via demos.web2.createDahr() → dahr.startProxy(…). Returns IWeb2Result with responseHash, responseHeadersHash, txHash. One on-chain web2Request tx per call. GCR routines per CCI context handle native-claim validation (including tlsn, whose entries are stored under the web2 context).
 - 🟡 DAHR signing-model clarification — current docs show **hash commitments only**, with no validator signature over the response body. v0.1 treats this as a **consensus-anchored hash commitment** model. If Kynesys upgrades DAHR to validator-sign the response body itself, DACS-2 v0.2 may strengthen the claim.
 - 🟡 CompositeVerificationRecord Storage Program schema.
 - 🟡 oauth-attested method depends on a Demos-side OAuth attester. If not built, the method is 🔵 third-party.
-- 🔵 W3C Verifiable Credentials, TLSNotary (external proof library — distinct from the 🟢 cci-tlsn:* native context), zkTLS (Reclaim, Pluto), ACME challenges for domain-tls-control.
+- 🔵 W3C Verifiable Credentials, TLSNotary (external proof library — distinct from the 🟢 cci-tlsn:* native claim), zkTLS (Reclaim, Pluto), ACME challenges for domain-tls-control.
 
 **DAHR-backed AP2 receipt binding (normative Demos binding).** For DACS-4
 §9.5.6 AP2-2, the transaction reference MUST use the distinct `ap2-sr3` arm.

@@ -586,18 +586,29 @@ Run the dependency-free executable predicate with
 ### `cci-native-identifier-rows-v0.8.json` — §6.3.1 `cci-humanpassport` and `cci-tlsn` rows
 
 15 candidate vectors pin two CCI-native identifier rows to what the Demos node
-stores. A `humanpassport` entry is identified by its verified EVM address, so
-`cci-humanpassport:<address>` carries `0x` + 40 lowercase hex; a checksum-case
-or uppercase-hex spelling canonicalises to the lowercase form, and an opaque
-proof id, a missing or uppercase `0x`, a short or long address, and a non-hex
-character produce no identifier.
+stores. Each vector models a stored node identity entry, not a ClaimReference,
+and the claims a producer emits when it projects that entry. The rule
+predicates in the test below check them. The reference parser
+`parse_claim_reference` in `scripts/dacs_reference.py` does not yet apply the
+per-scheme identifier shapes (it still accepts, for example,
+`cci-humanpassport:humanity-proof-0001` and `cci-tlsn:zz`), so it does not
+check these rows.
+
+A `humanpassport` entry is identified by its verified EVM address, so
+`cci-humanpassport:<address>` carries `0x` + 40 lowercase hex. The node does not
+fix the letter case of the stored address, so the producer emits the lowercase
+form when it projects a checksum-case or uppercase-hex entry; a ClaimReference
+in any other form is not canonical under CORE CF-2(b). An opaque proof id, a
+missing or uppercase `0x`, a short or long address, and a non-hex character
+produce no claim.
 
 A TLSNotary commitment is stored on a web2 identity entry with proof type
 `tlsn`. That one entry projects to a `cci-tlsn:<proof-hash>` claim (64
-lowercase hex; uppercase hex canonicalises to lowercase) and, separately, to its
-`cci-web2:<platform>:<username>` claim. An entry with another proof type, or
-with a missing, short, or `0x`-prefixed hash, still yields its `cci-web2` claim
-and no `cci-tlsn` claim.
+lowercase hex, the form the producer emits, including for an uppercase-hex
+stored hash) and, separately, to its `cci-web2:<platform>:<username>` claim. An
+entry with another proof type, or with a missing, short, or `0x`-prefixed hash,
+still yields its `cci-web2` claim and no `cci-tlsn` claim. The set's
+`provenance.storageSources` cites the node and SDK source for each storage fact.
 Run the dependency-free executable predicate with
 `python3 -m unittest tests.test_cci_native_identifier_rows_vectors -v`.
 

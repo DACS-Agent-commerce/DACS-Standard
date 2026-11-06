@@ -176,6 +176,18 @@ The format used per release:
   corrective release pin and complete module tuple are recorded on the affected
   evidence.
 
+### Changed — DACS-1 §6.3.1 `cci-humanpassport` and `cci-tlsn` identifier rows (#439, #440)
+
+- **`cci-humanpassport`** — the identifier is the verified EVM address of the
+  stored `humanpassport` entry, emitted as `0x` + 40 lowercase hex, not an opaque
+  humanity proof id.
+- **`cci-tlsn`** — the claim is stored on a web2 identity entry with proof type
+  `tlsn` (7 storage contexts carry the 8 CCI-native schemes) and projects to a
+  64-lowercase-hex `cci-tlsn` claim and, separately, to its `cci-web2` claim.
+  DACS-2 still treats it as a CCI claim, not the external `tlsnotary` method.
+- A candidate vector set pins both rows; its rule predicates, not the reference
+  parser, check it.
+
 ### Fixed — legacy-payment LAA session binding and replay carrier
 
 - **Verifier-owned session binding (fail-closed)** — the derive/job-bound path

@@ -59,7 +59,7 @@ Parameters       := key1=value1 [ "&" key2=value2 ]*
 **Registered schemes (v0.1) — two-axis registry**
 The v0.1 scheme registry is organised along two axes: (a) **CCI-native** schemes — one per Demos CCI context, with the identifier directly addressing the relevant slot in GCRMain.identities; (b) **Stor-backed credential** schemes — schemes whose verification result is anchored as a Storage Program written by a DACS-2 attestation.
 
-**CCI-native schemes** — map to Demos CCI contexts (8 in production today + 6 to-add for DACS-1 v0.1):
+**CCI-native schemes** — map to Demos CCI contexts (7 storage contexts in production today, carrying 8 schemes because `cci-tlsn` is stored on a `web2` identity entry, + 6 to-add for DACS-1 v0.1):
 
 | Scheme | CCI context | Identifier shape | Status |
 | --- | --- | --- | --- |
@@ -68,9 +68,9 @@ The v0.1 scheme registry is organised along two axes: (a) **CCI-native** schemes
 | cci-pqc:<algorithm>:<pubkey> | pqc | falcon / ml-dsa | Done |
 | cci-ud:<domain> | ud | Unstoppable Domain | Done |
 | cci-nomis:<address> | nomis | Nomis wallet score subject | Done |
-| cci-humanpassport:<address> | humanpassport | verified EVM address, the address Demos stores for the identity: `0x` + 40 lowercase hex; a checksum-case or uppercase-hex spelling is lowercased under CF-2 and any other shape is not an identifier | Done |
+| cci-humanpassport:<address> | humanpassport | verified EVM address, the address of the stored `humanpassport` entry (the node does not fix its letter case): the producer emits `0x` + 40 lowercase hex when it projects the entry to a claim; a ClaimReference with any other identifier form is not canonical under CF-2(b), and a stored value that is not `0x` + 40 hex projects to no claim | Done |
 | cci-ethos:<id> | ethos | Ethos profile id | Done |
-| cci-tlsn:<proof-hash> | web2 (proof type `tlsn`) | TLSNotary proof commitment: 64 lowercase hex (an uppercase-hex spelling is lowercased under CF-2 and any other shape is not an identifier); the node stores it on a web2 identity entry with proof type `tlsn`, and that entry projects to this claim and, separately, to its `cci-web2` claim | Done — DACS-2 MUST treat as a CCI claim, NOT as an external tlsnotary method |
+| cci-tlsn:<proof-hash> | web2 (proof type `tlsn`) | TLSNotary proof commitment: 64 lowercase hex, which the producer emits when it projects a stored entry to a claim (a ClaimReference with any other identifier form is not canonical under CF-2(b), and a stored hash that is not 64 hex projects to no `cci-tlsn` claim); the node stores it on a web2 identity entry with proof type `tlsn`, and that entry projects to this claim and, separately, to its `cci-web2` claim | Done — DACS-2 MUST treat as a CCI claim, NOT as an external tlsnotary method |
 | cci-lei:<20-char> | lei (NEW) | uppercase LEI | Deferred — later version, not v0.1 |
 | cci-finra-crd:<digits> | finra-crd (NEW) | digits only, no leading zeros | Deferred — later version, not v0.1 |
 | cci-sam-uei:<12-char> | sam-uei (NEW) | uppercase UEI | Deferred — later version, not v0.1 |
@@ -115,7 +115,7 @@ themselves establish an EVM settlement-chain match. These rules do not rewrite
 or re-hash an existing ClaimReference; they define only its eligibility for
 the DACS-4 chain-applicability predicate.
 
-The six new contexts (lei, finra-crd, sam-uei, fedramp, naics, cmmc) extend the existing 8-context CCI model with regulatory identity claims. **They are deferred to a later version and are not part of v0.1.** The native CCI contexts are deferred, not the schemes — `lei`, `finra-crd`, `sam-uei`, `fedramp`, `naics`, and `cmmc` remain live DACS-2-verifiable scheme names (verified via `consensus-backed-proxy` recipes against their respective authorities, e.g. `api.gleif.org` for `lei`), so the `institutional` identity tier (§6.3.2.1) stays reachable in v0.1. Each deferred context will follow the same pattern as the existing 8 contexts: per-context GCR routine for validation; verified payload stored in GCRMain.identities; readable via the existing wallet/SDK identity surface. Until they ship, regulatory credentials are carried via the stor-cred extensibility surface below (the scheme grammar, claim tiers, and DACS-2 verification recipes are substrate-independent and unchanged).
+The six new contexts (lei, finra-crd, sam-uei, fedramp, naics, cmmc) extend the existing 7-context CCI model with regulatory identity claims. **They are deferred to a later version and are not part of v0.1.** The native CCI contexts are deferred, not the schemes — `lei`, `finra-crd`, `sam-uei`, `fedramp`, `naics`, and `cmmc` remain live DACS-2-verifiable scheme names (verified via `consensus-backed-proxy` recipes against their respective authorities, e.g. `api.gleif.org` for `lei`), so the `institutional` identity tier (§6.3.2.1) stays reachable in v0.1. Each deferred context will follow the same pattern as the existing 7 contexts: per-context GCR routine for validation; verified payload stored in GCRMain.identities; readable via the existing wallet/SDK identity surface. Until they ship, regulatory credentials are carried via the stor-cred extensibility surface below (the scheme grammar, claim tiers, and DACS-2 verification recipes are substrate-independent and unchanged).
 
 **The DACS-1 / DACS-2 boundary for these claims.** DACS-1 is **registered identity** (what the party stably holds — LEI, FINRA registration, etc., kept in CCI). DACS-2 is **freshness check** (per-session re-verification that the registered claim is still valid right now). The DACS-2 DAHR call against the authority produces the verified result; that result is written into the relevant CCI context (DACS-1 surface) AND referenced from the DACS-2 CompositeVerificationRecord for that session.
 

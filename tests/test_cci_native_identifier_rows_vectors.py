@@ -161,6 +161,22 @@ class CciNativeIdentifierRowsVectorTests(unittest.TestCase):
         self.assertIn("64 lowercase hex", shape)
         self.assertIn("`cci-web2`", shape)
 
+    def test_set_states_its_checker_and_cites_storage_sources(self):
+        self.assertIn("not a ClaimReference", self.data["description"])
+        self.assertIn("parse_claim_reference", self.data["description"])
+        self.assertIn("does not yet apply", self.data["description"])
+        sources = self.data["provenance"]["storageSources"]
+        self.assertTrue(sources)
+        for source in sources:
+            self.assertIsInstance(source, str)
+            self.assertRegex(source, r"commit [0-9a-f]{40}|at ac8f45f")
+
+    def test_rows_state_producer_side_canonical_form(self):
+        for prefix in ("cci-humanpassport:", "cci-tlsn:"):
+            _scheme, _context, shape, _status = table_row(self.dacs1, prefix)
+            self.assertIn("CF-2(b)", shape, prefix)
+            self.assertNotIn("lowercased under CF-2", shape, prefix)
+
     def test_tlsn_row_keeps_dacs2_claim_boundary(self):
         _scheme, _context, _shape, status = table_row(self.dacs1, "cci-tlsn:")
         self.assertIn(

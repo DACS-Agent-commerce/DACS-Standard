@@ -42,6 +42,8 @@ def humanpassport_claims(stored_entries):
 
 
 TLSN_CONTEXTS = {"github", "discord", "telegram"}
+# The platform keys a stored web2 entry needs for a cci-web2 claim (the `domain` key is not modelled).
+WEB2_PLATFORMS = {"twitter"} | TLSN_CONTEXTS
 
 
 def tlsn_user_id_present(user_id):
@@ -58,18 +60,21 @@ def tlsn_projection(identities):
     web2_claims = []
     tlsn_claims = []
     for platform, entries in identities.get("web2", {}).items():
+        # The cci-tlsn context is trimmed then lowercased; the web2 platform lookup only lowercases.
+        context = platform.strip(TRIM_CHARS).lower()
         for entry in entries:
             username = entry.get("username")
             if isinstance(username, str):
                 username = username.strip(TRIM_CHARS)
             if not isinstance(username, str) or not username:
                 continue
-            web2_claims.append(f"cci-web2:{platform}:{username}")
+            if platform.lower() in WEB2_PLATFORMS:
+                web2_claims.append(f"cci-web2:{platform.lower()}:{username}")
             proof_hash = entry.get("proofHash")
             if isinstance(proof_hash, str):
                 proof_hash = proof_hash.strip(TRIM_CHARS).lower()
             if (
-                platform.lower() in TLSN_CONTEXTS
+                context in TLSN_CONTEXTS
                 and entry.get("proofType") == "tlsn"
                 and tlsn_user_id_present(entry.get("userId"))
                 and isinstance(proof_hash, str)
@@ -160,6 +165,10 @@ class CciNativeIdentifierRowsVectorTests(unittest.TestCase):
         numeric = by_name["tlsn-numeric-safe-integer-user-id-projects-to-cci-tlsn"]
         self.assertEqual("pass", numeric["expected"])
         self.assertEqual(projected["want"]["cciTlsn"], numeric["want"]["cciTlsn"])
+        padded_context = by_name["tlsn-whitespace-padded-context-projects-to-cci-tlsn-and-no-cci-web2"]
+        self.assertEqual("pass", padded_context["expected"])
+        self.assertEqual(projected["want"]["cciTlsn"], padded_context["want"]["cciTlsn"])
+        self.assertEqual([], padded_context["want"]["cciWeb2"])
         for name in (
             "tlsn-web2-entry-without-tlsn-proof-type-has-no-cci-tlsn",
             "tlsn-short-proof-hash-has-no-cci-tlsn",
@@ -203,6 +212,9 @@ class CciNativeIdentifierRowsVectorTests(unittest.TestCase):
         for condition in ("`github`, `discord` or `telegram`", "`username` is non-blank", "`userId` is a non-blank string or a safe integer"):
             self.assertIn(condition, shape)
         self.assertIn("projects to no `cci-tlsn` claim", shape)
+        self.assertIn("its context, after the same trim and compared in any letter case, is", shape)
+        self.assertIn("lowercases the context but does not trim it", shape)
+        self.assertIn('`" github "`) projects to this claim and to no `cci-web2` claim', shape)
 
     def test_set_states_its_checker_and_cites_storage_sources(self):
         self.assertIn("not a ClaimReference", self.data["description"])

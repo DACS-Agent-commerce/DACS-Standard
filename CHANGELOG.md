@@ -186,7 +186,9 @@ The format used per release:
   64-lowercase-hex `cci-tlsn` claim and, separately, to its `cci-web2` claim,
   but only when its context is `github`, `discord` or `telegram`, its `username`
   is non-blank and its `userId` is a non-blank string or a safe integer; an
-  entry failing any of these projects to no `cci-tlsn` claim.
+  entry failing any of these projects to no `cci-tlsn` claim. The context is
+  trimmed first, but the `cci-web2` claim does not trim it, so a padded context
+  projects to `cci-tlsn` only.
   DACS-2 verifies the TLSNotary proof the presenter supplies with its
   `tlsnotary` method (§7.3.3); a registered `cci-tlsn` claim does not stand in
   for that verification. This reverses the earlier DACS-2 note: an

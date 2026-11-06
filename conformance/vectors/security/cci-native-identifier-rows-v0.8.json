@@ -2,7 +2,7 @@
   "set": "cci-native-identifier-rows-v0.8",
   "spec": "DACS-1 §6.3.1 cci-humanpassport and cci-tlsn identifier rows",
   "tier": "candidate",
-  "description": "Pins the canonical cci-humanpassport address form and the cci-tlsn claim with its web2 storage projection. Each vector models a stored node identity entry (not a ClaimReference) and the claims a producer emits when it projects that entry; only the identifier-bearing fields are modelled, and other fields a valid stored entry carries do not change the identifier. The rule predicates in tests/test_cci_native_identifier_rows_vectors.py check the vectors. The reference parser parse_claim_reference in scripts/dacs_reference.py does not yet apply the per-scheme identifier shapes, so it does not check these rows and accepts some identifiers the rows do not emit.",
+  "description": "Pins the canonical cci-humanpassport address form and the cci-tlsn claim with its web2 storage projection. Each vector models a stored node identity entry (not a ClaimReference) and the claims a producer emits when it projects that entry; only the identifier-bearing fields are modelled, and other fields a valid stored entry carries do not change the identifier (the SDK projects a humanpassport entry only if it also carries score, passingScore, verifiedAt, verificationMethod, stamps and expiresAt, src/identity/cci.ts:625-643, so a run against the SDK adds them to the address-only humanpassport entries here). The rule predicates in tests/test_cci_native_identifier_rows_vectors.py check the vectors. The reference parser parse_claim_reference in scripts/dacs_reference.py does not yet apply the per-scheme identifier shapes, so it does not check these rows and accepts some identifiers the rows do not emit.",
   "provenance": {
     "issue": "DACS-Agent-commerce/DACS-Standard#439 and #440",
     "generator": "hand-authored normative examples; checked by the rule predicates in tests/test_cci_native_identifier_rows_vectors.py (not by a reference implementation)",
@@ -15,8 +15,8 @@
       "SDK repo https://github.com/DACS-Agent-commerce/dacs-sdk at commit 6a51c42ac6a7ea3efd2543b0469c1f1c575ef8d6, src/identity/cci.ts:413-440 (every web2 entry with a username yields a cci-web2 claim), :704-758 (parseTlsn reads web2 entries with proofType 'tlsn', :713, and emits no claim unless the lowercased context is in TLSN_CONTEXTS = github, discord, telegram, :158, :711-712; username is non-blank, :714; userId is a non-blank string or a safe integer, :715-720; and proofHash is 64 hex after trimming and lowercasing, :159, :721-722) and :615-666 (parseHumanPassport accepts /^0x[0-9a-fA-F]{40}$/ after trimming and lowercases it, :160, :622-624); the trim is nonBlank at :296-297, used at :621 and :721; docs/demos-cci-identities.md:15-21. Consumer-side corroboration of the projection to cci-web2 and cci-tlsn only: the node source has no cci-web2 or cci-tlsn reference"
     ]
   },
-  "count": 24,
-  "hash": "62b2c53a8829f6dc53923abd80195ca05ca7e51defdafe1b958049b797cc65f1",
+  "count": 25,
+  "hash": "0fe258abd26e8e18d545063f020b983f9fb40201f0fd11af174735866b40cad1",
   "vectors": [
     {
       "name": "humanpassport-lowercase-address-is-canonical",
@@ -300,6 +300,13 @@
       "row": "tlsn",
       "stored": {"web2": {"github": [{"username": "  ", "proofType": "tlsn", "proofHash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "userId": "42"}]}},
       "want": {"expected": "fail", "cciWeb2": [], "cciTlsn": []}
+    },
+    {
+      "name": "tlsn-whitespace-padded-context-projects-to-cci-tlsn-and-no-cci-web2",
+      "expected": "pass",
+      "row": "tlsn",
+      "stored": {"web2": {" github ": [{"username": "example-user", "proofType": "tlsn", "proofHash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "userId": "42"}]}},
+      "want": {"expected": "pass", "cciWeb2": [], "cciTlsn": ["cci-tlsn:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"]}
     }
   ]
 }

@@ -184,7 +184,8 @@ The format used per release:
 - **`cci-tlsn`** — the claim is stored on a web2 identity entry with proof type
   `tlsn` (7 storage contexts carry the 8 CCI-native schemes) and projects to a
   64-lowercase-hex `cci-tlsn` claim and, separately, to its `cci-web2` claim.
-  DACS-2 still treats it as a CCI claim, not the external `tlsnotary` method.
+  DACS-2 verifies the named proof with its `tlsnotary` method (§7.3.3); a
+  registered `cci-tlsn` claim does not stand in for that verification.
 - A candidate vector set pins both rows; its rule predicates, not the reference
   parser, check it.
 

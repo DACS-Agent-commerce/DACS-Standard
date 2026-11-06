@@ -194,12 +194,12 @@ class CciNativeIdentifierRowsVectorTests(unittest.TestCase):
             self.assertNotIn("lowercased under CF-2", shape, prefix)
             self.assertNotIn("CF-2", shape, prefix)
 
-    def test_tlsn_row_keeps_dacs2_claim_boundary(self):
+    def test_tlsn_row_sends_the_proof_to_the_tlsnotary_method(self):
         _scheme, _context, _shape, status = table_row(self.dacs1, "cci-tlsn:")
-        self.assertIn(
-            "DACS-2 MUST treat as a CCI claim, NOT as an external tlsnotary method",
-            status,
-        )
+        self.assertIn("DACS-2 verifies that proof with the `tlsnotary` method (§7.3.3)", status)
+        self.assertNotIn("NOT as an external tlsnotary method", status)
+        vet = (ROOT / "spec" / "DACS-2-VET.md").read_text(encoding="utf-8")
+        self.assertNotIn("does NOT re-run the external tlsnotary method", vet)
 
 
 if __name__ == "__main__":

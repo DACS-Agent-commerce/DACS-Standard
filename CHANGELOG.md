@@ -13,6 +13,24 @@ The format used per release:
 
 ## [Unreleased]
 
+### Changed — `tlsnotary` method binds the proof to its subject and session
+
+- **Subject match and session binding** (DACS-2 §7.3.3; CORE §B.8) — the
+  `tlsnotary` procedure is now numbered steps like §7.3.2 and adds the two
+  checks the `verifiable-credential` method already has. Step 5 requires the
+  identity the disclosed segments establish (the `subject` entry of
+  `parserRules.dataMap`) to match the claim's identifier canonically. Step 6
+  requires a `holderProof` (new `TLSNotaryMethodInput` field, type
+  `TLSNotaryHolderProof`) signed by the presenter key over a challenge that
+  includes the session nonce (the §6.3.2 SIWD-or-top-level disjunction, CORE
+  SN-1..4) and the proof commitment. A mismatching subject or a binding that
+  is absent or covers another nonce or commitment is `fail`; segments that do
+  not disclose a subject are `indeterminate`; parser failures remain `error`.
+  The existing proof, notary-signature, `sessionTemplate`, anchor and parser
+  steps are kept. Candidate vector set
+  `holder-binding-tlsnotary-v0.1` (13 vectors) exercises the
+  predicates. No signature domain is added.
+
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
 - **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened

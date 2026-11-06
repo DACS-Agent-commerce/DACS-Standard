@@ -91,10 +91,34 @@ type TLSNotaryMethodInput = {
   identifier: string
   proof: TLSNotaryProof                // MPC-derived TLS session commitment + notary signature
   sessionTemplate?: string
+  holderProof: TLSNotaryHolderProof    // presenter's binding of the proof to this session
+}
+
+type TLSNotaryHolderProof = {
+  challenge: {
+    sessionNonce: string               // the nonce the signature covers (see Session binding below)
+    proofCommitment: string            // the proof commitment anchored in step 7
+  }
+  signature: string                    // by the presenter key that controls the claim (§6.3.2 step (6))
 }
 ```
 
-**Procedure.** Validates the TLSNotary proof per the TLSNotary specification (current PSE rebuild); verifies the notary signature against a known notary public key registry; if sessionTemplate is set, verifies the proof targets that endpoint and protocol; anchors the proof commitment via SR-2; applies parser rules to any disclosed segments; returns VerifyResult per outcome. **Trust model:** TLS PKI; notary honesty; MPC computational assumptions. **Substrate:** SR-2.
+**Procedure.** The verifier runs these steps:
+
+1. **Validate the proof** per the TLSNotary specification (current PSE rebuild).
+2. **Verify the notary signature** against a known notary public key registry.
+3. **Session template** — if `sessionTemplate` is set, verify the proof targets that endpoint and protocol.
+4. **Extract** structured data per `recipe.parserRules` from the disclosed segments.
+5. **Subject match** — verify the identity the disclosed segments establish matches the claim's identifier canonically (CORE CF-2, CF-3). The established identity is the value the `subject` entry of `parserRules.dataMap` resolves to (for the `raw` format, which has no `dataMap`, the text `matcher` matches). MUST reject if the two differ.
+6. **Session binding** — verify `holderProof`: the signature MUST verify under the presenter key that controls the claim, over a challenge that includes both the session nonce (see *Session binding* below) and the proof commitment of `proof`. MUST reject if `holderProof` is absent, does not verify, or covers a different nonce or a different proof commitment.
+7. **Anchor** the proof commitment via SR-2.
+8. **Return** a VerifyResult (see *Outcome* below).
+
+*Session binding.* The nonce is, per the §6.3.2 disjunction, the SIWD message `Nonce` for a `siwd`-presented bundle, else the top-level `bundleToVet.sessionNonce` (a SIWD-presented bundle does NOT populate the top-level field, so a tlsnotary claim inside one binds to the SIWD Nonce); its provenance is CORE §B.8 (SN-1..4), and the nonce was already consumed when the presentation was admitted, so this step compares against that admission and does not consume it again. The binding is a holder signature rather than a nonce disclosed in the notarised request because the request goes to a third-party authority endpoint that the Standard cannot require to carry a verifier-issued value, and because the verifier issues the nonce (SN-3) only after the proof may already exist. Signing the proof commitment together with the nonce ties this proof to this session: a notarised session that is genuine proves what the authority returned, not that the presenter is the party the proof is being offered for, nor that it was offered for this session.
+
+*Outcome.* `pass` if all steps succeed; `fail` on proof, notary-signature, session-template, subject-mismatch, or session-binding failures; `error` on parser failures (a verifier-side failure to consume the disclosed segments — never `fail`; consistent with PSP-2 and §7.5.1, so it follows the recipe's `retryClass` rather than being a terminal authority answer); `indeterminate` if the segments parse but do not disclose a subject value, so that no comparison can be made.
+
+**Trust model:** TLS PKI; notary honesty; MPC computational assumptions. **Substrate:** SR-2.
 
 #### 7.3.4 zktls
 

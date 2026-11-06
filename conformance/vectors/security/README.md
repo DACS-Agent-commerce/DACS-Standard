@@ -98,7 +98,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
 | [`sr2-logical-native-resolution-v0.1.json`](sr2-logical-native-resolution-v0.1.json) | CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2 | 39 | `fail` / `indeterminate` / `pass` |
-| [`tlsnotary-session-subject-binding-v0.1.json`](tlsnotary-session-subject-binding-v0.1.json) | DACS §7.3.3 (session binding, subject match); §6.3.2; PSP-3; CORE §B.8, CF-2, CF-3 | 19 | `fail` / `pass` |
+| [`tlsnotary-session-subject-binding-v0.1.json`](tlsnotary-session-subject-binding-v0.1.json) | DACS §7.3.3 (session binding, subject match); §6.3.2; PSP-3; CORE §B.8, CF-2, CF-3 | 23 | `fail` / `pass` |
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
@@ -2249,7 +2249,7 @@ python3 -m unittest tests.test_identity_bundle_hash_binding_vectors -v
 
 ### `tlsnotary-session-subject-binding-v0.1.json` — §7.3.3 steps 4 and 6 (session binding, subject match)
 
-19 vectors for the two `tlsnotary` checks that tie a notarised proof to the
+23 vectors for the two `tlsnotary` checks that tie a notarised proof to the
 current session and, when the recipe declares it, to the claim subject. Steps
 run in order and the first failing step decides: binding (step 4) before
 subject match (step 6).
@@ -2262,6 +2262,10 @@ subject match (step 6).
   entries for the claim lacking it → `fail`.
   No signature is added: the bundle's presentation signature already covers the
   entry and the nonce.
+- **Stored proof (step 4, `cci-tlsn` only):** for a requirement on a registered
+  `cci-tlsn:H` claim, the supplied proof MUST equal the proof stored with the
+  web2 entry whose proof hash is `H`; a different valid proof → `fail`. The
+  vectors model that entry as `storedEntry` and do not derive `H`.
 - **Nonce choice:** the session's bundle is the one whose nonce, per the §6.3.2
   disjunction (SIWD `Nonce` for a `siwd` bundle, else top-level `sessionNonce`),
   matches the verifier's challenge.
@@ -2270,7 +2274,8 @@ subject match (step 6).
   CF-2(b) canonicalisation (NFC and the scheme's own identifier rule; for
   `domain`, the DCR-1 lower-case A-label) by CF-3. A different value, an entry
   that resolves to nothing, or a value that cannot be canonicalised under the
-  claim's scheme → `fail`. A recipe without the entry skips the step.
+  claim's scheme → `fail`. A recipe without the entry skips the step. For
+  `cci-tlsn` the claim side is the stored entry's `userId`, not `H`.
 - **Limited result:** `establishes` is `proof-subject-matches-claim` only when
   the subject match ran (the disclosed subject equals the claimed identifier
   and a bundle for this session carried the commitment); otherwise a `pass` is
@@ -2296,7 +2301,8 @@ set is accepted by it.
 | `scheme`, `identifier` | the claim's scheme and identifier |
 | `issuedNonce` | the verifier's challenge for this session |
 | `recipe` | `dataMap`; a `subject` key is the subject entry |
-| `proof` | `commitment`, and `subject` (the value `dataMap.subject` resolves to, `null` if nothing) |
+| `proof` | `commitment`, `subject` (the value `dataMap.subject` resolves to, `null` if nothing), and for `cci-tlsn` the supplied proof as `body` |
+| `storedEntry` | `cci-tlsn` only: the stored web2 entry for `H`, as `proof` and `userId` |
 | `bundles` | presented bundles: `presentation`, optional `sessionNonce`, optional `siwd.nonce`, `claims[]` of `identifier` and optional `tlsnotaryProofCommitment` |
 
 Execute with:

@@ -69,8 +69,18 @@ def canonical(scheme, identifier):
         return None
 
 
+def stored_proof_ok(vector):
+    """Step 4, cci-tlsn only: the supplied proof equals the proof stored for H."""
+    if vector["scheme"] != "cci-tlsn":
+        return True
+    stored = vector.get("storedEntry")
+    return stored is not None and stored["proof"] == vector["proof"]["body"]
+
+
 def binding_ok(vector):
     """Step 4: every claim entry in this session's bundle carries the commitment."""
+    if not stored_proof_ok(vector):
+        return False
     scheme, identifier = vector["scheme"], vector["identifier"]
     wanted = canonical(scheme, identifier)
     found = False
@@ -95,10 +105,11 @@ def subject_ok(vector):
     scheme = vector["scheme"]
     if not isinstance(subject, str):
         return False
+    claimed = vector["identifier"]
+    if scheme == "cci-tlsn":
+        claimed = vector["storedEntry"]["userId"]
     disclosed = canonical(scheme, subject)
-    return disclosed is not None and disclosed == canonical(
-        scheme, vector["identifier"]
-    )
+    return disclosed is not None and disclosed == canonical(scheme, claimed)
 
 
 def evaluate(vector):
@@ -196,6 +207,13 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
             "commitment-not-a-string": ("fail", "session-binding"),
             "commitment-differs-in-hex-case": ("fail", "session-binding"),
             "duplicate-entries-one-lacks-commitment": ("fail", "session-binding"),
+            "cci-tlsn-stored-proof-and-user-id-subject": ("pass", None),
+            "cci-tlsn-other-valid-proof-is-not-the-stored-proof": (
+                "fail", "session-binding"),
+            "cci-tlsn-stored-proof-subject-differs-from-user-id": (
+                "fail", "subject-match"),
+            "cci-tlsn-subject-equal-to-h-text-is-not-user-id": (
+                "fail", "subject-match"),
         }
         for name, (verdict, step) in required.items():
             with self.subTest(name):
@@ -253,6 +271,8 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
         self.assertIn("a bundle for this session carried its commitment", section)
         self.assertIn("lowercase hex", section)
         self.assertIn("`subject` entry", section)
+        self.assertIn("requires `proof` to equal the proof stored", section)
+        self.assertIn("the `userId` of the stored entry resolved in step 4", section)
         self.assertIn("equals the claimed identifier", section)
         self.assertIn("does not show that the presenter controls the account", section)
         self.assertIn("Neither result establishes account control", section)

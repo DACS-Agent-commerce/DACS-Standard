@@ -175,6 +175,9 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
         self.assertIn("The check applies to no other scheme", paragraph)
         self.assertIn("adds no session binding, signature, signature domain or nonce use", paragraph)
         self.assertIn("other outcomes follow the procedure above unchanged", paragraph)
+        self.assertIn("its `fail` stands whatever they give", paragraph)
+        self.assertIn("Part (3) applies only when the parser rules would otherwise give `pass`", paragraph)
+        self.assertIn("`error` or `indeterminate`, that outcome stands", paragraph)
 
     def test_spec_psp3_exception_is_only_the_unresolved_subject(self):
         text = SPEC.read_text(encoding="utf-8")

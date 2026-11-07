@@ -129,6 +129,18 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
         cls.document = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.vectors = {v["name"]: v for v in cls.document["vectors"]}
 
+    def test_cci_tlsn_identifiers_follow_the_dacs1_rule(self):
+        # DACS-1 §6.3.1: a cci-tlsn identifier is a 64 lowercase hex proof hash.
+        rule = re.compile(r"\A[0-9a-f]{64}\Z")
+        tlsn = [v for v in self.document["vectors"] if v["scheme"] == "cci-tlsn"]
+        self.assertTrue(tlsn)
+        for vector in tlsn:
+            with self.subTest(vector=vector["name"]):
+                self.assertRegex(vector["identifier"], rule)
+                for bundle in vector["bundles"]:
+                    for entry in bundle["claims"]:
+                        self.assertRegex(entry["identifier"], rule)
+
     def test_set_metadata_is_self_consistent(self):
         document = self.document
         self.assertEqual(document["set"], VECTORS.stem)

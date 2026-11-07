@@ -574,6 +574,40 @@ class FixtureFactory:
             "asset": agreement["terms"]["price"]["currency"],
         }
 
+    def retain_rail(self, value):
+        """Persist exact RTB-1 evidence independently of later consumer input."""
+        try:
+            from scripts import generate_settlement_contract_vectors as contracts
+        except ImportError:
+            import generate_settlement_contract_vectors as contracts
+        rail = value["rail"]
+        job_id = value["evidence"]["jobId"]
+        state = contracts.retained_state(
+            {"startedAt": OBSERVED_AT - 1000, "railRegistryVersion": 1},
+            job_id=job_id, orchestrator=CLAIMS["orchestrator"], steward=CLAIMS["steward"])
+        entry = contracts.index_entry(rail, anchor=copy.deepcopy(value["evidence"]["railDefinitionRef"]["anchor"]))
+        authority = contracts.rail_authority(rail, entries=[entry])
+        locator = entry["anchor"]["locator"]
+        authority["railDefinitionReceipts"] = [contracts.anchor_receipt(
+            locator, artifact_hash(rail, "signature"), native=locator,
+            label="retained-fv-rail-" + job_id, nonce="201",
+            block_timestamp=OBSERVED_AT - 2000, writer=contracts.REGISTRY_WRITER)]
+        self.trusted["railAuthorityPolicy"] = {
+            "public_keys": {**contracts.PUBLIC_KEYS, **self.trusted["stewardKeys"]},
+            "network_authority": contracts.CLAIMS["network"],
+            "network_id": contracts.NETWORK_ID,
+            "proof_profile": contracts.PROOF_PROFILE,
+            "validator_set_id": contracts.VALIDATOR_SET_ID,
+        }
+        status, reason, retained = contracts.ref.resolve_session_rail_state(
+            state["session"], value["agreement"]["terms"]["rail"], rail, authority,
+            retained_state=json.dumps(state).encode("utf-8"), job_id=job_id,
+            steward=state["steward"], registry_writer=state["registryWriter"],
+            **self.trusted["railAuthorityPolicy"])
+        if status != "verified":
+            raise ValueError("fixture session rail did not resolve: " + reason)
+        self.trusted.setdefault("sessionRailAuthorityByJob", {})[job_id] = retained.fixture_projection()
+
     def provider_context(self, session: dict, reference: dict, *, status="captured", observed_at=OBSERVED_AT) -> tuple[dict, dict]:
         response = {
             "providerRef": reference["providerRef"],
@@ -763,6 +797,7 @@ class FixtureFactory:
         }
         self.resign_evidence(evidence)
         value = {"evidence": evidence, "rail": rail, "agreement": agreement, "context": context}
+        self.retain_rail(value)
         self.controls[control_key] = copy.deepcopy(value)
         return value
 
@@ -877,7 +912,9 @@ class FixtureFactory:
             "signature": {},
         }
         self.resign_evidence(evidence)
-        return {"evidence": evidence, "rail": rail, "agreement": agreement, "context": context}
+        value = {"evidence": evidence, "rail": rail, "agreement": agreement, "context": context}
+        self.retain_rail(value)
+        return value
 
     def listing(self, phase: str) -> dict:
         listing = {

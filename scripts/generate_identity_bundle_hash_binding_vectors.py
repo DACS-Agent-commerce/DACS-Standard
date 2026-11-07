@@ -1378,10 +1378,6 @@ def scenario(
         "railRegistryVersion": 1,
         "parties": copy.deepcopy(session_parties),
         "priorPhaseOutputs": {},
-        "signer": {
-            "kind": "deterministic-test-capability",
-            "claim": CLAIMS["orchestrator"],
-        },
         "startedAt": NOW - 20_000,
     }
     payment_input = {

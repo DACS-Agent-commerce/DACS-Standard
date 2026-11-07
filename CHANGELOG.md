@@ -13,6 +13,30 @@ The format used per release:
 
 ## [Unreleased]
 
+### Changed — `cci-tlsn` stored-proof check (DACS-2 §7.3.3; PSP-3)
+
+- **Stored-proof check** — the §7.3.3 `tlsnotary` procedure is unchanged. A new
+  paragraph adds a check that applies only to a requirement on a registered
+  `cci-tlsn:H` claim: `H` resolves to the stored web2 entry and the supplied
+  proof MUST equal the stored proof (`fail` if `H` resolves to nothing or the
+  proofs differ), compared by type-preserving structural equality (member
+  order ignored, numbers equal when their JSON text gives the same exact
+  decimal value so `1`, `1.0` and `1e0` are equal and `1.00000000000000001`
+  and `1` are not, no number equals a boolean or string, a duplicate member
+  name in either proof fails). When `recipe.parserRules.dataMap` declares a `subject` entry,
+  its value MUST equal the stored `userId` as JSON strings only (exact equality
+  after NFC); a non-string on either side, a value that resolves to nothing, or a
+  mismatch is `fail`. Numeric ids are not yet supported and fail closed. It adds
+  no other scheme, session binding, signature, signature domain or nonce use,
+  and no new outcome. PSP-3 gains one exception: a declared `subject` entry
+  that resolves to nothing fails this check when the parser rules would
+  otherwise give `pass`; a parser `fail`, `error` or `indeterminate` stands.
+  When PRA-5 requires `error` before the parser is invoked, that `error`
+  stands and this check is not evaluated; otherwise a wrong stored proof stays
+  `fail` over whatever an executed parser gives. Candidate vector set
+  `cci-tlsn-stored-proof-check-v0.1` (23 vectors, plus a 19-case
+  decision-composition table).
+
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
 - **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened

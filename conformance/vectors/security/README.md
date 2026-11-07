@@ -45,6 +45,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-native-identifier-rows-v0.8.json`](cci-native-identifier-rows-v0.8.json) | DACS-1 §6.3.1 cci-humanpassport and cci-tlsn identifier rows | 27 | `fail` / `pass` |
+| [`cci-tlsn-stored-proof-check-v0.1.json`](cci-tlsn-stored-proof-check-v0.1.json) | DACS §7.3.3 (stored-proof check, cci-tlsn only); PSP-3 | 23 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
@@ -2285,6 +2286,60 @@ Regenerate and execute with:
 python3 scripts/generate_identity_bundle_hash_binding_vectors.py --write
 python3 scripts/generate_identity_bundle_hash_binding_vectors.py --check
 python3 -m unittest tests.test_identity_bundle_hash_binding_vectors -v
+```
+
+### `cci-tlsn-stored-proof-check-v0.1.json` — §7.3.3 stored-proof check (`cci-tlsn` only)
+
+23 vectors, plus a 19-case decision-composition table, for the check that applies only to a requirement on a registered
+`cci-tlsn:H` claim (`H` is 64 lowercase hex). The stored web2 entry for `H` is
+modelled as `storedEntry` (`proof`, `userId`); `null` means `H` resolves to no
+stored entry. How the node derives `H` is outside the check and not modelled.
+
+- **Stored proof:** the supplied proof MUST equal the proof stored for `H`. A
+  valid proof stored under another hash, or `H` resolving to no entry → `fail`
+  (`stored-proof`). Proofs are compared by type-preserving structural JSON
+  equality: member order ignored, array order kept, numbers equal when their
+  JSON text gives the same exact decimal value (`1`, `1.0` and `1e0` are equal,
+  `1.00000000000000001` and `1` are not), a number never equals a boolean or
+  string, a duplicate member name in either proof → `fail`. This does not
+  define how `H` is derived.
+- **Subject:** only when `parserRules.dataMap` declares `subject`. The resolved
+  value MUST equal the stored `userId` as JSON strings only (exact equality
+  after NFC). A different value, a value that resolves to nothing, or a JSON
+  number on either side → `fail` (`subject`); numeric ids are not yet
+  supported and no number is converted to text. The subject part never yields
+  `pass` and adds no outcome.
+- **No `subject` declared:** the check adds nothing beyond the stored-proof
+  match.
+
+The check applies to no other scheme and adds no session binding, signature,
+signature domain or nonce use. The vectors carry no parser or bundle fields.
+
+`compositionCases` (outside the set's `count` and `hash`) is a decision-
+composition table: the stored-proof check result (`pass-no-subject`,
+`pass-subject-declared`, `fail-stored-proof`, `fail-subject`) and the parser
+outcome (`pass`, `fail`, `indeterminate`, `error-executed`,
+`error-pra5-preinvocation`) give the final outcome. A PRA-5 `error` returned
+before the parser is invoked stands and the check is not evaluated, whatever
+its result would be. Otherwise a stored-proof `fail` stands over what an
+executed parser gives; the subject part applies only on a parser `pass`; and
+the parser outcome stands in the remaining cases. It composes outcomes only and
+does not run a parser.
+
+#### Vector schema
+| field | meaning |
+|-------|---------|
+| `name` | stable case id |
+| `expected` / `failedPart` | verdict, and the failing part (`stored-proof` \| `subject`, `null` on `pass`) |
+| `scheme`, `identifier` | always `cci-tlsn`, and `H` |
+| `storedEntry` | the stored entry for `H` as `proof` (or `proofRaw`, its JSON text, for the same reasons as `bodyRaw`) and `userId`, or `null` |
+| `recipe` | `dataMap`; a `subject` key is the subject entry |
+| `proof` | `body` (the supplied proof; `bodyRaw` is its JSON text, used when it has a duplicate member name or a number a binary float cannot hold exactly) and `subject` (the value `dataMap.subject` resolves to, `null` if nothing) |
+
+Execute with:
+
+```sh
+python3 -m unittest tests.test_cci_tlsn_stored_proof_check_vectors -v
 ```
 
 ## Status

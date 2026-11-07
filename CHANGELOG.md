@@ -20,8 +20,10 @@ The format used per release:
   `cci-tlsn:H` claim: `H` resolves to the stored web2 entry and the supplied
   proof MUST equal the stored proof (`fail` if `H` resolves to nothing or the
   proofs differ), compared by type-preserving structural equality (member
-  order ignored, `1` equals `1.0`, no number equals a boolean or string,
-  duplicate member names fail). When `recipe.parserRules.dataMap` declares a `subject` entry,
+  order ignored, numbers equal when their JSON text gives the same exact
+  decimal value so `1`, `1.0` and `1e0` are equal and `1.00000000000000001`
+  and `1` are not, no number equals a boolean or string, a duplicate member
+  name in either proof fails). When `recipe.parserRules.dataMap` declares a `subject` entry,
   its value MUST equal the stored `userId` as JSON strings only (exact equality
   after NFC); a non-string on either side, a value that resolves to nothing, or a
   mismatch is `fail`. Numeric ids are not yet supported and fail closed. It adds
@@ -29,9 +31,10 @@ The format used per release:
   and no new outcome. PSP-3 gains one exception: a declared `subject` entry
   that resolves to nothing fails this check when the parser rules would
   otherwise give `pass`; a parser `fail`, `error` or `indeterminate` stands.
-  A wrong stored proof stays `fail` even when PRA-5 returns `error` before the
-  parser runs. Candidate vector set
-  `cci-tlsn-stored-proof-check-v0.1` (20 vectors, plus a 14-case
+  When PRA-5 requires `error` before the parser is invoked, that `error`
+  stands and this check is not evaluated; otherwise a wrong stored proof stays
+  `fail` over whatever an executed parser gives. Candidate vector set
+  `cci-tlsn-stored-proof-check-v0.1` (23 vectors, plus a 19-case
   decision-composition table).
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)

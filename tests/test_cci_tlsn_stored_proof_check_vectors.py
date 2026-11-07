@@ -17,7 +17,9 @@ HEX64 = re.compile(r"[0-9a-f]{64}")
 PARSER_OUTCOMES = (
     "pass", "fail", "indeterminate", "error-executed", "error-pra5-preinvocation",
 )
-CHECK_RESULTS = ("pass", "fail-stored-proof", "fail-subject")
+CHECK_RESULTS = (
+    "pass-no-subject", "pass-subject-declared", "fail-stored-proof", "fail-subject",
+)
 
 
 class DuplicateMemberName(ValueError):
@@ -36,27 +38,52 @@ def reject_duplicate_members(pairs):
     return dict(pairs)
 
 
+def parse_exact(text, object_pairs_hook=None):
+    """Parse JSON text with every number as an exact decimal (never a float)."""
+    return json.loads(
+        text,
+        parse_float=decimal.Decimal,
+        parse_int=decimal.Decimal,
+        object_pairs_hook=object_pairs_hook,
+    )
+
+
+def parse_proof_text(text):
+    return parse_exact(text, object_pairs_hook=reject_duplicate_members)
+
+
 def supplied_proof(vector):
-    """The supplied proof; `bodyRaw` is JSON text so duplicate members survive."""
+    """The supplied proof; `bodyRaw` is JSON text so duplicates and exact numbers survive."""
     proof = vector["proof"]
     if "bodyRaw" in proof:
-        return json.loads(proof["bodyRaw"], object_pairs_hook=reject_duplicate_members)
+        return parse_proof_text(proof["bodyRaw"])
     return proof["body"]
 
 
+def stored_proof(entry):
+    """The stored proof; `proofRaw` is JSON text so duplicates and exact numbers survive."""
+    if "proofRaw" in entry:
+        return parse_proof_text(entry["proofRaw"])
+    return entry["proof"]
+
+
 def json_equal(a, b):
-    """Type-preserving structural equality of two parsed JSON values."""
+    """Type-preserving structural equality of two parsed JSON values.
+
+    Numbers must be `decimal.Decimal` (or `int`) and are compared exactly; a
+    binary float is refused because it would round.
+    """
     if isinstance(a, bool) or isinstance(b, bool):
         return isinstance(a, bool) and isinstance(b, bool) and a == b
+    if isinstance(a, float) or isinstance(b, float):
+        raise TypeError("numbers are compared as exact decimals, not floats")
     if a is None or b is None:
         return a is None and b is None
     if isinstance(a, str) or isinstance(b, str):
         return isinstance(a, str) and isinstance(b, str) and a == b
-    if isinstance(a, (int, float)) or isinstance(b, (int, float)):
-        return (
-            isinstance(a, (int, float)) and isinstance(b, (int, float))
-            and decimal.Decimal(str(a)) == decimal.Decimal(str(b))
-        )
+    numbers = (int, decimal.Decimal)
+    if isinstance(a, numbers) or isinstance(b, numbers):
+        return isinstance(a, numbers) and isinstance(b, numbers) and a == b
     if isinstance(a, list) or isinstance(b, list):
         return (
             isinstance(a, list) and isinstance(b, list) and len(a) == len(b)
@@ -73,10 +100,9 @@ def stored_proof_ok(vector):
     if entry is None:
         return False
     try:
-        supplied = supplied_proof(vector)
+        return json_equal(supplied_proof(vector), stored_proof(entry))
     except DuplicateMemberName:
         return False
-    return json_equal(supplied, entry["proof"])
 
 
 def subject_ok(vector):
@@ -102,16 +128,20 @@ def evaluate(vector):
 def compose(check, parser):
     """Final outcome from the stored-proof check result and the parser outcome.
 
-    Composes outcomes only; it does not run a parser. Part (2) stands whatever
-    the parser gives; part (3) applies only when the parser gives `pass`.
+    Composes outcomes only; it does not run a parser. A PRA-5 `error` returned
+    before the parser is invoked stands and the check is not evaluated. Otherwise
+    part (2) stands over whatever an executed parser gives; part (3) applies only
+    when the parser gives `pass`.
     """
     if check not in CHECK_RESULTS or parser not in PARSER_OUTCOMES:
         raise ValueError((check, parser))
+    if parser == "error-pra5-preinvocation":
+        return "error"
     if check == "fail-stored-proof":
         return "fail"
     if parser == "pass":
         return "fail" if check == "fail-subject" else "pass"
-    if parser in ("error-executed", "error-pra5-preinvocation"):
+    if parser == "error-executed":
         return "error"
     return parser
 
@@ -131,11 +161,13 @@ def stored_proof_paragraph():
 class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.document = json.loads(VECTORS.read_text(encoding="utf-8"))
+        text = VECTORS.read_text(encoding="utf-8")
+        cls.document = parse_exact(text)
+        cls.plain_document = json.loads(text)
         cls.vectors = {v["name"]: v for v in cls.document["vectors"]}
 
     def test_set_metadata_is_self_consistent(self):
-        document = self.document
+        document = self.plain_document
         self.assertEqual(document["set"], VECTORS.stem)
         self.assertEqual(document["count"], len(document["vectors"]))
         self.assertEqual(len(self.vectors), len(document["vectors"]))
@@ -224,30 +256,53 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
                     )
 
     def test_json_equal_is_type_preserving_structural_equality(self):
+        d = decimal.Decimal
         equal = (
-            ({"a": 1, "b": {"c": [1, 2], "d": None}}, {"b": {"d": None, "c": [1, 2]}, "a": 1}),
-            (1, 1.0),
-            (0.5, 0.50),
+            ({"a": d(1), "b": {"c": [d(1), d(2)], "d": None}},
+             {"b": {"d": None, "c": [d(1), d(2)]}, "a": d(1)}),
+            (d(1), d("1.0")),
+            (d("0.5"), d("0.50")),
             (True, True),
             (None, None),
-            ("café", "café"),
+            ("caf\u00e9", "caf\u00e9"),
         )
         for a, b in equal:
             with self.subTest(equal=(a, b)):
                 self.assertTrue(json_equal(a, b))
                 self.assertTrue(json_equal(b, a))
         unequal = (
-            (True, 1), (False, 0), (1, True), (0, False), (None, 0), (None, False),
-            (None, ""), (1, "1"), ("1", 1), (1, 2), (1.5, 1),
-            ([1, 2], [2, 1]), ([1], [1, 1]), ([], {}),
-            ({"a": 1}, {"a": 1, "b": 2}), ({"a": 1}, {"b": 1}),
-            ({"a": True}, {"a": 1}), ({"a": [True]}, {"a": [1]}),
-            ("café", "café"), ("a", "A"),
+            (True, d(1)), (False, d(0)), (d(1), True), (d(0), False), (None, d(0)),
+            (None, False), (None, ""), (d(1), "1"), ("1", d(1)), (d(1), d(2)),
+            (d("1.5"), d(1)),
+            ([d(1), d(2)], [d(2), d(1)]), ([d(1)], [d(1), d(1)]), ([], {}),
+            ({"a": d(1)}, {"a": d(1), "b": d(2)}), ({"a": d(1)}, {"b": d(1)}),
+            ({"a": True}, {"a": d(1)}), ({"a": [True]}, {"a": [d(1)]}),
+            ("cafe\u0301", "caf\u00e9"), ("a", "A"),
         )
         for a, b in unequal:
             with self.subTest(unequal=(a, b)):
                 self.assertFalse(json_equal(a, b))
                 self.assertFalse(json_equal(b, a))
+
+    def test_number_equality_is_exact_decimal_equality_of_the_json_text(self):
+        for left, right in (("1", "1.0"), ("1", "1e0"), ("1e2", "100"), ("0.5", "5e-1")):
+            with self.subTest(equal=(left, right)):
+                self.assertTrue(json_equal(parse_exact(left), parse_exact(right)))
+        for left, right in (("1.00000000000000001", "1"), ("1e2", "101"), ("0.1", "0.10000000000000001")):
+            with self.subTest(unequal=(left, right)):
+                self.assertFalse(json_equal(parse_exact(left), parse_exact(right)))
+
+    def test_oracle_does_not_equate_close_numbers_through_float(self):
+        close, one = "1.00000000000000001", "1"
+        # a binary float cannot tell these apart, so a float path would call them equal
+        self.assertEqual(float(close), float(one))
+        self.assertFalse(json_equal(parse_exact(close), parse_exact(one)))
+        self.assertFalse(json_equal(parse_exact("[" + close + "]"), parse_exact("[" + one + "]")))
+        with self.assertRaises(TypeError):
+            json_equal(json.loads(close), json.loads(one))
+        # booleans stay distinct from the numbers 1 and 0 on the exact path
+        self.assertFalse(json_equal(parse_exact("true"), parse_exact("1")))
+        self.assertFalse(json_equal(parse_exact("false"), parse_exact("0")))
 
     def test_duplicate_member_names_are_rejected_wherever_they_occur(self):
         for raw in (
@@ -258,6 +313,8 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
             with self.subTest(raw=raw):
                 with self.assertRaises(DuplicateMemberName):
                     supplied_proof({"proof": {"bodyRaw": raw}})
+                with self.assertRaises(DuplicateMemberName):
+                    stored_proof({"proofRaw": raw})
 
     def test_structured_proof_cases_are_present_with_their_results(self):
         required = {
@@ -268,6 +325,9 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
             "array-elements-in-another-order": ("fail", "stored-proof"),
             "supplied-proof-has-a-duplicate-member-name": ("fail", "stored-proof"),
             "string-one-stored-number-one-supplied": ("fail", "stored-proof"),
+            "exponent-form-number-equals-integer": ("pass", None),
+            "number-differs-beyond-binary-precision": ("fail", "stored-proof"),
+            "stored-proof-has-a-duplicate-member-name": ("fail", "stored-proof"),
         }
         for name, result in required.items():
             with self.subTest(vector=name):
@@ -277,9 +337,23 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
 
     def test_duplicate_member_vector_would_pass_if_the_last_member_won(self):
         vector = self.vectors["supplied-proof-has-a-duplicate-member-name"]
-        last_wins = json.loads(vector["proof"]["bodyRaw"])
+        last_wins = parse_exact(vector["proof"]["bodyRaw"])
         self.assertTrue(json_equal(last_wins, vector["storedEntry"]["proof"]))
         self.assertFalse(stored_proof_ok(vector))
+
+    def test_stored_duplicate_vector_would_pass_if_the_last_member_won(self):
+        vector = self.vectors["stored-proof-has-a-duplicate-member-name"]
+        last_wins = parse_exact(vector["storedEntry"]["proofRaw"])
+        self.assertTrue(json_equal(vector["proof"]["body"], last_wins))
+        self.assertFalse(stored_proof_ok(vector))
+
+    def test_number_vectors_carry_their_numbers_as_json_text(self):
+        close = self.vectors["number-differs-beyond-binary-precision"]
+        self.assertIn("1.00000000000000001", close["proof"]["bodyRaw"])
+        self.assertEqual(close["storedEntry"]["proof"], {"amount": 1})
+        exponent = self.vectors["exponent-form-number-equals-integer"]
+        self.assertIn("1e2", exponent["proof"]["bodyRaw"])
+        self.assertEqual(exponent["storedEntry"]["proof"], {"amount": 100})
 
     def test_reordered_proof_vector_reorders_a_nested_object_too(self):
         vector = self.vectors["structured-proof-members-in-another-order"]
@@ -292,16 +366,19 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
 
     def test_composition_cases_cover_the_stated_combinations_with_their_results(self):
         cases = {(c["check"], c["parser"]): c["expected"] for c in self.document["compositionCases"]}
+        pra5 = "error-pra5-preinvocation"
         required = {
             ("fail-stored-proof", "error-executed"): "fail",
-            ("fail-stored-proof", "error-pra5-preinvocation"): "fail",
+            ("fail-stored-proof", pra5): "error",
             ("fail-stored-proof", "pass"): "fail",
             ("fail-subject", "error-executed"): "error",
             ("fail-subject", "indeterminate"): "indeterminate",
             ("fail-subject", "fail"): "fail",
             ("fail-subject", "pass"): "fail",
-            ("pass", "pass"): "pass",
-            ("pass", "error-pra5-preinvocation"): "error",
+            ("pass-subject-declared", "pass"): "pass",
+            ("pass-subject-declared", pra5): "error",
+            ("pass-no-subject", "pass"): "pass",
+            ("pass-no-subject", pra5): "error",
         }
         for key, outcome in required.items():
             with self.subTest(case=key):
@@ -323,16 +400,24 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
             with self.subTest(case=case["name"]):
                 self.assertEqual(compose(case["check"], case["parser"]), case["expected"])
 
-    def test_compose_lets_part_two_stand_and_part_three_apply_only_on_parser_pass(self):
+    def test_compose_returns_the_pra5_error_before_any_check_result_is_used(self):
+        for check in CHECK_RESULTS:
+            with self.subTest(check=check):
+                self.assertEqual(compose(check, "error-pra5-preinvocation"), "error")
+
+    def test_compose_lets_part_two_stand_over_an_executed_parser_and_part_three_apply_only_on_parser_pass(self):
         for parser in PARSER_OUTCOMES:
             with self.subTest(parser=parser):
-                self.assertEqual(compose("fail-stored-proof", parser), "fail")
+                executed = parser != "error-pra5-preinvocation"
+                self.assertEqual(
+                    compose("fail-stored-proof", parser), "fail" if executed else "error"
+                )
                 if parser != "pass":
                     self.assertEqual(
-                        compose("fail-subject", parser), compose("pass", parser)
+                        compose("fail-subject", parser), compose("pass-subject-declared", parser)
                     )
         with self.assertRaises(ValueError):
-            compose("pass", "unknown")
+            compose("pass-no-subject", "unknown")
 
     def test_set_description_states_what_the_composition_model_is(self):
         description = self.document["description"]
@@ -365,9 +450,18 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
         self.assertIn("MUST reject (`fail`) if `H` resolves to no stored entry or the proofs differ", paragraph)
         self.assertIn("type-preserving structural equality", paragraph)
         self.assertIn("in any member order", paragraph)
-        self.assertIn("`1` and `1.0` are equal", paragraph)
+        self.assertIn(
+            "numbers are equal when the decimal values written in their JSON text are "
+            "mathematically equal (exact decimal comparison, no binary floating-point rounding)",
+            paragraph,
+        )
+        self.assertIn("`1`, `1.0` and `1e0` are equal and `1.00000000000000001` and `1` are not", paragraph)
         self.assertIn("a number never equals a boolean, string or null", paragraph)
-        self.assertIn("A proof that has a duplicate member name in any object fails the check (`fail`)", paragraph)
+        self.assertIn(
+            "Either proof, stored or supplied, that has a duplicate member name in any object "
+            "fails the check (`fail`)",
+            paragraph,
+        )
         self.assertIn("does not define how `H` is derived from a proof and does not depend on it", paragraph)
         self.assertIn("How the node derives `H` is outside this check", paragraph)
         self.assertIn("declares a `subject` entry", paragraph)
@@ -382,12 +476,19 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
         self.assertIn("The check applies to no other scheme", paragraph)
         self.assertIn("adds no session binding, signature, signature domain or nonce use", paragraph)
         self.assertIn("other outcomes follow the procedure above unchanged", paragraph)
-        self.assertIn("its `fail` stands whatever they give", paragraph)
+        self.assertIn("its `fail` stands over whatever an executed parser gives", paragraph)
         self.assertIn("Part (3) applies only when the parser rules would otherwise give `pass`", paragraph)
         self.assertIn("`error` or `indeterminate`, that outcome stands", paragraph)
-        self.assertIn("evaluated even when PRA-5 returns `error` before the parser is invoked", paragraph)
-        self.assertIn("its `fail` stands over that `error`", paragraph)
-        self.assertIn("otherwise the PRA-5 `error` stands", paragraph)
+        self.assertIn(
+            "When PRA-5 requires `error` before the parser is invoked, that `error` stands "
+            "and this check is not evaluated.",
+            paragraph,
+        )
+        self.assertTrue(
+            paragraph.endswith("that `error` stands and this check is not evaluated.")
+        )
+        self.assertNotIn("whatever they give", paragraph)
+        self.assertNotIn("evaluated even when PRA-5", paragraph)
 
     def test_spec_psp3_exception_is_only_the_unresolved_subject(self):
         text = SPEC.read_text(encoding="utf-8")

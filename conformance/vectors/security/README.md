@@ -45,6 +45,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-native-identifier-rows-v0.8.json`](cci-native-identifier-rows-v0.8.json) | DACS-1 §6.3.1 cci-humanpassport and cci-tlsn identifier rows | 27 | `fail` / `pass` |
+| [`cci-tlsn-stored-proof-check-v0.1.json`](cci-tlsn-stored-proof-check-v0.1.json) | DACS-2 §7.3.3 stored-proof check (`cci-tlsn` only); PSP-3 | 13 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
@@ -99,7 +100,6 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
 | [`sr2-logical-native-resolution-v0.1.json`](sr2-logical-native-resolution-v0.1.json) | CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2 | 39 | `fail` / `indeterminate` / `pass` |
-| [`tlsnotary-session-subject-binding-v0.1.json`](tlsnotary-session-subject-binding-v0.1.json) | DACS §7.3.3 (session binding, subject match); §6.3.2; PSP-3; CORE §B.8, CF-2, CF-3 | 25 | `fail` / `pass` |
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
@@ -2288,74 +2288,42 @@ python3 scripts/generate_identity_bundle_hash_binding_vectors.py --check
 python3 -m unittest tests.test_identity_bundle_hash_binding_vectors -v
 ```
 
-### `tlsnotary-session-subject-binding-v0.1.json` — §7.3.3 steps 4 and 6 (session binding, subject match)
+### `cci-tlsn-stored-proof-check-v0.1.json` — §7.3.3 stored-proof check (`cci-tlsn` only)
 
-25 vectors for the two `tlsnotary` checks that tie a notarised proof to the
-current session and, when the recipe declares it, to the claim subject. Steps
-run in order and the first failing step decides: binding (step 4) before
-subject match (step 6).
+13 vectors for the check that applies only to a requirement on a registered
+`cci-tlsn:H` claim (`H` is 64 lowercase hex). The stored web2 entry for `H` is
+modelled as `storedEntry` (`proof`, `userId`); `null` means `H` resolves to no
+stored entry. How the node derives `H` is outside the check and not modelled.
 
-- **Session binding (step 4):** the proof commitment (for `cci-tlsn` the claim's
-  identifier `H`; for other schemes the TLSNotary specification's commitment as
-  lowercase hex) MUST appear, as an exactly equal string, as `metadata.tlsnotaryProofCommitment` in
-  every `BundleClaim` entry for the claim in the bundle admitted for this
-  session. A missing or non-string value, a different spelling (hex case), a
-  value only in another session's bundle or another claim's entry, or one of two
-  entries for the claim lacking it → `fail`.
-  No signature is added: the bundle's presentation signature already covers the
-  entry and the nonce.
-- **Stored proof (step 4, `cci-tlsn` only):** for a requirement on a registered
-  `cci-tlsn:H` claim, the supplied proof MUST equal the proof stored with the
-  web2 entry whose proof hash is `H`; a different valid proof → `fail`. The
-  vectors model that entry as `storedEntry` and do not derive `H`.
-- **Nonce choice:** the session's bundle is the one whose nonce, per the §6.3.2
-  disjunction (SIWD `Nonce` for a `siwd` bundle, else top-level `sessionNonce`),
-  matches the verifier's challenge.
-- **Subject match (step 6):** runs only when `parserRules.dataMap` declares a
-  `subject` entry. The value and the claim identifier are compared after CORE
-  CF-2(b) canonicalisation (NFC and the scheme's own identifier rule; for
-  `domain`, the DCR-1 lower-case A-label) by CF-3. A different value, an entry
-  that resolves to nothing, or a value that cannot be canonicalised under the
-  claim's scheme → `fail`. A recipe without the entry skips the step. For
-  `cci-tlsn` the claim side is the stored entry's `userId`, not `H`, and the
-  comparison is of text: NFC both, with a safe-integer `userId` written in
-  base 10 (no sign, leading zeros or exponent), not the 64-hex rule.
-- **Parser rules (step 5):** `recipe.parserRules` apply as PSP-1 and PSP-2 define;
-  a no-match `fail` and an `indeterminate` decision are never turned into
-  `pass`. The vectors carry no parser fields, so they do not exercise step 5.
-- **Limited result:** `establishes` is `proof-subject-matches-claim` only when
-  the subject match ran (the disclosed subject equals the claimed identifier
-  and a bundle for this session carried the commitment); otherwise a `pass` is
-  `proof-presented-in-session` (valid proof, commitment carried by a bundle for
-  this session). Neither result establishes that the presenter controls the
-  account.
+- **Stored proof:** the supplied proof MUST equal the proof stored for `H`. A
+  valid proof stored under another hash, or `H` resolving to no entry → `fail`
+  (`stored-proof`).
+- **Subject:** only when `parserRules.dataMap` declares `subject`. The resolved
+  value MUST equal the stored `userId` as JSON strings only (exact equality
+  after NFC). A different value, a value that resolves to nothing, or a JSON
+  number on either side → `fail` (`subject`); numeric ids are not yet
+  supported and no number is converted to text. The subject part never yields
+  `pass` and adds no outcome.
+- **No `subject` declared:** the check adds nothing beyond the stored-proof
+  match.
 
-The vectors model only the fields the steps read. They do not test signature
-verification; the presentation signature is outside this set. The test's
-predicates need no dependency: for `domain` it uses Python's built-in `idna`
-codec (IDNA2003) in place of IDNA2008. The oracle accepts only ASCII and a
-short listed set of non-ASCII lowercase letters on which both give the same
-A-label (`é`, `ü`), and refuses (raises on) every other character, for example
-U+00DF, U+03C2, U+200C, U+200D or a symbol such as U+1F600 that IDNA2008
-disallows. Every U-label subject in the set is accepted by it.
+The check applies to no other scheme and adds no session binding, signature,
+signature domain or nonce use. The vectors carry no parser or bundle fields.
 
 #### Vector schema
 | field | meaning |
 |-------|---------|
 | `name` | stable case id |
-| `expected` / `failedStep` | verdict, and the deciding step (`session-binding` \| `subject-match`, `null` on `pass`) |
-| `establishes` | on `pass`: `proof-subject-matches-claim` \| `proof-presented-in-session` |
-| `scheme`, `identifier` | the claim's scheme and identifier |
-| `issuedNonce` | the verifier's challenge for this session |
+| `expected` / `failedPart` | verdict, and the failing part (`stored-proof` \| `subject`, `null` on `pass`) |
+| `scheme`, `identifier` | always `cci-tlsn`, and `H` |
+| `storedEntry` | the stored entry for `H` as `proof` and `userId`, or `null` |
 | `recipe` | `dataMap`; a `subject` key is the subject entry |
-| `proof` | `commitment`, `subject` (the value `dataMap.subject` resolves to, `null` if nothing), and for `cci-tlsn` the supplied proof as `body` |
-| `storedEntry` | `cci-tlsn` only: the stored web2 entry for `H`, as `proof` and `userId` |
-| `bundles` | presented bundles: `presentation`, optional `sessionNonce`, optional `siwd.nonce`, `claims[]` of `identifier` and optional `tlsnotaryProofCommitment` |
+| `proof` | `body` (the supplied proof) and `subject` (the value `dataMap.subject` resolves to, `null` if nothing) |
 
 Execute with:
 
 ```sh
-python3 -m unittest tests.test_tlsnotary_session_subject_binding_vectors -v
+python3 -m unittest tests.test_cci_tlsn_stored_proof_check_vectors -v
 ```
 
 ## Status

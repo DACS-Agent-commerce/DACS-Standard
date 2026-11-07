@@ -13,35 +13,20 @@ The format used per release:
 
 ## [Unreleased]
 
-### Changed — `tlsnotary` method binds the proof to its session and, when declared, its subject
+### Changed — `cci-tlsn` stored-proof check (DACS-2 §7.3.3; PSP-3)
 
-- **Session binding and subject match** (DACS-2 §7.3.3; PSP-3; CORE §B.8) — the
-  `tlsnotary` procedure is now numbered steps like §7.3.2, run in order with
-  the first failing step deciding. Step 4 requires the proof commitment (lowercase
-  hex) to appear, as an exactly equal string, as
-  `metadata.tlsnotaryProofCommitment` in every signed `BundleClaim` entry for
-  the claim in the bundle admitted for this session (nonce per the §6.3.2
-  SIWD-or-top-level disjunction); no signature, signature domain or nonce
-  consumption is added. For a requirement on a registered `cci-tlsn:H` claim,
-  step 4 also resolves `H` to the stored web2 entry and requires the supplied
-  proof to equal the stored proof (the commitment of such a claim is `H`), and
-  step 6 compares the disclosed subject as text with that entry's `userId`
-  (an integer in base 10), not `H`. Step 5 applies the parser rules as PSP-1
-  and PSP-2 define, so a no-match `fail` and `indeterminate` stay. Step 6 compares the value of the reserved `subject`
-  `dataMap` entry (PSP-3, which now carves out that entry's unresolved case)
-  with the claim identifier under CORE CF-2(b)/CF-3, using the scheme's own
-  identifier rule (DCR-1 A-label for `domain`), and runs only when the recipe
-  declares that entry. Without it, a `pass` establishes only that the proof is
-  valid and a bundle for this session carried its commitment, with no session
-  binding beyond VP-C1. A binding or subject failure, or a subject that cannot
-  be canonicalised, is `fail`; parser failures stay `error`. Candidate vector
-  set `tlsnotary-session-subject-binding-v0.1` (25 vectors) exercises the
-  predicates.
-- **Compatibility.** The `TLSNotaryMethodInput` fields and the DACS-1
-  `IdentityBundle` shape are unchanged; step 4 reads the admitted `bundleToVet`
-  and the verifier's issued challenge from the Vet invocation (§7.7.3). The new
-  rules tighten the unreleased v0.6 candidate; a producer of a tlsnotary claim
-  adds one key to the existing scheme-specific `metadata` map.
+- **Stored-proof check** — the §7.3.3 `tlsnotary` procedure is unchanged. A new
+  paragraph adds a check that applies only to a requirement on a registered
+  `cci-tlsn:H` claim: `H` resolves to the stored web2 entry and the supplied
+  proof MUST equal the stored proof (`fail` if `H` resolves to nothing or the
+  proofs differ). When `recipe.parserRules.dataMap` declares a `subject` entry,
+  its value MUST equal the stored `userId` as JSON strings only (exact equality
+  after NFC); a non-string on either side, a value that resolves to nothing, or a
+  mismatch is `fail`. Numeric ids are not yet supported and fail closed. It adds
+  no other scheme, session binding, signature, signature domain or nonce use,
+  and no new outcome. PSP-3 gains one exception: a declared `subject` entry
+  that resolves to nothing fails this check. Candidate vector set
+  `cci-tlsn-stored-proof-check-v0.1` (13 vectors).
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 

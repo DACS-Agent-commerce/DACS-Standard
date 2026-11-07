@@ -176,6 +176,31 @@ The format used per release:
   corrective release pin and complete module tuple are recorded on the affected
   evidence.
 
+### Changed — DACS-1 §6.3.1 `cci-humanpassport` and `cci-tlsn` identifier rows; DACS-2 note on the `cci-tlsn` claim (#439, #440)
+
+- **`cci-humanpassport`** — the identifier is the verified EVM address of the
+  stored `humanpassport` entry, emitted as `0x` + 40 lowercase hex, not an opaque
+  humanity proof id.
+- **`cci-tlsn`** — the claim is stored on a web2 identity entry with proof type
+  `tlsn` (7 storage contexts carry the 8 CCI-native schemes) and projects to a
+  64-lowercase-hex `cci-tlsn` claim and, separately, to its `cci-web2` claim,
+  but only when its context is `github`, `discord` or `telegram`, its `username`
+  is non-blank and its `userId` is a non-blank string or a safe integer; an
+  entry failing any of these projects to no `cci-tlsn` claim. The context is
+  trimmed first, but the `cci-web2` claim does not trim it, so a padded context
+  projects to `cci-tlsn` only.
+  DACS-2 verifies the TLSNotary proof the presenter supplies with its
+  `tlsnotary` method (§7.3.3); a registered `cci-tlsn` claim does not stand in
+  for that verification. This reverses the earlier DACS-2 note: an
+  implementation that refused the `tlsnotary` method for a registered
+  `cci-tlsn` commitment must now run it instead. For a requirement on a
+  registered `cci-tlsn:H`, the supplied proof MUST be the proof stored with the
+  web2 entry whose proof hash is `H`; a valid proof that is not that stored
+  proof does not satisfy it.
+- `cci-humanpassport` address shape: necessary, not sufficient; `0x` lowercase.
+- A candidate vector set pins both rows; its rule predicates, not the reference
+  parser, check it.
+
 ### Fixed — HTLC-5 preimage derivation input encodings (#441)
 
 - **DACS-4 §9.5.4 HTLC-5** named the HKDF inputs (`IKM=buyerSalt, salt=jobId,

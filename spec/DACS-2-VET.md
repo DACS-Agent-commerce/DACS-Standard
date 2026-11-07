@@ -141,7 +141,7 @@ A declared alternative under caveat (b) only makes another method available; dec
 
 **Substrate:** SR-3 (proxy attestation primitive); SR-2 (anchoring).
 
-**Note on the tlsn CCI context.** TLSNotary proofs are a native CCI context on Demos (cci-tlsn:<proof-hash>), validated by Demos’s GCR routines. When the proof is already registered as a cci-tlsn claim in the counterparty’s bundle, Vet treats it as a CCI-native verification (the tlsn GCR routine has already validated it) and does NOT re-run the external tlsnotary method. The external tlsnotary method applies only when an *unregistered* proof is presented at session time.
+**Note on the cci-tlsn claim.** A `cci-tlsn:<proof-hash>` claim names a TLSNotary proof whose commitment Demos stores on a web2 identity entry with proof type `tlsn` (DACS-1 §6.3.1). Holding the claim is not itself a verification: when a requirement calls for TLSNotary evidence, Vet verifies the TLSNotary proof the presenter supplies with the `tlsnotary` method (§7.3.3), whether or not the proof is registered as a cci-tlsn claim in the counterparty’s bundle. For a requirement on a registered `cci-tlsn:H`, the TLSNotary proof the presenter supplies MUST be the proof stored with the registered web2 entry whose proof hash is `H` (Vet resolves `H` to that stored entry and compares the supplied proof with the stored one); a valid proof that is not that stored proof MUST NOT satisfy the requirement.
 
 #### 7.3.6 oauth-attested
 

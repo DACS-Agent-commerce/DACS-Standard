@@ -1005,7 +1005,7 @@ DACS composes with the following open standards. Each per-stage chapter cites th
 | AP2 Agent Payments Protocol | DACS-4 | pay-ap2 rail envelope (FIDO Alliance custodian from April 2026) |
 | x402 HTTP 402 revival | DACS-4 | pay-x402 rail envelope |
 | A2A .well-known/agent.json | DACS-1 | Discovery extension |
-| TLSNotary (PSE rebuild, 2024) | DACS-2 | tlsnotary method (distinct from native cci-tlsn context) |
+| TLSNotary (PSE rebuild, 2024) | DACS-2 | tlsnotary method (also verifies the TLSNotary proof a presenter supplies for a cci-tlsn claim) |
 | Reclaim Protocol / Pluto zkTLS | DACS-2 | zktls method |
 | HTLC contracts (generic) | DACS-4 | pay-cross-chain-htlc; used by the reference implementation today |
 | ERC-20 / SPL | DACS-4 | pay-evm-erc20 / pay-solana-spl |

@@ -44,6 +44,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 54 | `fail` / `indeterminate` / `pass` |
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
+| [`cci-native-identifier-rows-v0.8.json`](cci-native-identifier-rows-v0.8.json) | DACS-1 §6.3.1 cci-humanpassport and cci-tlsn identifier rows | 27 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
@@ -643,6 +644,46 @@ resource rail that exposes no single EIP-155 chain in its pinned definition
 cannot gain tier 2 retroactively from a later receipt.
 Run the dependency-free executable predicate with
 `python3 -m unittest tests.test_cci_xm_rail_chain_applicability_vectors -v`.
+
+### `cci-native-identifier-rows-v0.8.json` — §6.3.1 `cci-humanpassport` and `cci-tlsn` rows
+
+27 candidate vectors pin two CCI-native identifier rows to what the Demos node
+stores. Each vector models a stored node identity entry, not a ClaimReference,
+and the claims a producer emits when it projects that entry. The rule
+predicates in the test below check them. The reference parser
+`parse_claim_reference` in `scripts/dacs_reference.py` does not yet apply the
+per-scheme identifier shapes (it still accepts, for example,
+`cci-humanpassport:humanity-proof-0001` and `cci-tlsn:zz`), so it does not
+check these rows.
+
+A `humanpassport` entry is identified by its verified EVM address, so
+`cci-humanpassport:<address>` carries `0x` + 40 lowercase hex. The node does not
+fix the letter case of the stored address, so the producer emits the lowercase
+form when it projects a checksum-case or uppercase-hex entry. It trims
+surrounding whitespace first (the code points ECMAScript `String.prototype.trim`
+removes), so a valid address padded with spaces, a tab, a newline, U+FEFF or
+U+3000 projects to the same lowercase claim, while U+0085 is not trimmed and
+the padded value produces no claim. An opaque proof id, a missing or uppercase `0x`, a
+short or long address, and a non-hex character produce no claim.
+
+A TLSNotary commitment is stored on a web2 identity entry with proof type
+`tlsn`. That one entry projects to a `cci-tlsn:<proof-hash>` claim (64
+lowercase hex, the form the producer emits, including for an uppercase-hex or
+whitespace-padded stored hash) and, separately, to its `cci-web2:<platform>:<username>` claim. An
+entry with another proof type, or with a missing, short, or `0x`-prefixed hash,
+still yields its `cci-web2` claim and no `cci-tlsn` claim, as does one with a
+context outside `github`, `discord` and `telegram`, or a missing or blank
+`userId` (a blank `username` yields neither claim). A context padded with
+whitespace (`" github "`) is trimmed for the `cci-tlsn` claim but not for the
+`cci-web2` platform lookup, so that entry yields the `cci-tlsn` claim and no
+`cci-web2` claim. The set's
+`provenance.storageSources` cites the node and SDK source for each storage fact.
+
+Two `tlsn-requirement` vectors model a requirement on a registered `cci-tlsn:H1`
+and the proof supplied: the proof stored with the entry whose hash is `H1`
+passes, and a valid proof stored under another entry `H2` gives no pass for `H1`.
+Run the dependency-free executable predicate with
+`python3 -m unittest tests.test_cci_native_identifier_rows_vectors -v`.
 
 ### `metered-pricing-v0.3.json` — §8.5.2 MTR-1..MTR-5
 

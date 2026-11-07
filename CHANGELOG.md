@@ -24,8 +24,10 @@ The format used per release:
   SIWD-or-top-level disjunction); no signature, signature domain or nonce
   consumption is added. For a requirement on a registered `cci-tlsn:H` claim,
   step 4 also resolves `H` to the stored web2 entry and requires the supplied
-  proof to equal the stored proof, and step 6 compares the disclosed subject
-  with that entry's `userId`, not `H`. Step 6 compares the value of the reserved `subject`
+  proof to equal the stored proof (the commitment of such a claim is `H`), and
+  step 6 compares the disclosed subject as text with that entry's `userId`
+  (an integer in base 10), not `H`. Step 5 applies the parser rules as PSP-1
+  and PSP-2 define, so a no-match `fail` and `indeterminate` stay. Step 6 compares the value of the reserved `subject`
   `dataMap` entry (PSP-3, which now carves out that entry's unresolved case)
   with the claim identifier under CORE CF-2(b)/CF-3, using the scheme's own
   identifier rule (DCR-1 A-label for `domain`), and runs only when the recipe
@@ -33,7 +35,7 @@ The format used per release:
   valid and a bundle for this session carried its commitment, with no session
   binding beyond VP-C1. A binding or subject failure, or a subject that cannot
   be canonicalised, is `fail`; parser failures stay `error`. Candidate vector
-  set `tlsnotary-session-subject-binding-v0.1` (23 vectors) exercises the
+  set `tlsnotary-session-subject-binding-v0.1` (25 vectors) exercises the
   predicates.
 - **Compatibility.** The `TLSNotaryMethodInput` fields and the DACS-1
   `IdentityBundle` shape are unchanged; step 4 reads the admitted `bundleToVet`

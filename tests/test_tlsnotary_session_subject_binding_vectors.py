@@ -31,6 +31,9 @@ IDNA_DIVERGENT = frozenset("ßς\u200c\u200d。")
 # disallows.
 ORACLE_SUPPORTED = frozenset("éü")
 
+# The largest integer a safe-integer userId can hold (2**53 - 1).
+SAFE_INTEGER_MAX = 2**53 - 1
+
 
 def refuse_unfaithful_label(text):
     """Raise OracleRefusal for a non-ASCII character the oracle cannot check.
@@ -97,6 +100,20 @@ def binding_ok(vector):
     return found
 
 
+def user_id_text(user_id):
+    """Step 6, cci-tlsn: the stored userId as text; None if it has no text form.
+
+    A string is itself. A safe integer is written in base 10 with no sign,
+    leading zeros or exponent.
+    """
+    if isinstance(user_id, str):
+        return user_id
+    if isinstance(user_id, int) and not isinstance(user_id, bool):
+        if 0 <= user_id <= SAFE_INTEGER_MAX:
+            return str(user_id)
+    return None
+
+
 def subject_ok(vector):
     """Step 6: only when the recipe declares a subject dataMap entry."""
     if "subject" not in vector["recipe"]["dataMap"]:
@@ -105,11 +122,14 @@ def subject_ok(vector):
     scheme = vector["scheme"]
     if not isinstance(subject, str):
         return False
-    claimed = vector["identifier"]
     if scheme == "cci-tlsn":
-        claimed = vector["storedEntry"]["userId"]
+        # The 64-hex identifier rule applies to H, not to userId: compare text.
+        user_id = user_id_text(vector["storedEntry"]["userId"])
+        return (user_id is not None
+                and unicodedata.normalize("NFC", subject)
+                == unicodedata.normalize("NFC", user_id))
     disclosed = canonical(scheme, subject)
-    return disclosed is not None and disclosed == canonical(scheme, claimed)
+    return disclosed is not None and disclosed == canonical(scheme, vector["identifier"])
 
 
 def evaluate(vector):
@@ -140,6 +160,32 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
                 for bundle in vector["bundles"]:
                     for entry in bundle["claims"]:
                         self.assertRegex(entry["identifier"], rule)
+
+    def test_cci_tlsn_commitment_is_the_claim_identifier(self):
+        # §7.3.3 step 4: for cci-tlsn the commitment is H, on the proof and in
+        # every bundle entry for the claim.
+        for vector in self.document["vectors"]:
+            if vector["scheme"] != "cci-tlsn":
+                continue
+            with self.subTest(vector=vector["name"]):
+                self.assertEqual(vector["proof"]["commitment"], vector["identifier"])
+                for bundle in vector["bundles"]:
+                    for entry in bundle["claims"]:
+                        self.assertEqual(
+                            entry["tlsnotaryProofCommitment"], vector["identifier"])
+
+    def test_integer_user_id_is_compared_as_base_10_text(self):
+        vector = self.vectors["cci-tlsn-integer-user-id-subject"]
+        self.assertEqual(vector["storedEntry"]["userId"], 77)
+        self.assertTrue(subject_ok(vector))
+        zero = self.vectors[
+            "cci-tlsn-subject-with-leading-zero-is-not-the-integer-user-id"]
+        self.assertEqual(zero["storedEntry"]["userId"], 77)
+        self.assertEqual(zero["proof"]["subject"], "077")
+        self.assertFalse(subject_ok(zero))
+        for user_id in (True, -77, 2**53, 77.0, None):
+            with self.subTest(user_id=user_id):
+                self.assertIsNone(user_id_text(user_id))
 
     def test_set_metadata_is_self_consistent(self):
         document = self.document
@@ -227,6 +273,9 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
                 "fail", "subject-match"),
             "cci-tlsn-subject-equal-to-h-text-is-not-user-id": (
                 "fail", "subject-match"),
+            "cci-tlsn-integer-user-id-subject": ("pass", None),
+            "cci-tlsn-subject-with-leading-zero-is-not-the-integer-user-id": (
+                "fail", "subject-match"),
         }
         for name, (verdict, step) in required.items():
             with self.subTest(name):
@@ -276,8 +325,19 @@ class TLSNotarySessionSubjectBindingVectorTests(unittest.TestCase):
         self.assertEqual(
             steps,
             ["Validate the proof", "Verify the notary signature", "Session template",
-             "Session binding", "Extract", "Subject match", "Anchor", "Return"],
+             "Session binding", "Apply the parser rules", "Subject match", "Anchor",
+             "Return"],
         )
+        self.assertIn("for `cci-tlsn`, the claim's identifier `H`", section)
+        self.assertIn("as the TLSNotary specification defines it", section)
+        self.assertIn("as PSP-1 and PSP-2 define", section)
+        self.assertIn("then the match predicate", section)
+        self.assertIn("`fail` where PSP-2 says no match", section)
+        self.assertIn("`indeterminate` where PSP-2 or §7.5.1 gives it", section)
+        self.assertIn("never turns either into `pass`", section)
+        self.assertIn("as text: NFC both", section)
+        self.assertIn("no sign, leading zeros or exponent", section)
+        self.assertIn("applies to `H` and not to `userId`", section)
         self.assertIn("the first failing step decides the verdict", section)
         self.assertIn("metadata.tlsnotaryProofCommitment", section)
         self.assertNotIn("holderProof", section)

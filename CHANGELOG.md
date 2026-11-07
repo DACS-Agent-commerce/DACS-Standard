@@ -25,7 +25,9 @@ The format used per release:
   mismatch is `fail`. Numeric ids are not yet supported and fail closed. It adds
   no other scheme, session binding, signature, signature domain or nonce use,
   and no new outcome. PSP-3 gains one exception: a declared `subject` entry
-  that resolves to nothing fails this check. Candidate vector set
+  that resolves to nothing fails this check when the parser rules would
+  otherwise give `pass`; a parser `fail`, `error` or `indeterminate` stands.
+  Candidate vector set
   `cci-tlsn-stored-proof-check-v0.1` (13 vectors).
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)

@@ -184,7 +184,8 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
         psp3 = text[text.index("- (PSP-3)"):].split("\n")[0]
         self.assertIn(
             "MUST NOT by itself change the decision, except that a declared `subject` "
-            "entry that resolves to nothing fails the §7.3.3 stored-proof check.",
+            "entry that resolves to nothing fails the §7.3.3 stored-proof check "
+            "when the parser rules would otherwise give `pass`.",
             psp3,
         )
         self.assertNotIn("reserved", psp3)

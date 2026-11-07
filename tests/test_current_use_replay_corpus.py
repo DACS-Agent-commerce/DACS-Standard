@@ -28,6 +28,7 @@ for path in (str(ROOT), str(ROOT / "tests")):
         sys.path.insert(0, path)
 
 import dacs5_reference as D5  # noqa: E402
+import guard_witness  # noqa: E402
 from dacs5_reference import derive_current_use_replayable  # noqa: E402
 
 
@@ -82,6 +83,85 @@ def execute(replay):
         pubkeys=pubkeys,
         trusted_contexts=copy.deepcopy(replay["trustedContext"]),
     )
+
+
+# Bounded wrong implementations, each dropping exactly one LAB guard.
+def without_lab3():
+    """Signed receipt bytes unchanged; the LAB-3 role read and tuple join are skipped."""
+    original_guard = D5.validate_legacy_bundle_admission
+    original_mapping = D5._verify_original_binding_mapping
+
+    class RoleBlindReceipt(dict):
+        def get(self, key, default=None):
+            if key == "subjectRole":
+                return self.claimed_role
+            return dict.get(self, key, default)
+
+    def mapping_without_tuple_join(*args):
+        outcome = original_mapping(*args)
+        if outcome == ("fail", "historical receipt does not join the original BundleBinding tuple"):
+            return ("pass", "LAB-3 tuple join omitted")
+        return outcome
+
+    def guard(bundle, evidence, dependencies, verifier_config):
+        if evidence is None:  # LAB-6 territory: keep the real guard.
+            return original_guard(bundle, evidence, dependencies, verifier_config)
+        evidence = dict(evidence)
+        receipt = RoleBlindReceipt(evidence["historicalAnchorReceipt"])
+        receipt.claimed_role = evidence["resolvedRole"]
+        evidence["historicalAnchorReceipt"] = receipt
+        with mock.patch.object(D5, "_verify_original_binding_mapping", mapping_without_tuple_join):
+            return original_guard(bundle, evidence, dependencies, verifier_config)
+
+    return mock.patch.object(D5, "validate_legacy_bundle_admission", side_effect=guard)
+
+
+def without_lab4():
+    """Every legacy anchor counts as strictly before the checkpoint."""
+    return mock.patch.object(D5, "_strictly_before", return_value=True)
+
+
+def without_lab6():
+    """Missing era evidence is treated as historical."""
+    original_guard = D5.validate_legacy_bundle_admission
+
+    def guard(bundle, evidence, dependencies, verifier_config):
+        if evidence is None:
+            return ("pass", "missing era evidence treated as historical")
+        return original_guard(bundle, evidence, dependencies, verifier_config)
+
+    return mock.patch.object(D5, "validate_legacy_bundle_admission", side_effect=guard)
+
+
+LAB_GUARD_REMOVALS = {
+    "LAB-3 role and tuple join": without_lab3,
+    "LAB-4 strict pre-checkpoint order": without_lab4,
+    "LAB-6 era evidence": without_lab6,
+}
+LAB_WITNESS_CASES = {
+    "buyer-seller-role-rebinding": "LAB-3 role and tuple join",
+    "seller-buyer-role-rebinding": "LAB-3 role and tuple join",
+    "fresh-post-checkpoint-legacy-creation": "LAB-4 strict pre-checkpoint order",
+    "post-checkpoint-anchor-without-pre-checkpoint-proof": "LAB-4 strict pre-checkpoint order",
+    "missing-era-proof": "LAB-6 era evidence",
+}
+GUARD_WITNESSES = guard_witness.CorpusWitnesses(
+    corpus="current-use-reputation-v1",
+    path=VECTORS,
+    evaluate=lambda case: execute(case["replay"])["decision"],
+    guards=LAB_GUARD_REMOVALS,
+    cases=LAB_WITNESS_CASES,
+    # The LAB-5 historical controls keep passing and the other guards'
+    # negatives keep their verdicts, so each removal drops one guard only.
+    controls={
+        guard: (
+            "historical-original-bundle-binding",
+            "historical-original-pure-mapping",
+            *(case for case, owner in LAB_WITNESS_CASES.items() if owner != guard),
+        )
+        for guard in LAB_GUARD_REMOVALS
+    },
+)
 
 
 class CurrentUseReplayCorpusTests(unittest.TestCase):
@@ -489,45 +569,9 @@ class CurrentUseReplayCorpusTests(unittest.TestCase):
         Each negative is otherwise admitted, so a decision-only runner cannot
         satisfy it through an earlier gate (LAB-2 included) or later divergence.
         """
-        original_guard = D5.validate_legacy_bundle_admission
-        original_mapping = D5._verify_original_binding_mapping
-
-        class RoleBlindReceipt(dict):
-            """Signed receipt bytes unchanged; the LAB-3 role read is skipped."""
-
-            def get(self, key, default=None):
-                if key == "subjectRole":
-                    return self.claimed_role
-                return dict.get(self, key, default)
-
-        def mapping_without_tuple_join(*args):
-            outcome = original_mapping(*args)
-            if outcome == ("fail", "historical receipt does not join the original BundleBinding tuple"):
-                return ("pass", "LAB-3 tuple join omitted")
-            return outcome
-
-        def without_lab3(bundle, evidence, dependencies, verifier_config):
-            evidence = dict(evidence)
-            receipt = RoleBlindReceipt(evidence["historicalAnchorReceipt"])
-            receipt.claimed_role = evidence["resolvedRole"]
-            evidence["historicalAnchorReceipt"] = receipt
-            with mock.patch.object(D5, "_verify_original_binding_mapping", mapping_without_tuple_join):
-                return original_guard(bundle, evidence, dependencies, verifier_config)
-
-        def without_lab6(bundle, evidence, dependencies, verifier_config):
-            if evidence is None:
-                return ("pass", "missing era evidence treated as historical")
-            return original_guard(bundle, evidence, dependencies, verifier_config)
-
-        lab3 = mock.patch.object(D5, "validate_legacy_bundle_admission", side_effect=without_lab3)
-        lab4 = mock.patch.object(D5, "_strictly_before", return_value=True)
-        lab6 = mock.patch.object(D5, "validate_legacy_bundle_admission", side_effect=without_lab6)
         mutants = {
-            "buyer-seller-role-rebinding": lab3,
-            "seller-buyer-role-rebinding": lab3,
-            "fresh-post-checkpoint-legacy-creation": lab4,
-            "post-checkpoint-anchor-without-pre-checkpoint-proof": lab4,
-            "missing-era-proof": lab6,
+            name: LAB_GUARD_REMOVALS[guard]()
+            for name, guard in LAB_WITNESS_CASES.items()
         }
         self.assertEqual(
             set(mutants),

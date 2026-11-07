@@ -15,7 +15,7 @@ from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec, utils
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
@@ -33,6 +33,10 @@ from channel_message_fixture_authority import (  # noqa: E402
 import generate_channel_message_vectors as channel_fixture_generator  # noqa: E402
 import jcs  # noqa: E402
 from dacs_reference import parse_claim_reference  # noqa: E402
+from signature_encoding import (  # noqa: E402
+    decode_b64url,
+    ecdsa_secp256k1_format_violation,
+)
 
 
 VECTORS = (
@@ -55,13 +59,11 @@ LEGACY_FILE_SHA256 = "ce43b226e358e15cb126b4b7d53b8638648c14ca55250eb57e6db68e45
 LEGACY_VECTOR_HASH = "3f0664c434a6727f7578434cba9ea47b804e0dff12249081c7abdd4fdc03803b"
 LOWER_HEX_64 = re.compile(r"^[0-9a-f]{64}$")
 LOWER_HEX_128 = re.compile(r"^[0-9a-f]{128}$")
-BASE64URL = re.compile(r"^[A-Za-z0-9_-]+$")
 MESSAGE_TYPES = {
     "offer", "counter", "accept", "reject", "sealed-envelope-commit",
     "sealed-envelope-reveal", "abort",
 }
 ALGORITHMS = {"ed25519", "ecdsa-secp256k1", "sr1-aggregate"}
-SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 ECDSA_REF = "did:example:dacs-349-ecdsa"
 ECDSA_PUBLIC = bytes.fromhex(
     "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
@@ -92,17 +94,6 @@ def canonical_bytes(value):
 
 def message_digest(unsigned):
     return hashlib.sha256(canonical_bytes(unsigned)).digest()
-
-
-def decode_b64url(value):
-    if not isinstance(value, str) or not value or not BASE64URL.fullmatch(value):
-        raise ValueError("not unpadded Base64URL")
-    if len(value) % 4 == 1:
-        raise ValueError("impossible Base64URL length")
-    raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
-    if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != value:
-        raise ValueError("non-canonical Base64URL")
-    return raw
 
 
 def parse_current_claim_ref(value):
@@ -718,14 +709,9 @@ def verify_algorithm(algorithm, public_key, signature, payload):
     if algorithm in {"ed25519", "sr1-aggregate"}:
         return len(signature) == 64 and verify_ed25519(public_key, signature, payload)
     if algorithm == "ecdsa-secp256k1":
+        if ecdsa_secp256k1_format_violation(signature) is not None:
+            return False
         try:
-            r, s = utils.decode_dss_signature(signature)
-            if (
-                utils.encode_dss_signature(r, s) != signature
-                or not 1 <= r < SECP256K1_ORDER
-                or not 1 <= s <= SECP256K1_ORDER // 2
-            ):
-                return False
             public_key.verify(signature, payload, ec.ECDSA(hashes.SHA256()))
         except (InvalidSignature, ValueError):
             return False

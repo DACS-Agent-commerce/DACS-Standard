@@ -45,7 +45,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-native-identifier-rows-v0.8.json`](cci-native-identifier-rows-v0.8.json) | DACS-1 §6.3.1 cci-humanpassport and cci-tlsn identifier rows | 27 | `fail` / `pass` |
-| [`cci-tlsn-stored-proof-check-v0.1.json`](cci-tlsn-stored-proof-check-v0.1.json) | DACS §7.3.3 (stored-proof check, cci-tlsn only); PSP-3 | 13 | `fail` / `pass` |
+| [`cci-tlsn-stored-proof-check-v0.1.json`](cci-tlsn-stored-proof-check-v0.1.json) | DACS §7.3.3 (stored-proof check, cci-tlsn only); PSP-3 | 20 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
@@ -2290,14 +2290,17 @@ python3 -m unittest tests.test_identity_bundle_hash_binding_vectors -v
 
 ### `cci-tlsn-stored-proof-check-v0.1.json` — §7.3.3 stored-proof check (`cci-tlsn` only)
 
-13 vectors for the check that applies only to a requirement on a registered
+20 vectors, plus a 14-case decision-composition table, for the check that applies only to a requirement on a registered
 `cci-tlsn:H` claim (`H` is 64 lowercase hex). The stored web2 entry for `H` is
 modelled as `storedEntry` (`proof`, `userId`); `null` means `H` resolves to no
 stored entry. How the node derives `H` is outside the check and not modelled.
 
 - **Stored proof:** the supplied proof MUST equal the proof stored for `H`. A
   valid proof stored under another hash, or `H` resolving to no entry → `fail`
-  (`stored-proof`).
+  (`stored-proof`). Proofs are compared by type-preserving structural JSON
+  equality: member order ignored, array order kept, `1` equals `1.0`, a number
+  never equals a boolean or string, duplicate member names → `fail`. This does
+  not define how `H` is derived.
 - **Subject:** only when `parserRules.dataMap` declares `subject`. The resolved
   value MUST equal the stored `userId` as JSON strings only (exact equality
   after NFC). A different value, a value that resolves to nothing, or a JSON
@@ -2310,6 +2313,14 @@ stored entry. How the node derives `H` is outside the check and not modelled.
 The check applies to no other scheme and adds no session binding, signature,
 signature domain or nonce use. The vectors carry no parser or bundle fields.
 
+`compositionCases` (outside the set's `count` and `hash`) is a decision-
+composition table: the stored-proof check result (`pass`, `fail-stored-proof`,
+`fail-subject`) and the parser outcome (`pass`, `fail`, `indeterminate`,
+`error-executed`, `error-pra5-preinvocation`) give the final outcome. A
+stored-proof `fail` stands over any parser outcome; the subject part applies
+only on a parser `pass`; otherwise the parser outcome stands. It composes
+outcomes only and does not run a parser.
+
 #### Vector schema
 | field | meaning |
 |-------|---------|
@@ -2318,7 +2329,7 @@ signature domain or nonce use. The vectors carry no parser or bundle fields.
 | `scheme`, `identifier` | always `cci-tlsn`, and `H` |
 | `storedEntry` | the stored entry for `H` as `proof` and `userId`, or `null` |
 | `recipe` | `dataMap`; a `subject` key is the subject entry |
-| `proof` | `body` (the supplied proof) and `subject` (the value `dataMap.subject` resolves to, `null` if nothing) |
+| `proof` | `body` (the supplied proof; `bodyRaw` is its JSON text, used when it has a duplicate member name) and `subject` (the value `dataMap.subject` resolves to, `null` if nothing) |
 
 Execute with:
 

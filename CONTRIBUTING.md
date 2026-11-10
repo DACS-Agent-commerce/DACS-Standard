@@ -90,6 +90,19 @@ python3 scripts/validate_spec_tables.py
 python3 scripts/validate-docs.py
 ```
 
+Run the linter from [the lint workflow](./.github/workflows/lint.yml) with its
+pinned Ruff version:
+
+```sh
+python3 -m pip install -r requirements-lint.txt
+ruff check .
+```
+
+Each entry under `[lint.per-file-ignores]` in [`ruff.toml`](./ruff.toml) exempts
+one file from rules it already broke when the linter was added; remove the entry
+once those findings are fixed. Don't add an entry to make a new finding pass: fix
+it, or use a `# noqa: <rule>` comment that says why it is safe.
+
 Run the complete unit suite with CI's zero-skip requirement. Ordinary unittest
 discovery alone can report success when a required cryptographic suite is skipped.
 

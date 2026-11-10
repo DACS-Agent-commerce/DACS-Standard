@@ -502,13 +502,13 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
         self.assertNotIn("reserved", psp3)
 
     def test_spec_has_no_leftover_step_wording(self):
-        # "Session binding" is another method's own step name (§7.3.4), so it is
-        # checked only inside §7.3.3.
-        text = SPEC.read_text(encoding="utf-8")
+        # Only §7.3.3 is under test: other sections of DACS-2 number their own
+        # steps, and "Session binding" is another method's own step name (§7.3.4).
+        section = spec_section()
         for stale in ("step 6", "step 4", "tlsnotaryProofCommitment"):
             with self.subTest(stale=stale):
-                self.assertNotIn(stale, text)
-        self.assertNotIn("Session binding", spec_section())
+                self.assertNotIn(stale, section)
+        self.assertNotIn("Session binding", section)
 
 
 if __name__ == "__main__":

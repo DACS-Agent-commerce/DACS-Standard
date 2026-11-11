@@ -19,7 +19,7 @@
     "generator": "scripts/generate_legacy_agreement_admission_vectors.py"
   },
   "count": 166,
-  "hash": "376a6190905549516b1f67d620d88ba426c4568990bc40f436bd249a68356d2c",
+  "hash": "c8090238902d7c2e01a4f67f2165231dd2c8c5bc67aeacaa22eec8c55716ee69",
   "vectors": [
     {
       "name": "laa-current-payee-bound-success",
@@ -21571,7 +21571,7 @@
     {
       "name": "laa-transition-audit-phase-index-noninteger",
       "expected": "error",
-      "note": "a numerically equal floating point phase index is malformed",
+      "note": "a fractional transition-evidence phase index is malformed",
       "input": {
         "surface": "dacs4-laa",
         "operation": "transition-audit",
@@ -21673,7 +21673,7 @@
           "job": "job-a",
           "session": "session-a",
           "phase": "pay-dem",
-          "phaseIndex": 2.0,
+          "phaseIndex": 2.5,
           "outcome": "success",
           "paymentTxRefs": [
             {

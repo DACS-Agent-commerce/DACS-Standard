@@ -101,6 +101,17 @@ the stronger consumer returns `indeterminate`.
 - Demos uses deterministic BFT finality for this profile: a valid `included` write is also `finalized`. The receipt MAY be emitted directly with `state: "finalized"` and `observationDisposition: "established"`, with `finalityProfile: "demos-bft-final"`, the Demos transaction hash as `transactionRef`, and the consensus block number/timestamp in `blockRef`.
 - Storage API or indexer read-back is the independent CORE visibility observation. A matching positive read is useful for resolution checking but does not establish inclusion by itself; delayed read visibility does not undo a consensus-authenticated final receipt.
 
+The consensus timestamp in CORE `AnchorReceipt.blockRef.timestamp` is always
+unix milliseconds (SR2-6). When the authenticated native block timestamp is in
+unix seconds, the adapter multiplies that authenticated value by exactly 1000
+before constructing the receipt. It MUST NOT copy seconds into the millisecond
+field, infer units from magnitude, or use RPC/indexer observation time. The
+native timestamp and its unit must be authenticated by the pinned consensus
+binding; if they cannot be established or converted within CORE's safe numeric
+range, the receipt does not resolve RTB-1 authority. For example, native
+`1800000001` seconds becomes `1800000001000` milliseconds and postdates a
+session starting at `1800000000000`.
+
 Because this binding has no qualifying pre-consensus `accepted` evidence, a DACS stage that permits reversible progression at `accepted` still waits for Demos BFT inclusion/finality.
 
 **Authoritative absence and current state.** The current Demos Storage Program mapping specifies positive record retrieval and content-integrity verification, but it does not declare an authenticated finalized non-membership proof, an independent read-quorum policy, or a current-value proof that establishes one returned program value against the latest acceptable finalized Demos state. An ordinary Demos RPC or storage API `not found` response therefore has the CORE SR-2 disposition `indeterminate`, not `absent`, for a DACS rule whose outcome depends on authoritative absence. Likewise, a valid old program update cannot satisfy DACS-1 RSC-3 merely because its containing block finalized. Positive reads and their hash/provenance checks are unaffected. A later Demos binding revision MAY declare these policies without changing any signed DACS artifact shape; until then, reputation-bearing one-copy DACS-5 lookups fail closed under §10.4.3 and a current DACS-1 revocation non-membership check is `indeterminate` under RSC-3.

@@ -49,7 +49,7 @@
   },
   "adapter": {
     "name": "dacs-standard-primitives",
-    "version": "issue-270-proposal.3",
+    "version": "issue-442-proposal.1",
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
@@ -57,13 +57,13 @@
       "gitBlob": "d99fea77aed51b3381ca1db69121c23baed6bcae"
     },
     "wrappedStandard": {
-      "revision": "854417d1df1d56eebf09dc86ec85932d6438d30d",
-      "tree": "2dd28851672e1fde1edadf7a6c33cd5420c7e6f2",
+      "revision": "f07b1d8ee571854dd1b42d8118d85dcd6f12a720",
+      "tree": "55d4ca0efacdbdf6768331ec12522e97b490efa6",
       "primitives": [
         {
           "path": "scripts/jcs.py",
-          "sha256": "db34b07bc8c3b975f1b83ea78bf6ecd302c2d23ea743d1cfae6cf95fcdc3449a",
-          "gitBlob": "021b816fb427845a2356110aaf01bf45dc3f2155"
+          "sha256": "c763b30cfc4f6bbac1323a4600d632ba2647175d38eb235be259e58bea82b549",
+          "gitBlob": "cafe3237963a7d330346d6a71552c24583a85e64"
         },
         {
           "path": "scripts/validate_conformance_vectors.py",
@@ -100,9 +100,9 @@
   "sources": {
     "canonicalization": {
       "path": "conformance/vectors/security/canonical-json-v0.1.json",
-      "revision": "acc3de56d85a85c6043638725e14cb13dc795996",
-      "sha256": "1e355678b6feddc5dc54611eb0f61e12b9707a1506a3da9e4f679ab9f796c941",
-      "gitBlob": "c64834d5df9aaed5f7b626486f3cc79decfeba32"
+      "revision": "f07b1d8ee571854dd1b42d8118d85dcd6f12a720",
+      "sha256": "7d72a4f9b64d466382492dbaa3b1289d7b2cf859f1fa2f25f5be0ce76ab69784",
+      "gitBlob": "8b42dc2db1bba90be0eadc2270c0ee3df484b016"
     },
     "signedScope": {
       "path": "conformance/vectors/dacs-v0.1-happy-path.json",

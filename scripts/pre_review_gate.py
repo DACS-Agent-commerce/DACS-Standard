@@ -130,6 +130,14 @@ PINNED_REVIEW_EVIDENCE = {
 }
 
 PINNED_UNIT_REGRESSIONS = {
+    'issue442-unicode-repertoire-before-nfc': {
+        "file": 'tests/test_cf1_unicode_version.py',
+        "test": 'Cf1UnicodeVersionTests.test_later_assignment_is_rejected_before_normalization',
+    },
+    'issue442-unicode-repertoire-guard-witness': {
+        "file": 'tests/test_cf1_unicode_version.py',
+        "test": 'Cf1UnicodeVersionTests.test_repertoire_guard_is_load_bearing',
+    },
     "pr396-core-b2-jcs-unsupported-integer": {
         "file": "tests/test_revocation_state_completeness_vectors.py",
         "test": "RevocationStateCompletenessTests.test_legacy_sorted_json_unsupported_integer_is_rejected_end_to_end",

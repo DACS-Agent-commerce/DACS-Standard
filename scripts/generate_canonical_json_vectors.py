@@ -251,6 +251,107 @@ def build_vectors() -> list[dict[str, Any]]:
             "An astral key sorts before U+E000 by UTF-16 code units, not code points.",
         ),
         rejected(
+            "unassigned-in-unicode-15-0",
+            {"label": chr(0x105C9)},
+            "UNASSIGNED-CODE-POINT",
+            "CORE §B.2 CF-1",
+            "U+105C9 was assigned in 16.0. Reject before NFC; this is a "
+            "canonicalization refusal (structural error), not a bad signature.",
+        ),
+        rejected(
+            "later-assigned-composition-rejected",
+            {"label": chr(0x1611E) * 2},
+            "UNASSIGNED-CODE-POINT",
+            "CORE §B.2 CF-1",
+            "The pair is unchanged by Unicode 15.0 NFC but composes to "
+            "U+16121 under 16.0. Refuse before either normalization result.",
+        ),
+        rejected(
+            "unicode-16-combining-mark-reordering-rejected",
+            "a" + chr(0x0897) + chr(0x0316),
+            "UNASSIGNED-CODE-POINT",
+            "CORE §B.2 CF-1",
+            "Unicode 16.0 moves U+0316 before the newly assigned U+0897; "
+            "15.0 and 15.1 leave the input unchanged. Reject before NFC.",
+        ),
+        rejected(
+            "todhri-composition-rejected",
+            chr(0x105D2) + chr(0x0307),
+            "UNASSIGNED-CODE-POINT",
+            "CORE §B.2 CF-1",
+            "The two-code-point input composes to U+105C9 only in 16.0+. "
+            "A single U+105C9 is not itself an NFC-divergence witness.",
+        ),
+        rejected(
+            "unicode-17-combining-mark-reordering-rejected",
+            "a" + chr(0x1ACF) + chr(0x0316),
+            "UNASSIGNED-CODE-POINT",
+            "CORE §B.2 CF-1",
+            "Unicode 17.0 reorders this newly assigned combining mark; "
+            "the Python 3.14 Unicode 16.0 normalizer leaves it unchanged.",
+        ),
+        rejected(
+            "unicode-15-1-assignment-rejected",
+            chr(0x2EBF0),
+            "UNASSIGNED-CODE-POINT",
+            "CORE §B.2 CF-1",
+            "A CJK Extension I character first assigned in 15.1 is outside "
+            "the 15.0 repertoire even on a host that recognizes it.",
+        ),
+        rejected(
+            "reserved-value-rejected",
+            [{"extension": chr(0x0378)}],
+            "UNASSIGNED-CODE-POINT",
+            "CORE §B.2 CF-1",
+            "Still-reserved values are refused at every nesting level.",
+        ),
+        accepted(
+            "later-assigned-member-name-preserved",
+            {chr(0x105C9): 1},
+            '{"' + chr(0x105C9) + '":1}',
+            "CORE §B.2 CF-1; RFC 8785 section 3.2.3",
+            "The pinned repertoire applies to values only. A scalar member "
+            "name stays exact even when assigned after Unicode 15.0.",
+        ),
+        accepted(
+            "unicode-15-0-assignment-accepted",
+            chr(0x1FAE8),
+            '"' + chr(0x1FAE8) + '"',
+            "CORE §B.2 CF-1",
+            "SHAKING FACE was assigned in 15.0 and is inside the inclusive pin.",
+        ),
+        accepted(
+            "unicode-15-0-wireless-accepted",
+            chr(0x1F6DC),
+            '"' + chr(0x1F6DC) + '"',
+            "CORE §B.2 CF-1",
+            "WIRELESS was assigned in 15.0 and remains inside the pinned repertoire.",
+        ),
+        accepted(
+            "later-combining-mark-member-name-preserved",
+            {chr(0x0897): 1},
+            '{"' + chr(0x0897) + '":1}',
+            "CORE §B.2 CF-1; RFC 8785 section 3.2.3",
+            "A later-assigned mark is allowed as an unchanged member name; "
+            "only string values receive CF-1 normalization and repertoire checks.",
+        ),
+        accepted(
+            "noncharacter-values-preserved",
+            chr(0xFDD0) + chr(0xFFFF) + chr(0x10FFFF),
+            '"' + chr(0xFDD0) + chr(0xFFFF) + chr(0x10FFFF) + '"',
+            "CORE §B.2 CF-1",
+            "Noncharacters have numeric DerivedAge values and remain admitted; "
+            "CF-1 does not substitute a General_Category=Cn rejection policy.",
+        ),
+        accepted(
+            "private-use-values-preserved",
+            chr(0xE000) + chr(0xF0000) + chr(0x100000),
+            '"' + chr(0xE000) + chr(0xF0000) + chr(0x100000) + '"',
+            "CORE §B.2 CF-1",
+            "BMP and supplementary private-use scalars have early Age "
+            "values and stay admitted.",
+        ),
+        rejected(
             "lone-surrogate-string",
             unicode_code_units("d800"),
             "INVALID-UNICODE",

@@ -13,6 +13,19 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — pinned Unicode repertoire for canonicalization (CORE §B.2; CF-1)
+
+- Pin values-only NFC to Unicode 15.0.0 and reject string values without a
+  numeric Age in that version before NFC with `UNASSIGNED-CODE-POINT`
+  (structural `error`, not a bad signature). Later normalizers must enforce
+  the pinned repertoire first. This tightens acceptance of previously
+  unspecified values; it does not rewrite historical signed bytes or declare
+  them currently conformant. Member names remain exact; CF-5 still rejects
+  lone surrogates, while noncharacters and private-use scalars remain admitted
+  by their numeric Age. Commit the exact DerivedAge data and its digest and
+  license, extend the generated canonical-JSON candidate vectors, and cover
+  the cross-runtime composition and admission order in §14.6 tests (#442).
+
 ### Changed — `cci-tlsn` stored-proof check (DACS-2 §7.3.3; PSP-3)
 
 - **Stored-proof check** — the §7.3.3 `tlsnotary` procedure is unchanged. A new

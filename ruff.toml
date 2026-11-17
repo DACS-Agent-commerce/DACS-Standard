@@ -2,7 +2,9 @@
 # touch most files and clash with open PRs.
 # Run it: python3 -m pip install -r requirements-lint.txt && ruff check .
 #
-# F: mistakes such as undefined or unused names. E9: syntax errors.
+# F: mistakes such as undefined or unused names. E9: a file that can't be read
+# fails the check instead of being skipped with a warning. Syntax errors are
+# reported whatever is selected.
 # B023: a function in a loop that reads the loop's variable later.
 [lint]
 select = ["F", "E9", "B023"]

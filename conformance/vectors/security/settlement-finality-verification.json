@@ -237,6 +237,1008 @@
         "quorumNumerator": 2,
         "quorumDenominator": 3
       }
+    },
+    "railAuthorityPolicy": {
+      "public_keys": {
+        "did:dacs:test:network": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc",
+        "did:dacs:test:buyer": "oJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA",
+        "did:dacs:test:seller": "F8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4",
+        "did:dacs:test:orchestrator": "11l5O7wTooGagnx2rbb7qKSa7gB_SfLQmS2ZuCWtLEg",
+        "did:dacs:test:payer": "xoImN8fTEOxXYnvgC6JZ0lN0n0qvZERwz_vlOjX3MkI",
+        "did:dacs:test:steward": "yFOtDwzSthmuqSzuxP1Wok1kmdWEznklfkXP2BObYKc",
+        "did:demos:steward": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+      },
+      "network_authority": "did:dacs:test:network",
+      "network_id": "demos:testnet",
+      "proof_profile": "demos-bft-proof/test-1",
+      "validator_set_id": "test-validator-set-1"
+    },
+    "sessionRailAuthorityByJob": {
+      "FV-392-block-depth": {
+        "authority": {
+          "railDefinitionReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-retained-fv-rail-FV-392-block-depth-750",
+                "timestamp": 1899999998000
+              },
+              "contentHash": "50034d2b5dc7554b2929a8b42741d0e1b646e2a76112d96a8d926aa50a84ce39",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yZXRhaW5lZC1mdi1yYWlsLUZWLTM5Mi1ibG9jay1kZXB0aC03NTAiLCJ0aW1lc3RhbXAiOjE4OTk5OTk5OTgwMDB9LCJjb250ZW50SGFzaCI6IjUwMDM0ZDJiNWRjNzU1NGIyOTI5YThiNDI3NDFkMGUxYjY0NmUyYTc2MTEyZDk2YThkOTI2YWE1MGE4NGNlMzkiLCJmaW5hbGl0eVByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwibG9naWNhbEFkZHJlc3MiOiJzdG9yLTQxYjUxODRjYTliZmZhMTk3YjcxNmRjNDQ5ZDU5MzQ2MzU2YjI5OTFkOGEwOWM2OGViMWFlYTAyZmZiMTk5MmIiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci00MWI1MTg0Y2E5YmZmYTE5N2I3MTZkYzQ0OWQ1OTM0NjM1NmIyOTkxZDhhMDljNjhlYjFhZWEwMmZmYjE5OTJiIiwibm9uY2UiOiIyMDEiLCJvYnNlcnZhdGlvbkRpc3Bvc2l0aW9uIjoiZXN0YWJsaXNoZWQiLCJvYnNlcnZlZEF0IjoxODk5OTk5OTk5MDAwLCJyZWNlaXB0VmVyc2lvbiI6IjEiLCJzdGF0ZSI6ImZpbmFsaXplZCIsInN1YnN0cmF0ZSI6ImRlbW9zOnRlc3RuZXQiLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3MtdHJhbnNhY3Rpb24iLCJ2YWx1ZSI6InR4LXJldGFpbmVkLWZ2LXJhaWwtRlYtMzkyLWJsb2NrLWRlcHRoIn0sIndyaXRlciI6Im5hdGl2ZTpyZWdpc3RyeS1zdGV3YXJkLXdyaXRlci0xIn0sInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJOeDFFbVN3elE5TjFKZ21QbFVOTkRJVmlPcTJSenlUa0VkR1ZLZkhmRFp0MnBGaFBFdUpYbkVyaXVral9yLVNUdXIzNjVJUE44M084aEc4bTdKcXpDZyJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIn0"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "stor-41b5184ca9bffa197b716dc449d59346356b2991d8a09c68eb1aea02ffb1992b",
+              "nativeAddress": "stor-41b5184ca9bffa197b716dc449d59346356b2991d8a09c68eb1aea02ffb1992b",
+              "nonce": "201",
+              "observationDisposition": "established",
+              "observedAt": 1899999999000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-retained-fv-rail-FV-392-block-depth"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ],
+          "railRegistryIndex": {
+            "entries": [
+              {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-41b5184ca9bffa197b716dc449d59346356b2991d8a09c68eb1aea02ffb1992b"
+                },
+                "contentHash": "50034d2b5dc7554b2929a8b42741d0e1b646e2a76112d96a8d926aa50a84ce39",
+                "id": "fixture:block-depth",
+                "version": 1
+              }
+            ],
+            "registryIndexVersion": "1",
+            "registryKind": "rail",
+            "revision": 1
+          },
+          "railRegistryIndexReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-rail-index-1-750",
+                "timestamp": 1799999750000
+              },
+              "contentHash": "dd746165fa579122ff313e50215f57d60d565896c58ff14866e62cfae5aecd82",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yYWlsLWluZGV4LTEtNzUwIiwidGltZXN0YW1wIjoxNzk5OTk5NzUwMDAwfSwiY29udGVudEhhc2giOiJkZDc0NjE2NWZhNTc5MTIyZmYzMTNlNTAyMTVmNTdkNjBkNTY1ODk2YzU4ZmYxNDg2NmU2MmNmYWU1YWVjZDgyIiwiZmluYWxpdHlQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmVnaXN0cnk6djAuMSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWRlMGQ1ZjA3Mjk2MGI1OWFhM2I5Y2E5MzUwNTdhZjlkYjU3MTg5YzUiLCJub25jZSI6IjIwMCIsIm9ic2VydmF0aW9uRGlzcG9zaXRpb24iOiJlc3RhYmxpc2hlZCIsIm9ic2VydmVkQXQiOjE3OTk5OTk3NTEwMDAsInJlY2VpcHRWZXJzaW9uIjoiMSIsInN0YXRlIjoiZmluYWxpemVkIiwic3Vic3RyYXRlIjoiZGVtb3M6dGVzdG5ldCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sIndyaXRlciI6Im5hdGl2ZTpyZWdpc3RyeS1zdGV3YXJkLXdyaXRlci0xIn0sInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiI0TXBMZWR3MWwzUDk2ZjRVNDB5MkQ4dnU2QUdET3lmRFJLTlJ3UTk2ZEQ4V21YeG84N1BrNGdUMW84OFFlOFZFOGUzLVFwS0Q5YTM2cEx5SVVLREVDUSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIn0"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "dacs4:registry:v0.1",
+              "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+              "nonce": "200",
+              "observationDisposition": "established",
+              "observedAt": 1799999751000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-rail-index-1"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ]
+        },
+        "rail": {
+          "asset": {
+            "chainId": 1,
+            "contract": "0x00000000000000000000000000000000000000cc",
+            "decimals": 6,
+            "kind": "erc20",
+            "symbol": "USDC"
+          },
+          "availability": "mocked",
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "genesisHash": "ff4f561baddb493ac1e70c452522c760a821ae83759165129dad85511f27704a",
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "observation": {
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "maxHeadAgeSec": 60,
+                "method": "rpc-quorum",
+                "threshold": 2
+              },
+              "requiredDepth": 12
+            }
+          },
+          "governance": {
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer",
+            "proposedBy": "did:demos:steward"
+          },
+          "network": {
+            "chainId": 1,
+            "kind": "evm",
+            "rpcAttestation": "evm-rpc"
+          },
+          "parameters": {
+            "assetId": "USDC"
+          },
+          "phaseHandler": "pay-evm-erc20",
+          "railId": "fixture:block-depth",
+          "railType": "evm-erc20",
+          "railVersion": 1,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:steward",
+            "value": "8LGyP8p2pxsAYusnsXFoKP341XHThozUv4ZBca-hUv6EUPOcLfoF48O-TFBol2VxIxbGtJhoz868TwaxZjjYDQ"
+          }
+        },
+        "railRef": {
+          "railId": "fixture:block-depth",
+          "railVersion": 1
+        },
+        "retainedStateText": "{\"jobId\": \"FV-392-block-depth\", \"session\": {\"startedAt\": 1899999999000, \"railRegistryVersion\": 1}, \"orchestrator\": \"did:demos:orchestrator\", \"writer\": \"native:orchestrator-writer-1\", \"steward\": \"did:demos:steward\", \"registryWriter\": \"native:registry-steward-writer-1\", \"signature\": {\"algorithm\": \"ed25519\", \"signer\": \"did:dacs:test:network\", \"value\": \"1Sob_UUyDazlEMG4xtEnc_nEAj61pTIQ_6-5cc8_hJX7XyyocfJuSOE5TVuGJ-arMLqtgLTjbcG6ENn0IhNjCA\"}}",
+        "snapshotHash": "dd746165fa579122ff313e50215f57d60d565896c58ff14866e62cfae5aecd82",
+        "definitionHash": "50034d2b5dc7554b2929a8b42741d0e1b646e2a76112d96a8d926aa50a84ce39"
+      },
+      "FV-392-commitment-level": {
+        "authority": {
+          "railDefinitionReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-retained-fv-rail-FV-392-commitment-level-750",
+                "timestamp": 1899999998000
+              },
+              "contentHash": "2b349d78d2f163e1daf10ebea10b81ee19f67c0e69f77544c75576e68fa048e4",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yZXRhaW5lZC1mdi1yYWlsLUZWLTM5Mi1jb21taXRtZW50LWxldmVsLTc1MCIsInRpbWVzdGFtcCI6MTg5OTk5OTk5ODAwMH0sImNvbnRlbnRIYXNoIjoiMmIzNDlkNzhkMmYxNjNlMWRhZjEwZWJlYTEwYjgxZWUxOWY2N2MwZTY5Zjc3NTQ0Yzc1NTc2ZTY4ZmEwNDhlNCIsImZpbmFsaXR5UHJvZmlsZSI6ImRlbW9zLWJmdC1wcm9vZi90ZXN0LTEiLCJsb2dpY2FsQWRkcmVzcyI6InN0b3ItNGUyZDgzNjg4NjM5MWM5YjJjMDhmMzNjNjAyOTUxMjE4ZjU1ZTE2OTMzODYyMGRlMjE1OWJjNDQ4NjIzN2UyNyIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLTRlMmQ4MzY4ODYzOTFjOWIyYzA4ZjMzYzYwMjk1MTIxOGY1NWUxNjkzMzg2MjBkZTIxNTliYzQ0ODYyMzdlMjciLCJub25jZSI6IjIwMSIsIm9ic2VydmF0aW9uRGlzcG9zaXRpb24iOiJlc3RhYmxpc2hlZCIsIm9ic2VydmVkQXQiOjE4OTk5OTk5OTkwMDAsInJlY2VpcHRWZXJzaW9uIjoiMSIsInN0YXRlIjoiZmluYWxpemVkIiwic3Vic3RyYXRlIjoiZGVtb3M6dGVzdG5ldCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmV0YWluZWQtZnYtcmFpbC1GVi0zOTItY29tbWl0bWVudC1sZXZlbCJ9LCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktc3Rld2FyZC13cml0ZXItMSJ9LCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoibDNlc2lMLXg1c2x0Q1N3UzBDekhIVFp6WkJIZXMwa0NVd0tIVjFzU0FsMG9fSHlFSDRyT3JkR0Q5b01YT24wcWgwR3pZa3RFdHprX0tzZmNyNk9fQXcifSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSJ9"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "stor-4e2d836886391c9b2c08f33c602951218f55e169338620de2159bc4486237e27",
+              "nativeAddress": "stor-4e2d836886391c9b2c08f33c602951218f55e169338620de2159bc4486237e27",
+              "nonce": "201",
+              "observationDisposition": "established",
+              "observedAt": 1899999999000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-retained-fv-rail-FV-392-commitment-level"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ],
+          "railRegistryIndex": {
+            "entries": [
+              {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-4e2d836886391c9b2c08f33c602951218f55e169338620de2159bc4486237e27"
+                },
+                "contentHash": "2b349d78d2f163e1daf10ebea10b81ee19f67c0e69f77544c75576e68fa048e4",
+                "id": "fixture:commitment-level",
+                "version": 1
+              }
+            ],
+            "registryIndexVersion": "1",
+            "registryKind": "rail",
+            "revision": 1
+          },
+          "railRegistryIndexReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-rail-index-1-750",
+                "timestamp": 1799999750000
+              },
+              "contentHash": "3aaa9fd46714c431d75365e13588cd409ac74b9c04e41fad5470c48c203c91c7",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yYWlsLWluZGV4LTEtNzUwIiwidGltZXN0YW1wIjoxNzk5OTk5NzUwMDAwfSwiY29udGVudEhhc2giOiIzYWFhOWZkNDY3MTRjNDMxZDc1MzY1ZTEzNTg4Y2Q0MDlhYzc0YjljMDRlNDFmYWQ1NDcwYzQ4YzIwM2M5MWM3IiwiZmluYWxpdHlQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmVnaXN0cnk6djAuMSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWRlMGQ1ZjA3Mjk2MGI1OWFhM2I5Y2E5MzUwNTdhZjlkYjU3MTg5YzUiLCJub25jZSI6IjIwMCIsIm9ic2VydmF0aW9uRGlzcG9zaXRpb24iOiJlc3RhYmxpc2hlZCIsIm9ic2VydmVkQXQiOjE3OTk5OTk3NTEwMDAsInJlY2VpcHRWZXJzaW9uIjoiMSIsInN0YXRlIjoiZmluYWxpemVkIiwic3Vic3RyYXRlIjoiZGVtb3M6dGVzdG5ldCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sIndyaXRlciI6Im5hdGl2ZTpyZWdpc3RyeS1zdGV3YXJkLXdyaXRlci0xIn0sInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJrQkVMNkhVbFRjMTBrWXhOOXBFbERDYzN2ZS1IR0hlLUZwb19qSjFnVS1HTmdIQV9udk1STjdzdEVrZ2NHQXQyNU4zQjhhbmtYSHFNcndrOUctRUhBdyJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIn0"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "dacs4:registry:v0.1",
+              "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+              "nonce": "200",
+              "observationDisposition": "established",
+              "observedAt": 1799999751000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-rail-index-1"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ]
+        },
+        "rail": {
+          "asset": {
+            "cluster": "mainnet",
+            "decimals": 6,
+            "kind": "spl",
+            "mint": "USDCFixtureMint",
+            "symbol": "USDC"
+          },
+          "availability": "mocked",
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "commitment-level",
+            "settlement": {
+              "genesisHash": "845e13cb4cc63c82a096ee748af9c78745782283bbd059ab2d941bf40322f4a9",
+              "kind": "commitment-level",
+              "networkId": "solana:mainnet",
+              "observation": {
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "maxHeadAgeSec": 60,
+                "method": "rpc-quorum",
+                "threshold": 2
+              },
+              "requiredCommitment": "finalized"
+            }
+          },
+          "governance": {
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer",
+            "proposedBy": "did:demos:steward"
+          },
+          "network": {
+            "cluster": "mainnet",
+            "kind": "solana"
+          },
+          "parameters": {
+            "assetId": "USDC"
+          },
+          "phaseHandler": "pay-solana-spl",
+          "railId": "fixture:commitment-level",
+          "railType": "solana-spl",
+          "railVersion": 1,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:steward",
+            "value": "eNVOjzsahdgcJrFLnw8NlSO75tzDw2MWbgmrb8umGfgiF4QbhCLw7kcHSWRvmVeg2dLBRT9Yy3EFLw84nczkBA"
+          }
+        },
+        "railRef": {
+          "railId": "fixture:commitment-level",
+          "railVersion": 1
+        },
+        "retainedStateText": "{\"jobId\": \"FV-392-commitment-level\", \"session\": {\"startedAt\": 1899999999000, \"railRegistryVersion\": 1}, \"orchestrator\": \"did:demos:orchestrator\", \"writer\": \"native:orchestrator-writer-1\", \"steward\": \"did:demos:steward\", \"registryWriter\": \"native:registry-steward-writer-1\", \"signature\": {\"algorithm\": \"ed25519\", \"signer\": \"did:dacs:test:network\", \"value\": \"OZeYka0zfPGhCDw9GLC_DTL_CQD_kl7HNrxZfO9dZzq2kZsuWn96h2eRmrUyZEPmevYl9yz4NEdvPlj5RDvsBg\"}}",
+        "snapshotHash": "3aaa9fd46714c431d75365e13588cd409ac74b9c04e41fad5470c48c203c91c7",
+        "definitionHash": "2b349d78d2f163e1daf10ebea10b81ee19f67c0e69f77544c75576e68fa048e4"
+      },
+      "FV-392-bft-final": {
+        "authority": {
+          "railDefinitionReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-retained-fv-rail-FV-392-bft-final-750",
+                "timestamp": 1899999998000
+              },
+              "contentHash": "303b4376ff22d7a4c62916281096281437c804040c768d5a14a847f4117be8f7",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yZXRhaW5lZC1mdi1yYWlsLUZWLTM5Mi1iZnQtZmluYWwtNzUwIiwidGltZXN0YW1wIjoxODk5OTk5OTk4MDAwfSwiY29udGVudEhhc2giOiIzMDNiNDM3NmZmMjJkN2E0YzYyOTE2MjgxMDk2MjgxNDM3YzgwNDA0MGM3NjhkNWExNGE4NDdmNDExN2JlOGY3IiwiZmluYWxpdHlQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsImxvZ2ljYWxBZGRyZXNzIjoic3Rvci0wMzA5YTA4MTZhMmYwYjY0MjNlNDBhYTZlODk0NjdlYzE2Y2YyMmVkZTIxMmIwOWI0YzVkNzQwNWUxMTdmNDgwIiwibmF0aXZlQWRkcmVzcyI6InN0b3ItMDMwOWEwODE2YTJmMGI2NDIzZTQwYWE2ZTg5NDY3ZWMxNmNmMjJlZGUyMTJiMDliNGM1ZDc0MDVlMTE3ZjQ4MCIsIm5vbmNlIjoiMjAxIiwib2JzZXJ2YXRpb25EaXNwb3NpdGlvbiI6ImVzdGFibGlzaGVkIiwib2JzZXJ2ZWRBdCI6MTg5OTk5OTk5OTAwMCwicmVjZWlwdFZlcnNpb24iOiIxIiwic3RhdGUiOiJmaW5hbGl6ZWQiLCJzdWJzdHJhdGUiOiJkZW1vczp0ZXN0bmV0IiwidHJhbnNhY3Rpb25SZWYiOnsia2luZCI6ImRlbW9zLXRyYW5zYWN0aW9uIiwidmFsdWUiOiJ0eC1yZXRhaW5lZC1mdi1yYWlsLUZWLTM5Mi1iZnQtZmluYWwifSwid3JpdGVyIjoibmF0aXZlOnJlZ2lzdHJ5LXN0ZXdhcmQtd3JpdGVyLTEifSwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6IjVJT2VleU1GczZZMHZtRUFKMEhFOHFIVUJERzFLd1RycE1DY0JpSXZ6bXN6aW1RMTlQQXBZb2N3UEhVd21iVlNKbHItNTY4ekc5UGVzM0lnejZWUEFnIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "stor-0309a0816a2f0b6423e40aa6e89467ec16cf22ede212b09b4c5d7405e117f480",
+              "nativeAddress": "stor-0309a0816a2f0b6423e40aa6e89467ec16cf22ede212b09b4c5d7405e117f480",
+              "nonce": "201",
+              "observationDisposition": "established",
+              "observedAt": 1899999999000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-retained-fv-rail-FV-392-bft-final"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ],
+          "railRegistryIndex": {
+            "entries": [
+              {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-0309a0816a2f0b6423e40aa6e89467ec16cf22ede212b09b4c5d7405e117f480"
+                },
+                "contentHash": "303b4376ff22d7a4c62916281096281437c804040c768d5a14a847f4117be8f7",
+                "id": "fixture:bft-final",
+                "version": 1
+              }
+            ],
+            "registryIndexVersion": "1",
+            "registryKind": "rail",
+            "revision": 1
+          },
+          "railRegistryIndexReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-rail-index-1-750",
+                "timestamp": 1799999750000
+              },
+              "contentHash": "14c0f9394b96fed09d853fb44a38031f9cbd67c9ecaa2937f0c1ff1f445a122f",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yYWlsLWluZGV4LTEtNzUwIiwidGltZXN0YW1wIjoxNzk5OTk5NzUwMDAwfSwiY29udGVudEhhc2giOiIxNGMwZjkzOTRiOTZmZWQwOWQ4NTNmYjQ0YTM4MDMxZjljYmQ2N2M5ZWNhYTI5MzdmMGMxZmYxZjQ0NWExMjJmIiwiZmluYWxpdHlQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmVnaXN0cnk6djAuMSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWRlMGQ1ZjA3Mjk2MGI1OWFhM2I5Y2E5MzUwNTdhZjlkYjU3MTg5YzUiLCJub25jZSI6IjIwMCIsIm9ic2VydmF0aW9uRGlzcG9zaXRpb24iOiJlc3RhYmxpc2hlZCIsIm9ic2VydmVkQXQiOjE3OTk5OTk3NTEwMDAsInJlY2VpcHRWZXJzaW9uIjoiMSIsInN0YXRlIjoiZmluYWxpemVkIiwic3Vic3RyYXRlIjoiZGVtb3M6dGVzdG5ldCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sIndyaXRlciI6Im5hdGl2ZTpyZWdpc3RyeS1zdGV3YXJkLXdyaXRlci0xIn0sInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJmdi02VTZMS09uUmFFY1F0MXp0eVJpbnZ6N2NTWmpiMU96aG14ZHdGWXM4bHJOcGlkYjM0RlJadXViZGJXSElmc2ZKUS1tU1VlcVBzRWxuMW00TVBBZyJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIn0"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "dacs4:registry:v0.1",
+              "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+              "nonce": "200",
+              "observationDisposition": "established",
+              "observedAt": 1799999751000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-rail-index-1"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ]
+        },
+        "rail": {
+          "asset": {
+            "decimals": 9,
+            "kind": "native-dem",
+            "symbol": "DEM"
+          },
+          "availability": "mocked",
+          "consumerFinalityProfile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "genesisHash": "684b5107043f63d591980849d1722c6be9a649ec095f7607a60fbad05b389808",
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "observation": {
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "maxHeadAgeSec": 60,
+                "method": "rpc-quorum",
+                "threshold": 2
+              },
+              "quorumDenominator": 3,
+              "quorumNumerator": 2,
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                },
+                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+              }
+            }
+          },
+          "governance": {
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer",
+            "proposedBy": "did:demos:steward"
+          },
+          "network": {
+            "kind": "demos"
+          },
+          "parameters": {
+            "assetId": "DEM"
+          },
+          "phaseHandler": "pay-dem",
+          "railId": "fixture:bft-final",
+          "railType": "demos-native",
+          "railVersion": 1,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:steward",
+            "value": "RBfkFFArkBO6lsBNybSpNziaBESuWXdCytqcgQJjp11LLpIAtfa9sMMikWVmZ9l3R6-53zvDpQuZrSABvXuJAw"
+          }
+        },
+        "railRef": {
+          "railId": "fixture:bft-final",
+          "railVersion": 1
+        },
+        "retainedStateText": "{\"jobId\": \"FV-392-bft-final\", \"session\": {\"startedAt\": 1899999999000, \"railRegistryVersion\": 1}, \"orchestrator\": \"did:demos:orchestrator\", \"writer\": \"native:orchestrator-writer-1\", \"steward\": \"did:demos:steward\", \"registryWriter\": \"native:registry-steward-writer-1\", \"signature\": {\"algorithm\": \"ed25519\", \"signer\": \"did:dacs:test:network\", \"value\": \"HiB9WJbXzLJunkp2FLbjjJ362IlIgmNWK8dFti81a_O8yQBrcmIfhgJtHCmGBf2dLwcVVYqyzF2dCO2Po9o5Ag\"}}",
+        "snapshotHash": "14c0f9394b96fed09d853fb44a38031f9cbd67c9ecaa2937f0c1ff1f445a122f",
+        "definitionHash": "303b4376ff22d7a4c62916281096281437c804040c768d5a14a847f4117be8f7"
+      },
+      "FV-392-provider-receipt": {
+        "authority": {
+          "railDefinitionReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-retained-fv-rail-FV-392-provider-receipt-750",
+                "timestamp": 1899999998000
+              },
+              "contentHash": "c285a357f349fdba3941ceca2dd6d1d164beeb2863f4bc6a4b11a88b3b4e0cbf",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yZXRhaW5lZC1mdi1yYWlsLUZWLTM5Mi1wcm92aWRlci1yZWNlaXB0LTc1MCIsInRpbWVzdGFtcCI6MTg5OTk5OTk5ODAwMH0sImNvbnRlbnRIYXNoIjoiYzI4NWEzNTdmMzQ5ZmRiYTM5NDFjZWNhMmRkNmQxZDE2NGJlZWIyODYzZjRiYzZhNGIxMWE4OGIzYjRlMGNiZiIsImZpbmFsaXR5UHJvZmlsZSI6ImRlbW9zLWJmdC1wcm9vZi90ZXN0LTEiLCJsb2dpY2FsQWRkcmVzcyI6InN0b3ItZTQxZWJlODVjNTIwZWVjYWI1YWYzY2E2M2JiYTI1YjQxNDkxMjk3OTE1NzJlNGMzZjdlZWJmNGY2MzMwMTZjNSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWU0MWViZTg1YzUyMGVlY2FiNWFmM2NhNjNiYmEyNWI0MTQ5MTI5NzkxNTcyZTRjM2Y3ZWViZjRmNjMzMDE2YzUiLCJub25jZSI6IjIwMSIsIm9ic2VydmF0aW9uRGlzcG9zaXRpb24iOiJlc3RhYmxpc2hlZCIsIm9ic2VydmVkQXQiOjE4OTk5OTk5OTkwMDAsInJlY2VpcHRWZXJzaW9uIjoiMSIsInN0YXRlIjoiZmluYWxpemVkIiwic3Vic3RyYXRlIjoiZGVtb3M6dGVzdG5ldCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmV0YWluZWQtZnYtcmFpbC1GVi0zOTItcHJvdmlkZXItcmVjZWlwdCJ9LCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktc3Rld2FyZC13cml0ZXItMSJ9LCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiRFNoY1NOc1NQb0Joc3JMNVJYMUgzUmR0bWFyMWUxRlZ1ekNOMWJOeVVvRUp3ZlRUeDBNT1B4blBpb3Z4U0M4dG84SGFxN3A0Vkw2UUc5Z0NLTzB3QlEifSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSJ9"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "stor-e41ebe85c520eecab5af3ca63bba25b4149129791572e4c3f7eebf4f633016c5",
+              "nativeAddress": "stor-e41ebe85c520eecab5af3ca63bba25b4149129791572e4c3f7eebf4f633016c5",
+              "nonce": "201",
+              "observationDisposition": "established",
+              "observedAt": 1899999999000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-retained-fv-rail-FV-392-provider-receipt"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ],
+          "railRegistryIndex": {
+            "entries": [
+              {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-e41ebe85c520eecab5af3ca63bba25b4149129791572e4c3f7eebf4f633016c5"
+                },
+                "contentHash": "c285a357f349fdba3941ceca2dd6d1d164beeb2863f4bc6a4b11a88b3b4e0cbf",
+                "id": "fixture:provider-receipt",
+                "version": 1
+              }
+            ],
+            "registryIndexVersion": "1",
+            "registryKind": "rail",
+            "revision": 1
+          },
+          "railRegistryIndexReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-rail-index-1-750",
+                "timestamp": 1799999750000
+              },
+              "contentHash": "7cf04c210c62f6fead0d9451403119e2d84dcfb9331abfef36f1dd53213f8ddc",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yYWlsLWluZGV4LTEtNzUwIiwidGltZXN0YW1wIjoxNzk5OTk5NzUwMDAwfSwiY29udGVudEhhc2giOiI3Y2YwNGMyMTBjNjJmNmZlYWQwZDk0NTE0MDMxMTllMmQ4NGRjZmI5MzMxYWJmZWYzNmYxZGQ1MzIxM2Y4ZGRjIiwiZmluYWxpdHlQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmVnaXN0cnk6djAuMSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWRlMGQ1ZjA3Mjk2MGI1OWFhM2I5Y2E5MzUwNTdhZjlkYjU3MTg5YzUiLCJub25jZSI6IjIwMCIsIm9ic2VydmF0aW9uRGlzcG9zaXRpb24iOiJlc3RhYmxpc2hlZCIsIm9ic2VydmVkQXQiOjE3OTk5OTk3NTEwMDAsInJlY2VpcHRWZXJzaW9uIjoiMSIsInN0YXRlIjoiZmluYWxpemVkIiwic3Vic3RyYXRlIjoiZGVtb3M6dGVzdG5ldCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sIndyaXRlciI6Im5hdGl2ZTpyZWdpc3RyeS1zdGV3YXJkLXdyaXRlci0xIn0sInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJKaUV6WkU0dW93aXhTN0c4bUpqOE5PbVZMWjNnY1l6b012d1R5VWxjNnY4WEVJWGwyYko1TFBTQURyQ0UwSVU5eU03VlMwSDdlMlViLWo1elB3Q3BBZyJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIn0"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "dacs4:registry:v0.1",
+              "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+              "nonce": "200",
+              "observationDisposition": "established",
+              "observedAt": 1799999751000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-rail-index-1"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ]
+        },
+        "rail": {
+          "asset": {
+            "isoCurrency": "USD",
+            "kind": "fiat-via-ap2",
+            "provider": "provider:example"
+          },
+          "availability": "mocked",
+          "consumerFinalityProfile": {
+            "captureStatuses": [
+              "captured"
+            ],
+            "finalityProfileVersion": "1",
+            "maxObservationAgeSec": 60,
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "reversibility": "provisional-provider-capture",
+            "sr3Binding": "provider-jws-v1",
+            "statusEndpointOrigin": "https://payments.example"
+          },
+          "governance": {
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer",
+            "proposedBy": "did:demos:steward"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "parameters": {
+            "assetId": "USD"
+          },
+          "phaseHandler": "pay-ap2",
+          "railId": "fixture:provider-receipt",
+          "railType": "ap2",
+          "railVersion": 1,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:steward",
+            "value": "lyro4KBAr11qQLQ-0W58V0uAlktj_8cEUzdVIQqBq9emmpqxZ6sBrHezj2qiAj3vV_382xP6FCAqoCbCNmtuAA"
+          }
+        },
+        "railRef": {
+          "railId": "fixture:provider-receipt",
+          "railVersion": 1
+        },
+        "retainedStateText": "{\"jobId\": \"FV-392-provider-receipt\", \"session\": {\"startedAt\": 1899999999000, \"railRegistryVersion\": 1}, \"orchestrator\": \"did:demos:orchestrator\", \"writer\": \"native:orchestrator-writer-1\", \"steward\": \"did:demos:steward\", \"registryWriter\": \"native:registry-steward-writer-1\", \"signature\": {\"algorithm\": \"ed25519\", \"signer\": \"did:dacs:test:network\", \"value\": \"p9XrVSNOzAbFPUzze7upbA54g0Q-5c9rsIyPF3SrKtpO5ZX-5a_thALj0QaL4Hsvyqth6HDe7zrFa5rhd6s0DQ\"}}",
+        "snapshotHash": "7cf04c210c62f6fead0d9451403119e2d84dcfb9331abfef36f1dd53213f8ddc",
+        "definitionHash": "c285a357f349fdba3941ceca2dd6d1d164beeb2863f4bc6a4b11a88b3b4e0cbf"
+      },
+      "FV-392-htlc-reveal": {
+        "authority": {
+          "railDefinitionReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-retained-fv-rail-FV-392-htlc-reveal-750",
+                "timestamp": 1899999998000
+              },
+              "contentHash": "1153b47719a3a39071f486da44418919943f13dbfbaa5d0f554b1f57f5da1aab",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yZXRhaW5lZC1mdi1yYWlsLUZWLTM5Mi1odGxjLXJldmVhbC03NTAiLCJ0aW1lc3RhbXAiOjE4OTk5OTk5OTgwMDB9LCJjb250ZW50SGFzaCI6IjExNTNiNDc3MTlhM2EzOTA3MWY0ODZkYTQ0NDE4OTE5OTQzZjEzZGJmYmFhNWQwZjU1NGIxZjU3ZjVkYTFhYWIiLCJmaW5hbGl0eVByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwibG9naWNhbEFkZHJlc3MiOiJzdG9yLWZkNzM0ZGRlMDQyNzIyM2ZkMGI1Y2E4MDA0OWQ2ZTdlZjVkNzI0MjUxZjAxMTcxMjIwMjI2MTA4ZGI0ZjczYzgiLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1mZDczNGRkZTA0MjcyMjNmZDBiNWNhODAwNDlkNmU3ZWY1ZDcyNDI1MWYwMTE3MTIyMDIyNjEwOGRiNGY3M2M4Iiwibm9uY2UiOiIyMDEiLCJvYnNlcnZhdGlvbkRpc3Bvc2l0aW9uIjoiZXN0YWJsaXNoZWQiLCJvYnNlcnZlZEF0IjoxODk5OTk5OTk5MDAwLCJyZWNlaXB0VmVyc2lvbiI6IjEiLCJzdGF0ZSI6ImZpbmFsaXplZCIsInN1YnN0cmF0ZSI6ImRlbW9zOnRlc3RuZXQiLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3MtdHJhbnNhY3Rpb24iLCJ2YWx1ZSI6InR4LXJldGFpbmVkLWZ2LXJhaWwtRlYtMzkyLWh0bGMtcmV2ZWFsIn0sIndyaXRlciI6Im5hdGl2ZTpyZWdpc3RyeS1zdGV3YXJkLXdyaXRlci0xIn0sInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJielpFQlFYVEgzMk54VHR3a3NqZmpFRUtjemZrdEh3dXJCYUUxeGxSbGZ4SHJJbzEwcnhWZ05zeTR3R2dUa1dSS1o3MEZ2ejVJQjUwa3lNaU5zU0VDdyJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIn0"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "stor-fd734dde0427223fd0b5ca80049d6e7ef5d724251f01171220226108db4f73c8",
+              "nativeAddress": "stor-fd734dde0427223fd0b5ca80049d6e7ef5d724251f01171220226108db4f73c8",
+              "nonce": "201",
+              "observationDisposition": "established",
+              "observedAt": 1899999999000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-retained-fv-rail-FV-392-htlc-reveal"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ],
+          "railRegistryIndex": {
+            "entries": [
+              {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-fd734dde0427223fd0b5ca80049d6e7ef5d724251f01171220226108db4f73c8"
+                },
+                "contentHash": "1153b47719a3a39071f486da44418919943f13dbfbaa5d0f554b1f57f5da1aab",
+                "id": "fixture:htlc-reveal",
+                "version": 1
+              }
+            ],
+            "registryIndexVersion": "1",
+            "registryKind": "rail",
+            "revision": 1
+          },
+          "railRegistryIndexReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-rail-index-1-750",
+                "timestamp": 1799999750000
+              },
+              "contentHash": "7e470e33ff55592dd6e75a3c6b54f13e587db27d5935fc2c62d5ccccae8d0872",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yYWlsLWluZGV4LTEtNzUwIiwidGltZXN0YW1wIjoxNzk5OTk5NzUwMDAwfSwiY29udGVudEhhc2giOiI3ZTQ3MGUzM2ZmNTU1OTJkZDZlNzVhM2M2YjU0ZjEzZTU4N2RiMjdkNTkzNWZjMmM2MmQ1Y2NjY2FlOGQwODcyIiwiZmluYWxpdHlQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmVnaXN0cnk6djAuMSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWRlMGQ1ZjA3Mjk2MGI1OWFhM2I5Y2E5MzUwNTdhZjlkYjU3MTg5YzUiLCJub25jZSI6IjIwMCIsIm9ic2VydmF0aW9uRGlzcG9zaXRpb24iOiJlc3RhYmxpc2hlZCIsIm9ic2VydmVkQXQiOjE3OTk5OTk3NTEwMDAsInJlY2VpcHRWZXJzaW9uIjoiMSIsInN0YXRlIjoiZmluYWxpemVkIiwic3Vic3RyYXRlIjoiZGVtb3M6dGVzdG5ldCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sIndyaXRlciI6Im5hdGl2ZTpyZWdpc3RyeS1zdGV3YXJkLXdyaXRlci0xIn0sInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJyeFFiYV95aFlMWjRJY2k1QV90N2RWNUZVeFJMX1JuZGFFSGJEWlAwUTFuN1VMWlg2d01tX2o2RHozMUFKQktndlJxVGVoVkNGam8tWld5RHV6LWhDUSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIn0"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "dacs4:registry:v0.1",
+              "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+              "nonce": "200",
+              "observationDisposition": "established",
+              "observedAt": 1799999751000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-rail-index-1"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ]
+        },
+        "rail": {
+          "asset": {
+            "canonicalSymbol": "USDC",
+            "kind": "stablecoin-cross-chain",
+            "routes": []
+          },
+          "availability": "mocked",
+          "consumerFinalityProfile": {
+            "destination": {
+              "genesisHash": "5651bb1017779a5415949e399a27cb41420d47307756d184a8f2f13142a08aa4",
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "observation": {
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "maxHeadAgeSec": 60,
+                "method": "rpc-quorum",
+                "threshold": 2
+              },
+              "requiredDepth": 12
+            },
+            "finalityProfileVersion": "1",
+            "model": "htlc-reveal",
+            "source": {
+              "genesisHash": "ff4f561baddb493ac1e70c452522c760a821ae83759165129dad85511f27704a",
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "observation": {
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "maxHeadAgeSec": 60,
+                "method": "rpc-quorum",
+                "threshold": 2
+              },
+              "requiredDepth": 12
+            }
+          },
+          "governance": {
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer",
+            "proposedBy": "did:demos:steward"
+          },
+          "network": {
+            "kind": "cross-chain",
+            "mechanism": "htlc"
+          },
+          "parameters": {
+            "destinationContract": "0x00000000000000000000000000000000000000b2",
+            "destinationHashAlgorithm": "sha3-256",
+            "safetyWindowSec": 600,
+            "sourceContract": "0x00000000000000000000000000000000000000a1",
+            "sourceFinalitySec": 600,
+            "sourceHashAlgorithm": "sha256",
+            "timelockDestSec": 3600,
+            "timelockSourceSec": 7200
+          },
+          "phaseHandler": "pay-cross-chain-htlc",
+          "railId": "fixture:htlc-reveal",
+          "railType": "cross-chain-htlc",
+          "railVersion": 1,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:steward",
+            "value": "m6PvahGO9qRKuRuahHRzEzCYnvSsmPFrcLZv4Ons0aHujM3XAeg2xSG3dvcFWrTi3uauCxfQkkbTWpVXckRpAw"
+          }
+        },
+        "railRef": {
+          "railId": "fixture:htlc-reveal",
+          "railVersion": 1
+        },
+        "retainedStateText": "{\"jobId\": \"FV-392-htlc-reveal\", \"session\": {\"startedAt\": 1899999999000, \"railRegistryVersion\": 1}, \"orchestrator\": \"did:demos:orchestrator\", \"writer\": \"native:orchestrator-writer-1\", \"steward\": \"did:demos:steward\", \"registryWriter\": \"native:registry-steward-writer-1\", \"signature\": {\"algorithm\": \"ed25519\", \"signer\": \"did:dacs:test:network\", \"value\": \"QvBnT_ptVkdnCGIpAGnEp4l8jWcKvXg-ZM4rBv0AQ5biQfn4YXECf4C03O0VzlLGF9VEO5F7zTF15XcvtfTTAQ\"}}",
+        "snapshotHash": "7e470e33ff55592dd6e75a3c6b54f13e587db27d5935fc2c62d5ccccae8d0872",
+        "definitionHash": "1153b47719a3a39071f486da44418919943f13dbfbaa5d0f554b1f57f5da1aab"
+      },
+      "FV-392-liquidity-tank": {
+        "authority": {
+          "railDefinitionReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-retained-fv-rail-FV-392-liquidity-tank-750",
+                "timestamp": 1899999998000
+              },
+              "contentHash": "055fb382930ef11a04da990210f893b3100ebda4dbda1ef0e3bf2afc2e3a1eb1",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yZXRhaW5lZC1mdi1yYWlsLUZWLTM5Mi1saXF1aWRpdHktdGFuay03NTAiLCJ0aW1lc3RhbXAiOjE4OTk5OTk5OTgwMDB9LCJjb250ZW50SGFzaCI6IjA1NWZiMzgyOTMwZWYxMWEwNGRhOTkwMjEwZjg5M2IzMTAwZWJkYTRkYmRhMWVmMGUzYmYyYWZjMmUzYTFlYjEiLCJmaW5hbGl0eVByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwibG9naWNhbEFkZHJlc3MiOiJzdG9yLWY2ZDc4MWZiNDdjMDRkZTA4YTFhOWJjNzY3N2EwNzdlNzRmMmUxYTA1YzI4MmU0ZGY1NDZhOTk4YWVmZjY3MzciLCJuYXRpdmVBZGRyZXNzIjoic3Rvci1mNmQ3ODFmYjQ3YzA0ZGUwOGExYTliYzc2NzdhMDc3ZTc0ZjJlMWEwNWMyODJlNGRmNTQ2YTk5OGFlZmY2NzM3Iiwibm9uY2UiOiIyMDEiLCJvYnNlcnZhdGlvbkRpc3Bvc2l0aW9uIjoiZXN0YWJsaXNoZWQiLCJvYnNlcnZlZEF0IjoxODk5OTk5OTk5MDAwLCJyZWNlaXB0VmVyc2lvbiI6IjEiLCJzdGF0ZSI6ImZpbmFsaXplZCIsInN1YnN0cmF0ZSI6ImRlbW9zOnRlc3RuZXQiLCJ0cmFuc2FjdGlvblJlZiI6eyJraW5kIjoiZGVtb3MtdHJhbnNhY3Rpb24iLCJ2YWx1ZSI6InR4LXJldGFpbmVkLWZ2LXJhaWwtRlYtMzkyLWxpcXVpZGl0eS10YW5rIn0sIndyaXRlciI6Im5hdGl2ZTpyZWdpc3RyeS1zdGV3YXJkLXdyaXRlci0xIn0sInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJidTJ3SVI3RnltV0dPX3p0WXdjZ3EtT2RGbjBpdkJ1b3d4c1BCTU9ySllyU0FBQUo1Q1pKbGo4UTdBeFZmSmJvSVpjb0dTZW10OHUwTzRhREpvNVVBQSJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIn0"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "stor-f6d781fb47c04de08a1a9bc7677a077e74f2e1a05c282e4df546a998aeff6737",
+              "nativeAddress": "stor-f6d781fb47c04de08a1a9bc7677a077e74f2e1a05c282e4df546a998aeff6737",
+              "nonce": "201",
+              "observationDisposition": "established",
+              "observedAt": 1899999999000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-retained-fv-rail-FV-392-liquidity-tank"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ],
+          "railRegistryIndex": {
+            "entries": [
+              {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-f6d781fb47c04de08a1a9bc7677a077e74f2e1a05c282e4df546a998aeff6737"
+                },
+                "contentHash": "055fb382930ef11a04da990210f893b3100ebda4dbda1ef0e3bf2afc2e3a1eb1",
+                "id": "fixture:liquidity-tank",
+                "version": 1
+              }
+            ],
+            "registryIndexVersion": "1",
+            "registryKind": "rail",
+            "revision": 1
+          },
+          "railRegistryIndexReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-rail-index-1-750",
+                "timestamp": 1799999750000
+              },
+              "contentHash": "da6765c26ced487f35956c8c449d025dbdb369e942d11e073ec761cdef642044",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yYWlsLWluZGV4LTEtNzUwIiwidGltZXN0YW1wIjoxNzk5OTk5NzUwMDAwfSwiY29udGVudEhhc2giOiJkYTY3NjVjMjZjZWQ0ODdmMzU5NTZjOGM0NDlkMDI1ZGJkYjM2OWU5NDJkMTFlMDczZWM3NjFjZGVmNjQyMDQ0IiwiZmluYWxpdHlQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmVnaXN0cnk6djAuMSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWRlMGQ1ZjA3Mjk2MGI1OWFhM2I5Y2E5MzUwNTdhZjlkYjU3MTg5YzUiLCJub25jZSI6IjIwMCIsIm9ic2VydmF0aW9uRGlzcG9zaXRpb24iOiJlc3RhYmxpc2hlZCIsIm9ic2VydmVkQXQiOjE3OTk5OTk3NTEwMDAsInJlY2VpcHRWZXJzaW9uIjoiMSIsInN0YXRlIjoiZmluYWxpemVkIiwic3Vic3RyYXRlIjoiZGVtb3M6dGVzdG5ldCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sIndyaXRlciI6Im5hdGl2ZTpyZWdpc3RyeS1zdGV3YXJkLXdyaXRlci0xIn0sInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJyVFZzYUNTYldJTW9faGFoQW15UF95ZnFXRnZvb3pxY292alpaTzQ3R0RleF9vS0xUc1FyN0dnWTJ5YkdMUUpldFRhOGlKOWJaWWlKS1hsSWRmQkRBZyJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIn0"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "dacs4:registry:v0.1",
+              "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+              "nonce": "200",
+              "observationDisposition": "established",
+              "observedAt": 1799999751000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-rail-index-1"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ]
+        },
+        "rail": {
+          "asset": {
+            "canonicalSymbol": "USDC",
+            "kind": "stablecoin-cross-chain",
+            "routes": []
+          },
+          "availability": "mocked",
+          "consumerFinalityProfile": {
+            "bridgeId": "tank:sepolia-amoy:usdc",
+            "coordinator": {
+              "genesisHash": "8769a2afa4ba47bde354acca4e2b99d8aa866237c526196669f16a3fcf885315",
+              "kind": "bft-final",
+              "networkId": "demos:testnet",
+              "observation": {
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "maxHeadAgeSec": 60,
+                "method": "rpc-quorum",
+                "threshold": 2
+              },
+              "quorumDenominator": 3,
+              "quorumNumerator": 2,
+              "validatorSetRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-df772cb57d0dfafb14f45df86e575a3d5e506ead160f271351bb14b2a5c9d098"
+                },
+                "contentHash": "806f6161cecd9a9037f01530c5740ba300ec2c831501210c98320aa3a6597410"
+              }
+            },
+            "destination": {
+              "genesisHash": "e4340087bb819197d25c586172c1257925debffc6232ea088b0eda1e455b5a74",
+              "kind": "block-depth",
+              "networkId": "eip155:80002",
+              "observation": {
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "maxHeadAgeSec": 60,
+                "method": "rpc-quorum",
+                "threshold": 2
+              },
+              "requiredDepth": 12
+            },
+            "finalityProfileVersion": "1",
+            "model": "liquidity-tank",
+            "source": {
+              "genesisHash": "6645bced7593cf806e2104204f1240a66e21d37a330b5aea794c2cac7e773284",
+              "kind": "block-depth",
+              "networkId": "eip155:11155111",
+              "observation": {
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "maxHeadAgeSec": 60,
+                "method": "rpc-quorum",
+                "threshold": 2
+              },
+              "requiredDepth": 12
+            }
+          },
+          "governance": {
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer",
+            "proposedBy": "did:demos:steward"
+          },
+          "network": {
+            "kind": "cross-chain",
+            "mechanism": "liquidity-tank"
+          },
+          "parameters": {
+            "bridgeId": "tank:sepolia-amoy:usdc",
+            "transferId": "transfer-fixture-392"
+          },
+          "phaseHandler": "pay-cross-chain-liquidity-tank",
+          "railId": "fixture:liquidity-tank",
+          "railType": "cross-chain-liquidity-tank",
+          "railVersion": 1,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:steward",
+            "value": "rMXVvUBuV2hFd-Eep6pM-qG4RkX7D4XJA-kkqhuzpTmOqz89K2cl0DrcYU06H_iGExrVXQboL6TjJ01G9fn5Bg"
+          }
+        },
+        "railRef": {
+          "railId": "fixture:liquidity-tank",
+          "railVersion": 1
+        },
+        "retainedStateText": "{\"jobId\": \"FV-392-liquidity-tank\", \"session\": {\"startedAt\": 1899999999000, \"railRegistryVersion\": 1}, \"orchestrator\": \"did:demos:orchestrator\", \"writer\": \"native:orchestrator-writer-1\", \"steward\": \"did:demos:steward\", \"registryWriter\": \"native:registry-steward-writer-1\", \"signature\": {\"algorithm\": \"ed25519\", \"signer\": \"did:dacs:test:network\", \"value\": \"AlUIDCtsTduLDP47WFhz6-kY6PJaeUXQlujbTjwZWl-Xrq3TlKciXdIw_CgNLhVwcft1Czpsd6XQ4Z2uqZcTDQ\"}}",
+        "snapshotHash": "da6765c26ced487f35956c8c449d025dbdb369e942d11e073ec761cdef642044",
+        "definitionHash": "055fb382930ef11a04da990210f893b3100ebda4dbda1ef0e3bf2afc2e3a1eb1"
+      },
+      "FV-392-ap2-sr3": {
+        "authority": {
+          "railDefinitionReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-retained-fv-rail-FV-392-ap2-sr3-750",
+                "timestamp": 1899999998000
+              },
+              "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yZXRhaW5lZC1mdi1yYWlsLUZWLTM5Mi1hcDItc3IzLTc1MCIsInRpbWVzdGFtcCI6MTg5OTk5OTk5ODAwMH0sImNvbnRlbnRIYXNoIjoiNWM4MmQxZTgyMzQ1Mjc1MzkxYTFkYmMwZTBiMzY0OGM1ZmQ0YzdkNDcxMDdiMzc5NThmYTM4MTA5OWU4MzFhMSIsImZpbmFsaXR5UHJvZmlsZSI6ImRlbW9zLWJmdC1wcm9vZi90ZXN0LTEiLCJsb2dpY2FsQWRkcmVzcyI6InN0b3ItYWQzOWM5YWMxZWFkYjc0OWJmMTYxODE4ODk2MmQwZmVmNGYzNGM5MDBhMWRkMjI5NjMxOWRiOTIyMDRkNWFjNiIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWFkMzljOWFjMWVhZGI3NDliZjE2MTgxODg5NjJkMGZlZjRmMzRjOTAwYTFkZDIyOTYzMTlkYjkyMjA0ZDVhYzYiLCJub25jZSI6IjIwMSIsIm9ic2VydmF0aW9uRGlzcG9zaXRpb24iOiJlc3RhYmxpc2hlZCIsIm9ic2VydmVkQXQiOjE4OTk5OTk5OTkwMDAsInJlY2VpcHRWZXJzaW9uIjoiMSIsInN0YXRlIjoiZmluYWxpemVkIiwic3Vic3RyYXRlIjoiZGVtb3M6dGVzdG5ldCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmV0YWluZWQtZnYtcmFpbC1GVi0zOTItYXAyLXNyMyJ9LCJ3cml0ZXIiOiJuYXRpdmU6cmVnaXN0cnktc3Rld2FyZC13cml0ZXItMSJ9LCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiZWpRclROTmdyUTV2RmpyR0dvRkQ1QjRNSFhDMWpUUEdHU3M5YkpTNXJYR1o1Z3MxZTd2LTRJV19qc2hmYUR0aGFXVmZ6M1FianN4NXVXUjJNWGpEQXcifSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSJ9"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6",
+              "nativeAddress": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6",
+              "nonce": "201",
+              "observationDisposition": "established",
+              "observedAt": 1899999999000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-retained-fv-rail-FV-392-ap2-sr3"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ],
+          "railRegistryIndex": {
+            "entries": [
+              {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-ad39c9ac1eadb749bf1618188962d0fef4f34c900a1dd2296319db92204d5ac6"
+                },
+                "contentHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1",
+                "id": "fixture:provider-sr3",
+                "version": 1
+              }
+            ],
+            "registryIndexVersion": "1",
+            "registryKind": "rail",
+            "revision": 1
+          },
+          "railRegistryIndexReceipts": [
+            {
+              "blockRef": {
+                "height": "750",
+                "id": "block-rail-index-1-750",
+                "timestamp": 1799999750000
+              },
+              "contentHash": "ac83da15fa0f711b2cedbc285435f01e79ff963633f4b060c9588d820b7d8267",
+              "evidence": {
+                "kind": "test-anchor-finality",
+                "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0IiwicHJvb2ZQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsInJlY2VpcHQiOnsiYmxvY2tSZWYiOnsiaGVpZ2h0IjoiNzUwIiwiaWQiOiJibG9jay1yYWlsLWluZGV4LTEtNzUwIiwidGltZXN0YW1wIjoxNzk5OTk5NzUwMDAwfSwiY29udGVudEhhc2giOiJhYzgzZGExNWZhMGY3MTFiMmNlZGJjMjg1NDM1ZjAxZTc5ZmY5NjM2MzNmNGIwNjBjOTU4OGQ4MjBiN2Q4MjY3IiwiZmluYWxpdHlQcm9maWxlIjoiZGVtb3MtYmZ0LXByb29mL3Rlc3QtMSIsImxvZ2ljYWxBZGRyZXNzIjoiZGFjczQ6cmVnaXN0cnk6djAuMSIsIm5hdGl2ZUFkZHJlc3MiOiJzdG9yLWRlMGQ1ZjA3Mjk2MGI1OWFhM2I5Y2E5MzUwNTdhZjlkYjU3MTg5YzUiLCJub25jZSI6IjIwMCIsIm9ic2VydmF0aW9uRGlzcG9zaXRpb24iOiJlc3RhYmxpc2hlZCIsIm9ic2VydmVkQXQiOjE3OTk5OTk3NTEwMDAsInJlY2VpcHRWZXJzaW9uIjoiMSIsInN0YXRlIjoiZmluYWxpemVkIiwic3Vic3RyYXRlIjoiZGVtb3M6dGVzdG5ldCIsInRyYW5zYWN0aW9uUmVmIjp7ImtpbmQiOiJkZW1vcy10cmFuc2FjdGlvbiIsInZhbHVlIjoidHgtcmFpbC1pbmRleC0xIn0sIndyaXRlciI6Im5hdGl2ZTpyZWdpc3RyeS1zdGV3YXJkLXdyaXRlci0xIn0sInNpZ25hdHVyZSI6eyJhbGdvcml0aG0iOiJlZDI1NTE5Iiwic2lnbmVyIjoiZGlkOmRhY3M6dGVzdDpuZXR3b3JrIiwidmFsdWUiOiJ6NEpqY1lzX2JZeXJOYVJoQkJYRGg5c01zX2Y0Q0g0Y3BEX3hwdExUSEowVEU1c1lzUXd2N1llQ2JZNGV5RzYxdUg2OUROeFJFT3hJQ25Va3BpQzFBdyJ9LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIn0"
+              },
+              "finalityProfile": "demos-bft-proof/test-1",
+              "logicalAddress": "dacs4:registry:v0.1",
+              "nativeAddress": "stor-de0d5f072960b59aa3b9ca935057af9db57189c5",
+              "nonce": "200",
+              "observationDisposition": "established",
+              "observedAt": 1799999751000,
+              "receiptVersion": "1",
+              "state": "finalized",
+              "substrate": "demos:testnet",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx-rail-index-1"
+              },
+              "writer": "native:registry-steward-writer-1"
+            }
+          ]
+        },
+        "rail": {
+          "asset": {
+            "isoCurrency": "USD",
+            "kind": "fiat-via-ap2",
+            "provider": "provider:example"
+          },
+          "availability": "mocked",
+          "consumerFinalityProfile": {
+            "captureStatuses": [
+              "captured"
+            ],
+            "finalityProfileVersion": "1",
+            "maxObservationAgeSec": 60,
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "reversibility": "provisional-provider-capture",
+            "sr3Binding": "provider-jws-v1",
+            "statusEndpointOrigin": "https://payments.example"
+          },
+          "governance": {
+            "acceptedAt": 1899000000000,
+            "anchoring": "single-signer",
+            "proposedBy": "did:demos:steward"
+          },
+          "network": {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://payments.example"
+          },
+          "parameters": {
+            "assetId": "USD"
+          },
+          "phaseHandler": "pay-ap2",
+          "railId": "fixture:provider-sr3",
+          "railType": "ap2",
+          "railVersion": 1,
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:steward",
+            "value": "rPFmSYn9geea95SQI42qLFYJUumXu8R0pWJv_FjZlC5rMsiO82iRunN7X76XXKXKL8xKA3o2m0IxRA2WCUGWAw"
+          }
+        },
+        "railRef": {
+          "railId": "fixture:provider-sr3",
+          "railVersion": 1
+        },
+        "retainedStateText": "{\"jobId\": \"FV-392-ap2-sr3\", \"session\": {\"startedAt\": 1899999999000, \"railRegistryVersion\": 1}, \"orchestrator\": \"did:demos:orchestrator\", \"writer\": \"native:orchestrator-writer-1\", \"steward\": \"did:demos:steward\", \"registryWriter\": \"native:registry-steward-writer-1\", \"signature\": {\"algorithm\": \"ed25519\", \"signer\": \"did:dacs:test:network\", \"value\": \"mx1Kbpz53YyqLyZwMOiuBdFC6r5oKbV5TYsZd3ZqU2VFjOt_2mM4YZ5lO2wp5z-U7zvxQIbNyszOxvkppt3uDA\"}}",
+        "snapshotHash": "ac83da15fa0f711b2cedbc285435f01e79ff963633f4b060c9588d820b7d8267",
+        "definitionHash": "5c82d1e82345275391a1dbc0e0b3648c5fd4c7d47107b37958fa381099e831a1"
+      }
     }
   },
   "count": 86,

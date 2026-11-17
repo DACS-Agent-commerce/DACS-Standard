@@ -1373,8 +1373,8 @@ def _nonempty_jcs_string(value):
 
 def _safe_nonnegative_integer(value, *, positive=False):
     return (
-        isinstance(value, int)
-        and not isinstance(value, bool)
+        _non_boolean_number(value)
+        and (not isinstance(value, float) or value.is_integer())
         and (value > 0 if positive else value >= 0)
         and value <= _MAX_SAFE_JSON_INTEGER
     )
@@ -1558,12 +1558,7 @@ def _settlement_finality_shape_valid(value):
         return False
     if model == "block-depth":
         blocks = value.get("finalityBlocks")
-        if (
-            isinstance(blocks, bool)
-            or not isinstance(blocks, int)
-            or blocks < 0
-            or blocks > _MAX_SAFE_JSON_INTEGER
-        ):
+        if not _safe_nonnegative_integer(blocks):
             return False
     elif "finalityBlocks" in value:
         return False
@@ -1606,7 +1601,7 @@ def _settlement_evidence_shape_valid(record):
     ):
         return False
     if outcome == "failure":
-        if not _nonempty_jcs_string(record.get("reason")):
+        if "reason" in record and not _nonempty_jcs_string(record["reason"]):
             return False
     elif "reason" in record:
         return False
@@ -1742,7 +1737,7 @@ def _legacy_transition_settlement_evidence_shape_valid(record):
     return (
         isinstance(signature, dict)
         and set(signature) == {"algorithm", "signer", "value"}
-        and signature.get("algorithm") == "ed25519"
+        and _string_member(signature.get("algorithm"), {"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
         and _claim_reference_shape_valid(signature.get("signer"))
         and _nonempty_jcs_string(signature.get("value"))
     )
@@ -1792,7 +1787,7 @@ def _finality_bound_settlement_evidence_shape_valid(record):
     if (
         not isinstance(signature, dict)
         or set(signature) != {"algorithm", "signer", "value"}
-        or signature.get("algorithm") != "ed25519"
+        or not _string_member(signature.get("algorithm"), {"ed25519", "ecdsa-secp256k1", "sr1-aggregate"})
         or not _claim_reference_shape_valid(signature.get("signer"))
         or not _nonempty_jcs_string(signature.get("value"))
     ):
@@ -2460,6 +2455,10 @@ def _seb_unplaced_candidate_failure(record, ref, phase_key, summary_entry, resol
         if (
             not isinstance(execution, dict)
             or execution.get("jobId") != bundle.get("jobId")
+            # Verifier-owned execution indices use the same native integer
+            # contract as _resolve_authenticated_evidence_binding, not the
+            # wire-shape guard's integer-valued JSON number contract.
+            or not isinstance(execution.get("phaseIndex"), int)
             or not _safe_nonnegative_integer(execution.get("phaseIndex"))
             or execution.get("phaseIndex") != int(phase_index)
             or execution.get("phaseKind") != phase_kind

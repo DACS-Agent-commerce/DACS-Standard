@@ -177,6 +177,14 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         self.assertEqual(bool_case["reservation"]["projection"]["phaseIndex"], 1)
         self.assertEqual(R.laa_admission(bool_case), "error")
 
+        # CORE CF-5: 2, 2.0 and 2e0 denote the same admitted integer and
+        # reproduce the same canonical bytes and transition signature.
+        for index in (2, 2.0, 2e0):
+            with self.subTest(integer_spelling=index):
+                value = copy.deepcopy(self.cases["laa-transition-completion-audit"]["input"])
+                value["transitionEvidence"]["phaseIndex"] = index
+                self.assertEqual(R.laa_admission(value), "pass")
+
         for name in (
             "laa-transition-audit-txrefs-duplicate",
             "laa-transition-audit-txrefs-rail-substitution",

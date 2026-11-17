@@ -625,7 +625,9 @@ class FinalityResolutionContextTests(unittest.TestCase):
             queries[0]["subject"]["settlementEvidenceHash"],
             queries[1]["subject"]["settlementEvidenceHash"],
         )
-        self.assertNotEqual(
+        # Both legs belong to one session and retain its exact rail/profile
+        # under RTB-1; their evidence, queries and checkpoints are independent.
+        self.assertEqual(
             queries[0]["rail"]["consumerFinalityProfileHash"],
             queries[1]["rail"]["consumerFinalityProfileHash"],
         )

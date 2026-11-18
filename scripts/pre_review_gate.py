@@ -130,6 +130,10 @@ PINNED_REVIEW_EVIDENCE = {
 }
 
 PINNED_UNIT_REGRESSIONS = {
+    'pr461-x402-receipt-cf1-repertoire-refusal': {
+        "file": 'tests/test_x402_receipt_hash_vectors.py',
+        "test": 'X402ReceiptHashVectorTests.test_unassigned_extension_value_is_refused_without_a_hash',
+    },
     'issue442-unicode-repertoire-before-nfc': {
         "file": 'tests/test_cf1_unicode_version.py',
         "test": 'Cf1UnicodeVersionTests.test_later_assignment_is_rejected_before_normalization',

@@ -2,12 +2,17 @@ import base64
 import binascii
 import hashlib
 import json
+import sys
 import unicodedata
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+import jcs  # noqa: E402
+
 VECTORS = ROOT / "conformance" / "vectors" / "security" / "x402-receipt-hash-v0.1.json"
 SPEC = ROOT / "spec" / "DACS-4-SETTLE.md"
 
@@ -28,8 +33,13 @@ def nfc_deep(value):
 
 
 def canonical_json(value):
-    # The fixtures use only strings, booleans, objects, and arrays, for which
-    # this byte form is the RFC 8785 JCS form after DACS CF-1's NFC pre-pass.
+    # X402-2 applies CORE CF-1, including its pinned Unicode 15.0.0
+    # repertoire refusal, before RFC 8785 JCS: use the shared reference.
+    return jcs.canonicalize(value).encode("utf-8")
+
+
+def unpinned_host_nfc_json(value):
+    # Wrong implementation: host-version NFC without the CF-1 repertoire check.
     return json.dumps(
         nfc_deep(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False
     ).encode("utf-8")
@@ -79,6 +89,10 @@ class X402ReceiptHashVectorTests(unittest.TestCase):
                 continue
 
             receipt = decode_header(vector)
+            if vector["want"].get("errorCode") == "UNASSIGNED-CODE-POINT":
+                with self.assertRaises(jcs.UnicodeRepertoireError):
+                    canonical_json(receipt)
+                continue
             digest = hashlib.sha256(canonical_json(receipt)).hexdigest()
             wanted = vector["want"].get("paymentReceiptHash") or vector["want"].get(
                 "computedPaymentReceiptHash"
@@ -142,6 +156,33 @@ class X402ReceiptHashVectorTests(unittest.TestCase):
         self.assertEqual(tx_mismatch["expected"], "fail")
         self.assertEqual(network_mismatch["expected"], "fail")
 
+    def test_unassigned_extension_value_is_refused_without_a_hash(self):
+        vector = self.by_name["v2-unassigned-extension-value-is-refused"]
+        self.assertEqual(vector["expected"], "error")
+        self.assertEqual(vector["want"]["action"], "reject")
+        self.assertNotIn("paymentReceiptHash", vector["evidence"])
+        # Passes X402-1: exact v2 header, valid base64 and JSON, success true,
+        # extensions retained; X402-3 consistency also holds.
+        self.assertEqual(vector["responseHeader"]["name"], EXPECTED_HEADERS["2"])
+        receipt = decode_header(vector)
+        self.assertIs(receipt["success"], vector["want"]["decodedSuccess"])
+        self.assertEqual(
+            receipt["extensions"]["org.example.receipt-note"]["note"], chr(0x105C9)
+        )
+        self.assertEqual(receipt["transaction"], vector["evidence"]["settlementTxHash"])
+        self.assertEqual(
+            int(receipt["network"].split(":", 1)[1]), vector["evidence"]["chainId"]
+        )
+        # Fails X402-2: CF-1 refuses the value before NFC and hashing.
+        with self.assertRaises(jcs.UnicodeRepertoireError) as raised:
+            canonical_json(receipt)
+        self.assertEqual(raised.exception.code, vector["want"]["errorCode"])
+        # Wrong-implementation witness: unpinned host NFC would emit a hash.
+        self.assertEqual(
+            hashlib.sha256(unpinned_host_nfc_json(receipt)).hexdigest(),
+            vector["want"]["unpinnedHostNfcHash"],
+        )
+
     def test_non_success_cannot_produce_success_evidence(self):
         vector = self.by_name["v2-non-success-response"]
         self.assertIs(decode_header(vector)["success"], False)
@@ -158,6 +199,11 @@ class X402ReceiptHashVectorTests(unittest.TestCase):
         self.assertIn('version `"2"` selects `PAYMENT-RESPONSE`', spec)
         self.assertIn("including `extensions` and unrecognised members", spec)
         self.assertIn("`settlementTxHash` alone are not conforming preimages", spec)
+        self.assertIn(
+            "no `paymentReceiptHash` exists: the handler MUST NOT emit "
+            "success-outcome `pay-x402` evidence",
+            spec,
+        )
 
 
 if __name__ == "__main__":

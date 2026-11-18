@@ -1098,7 +1098,7 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 5. Anchor via SR-2; return success.
 
 - **(X402-1) Versioned receipt selection.** For a success-outcome record, `protocolVersion` MUST be the negotiated x402 version as a minimal unsigned-decimal string. Version `"1"` selects `X-PAYMENT-RESPONSE`; version `"2"` selects `PAYMENT-RESPONSE`. The handler MUST base64-decode the selected header, parse its JSON as that version's `SettlementResponse`, require `success == true`, and retain every received member, including `extensions` and unrecognised members. A handler MUST refuse a protocol version whose settlement-response header or schema it does not implement.
-- **(X402-2) Canonical receipt hash.** Before hashing, the handler MUST apply CORE §B.2 CF-1 to the complete X402-1 object. It MUST recursively NFC-normalise every JSON string value. It MUST then set `paymentReceiptHash = lowerhex(SHA-256(UTF8(JCS(nfcSettlementResponse))))`, where `nfcSettlementResponse` is that normalised object and JCS is RFC 8785. The value MUST be exactly 64 lower-case hexadecimal digits without `0x`. The base64 header text, decoded non-canonical JSON bytes, an on-chain transaction receipt, and `settlementTxHash` alone are not conforming preimages.
+- **(X402-2) Canonical receipt hash.** Before hashing, the handler MUST apply CORE §B.2 CF-1 to the complete X402-1 object. It MUST recursively NFC-normalise every JSON string value. It MUST then set `paymentReceiptHash = lowerhex(SHA-256(UTF8(JCS(nfcSettlementResponse))))`, where `nfcSettlementResponse` is that normalised object and JCS is RFC 8785. The value MUST be exactly 64 lower-case hexadecimal digits without `0x`. The base64 header text, decoded non-canonical JSON bytes, an on-chain transaction receipt, and `settlementTxHash` alone are not conforming preimages. If CF-1 refuses any string value in that object with `UNASSIGNED-CODE-POINT`, including a value inside `extensions` or an unrecognised member, no `paymentReceiptHash` exists: the handler MUST NOT emit success-outcome `pay-x402` evidence even if value has already moved on-chain, and a verifier MUST reject the response.
 - **(X402-3) Receipt/evidence consistency.** A successful response's `transaction` MUST equal `settlementTxHash` when that field is recorded. Its `network` MUST map to `chainId` when that field is recorded: directly from v2 `eip155:{chainId}`, or through the registered v1 legacy-network mapping. A mismatch MUST reject the evidence; it MUST NOT be repaired by hashing a different receipt interpretation.
 - **(X402-4) Verification and invalid input.** A verifier presented with the response header MUST independently apply X402-1 and X402-2 and compare the resulting 32 bytes. Invalid base64, invalid JSON/schema, a non-success response, a non-canonical stored hash, or a hash mismatch MUST be rejected. A handler without the complete successful response object MUST NOT emit success-outcome `pay-x402` evidence.
 
@@ -1110,13 +1110,13 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 >
 > For pure HTTP-402 use cases that do not need a session bundle, bare x402 is appropriate; pay-x402 is the right wrapper when the x402 transaction participates in a multi-stage agent commerce lifecycle.
 
-> **Note (non-normative) — why JCS.** x402 transports a JSON object in base64 but does not make one language's emitted property order, whitespace, escaping, or base64 spelling authoritative. X402-2 makes those transport differences hash-identical while preserving every semantic receipt member. The off-chain receipt remains the material disclosed to a receipt verifier; the on-chain DACS field is its commitment.
+> **Note (non-normative) — why JCS.** x402 transports a JSON object in base64 but does not make one language's emitted property order, whitespace, escaping, or base64 spelling authoritative. X402-2 makes those transport differences hash-identical while committing every semantic member of a receipt that CF-1 admits. A receipt that CF-1 refuses is rejected whole, not altered or partially hashed. The off-chain receipt remains the material disclosed to a receipt verifier; the on-chain DACS field is its commitment.
 
 **Failure modes.**
 
 - server-side x402 endpoint rejects (insufficient payment, unsupported scheme) → `counterparty`
 - HTTP error after payment submitted → `transient` (retry only through the rail's idempotency/reconciliation path; for EIP-3009, use the derived-nonce rule below)
-- malformed, non-success, hash-mismatched, or transaction/network-inconsistent settlement response → `permanent`
+- malformed, non-success, CF-1-refused (X402-2), hash-mismatched, or transaction/network-inconsistent settlement response → `permanent`
 - signed receipt extension present but its signature invalid → `permanent`
 - EIP-3009 nonce already used or cancelled and not reconcilable to this phase's completed transfer → `permanent`
 

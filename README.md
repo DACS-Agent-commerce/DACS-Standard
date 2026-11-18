@@ -133,7 +133,9 @@ interpretation. See [CONTRIBUTING.md](./CONTRIBUTING.md), open an
 
 ## Local validation
 
-Local validation uses Python 3. The cryptographic reference suites require the
+Local validation uses Python 3.12 or newer: the CF-1 reference canonicalizer
+refuses normalization data older than Unicode 15.0.0 (CORE §B.2), and Python
+3.11 ships Unicode 14.0.0. The cryptographic reference suites require the
 pinned dependencies installed by CI. Follow [the setup and zero-skip test
 command in CONTRIBUTING.md](./CONTRIBUTING.md#validation) before running the
 checks below:

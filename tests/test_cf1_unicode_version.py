@@ -105,6 +105,14 @@ class Cf1UnicodeVersionTests(unittest.TestCase):
         finally:
             jcs._assigned_in_unicode_15.cache_clear()
 
+    def test_pinned_table_is_exempt_from_checkout_line_ending_conversion(self):
+        # A CRLF checkout changes the digest and makes every string value fail
+        # closed; git must never convert this file's line endings.
+        relative = jcs._AGE_PATH.relative_to(ROOT).as_posix()
+        rules = (ROOT / ".gitattributes").read_text(encoding="utf-8").splitlines()
+        self.assertIn(relative + " -text", rules)
+        self.assertNotIn(b"\r", jcs._AGE_PATH.read_bytes())
+
     def test_older_normalizer_is_refused(self):
         with mock.patch.object(jcs.unicodedata, "unidata_version", "14.0.0"):
             with self.assertRaisesRegex(ValueError, "15.0.0 or newer"):

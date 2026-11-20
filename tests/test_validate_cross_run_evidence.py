@@ -137,6 +137,28 @@ class CrossRunEvidenceTests(unittest.TestCase):
             "implementation coordinates recorded but UNVERIFIED", output.getvalue()
         )
 
+    def test_cli_invalid_utf8_does_not_skip_later_evidence(self):
+        invalid_path = self.repo / "invalid-utf8.json"
+        valid_path = self.repo / "valid.json"
+        invalid_path.write_bytes(b"\xff\xfe{}")
+        valid_path.write_text(json.dumps(self.evidence), encoding="utf-8")
+        output = io.StringIO()
+        errors = io.StringIO()
+
+        with mock.patch("sys.stdout", output), mock.patch("sys.stderr", errors):
+            result = main(
+                [
+                    "--standard-checkout",
+                    str(self.repo),
+                    str(invalid_path),
+                    str(valid_path),
+                ]
+            )
+
+        self.assertEqual(result, 1)
+        self.assertIn(f"INVALID {invalid_path}:", errors.getvalue())
+        self.assertIn(f"VALID {valid_path}:", output.getvalue())
+
     def test_git_replace_cannot_substitute_recorded_revision_bytes(self):
         original_revision = self.revision
         corpus = self.repo / "conformance/vectors/security/fixture-set.json"

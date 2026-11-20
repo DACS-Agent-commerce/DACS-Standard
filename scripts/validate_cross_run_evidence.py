@@ -278,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
                     else None
                 ),
             )
-        except (OSError, EvidenceError) as exc:
+        except (OSError, UnicodeDecodeError, EvidenceError) as exc:
             failed = True
             print(f"INVALID {path}: {exc}", file=sys.stderr)
         else:

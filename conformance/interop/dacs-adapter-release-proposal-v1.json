@@ -49,7 +49,7 @@
   },
   "adapter": {
     "name": "dacs-standard-primitives",
-    "version": "issue-442-proposal.1",
+    "version": "issue-442-proposal.2",
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
     "source": {
       "path": "scripts/dacs_adapter.py",
@@ -159,6 +159,12 @@
           "caseId": "number-over-dacs-magnitude",
           "sourceExpected": "fail",
           "sourceExpectedErrorCode": "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+          "expectedErrorCode": "OPERATION_FAILED"
+        },
+        {
+          "caseId": "unassigned-in-unicode-15-0",
+          "sourceExpected": "fail",
+          "sourceExpectedErrorCode": "UNASSIGNED-CODE-POINT",
           "expectedErrorCode": "OPERATION_FAILED"
         }
       ],

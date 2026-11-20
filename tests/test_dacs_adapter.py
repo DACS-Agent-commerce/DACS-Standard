@@ -61,7 +61,7 @@ class DacsAdapterTests(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn(
-            "14 advertised-family cases, 4 bounded F5 cases, 2 unsupported mappings",
+            "15 advertised-family cases, 4 bounded F5 cases, 2 unsupported mappings",
             completed.stdout,
         )
 
@@ -169,7 +169,7 @@ class DacsAdapterTests(unittest.TestCase):
         self.assertEqual(
             {
                 "families": 4,
-                "executableCases": 14,
+                "executableCases": 15,
                 "boundedCases": 4,
                 "unsupportedCases": 2,
             },

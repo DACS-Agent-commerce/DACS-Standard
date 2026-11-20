@@ -69,8 +69,11 @@ description so the change is reviewable inline.
 
 ## Validation
 
-Use Python 3 and an isolated environment with the same cryptographic dependency
-pins as [the validation workflow](./.github/workflows/validate.yml):
+Use Python 3.12 or newer and an isolated environment with the same cryptographic
+dependency pins as [the validation workflow](./.github/workflows/validate.yml).
+CI runs 3.12, 3.13 and 3.14. CF-1 (CORE §B.2) requires Unicode 15.0.0 or newer
+normalization data, and Python 3.11 ships Unicode 14.0.0, so its reference
+canonicalizer refuses every string value:
 
 ```sh
 python3 -m venv .venv

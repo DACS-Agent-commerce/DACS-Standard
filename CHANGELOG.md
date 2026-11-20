@@ -13,6 +13,32 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — pinned Unicode repertoire for canonicalization (CORE §B.2; CF-1; DACS-4 §9.5.7 X402-2)
+
+- Pin values-only NFC to Unicode 15.0.0 and reject string values without a
+  numeric Age in that version before NFC with `UNASSIGNED-CODE-POINT`
+  (structural `error`, not a bad signature). Later normalizers must enforce
+  the pinned repertoire first. This tightens acceptance of previously
+  unspecified values; it does not rewrite historical signed bytes or declare
+  them currently conformant. Member names remain exact; CF-5 still rejects
+  lone surrogates, while noncharacters and private-use scalars remain admitted
+  by their numeric Age. Commit the exact DerivedAge data and its digest and
+  license, extend the generated canonical-JSON candidate vectors, and cover
+  the cross-runtime composition and admission order in §14.6 tests (#442).
+- **x402 receipts (DACS-4 §9.5.7).** X402-2 already applies CF-1 to the
+  complete settlement response, including `extensions` and unrecognised
+  members. It now states the consequence: a receipt whose string value CF-1
+  refuses has no `paymentReceiptHash`; the handler emits no success evidence
+  even if value has already moved on-chain (`permanent`), and a verifier
+  rejects it. The "why JCS" note no longer claims that every receipt member is
+  preserved. `x402-receipt-hash-v0.1.json` adds one structural-error vector
+  (13 cases), and its test now hashes through the shared CF-1 reference rather
+  than unpinned host NFC.
+- **Editorial.** DACS-1 §6.3.4 no longer calls the NFC Unicode version an open
+  question; the canonical-JSON corpus README states 38 cases; README and
+  CONTRIBUTING require Python 3.12 or newer; `.gitattributes` keeps the
+  digest-pinned DerivedAge file free of checkout line-ending conversion.
+
 ### Changed — `cci-tlsn` stored-proof check (DACS-2 §7.3.3; PSP-3)
 
 - **Stored-proof check** — the §7.3.3 `tlsnotary` procedure is unchanged. A new

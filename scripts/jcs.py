@@ -16,7 +16,11 @@ RFC 8785 Appendix B edge cases.
 From this the content hash (CORE §B.2) and the §B.7 signature payload derive. The
 module is dependency-free so a §B.2 hash reproduces from a clean clone.
 
-CF-1 (CORE §B.2). CF-1 binds "every JSON string *value*" to NFC. This module
+CF-1 (CORE §B.2). CF-1 binds "every JSON string *value*" to Unicode 15.0.0 NFC.
+Values outside the pinned DerivedAge repertoire are rejected before NFC, even
+if the host recognizes a later assignment. Numeric Age includes noncharacters
+and private-use code points; lone surrogates remain invalid Unicode.
+This module
 follows that literal wording: string **values** are NFC-normalised before
 serialisation; object **member names (keys)** are serialised and UTF-16-sorted
 **as received**, exactly as RFC 8785 specifies (RFC 8785 performs no Unicode
@@ -37,11 +41,64 @@ accepted object model reaches this module.
 
 from __future__ import annotations
 
+from bisect import bisect_right
+from functools import lru_cache
+import hashlib
 import math
+from pathlib import Path
 import unicodedata
 from typing import Any
 
 _SAFE_INT_MAX = 2 ** 53 - 1  # 9_007_199_254_740_991
+UNICODE_VERSION = "15.0.0"
+_AGE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "conformance" / "data" / "unicode-15.0.0-DerivedAge.txt"
+)
+_AGE_SHA256 = "7570877e0fa197c45338f7c41a02636da4e14c8dba6a3611a01cd30bf329d5ca"
+
+
+class UnicodeRepertoireError(ValueError):
+    """A CF-1 structural refusal before normalization or canonical bytes."""
+
+    code = "UNASSIGNED-CODE-POINT"
+
+
+@lru_cache(maxsize=1)
+def _assigned_in_unicode_15() -> tuple[tuple[int, int], ...]:
+    """Load and merge the immutable Age <= 15.0 table, independently of the host."""
+    source = _AGE_PATH.read_bytes()
+    if hashlib.sha256(source).hexdigest() != _AGE_SHA256:
+        raise ValueError("CF-1 Unicode 15.0.0 DerivedAge source hash mismatch")
+    intervals = []
+    for line in source.decode("utf-8").splitlines():
+        entry = line.split("#", 1)[0].strip()
+        if not entry:
+            continue
+        points, age = (part.strip() for part in entry.split(";"))
+        if tuple(map(int, age.split("."))) > (15, 0):
+            continue
+        bounds = points.split("..")
+        intervals.append((int(bounds[0], 16), int(bounds[-1], 16)))
+    merged: list[tuple[int, int]] = []
+    for start, end in sorted(intervals):
+        if merged and start <= merged[-1][1] + 1:
+            merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
+        else:
+            merged.append((start, end))
+    return tuple(merged)
+
+
+def _reject_unassigned(text: str) -> None:
+    intervals = _assigned_in_unicode_15()
+    for ch in text:
+        cp = ord(ch)
+        index = bisect_right(intervals, (cp, 0x110000)) - 1
+        if index < 0 or cp > intervals[index][1]:
+            raise UnicodeRepertoireError(
+                f"UNASSIGNED-CODE-POINT: U+{cp:04X} has no numeric Age "
+                f"in Unicode {UNICODE_VERSION} (CORE §B.2 CF-1)"
+            )
 
 # RFC 8785 §3.2.2.2 short escapes; all other C0 controls use lowercase \u00xx.
 _SHORT_ESCAPES = {
@@ -80,8 +137,11 @@ def _encode_string(text: str) -> str:
 
 
 def _encode_value_string(text: str) -> str:
-    # CF-1: string *values* are NFC-normalised before serialisation.
+    # CF-1: reject against the pinned repertoire BEFORE any host normalization.
     _ensure_utf8(text)
+    _reject_unassigned(text)
+    if tuple(map(int, unicodedata.unidata_version.split("."))) < (15, 0, 0):
+        raise ValueError("CF-1 requires a Unicode 15.0.0 or newer NFC normalizer")
     return _encode_string(unicodedata.normalize("NFC", text))
 
 

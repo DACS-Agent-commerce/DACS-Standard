@@ -43,7 +43,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 54 | `fail` / `indeterminate` / `pass` |
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
-| [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
+| [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 38 | `fail` / `pass` |
 | [`cci-native-identifier-rows-v0.8.json`](cci-native-identifier-rows-v0.8.json) | DACS-1 §6.3.1 cci-humanpassport and cci-tlsn identifier rows | 27 | `fail` / `pass` |
 | [`cci-tlsn-stored-proof-check-v0.1.json`](cci-tlsn-stored-proof-check-v0.1.json) | DACS §7.3.3 (stored-proof check, cci-tlsn only); PSP-3 | 23 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
@@ -103,7 +103,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
+| [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 13 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
 _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
@@ -224,13 +224,22 @@ test cases.
 
 ### `canonical-json-v0.1.json` — CORE §B.2 RFC 8785 JCS + CF-1
 
-25 candidate vectors pin exact canonical UTF-8 hex rather than only a generic
+38 candidate vectors pin exact canonical UTF-8 hex rather than only a generic
 accept/reject result. They cover the five fractional values that exposed the
 cross-implementation divergence in #270; RFC 8785's 1e-6 notation boundary,
 negative zero, positive and negative minimum binary64 values, integral-float
 formatting, and a round-to-even sample; both binary64 paths at the inclusive
 DACS magnitude limits; and fail-closed handling of over-magnitude, non-finite,
 BigInt, and invalid-Unicode inputs.
+
+Thirteen of them pin CF-1's Unicode 15.0.0 repertoire (#442). Seven string
+values are refused with `UNASSIGNED-CODE-POINT` before NFC: U+105C9 (16.0), the
+`U+1611E U+1611E` and `U+105D2 U+0307` inputs that compose only under 16.0,
+reordering by newly assigned U+0897 (16.0) and U+1ACF (17.0), U+2EBF0 (15.1),
+and a still-reserved U+0378 nested in an array. Six are admitted: the 15.0
+assignments U+1FAE8 and U+1F6DC, noncharacters, private-use scalars, and
+later-assigned member names U+105C9 and U+0897, which stay exact because the
+repertoire applies to values only.
 
 The Unicode cases discriminate DACS's values-only CF-1 layer from RFC 8785
 member-name handling: an NFD string value becomes NFC, an NFD member name stays
@@ -1083,7 +1092,7 @@ permits the session.
 
 ### `x402-receipt-hash-v0.1.json` — §9.5.7 X402-1..X402-4
 
-12 candidate vectors pin the existing `paymentReceiptHash` to SHA-256 over the
+13 candidate vectors pin the existing `paymentReceiptHash` to SHA-256 over the
 RFC 8785 JCS form of the complete decoded successful x402 `SettlementResponse`
 after recursively NFC-normalising every JSON string value under CORE CF-1. They
 cover v1 `X-PAYMENT-RESPONSE` and v2 `PAYMENT-RESPONSE`, prove that property
@@ -1093,7 +1102,11 @@ hash, and require extension members to remain in the canonical object.
 Negative cases reject an extension mutation, the live #246 placeholder
 `sha256(settlementTxHash)`, a version/header mismatch, invalid base64, a
 non-success response, a transaction mismatch, and a v2 CAIP-2 network/chainId
-mismatch. The fixtures use the official x402 v1/v2 response shapes at
+mismatch. One structural `error` case is a successful v2 receipt whose
+`extensions` carries U+105C9, assigned after Unicode 15.0.0: CF-1 refuses it
+with `UNASSIGNED-CODE-POINT`, so no receipt hash exists. Its
+`unpinnedHostNfcHash` records what a host-version NFC implementation without
+the pinned repertoire would wrongly emit. The fixtures use the official x402 v1/v2 response shapes at
 `x402-foundation/x402@22a7677` but define DACS canonicalization rather than
 treating any SDK's JSON serializer as authoritative.
 

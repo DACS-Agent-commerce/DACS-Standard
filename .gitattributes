@@ -1,0 +1,3 @@
+# The CF-1 reference canonicalizer checks this file's exact SHA-256 (CORE §B.2).
+# Never convert its line endings on checkout (for example core.autocrlf=true).
+conformance/data/unicode-15.0.0-DerivedAge.txt -text

@@ -41,6 +41,8 @@ def decode_tagged(value: Any) -> Any:
 
 def adapter_error_code(error: Exception) -> str:
     """Map the reference adapter's exception to the vector's rejection class."""
+    if isinstance(error, jcs.UnicodeRepertoireError):
+        return error.code
     message = str(error)
     if isinstance(error, TypeError):
         return "UNSUPPORTED-NATIVE-TYPE"
@@ -108,6 +110,17 @@ class CanonicalJsonVectorTests(unittest.TestCase):
                 self.assertIsInstance(value, float)
                 self.assertEqual(canonical, jcs.canonicalize(value))
                 self.assertEqual(canonical.encode().hex(), vector["canonicalUtf8Hex"])
+
+    def test_manifest_binds_current_unicode_corpus_bytes_and_count(self):
+        import hashlib
+
+        manifest = json.loads((ROOT / "conformance" / "MANIFEST.json").read_text())
+        binding = manifest["inputBindings"]["canonical-json-v0.1"]
+        self.assertEqual(binding["caseCount"], len(self.data["vectors"]))
+        self.assertEqual(binding["sha256"], hashlib.sha256(self.path.read_bytes()).hexdigest())
+        self.assertEqual(binding["path"], str(self.path.relative_to(ROOT)))
+        case = next(c for c in manifest["cases"] if c["id"] == "canon-unicode15-unassigned-value")
+        self.assertEqual(case["want"]["errorCode"], "UNASSIGNED-CODE-POINT")
 
     def test_vectors_produce_exact_expected_bytes_rejection_or_honest_abstention(self):
         abstentions = []

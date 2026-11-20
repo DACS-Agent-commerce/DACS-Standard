@@ -8,8 +8,8 @@
     "bigint": "Construct the language's native arbitrary-precision integer type, not a JSON number.",
     "unicode-code-units": "Construct a string from the listed UTF-16 code units, including invalid lone surrogates."
   },
-  "count": 25,
-  "hash": "ee91bf9e9f3d7915b528c0fe3edeac86d27962fc53af90dbaa25b1620d26c5a5",
+  "count": 38,
+  "hash": "f94acb0221fa9c64729a1741940e880f0f7ccdeb4fad90fdd0a1a42e5c3a4347",
   "vectors": [
     {
       "name": "fraction-one-half",
@@ -272,6 +272,135 @@
       "canonicalUtf8Hex": "7b22f0908080223a322c22ee8080223a317d",
       "rule": "RFC 8785 section 3.2.3",
       "note": "An astral key sorts before U+E000 by UTF-16 code units, not code points."
+    },
+    {
+      "name": "unassigned-in-unicode-15-0",
+      "operation": "canonicalize",
+      "input": {
+        "label": "\ud801\uddc9"
+      },
+      "expected": "fail",
+      "expectedErrorCode": "UNASSIGNED-CODE-POINT",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "U+105C9 was assigned in 16.0. Reject before NFC; this is a canonicalization refusal (structural error), not a bad signature."
+    },
+    {
+      "name": "later-assigned-composition-rejected",
+      "operation": "canonicalize",
+      "input": {
+        "label": "\ud818\udd1e\ud818\udd1e"
+      },
+      "expected": "fail",
+      "expectedErrorCode": "UNASSIGNED-CODE-POINT",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "The pair is unchanged by Unicode 15.0 NFC but composes to U+16121 under 16.0. Refuse before either normalization result."
+    },
+    {
+      "name": "unicode-16-combining-mark-reordering-rejected",
+      "operation": "canonicalize",
+      "input": "a\u0897\u0316",
+      "expected": "fail",
+      "expectedErrorCode": "UNASSIGNED-CODE-POINT",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "Unicode 16.0 moves U+0316 before the newly assigned U+0897; 15.0 and 15.1 leave the input unchanged. Reject before NFC."
+    },
+    {
+      "name": "todhri-composition-rejected",
+      "operation": "canonicalize",
+      "input": "\ud801\uddd2\u0307",
+      "expected": "fail",
+      "expectedErrorCode": "UNASSIGNED-CODE-POINT",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "The two-code-point input composes to U+105C9 only in 16.0+. A single U+105C9 is not itself an NFC-divergence witness."
+    },
+    {
+      "name": "unicode-17-combining-mark-reordering-rejected",
+      "operation": "canonicalize",
+      "input": "a\u1acf\u0316",
+      "expected": "fail",
+      "expectedErrorCode": "UNASSIGNED-CODE-POINT",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "Unicode 17.0 reorders this newly assigned combining mark; the Python 3.14 Unicode 16.0 normalizer leaves it unchanged."
+    },
+    {
+      "name": "unicode-15-1-assignment-rejected",
+      "operation": "canonicalize",
+      "input": "\ud87a\udff0",
+      "expected": "fail",
+      "expectedErrorCode": "UNASSIGNED-CODE-POINT",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "A CJK Extension I character first assigned in 15.1 is outside the 15.0 repertoire even on a host that recognizes it."
+    },
+    {
+      "name": "reserved-value-rejected",
+      "operation": "canonicalize",
+      "input": [
+        {
+          "extension": "\u0378"
+        }
+      ],
+      "expected": "fail",
+      "expectedErrorCode": "UNASSIGNED-CODE-POINT",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "Still-reserved values are refused at every nesting level."
+    },
+    {
+      "name": "later-assigned-member-name-preserved",
+      "operation": "canonicalize",
+      "input": {
+        "\ud801\uddc9": 1
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "7b22f0909789223a317d",
+      "rule": "CORE \u00a7B.2 CF-1; RFC 8785 section 3.2.3",
+      "note": "The pinned repertoire applies to values only. A scalar member name stays exact even when assigned after Unicode 15.0."
+    },
+    {
+      "name": "unicode-15-0-assignment-accepted",
+      "operation": "canonicalize",
+      "input": "\ud83e\udee8",
+      "expected": "pass",
+      "canonicalUtf8Hex": "22f09faba822",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "SHAKING FACE was assigned in 15.0 and is inside the inclusive pin."
+    },
+    {
+      "name": "unicode-15-0-wireless-accepted",
+      "operation": "canonicalize",
+      "input": "\ud83d\udedc",
+      "expected": "pass",
+      "canonicalUtf8Hex": "22f09f9b9c22",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "WIRELESS was assigned in 15.0 and remains inside the pinned repertoire."
+    },
+    {
+      "name": "later-combining-mark-member-name-preserved",
+      "operation": "canonicalize",
+      "input": {
+        "\u0897": 1
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "7b22e0a297223a317d",
+      "rule": "CORE \u00a7B.2 CF-1; RFC 8785 section 3.2.3",
+      "note": "A later-assigned mark is allowed as an unchanged member name; only string values receive CF-1 normalization and repertoire checks."
+    },
+    {
+      "name": "noncharacter-values-preserved",
+      "operation": "canonicalize",
+      "input": "\ufdd0\uffff\udbff\udfff",
+      "expected": "pass",
+      "canonicalUtf8Hex": "22efb790efbfbff48fbfbf22",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "Noncharacters have numeric DerivedAge values and remain admitted; CF-1 does not substitute a General_Category=Cn rejection policy."
+    },
+    {
+      "name": "private-use-values-preserved",
+      "operation": "canonicalize",
+      "input": "\ue000\udb80\udc00\udbc0\udc00",
+      "expected": "pass",
+      "canonicalUtf8Hex": "22ee8080f3b08080f480808022",
+      "rule": "CORE \u00a7B.2 CF-1",
+      "note": "BMP and supplementary private-use scalars have early Age values and stay admitted."
     },
     {
       "name": "lone-surrogate-string",

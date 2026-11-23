@@ -182,7 +182,9 @@ class AdapterRunnerFocusedSuiteTests(unittest.TestCase):
         self.assert_gate_rejected("  " + self.summary().replace("\n", "\n  "))
 
     def test_missing_duplicate_or_malformed_top_level_plan_fails_closed(self):
-        for plan in ("", "1..016\n", "1..x\n", "1..16\n1..16\n"):
+        for plan in ("", "1..016\n", "1..x\n", "1..0\n",
+                     "1..0 # SKIP unavailable\n", "1..16 # TODO later\n",
+                     "1..16\n1..16\n"):
             with self.subTest(plan=plan):
                 self.assert_gate_rejected(self.summary().replace("1..16\n", plan, 1))
 

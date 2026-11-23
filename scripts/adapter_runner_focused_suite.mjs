@@ -6,7 +6,7 @@ export function parseFocusedSuite(output) {
     if (/^1\.\./.test(line)) indexes.push(index);
     return indexes;
   }, []);
-  if (plans.length !== 1 || !/^1\.\.(0|[1-9][0-9]*)(?: # (?:SKIP|TODO)(?: .*)?)?$/.test(lines[plans[0]])) {
+  if (plans.length !== 1 || !/^1\.\.[1-9][0-9]*$/.test(lines[plans[0]])) {
     throw new Error('contributor focused suite has missing, duplicate or malformed top-level plan');
   }
 

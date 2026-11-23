@@ -2,11 +2,22 @@
 export function parseFocusedSuite(output) {
   const expected = { tests: 16, pass: 16, fail: 0, skipped: 0, cancelled: 0, todo: 0 };
   const lines = output.split(/\r?\n/);
+  const plans = lines.reduce((indexes, line, index) => {
+    if (/^1\.\.\d+$/.test(line)) indexes.push(index);
+    return indexes;
+  }, []);
+  if (plans.length !== 1 || lines[plans[0]] !== `1..${expected.tests}`) {
+    throw new Error('contributor focused suite has missing, duplicate or incorrect top-level plan');
+  }
+
+  // Node test diagnostics may begin with a count key. Only parse declarations
+  // after the root plan, where the TAP reporter writes its terminal summary.
+  const footer = lines.slice(plans[0] + 1);
   const counts = {};
   for (const [key, value] of Object.entries(expected)) {
     // Count even malformed declarations, so a valid line cannot hide a bad twin.
     // Indented subtest diagnostics are not the top-level summary.
-    const declarations = lines.filter(line => new RegExp(`^#[ \\t]*${key}\\b`).test(line));
+    const declarations = footer.filter(line => new RegExp(`^#[ \\t]*${key}\\b`).test(line));
     if (declarations.length !== 1 || !new RegExp(`^# ${key} (0|[1-9][0-9]*)$`).test(declarations[0])) {
       throw new Error(`contributor focused suite has missing, duplicate or malformed ${key} count`);
     }

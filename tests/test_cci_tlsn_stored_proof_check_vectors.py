@@ -375,6 +375,7 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
             ("fail-subject", "indeterminate"): "indeterminate",
             ("fail-subject", "fail"): "fail",
             ("fail-subject", "pass"): "fail",
+            ("fail-subject", pra5): "error",
             ("pass-subject-declared", "pass"): "pass",
             ("pass-subject-declared", pra5): "error",
             ("pass-no-subject", "pass"): "pass",
@@ -389,13 +390,11 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
         keys = [(c["check"], c["parser"]) for c in cases]
         self.assertEqual(len(keys), len(set(keys)))
         self.assertEqual(len({c["name"] for c in cases}), len(cases))
-        # a wrong subject is only found by a parser that ran, so it never meets PRA-5
-        reachable = {
+        expected_matrix = {
             (check, parser)
             for check in CHECK_RESULTS for parser in PARSER_OUTCOMES
-            if (check, parser) != ("fail-subject", "error-pra5-preinvocation")
         }
-        self.assertEqual(set(keys), reachable)
+        self.assertEqual(set(keys), expected_matrix)
         for case in cases:
             with self.subTest(case=case["name"]):
                 self.assertEqual(compose(case["check"], case["parser"]), case["expected"])

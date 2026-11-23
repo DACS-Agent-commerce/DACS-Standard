@@ -72,7 +72,7 @@ class AdapterRunnerFocusedSuiteTests(unittest.TestCase):
             env={**os.environ, "TMPDIR": str(ROOT)},
         )
 
-    def run_producer_gate(self, extra="", mode="gate", diagnostic=None):
+    def run_producer_gate(self, extra="", mode="gate", diagnostic=None, nested=False):
         with tempfile.TemporaryDirectory(dir=ROOT) as directory:
             runner = Path(directory)
             suite = runner / "conformance/shared-suite/unsupported-case.test.mjs"
@@ -80,10 +80,15 @@ class AdapterRunnerFocusedSuiteTests(unittest.TestCase):
             first_test = "test('passing-0', () => {});"
             if diagnostic is not None:
                 first_test = f"test('passing-0', t => t.diagnostic({json.dumps(diagnostic)}));"
+            tests = [first_test]
+            if nested:
+                tests.extend(f"test('passing-{i}', () => {{}});" for i in range(1, 14))
+                tests.append("test('parent', async t => { await t.test('child', () => {}); });")
+            else:
+                tests.extend(f"test('passing-{i}', () => {{}});" for i in range(1, 16))
             suite.write_text(
                 "import { test } from 'node:test';\n"
-                + first_test + "\n"
-                + "\n".join(f"test('passing-{i}', () => {{}});" for i in range(1, 16))
+                + "\n".join(tests)
                 + "\n" + extra,
                 encoding="utf-8",
             )
@@ -120,6 +125,10 @@ class AdapterRunnerFocusedSuiteTests(unittest.TestCase):
             with self.subTest(diagnostic=diagnostic):
                 completed = self.run_producer_gate(diagnostic=diagnostic)
                 self.assertEqual(0, completed.returncode, completed.stderr)
+
+    def test_producer_accepts_nested_test_plan_when_suite_counts_include_subtests(self):
+        completed = self.run_producer_gate(nested=True)
+        self.assertEqual(0, completed.returncode, completed.stderr)
 
     def test_packet_counts_are_read_from_verified_result(self):
         completed = self.run_producer_gate(mode="packet")
@@ -172,8 +181,8 @@ class AdapterRunnerFocusedSuiteTests(unittest.TestCase):
     def test_indented_diagnostic_counts_are_not_summary(self):
         self.assert_gate_rejected("  " + self.summary().replace("\n", "\n  "))
 
-    def test_missing_or_duplicate_top_level_plan_fails_closed(self):
-        for plan in ("", "1..15\n", "1..16\n1..16\n"):
+    def test_missing_duplicate_or_malformed_top_level_plan_fails_closed(self):
+        for plan in ("", "1..016\n", "1..x\n", "1..16\n1..16\n"):
             with self.subTest(plan=plan):
                 self.assert_gate_rejected(self.summary().replace("1..16\n", plan, 1))
 

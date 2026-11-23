@@ -3,11 +3,11 @@ export function parseFocusedSuite(output) {
   const expected = { tests: 16, pass: 16, fail: 0, skipped: 0, cancelled: 0, todo: 0 };
   const lines = output.split(/\r?\n/);
   const plans = lines.reduce((indexes, line, index) => {
-    if (/^1\.\.\d+$/.test(line)) indexes.push(index);
+    if (/^1\.\./.test(line)) indexes.push(index);
     return indexes;
   }, []);
-  if (plans.length !== 1 || lines[plans[0]] !== `1..${expected.tests}`) {
-    throw new Error('contributor focused suite has missing, duplicate or incorrect top-level plan');
+  if (plans.length !== 1 || !/^1\.\.(0|[1-9][0-9]*)(?: # (?:SKIP|TODO)(?: .*)?)?$/.test(lines[plans[0]])) {
+    throw new Error('contributor focused suite has missing, duplicate or malformed top-level plan');
   }
 
   // Node test diagnostics may begin with a count key. Only parse declarations

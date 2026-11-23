@@ -957,7 +957,9 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
         ]
         valid, indeterminate_seen = _classify_descriptor_identities(
             candidates,
-            lambda candidate: _validate_successor(head, candidate, case),
+            lambda candidate, current_head=head: _validate_successor(
+                current_head, candidate, case
+            ),
         )
         if len(valid) > 1:
             return "indeterminate"

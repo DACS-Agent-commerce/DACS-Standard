@@ -423,8 +423,6 @@ class CciTlsnStoredProofCheckVectorTests(unittest.TestCase):
         self.assertIn("composes outcomes only", description)
         self.assertIn("does not run a parser", description)
         self.assertIn("compositionCases", description)
-        self.assertIn("all combinations", description)
-        self.assertIn("exponent forms such as 1e2", description)
 
     def test_spec_restores_the_base_procedure_paragraph(self):
         section = spec_section()

@@ -2334,7 +2334,7 @@ does not run a parser.
 | `scheme`, `identifier` | always `cci-tlsn`, and `H` |
 | `storedEntry` | the stored entry for `H` as `proof` (or `proofRaw`, its JSON text, for the same reasons as `bodyRaw`) and `userId`, or `null` |
 | `recipe` | `dataMap`; a `subject` key is the subject entry |
-| `proof` | `body` (the supplied proof; `bodyRaw` is its JSON text, used when it has a duplicate member name or when the JSON number spelling must be preserved (including exact decimal values and exponent forms such as `1e2`)) and `subject` (the value `dataMap.subject` resolves to, `null` if nothing) |
+| `proof` | `body` (the supplied proof; `bodyRaw` is its JSON text, used when it has a duplicate member name, a number a binary float cannot hold exactly, or a number spelling that must be preserved, such as `1e2`) and `subject` (the value `dataMap.subject` resolves to, `null` if nothing) |
 
 Execute with:
 

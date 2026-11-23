@@ -13,6 +13,30 @@ The format used per release:
 
 ## [Unreleased]
 
+### Changed — `cci-tlsn` stored-proof check (DACS-2 §7.3.3; PSP-3)
+
+- **Stored-proof check** — the §7.3.3 `tlsnotary` procedure is unchanged. A new
+  paragraph adds a check that applies only to a requirement on a registered
+  `cci-tlsn:H` claim: `H` resolves to the stored web2 entry and the supplied
+  proof MUST equal the stored proof (`fail` if `H` resolves to nothing or the
+  proofs differ), compared by type-preserving structural equality (member
+  order ignored, numbers equal when their JSON text gives the same exact
+  decimal value so `1`, `1.0` and `1e0` are equal and `1.00000000000000001`
+  and `1` are not, no number equals a boolean or string, a duplicate member
+  name in either proof fails). When `recipe.parserRules.dataMap` declares a `subject` entry,
+  its value MUST equal the stored `userId` as JSON strings only (exact equality
+  after NFC); a non-string on either side, a value that resolves to nothing, or a
+  mismatch is `fail`. Numeric ids are not yet supported and fail closed. It adds
+  no other scheme, session binding, signature, signature domain or nonce use,
+  and no new outcome. PSP-3 gains one exception: a declared `subject` entry
+  that resolves to nothing fails this check when the parser rules would
+  otherwise give `pass`; a parser `fail`, `error` or `indeterminate` stands.
+  When PRA-5 requires `error` before the parser is invoked, that `error`
+  stands and this check is not evaluated; otherwise a wrong stored proof stays
+  `fail` over whatever an executed parser gives. Candidate vector set
+  `cci-tlsn-stored-proof-check-v0.1` (23 vectors, plus a 19-case
+  decision-composition table).
+
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)
 
 - **Compatibility boundary** (CORE §11.1.2; PROFILE; #366) — the tightened
@@ -72,6 +96,20 @@ The format used per release:
   §7.7.3) — per-claim, session-key, and sr1-root presentations use the existing
   signed top-level `sessionNonce`; SIWD uses its signed message `Nonce`; and the
   receiving phase orchestrator issues the verifier-identity challenge.
+
+### Changed — Listing rule-reference locations
+
+- **Rule-reference location syntax** (DACS-1 §6.3.4; DACS-3 §8.4.3; DACS-4
+  §9.3) — DACS-1 now states that `<uri>` in `conflictOfLawsRule` and the
+  auction `selectionRule` is a nonempty RFC 3986 URI-reference: an absolute URI
+  or a relative reference, including a substrate storage identifier such as
+  `stor-rule`, written in ASCII with `%` plus two hexadecimal digits for each
+  escape. The auction form `rule-ref:<contentHash>:<uri>` requires the
+  authoritative lowercase 64-hex SHA-256 before the location. A relative
+  location does not replace the DACS-3 §8.4.3 content-hash binding or establish
+  that the referenced rule is available. The reference Listing shape check
+  (`scripts/listing_artifact.py`) now refuses other spellings. No signed
+  artifact shape or signature domain changes.
 
 ### Changed — current-delivery admission corrective boundary
 
@@ -162,6 +200,49 @@ The format used per release:
   corrective release pin and complete module tuple are recorded on the affected
   evidence.
 
+### Changed — DACS-1 §6.3.1 `cci-humanpassport` and `cci-tlsn` identifier rows; DACS-2 note on the `cci-tlsn` claim (#439, #440)
+
+- **`cci-humanpassport`** — the identifier is the verified EVM address of the
+  stored `humanpassport` entry, emitted as `0x` + 40 lowercase hex, not an opaque
+  humanity proof id.
+- **`cci-tlsn`** — the claim is stored on a web2 identity entry with proof type
+  `tlsn` (7 storage contexts carry the 8 CCI-native schemes) and projects to a
+  64-lowercase-hex `cci-tlsn` claim and, separately, to its `cci-web2` claim,
+  but only when its context is `github`, `discord` or `telegram`, its `username`
+  is non-blank and its `userId` is a non-blank string or a safe integer; an
+  entry failing any of these projects to no `cci-tlsn` claim. The context is
+  trimmed first, but the `cci-web2` claim does not trim it, so a padded context
+  projects to `cci-tlsn` only.
+  DACS-2 verifies the TLSNotary proof the presenter supplies with its
+  `tlsnotary` method (§7.3.3); a registered `cci-tlsn` claim does not stand in
+  for that verification. This reverses the earlier DACS-2 note: an
+  implementation that refused the `tlsnotary` method for a registered
+  `cci-tlsn` commitment must now run it instead. For a requirement on a
+  registered `cci-tlsn:H`, the supplied proof MUST be the proof stored with the
+  web2 entry whose proof hash is `H`; a valid proof that is not that stored
+  proof does not satisfy it.
+- `cci-humanpassport` address shape: necessary, not sufficient; `0x` lowercase.
+- A candidate vector set pins both rows; its rule predicates, not the reference
+  parser, check it.
+
+### Fixed — HTLC-5 preimage derivation input encodings (#441)
+
+- **DACS-4 §9.5.4 HTLC-5** named the HKDF inputs (`IKM=buyerSalt, salt=jobId,
+  info=agreementHash`) without their byte encodings, so two implementations
+  could derive different preimages from one session: `agreementHash` as its 64
+  hex characters or its 32 decoded bytes, and no stated output length. HTLC-5
+  now pins IKM = the `buyerSalt` bytes, `salt` = the exact ASCII bytes of the
+  JID-1 `jobId`, `info` = the ASCII bytes of the 64-character lowercase hex
+  `agreementHash` as carried in the Agreement, L = 32, with the hex form chosen
+  because every DACS artifact carries hashes that way (CORE §B). Known-answer
+  vectors (`conformance/vectors/security/htlc-preimage-derivation-v0.1.json`,
+  generated by `scripts/generate_htlc_preimage_derivation_vectors.py`) give
+  the derivation and the outputs of three encoding mistakes that MUST NOT be
+  reproduced; `tests/test_htlc_preimage_derivation_vectors.py` recomputes them
+  with a second HKDF implementation and the RFC 5869 test cases. No existing
+  implementation derives HTLC-5 preimages yet (the reference uses a CSPRNG,
+  §9.5.4 note), so no deployed value changes.
+
 ### Fixed — legacy-payment LAA session binding and replay carrier
 
 - **Verifier-owned session binding (fail-closed)** — the derive/job-bound path
@@ -179,6 +260,22 @@ The format used per release:
   Replay recomputes and byte-matches the carrier before any authorizing result;
   marker/LAA/carrier removal, agreement/session/job substitution, or marker/LAA
   disagreement refuses replay fail-closed.
+
+### Fixed — unit of the Listing string bounds (#438)
+
+- **DACS-1 §6.3.4** bounded `displayName`, `title`, `description` and each tag
+  with `max N chars` without saying what a char is. The reference check counts
+  code points of the NFC value; a JavaScript `.length` counts UTF-16 code
+  units; they disagree on any supplementary-plane character (101 emoji: 101
+  vs 202) and on decomposed input. The type now states that every such bound
+  counts Unicode scalar values of the value's CF-1 (NFC) form, the form that
+  is hashed and signed. Boundary vectors
+  (`conformance/vectors/security/listing-string-length-v0.1.json`, generated
+  by `scripts/generate_listing_string_length_vectors.py`) sit at and one over
+  each bound in ASCII, emoji, decomposed and mixed input and carry the four
+  competing counts; `tests/test_listing_string_length_vectors.py` runs them
+  through the reference check and shows which vectors each wrong unit fails.
+  The Unicode version used for NFC is not pinned here (#442).
 
 ### Fixed — DACS-4 v0.8 AP2 receipt references
 
@@ -388,6 +485,19 @@ The format used per release:
   effect, so a non-payee `IdentityBoundAgreementDocument` is refused there as it
   already was at terminal admission. The two affected identity-bundle vectors
   now expect `fail`.
+
+- **Credential-delivery signed-scope coverage** (DACS-4 §9.7 PDE-5; #330) —
+  without changing normative semantics, adds seven
+  `credential-*-signature-mutation` cases to
+  `phase-bound-delivery-evidence-v0.7` (150 cases), one for each
+  `credentialDelivery` leaf. Each keeps a valid bundle and resolvable reference
+  and fails at the delivery-signature guard. The locator, content-hash,
+  signer, access-model and cleartext-hash cases are otherwise coherent
+  deliveries, so a pinned witness shows that skipping the delivery signature
+  turns them into `pass`. The anchor-kind and renewal cases change only the
+  binding leaf (private delivery admits only a storage-program anchor, and the
+  vectors model no authenticated renewal re-payment), so PDE-5 rejects them as
+  well.
 
 ### Fixed — delivery closure reference validation
 

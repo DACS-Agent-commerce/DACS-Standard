@@ -44,6 +44,8 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 54 | `fail` / `indeterminate` / `pass` |
 | [`canonical-channel-message-v0.6.json`](canonical-channel-message-v0.6.json) | DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6 | 55 | `error` / `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
+| [`cci-native-identifier-rows-v0.8.json`](cci-native-identifier-rows-v0.8.json) | DACS-1 §6.3.1 cci-humanpassport and cci-tlsn identifier rows | 27 | `fail` / `pass` |
+| [`cci-tlsn-stored-proof-check-v0.1.json`](cci-tlsn-stored-proof-check-v0.1.json) | DACS §7.3.3 (stored-proof check, cci-tlsn only); PSP-3 | 23 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 31 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
@@ -56,19 +58,21 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`finality-resolution-context-v1.json`](finality-resolution-context-v1.json) | DACS-4 #392 D2 finality resolution context version 1 | 13 | `fail` / `indeterminate` / `pass` |
-| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 398 | `error` / `fail` / `indeterminate` / `pass` |
+| [`htlc-preimage-derivation-v0.1.json`](htlc-preimage-derivation-v0.1.json) | DACS-4 §9.5.4 HTLC-5 / HTLC-6 preimage derivation byte encodings | 6 | `fail` / `pass` |
+| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 401 | `error` / `fail` / `indeterminate` / `pass` |
 | [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
 | [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 166 | `error` / `fail` / `indeterminate` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
 | [`listing-rail-registry-resolution-v0.4.json`](listing-rail-registry-resolution-v0.4.json) | DACS-1 §6.3.4 LRR-1..LRR-6; DACS-4 §9.4.3 | 29 | `fail` / `indeterminate` / `pass` |
+| [`listing-string-length-v0.1.json`](listing-string-length-v0.1.json) | DACS-1 §6.3.4 Listing `max N chars` bounds: Unicode scalar values of the CF-1 (NFC) form | 13 | `fail` / `pass` |
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 28 | `fail` / `indeterminate` / `pass` |
-| [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 143 | `error` / `fail` / `indeterminate` / `pass` |
+| [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7 | 150 | `error` / `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 60 | `error` / `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
@@ -87,7 +91,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | Historical DACS v0.1 §9.5.8 (SB-2); SB-1 key only | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-binding-required-v0.8.json`](sb3-binding-required-v0.8.json) | DACS-4 §9.5.8 SB-3 required-binding four-value gate | 22 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
-| [`sealed-auction-completeness-v0.6.json`](sealed-auction-completeness-v0.6.json) | DACS-3 §8.4.4 SAC-1..SAC-12 | 82 | `fail` / `indeterminate` / `pass` |
+| [`sealed-auction-completeness-v0.6.json`](sealed-auction-completeness-v0.6.json) | DACS-3 §8.4.4 SAC-1..SAC-12 | 85 | `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
@@ -110,7 +114,7 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 
 ### `sealed-auction-completeness-v0.6.json` — §8.4.4 SAC-1..SAC-12
 
-82 deterministic cases exercise the structurally distinct complete
+85 deterministic cases exercise the structurally distinct complete
 sealed-envelope profile. Real Ed25519 signatures cover bidder commit/reveal
 records, the selection receipt, its modeled candidate-set binding proof, and
 the publisher/winner agreement. Each commit/reveal record carries a
@@ -131,9 +135,10 @@ verifier projection of the listing-derived currency. They are not a new
 `PricingSpec` wire member, a full signed reserve-free Listing fixture, or a
 native listing-resolution claim.
 
-An independent Node.js evaluator separately executes 59 named controls from the
-82-case corpus and reproduces the exact candidate-set
-root, receipt content hash, demand/mode/role checks, reveal-deadline boundary,
+An independent Node.js evaluator separately executes 62 named controls from the
+85-case corpus and reproduces the exact candidate-set
+root, receipt content hash, demand/mode/role checks, receipt and pricing
+selection-rule equality with the signed phase rule, reveal-deadline boundary,
 non-USD filtering, exact record-shape refusal, exact arbitrary-length ordering,
 inclusive reserve result, context-bound commitment recomputation, early-reveal
 refusal, and winner for the selected controls,
@@ -185,6 +190,38 @@ python3 -m unittest tests.test_sealed_auction_completeness_vectors -v
 node scripts/evaluate_sealed_auction_fixture.mjs conformance/vectors/security/sealed-auction-completeness-v0.6.json
 ```
 
+### `htlc-preimage-derivation-v0.1.json` — DACS-4 §9.5.4 HTLC-5 / HTLC-6
+
+6 known-answer vectors pin the byte encodings of the HTLC-5 preimage
+derivation, `HKDF(IKM=buyerSalt, salt=jobId, info=agreementHash, L=32)` with
+SHA-256: IKM is the `buyerSalt` bytes, `salt` the ASCII bytes of the JID-1
+`jobId`, `info` the ASCII bytes of the 64-character lowercase hex
+`agreementHash` (not its 32 decoded bytes), and the preimage the 32 output
+bytes. Three `pass` vectors give the derivation for a 32-byte salt, a 16-byte
+salt (the HTLC-1 minimum) and a second `jobId`; three `fail` vectors give the
+output of one named mistake each (decoded-bytes `info`, uppercase hex `info`,
+`salt`/`info` swapped) so an implementation that derives one of those values
+can see which encoding it got wrong. `want.hashlockSha256Hex` is
+`sha256(preimage)`, the HTLC-6 hashlock for sha256 chains; other chains apply
+their native hash to the same 32 bytes. All inputs are synthetic test
+patterns; no secret material is encoded.
+
+#### Vector schema
+
+| field | meaning |
+|-------|---------|
+| `input` | `buyerSaltHex`, `jobId` and `agreementHash` as a session would hold them |
+| `derivation` | the exact `ikmHex`, `saltHex`, `infoHex` and `length` fed to HKDF |
+| `expected` | `pass`: the only preimage for that input; `fail`: an output that MUST NOT be derived |
+| `want.preimageHex` | the 32 HKDF output bytes |
+| `want.hashlockSha256Hex` | `sha256(preimage)` |
+
+The generator (`scripts/generate_htlc_preimage_derivation_vectors.py`) writes
+HKDF out from RFC 5869 and checks itself against the RFC's test case 1;
+`python3 -m unittest tests.test_htlc_preimage_derivation_vectors -v` recomputes
+every vector with a second HKDF implementation and all three RFC 5869 SHA-256
+test cases.
+
 ### `canonical-json-v0.1.json` — CORE §B.2 RFC 8785 JCS + CF-1
 
 25 candidate vectors pin exact canonical UTF-8 hex rather than only a generic
@@ -213,6 +250,34 @@ python3 scripts/generate_canonical_json_vectors.py --write
 python3 scripts/generate_canonical_json_vectors.py --check
 python3 -m unittest tests.test_canonical_json_vectors -v
 ```
+
+### `listing-string-length-v0.1.json` — DACS-1 §6.3.4 `max N chars` bounds
+
+13 boundary vectors pin the unit of the Listing type's `max N chars` bounds:
+Unicode scalar values of the value's CF-1 (NFC) form. Each vector names one
+field (`displayName`, `title`, `description`, or one `tag`), a value, the
+verdict, and four counts (`scalarValuesNfc`, `scalarValuesAsReceived`,
+`utf16CodeUnits`, `utf8Bytes`), so an implementation that gets a vector wrong
+can see which unit it used. The values sit at and one over each bound in
+ASCII, in supplementary-plane emoji (one scalar value, two UTF-16 code units,
+four bytes), in decomposed `e` + U+0301 (two code points before NFC, one
+after), and in a mix that is exactly 200 only after NFC. A UTF-16 count fails
+five of the `pass` vectors, a pre-NFC count fails two, a byte count fails more.
+
+#### Vector schema
+
+| field | meaning |
+|-------|---------|
+| `field` | which Listing string the value replaces (`displayName`, `title`, `description`, `tag`) |
+| `limit` | the §6.3.4 bound for that field |
+| `value` | the string as received (JSON-escaped where needed) |
+| `counts` | the value's length under the pinned unit and the three wrong ones |
+| `expected` | `pass` or `fail` for the bound, counting `counts.scalarValuesNfc` |
+
+`python3 -m unittest tests.test_listing_string_length_vectors -v` runs every
+vector through the reference shape check on the pinned IBH fixture Listing and
+shows, by swapping the reference's counting unit, exactly which vectors a
+UTF-16 or pre-NFC count gets wrong.
 
 ### `raw-json-profile-v0.1.json` — CORE §B.2 CF-5
 
@@ -439,7 +504,7 @@ python3 -m unittest tests.test_payload_attestation_vectors -v
 
 ### `phase-bound-delivery-evidence-v0.7.json` — §9.7 PDE-1..PDE-8
 
-143 deterministic vectors execute the current `DeliveryEvidence` wire contract
+150 deterministic vectors execute the current `DeliveryEvidence` wire contract
 and its DACS-5 one-to-one mapping through fully shaped, three-party-signed
 `FaultAttestationBundle` artifacts. The attested-delivery positives resolve and
 execute the DPA-3..DPA-9 payload/method-evidence chain, while the companion SEB
@@ -458,9 +523,25 @@ zero; legacy single/repeated delivery; and exact buyer-only/encrypt-to-buyer
 credential binding. Credential negatives cover missing/mismatched refs, access
 mode, cleartext/ciphertext digest substitution, renewal replay, unsupported
 valid/readable overclaims at nested and top-level positions, and unresolvable
-private content. Type/domain and signature mutation cases pin the minor-safe
-boundary. Focused review cases pin
-the bundle-job comparison, EntitlementRecord hash/signature checks, missing
+private content. Seven named field mutations cover every leaf of the signed
+`credentialDelivery` binding: `credentialRef.ref.anchor.kind`,
+`credentialRef.ref.anchor.locator`, `credentialRef.ref.contentHash`,
+`credentialRef.ref.signer`, `credentialRef.accessModel`,
+`credentialCleartextHash`, and `renewalSeq`. Each keeps the delivery
+signature of a passing credential control, updates the outer evidence
+reference and bundle signatures, and fails that stale signature. For the
+locator, content hash, signer, access model and cleartext hash, the case is a
+coherent alternative delivery with a re-signed entitlement and rebound
+credential bytes and receipts, so an evaluator that skips the delivery
+signature returns `pass`. The signer alternative omits the optional
+`AttestationRef.signer`, and the seller still writes the credential. Under
+`buyer-only` the stored bytes are the cleartext, so the access-model and
+cleartext cases also change `ref.contentHash`. The anchor-kind and renewal
+cases change only the binding leaf, which PDE-5 also rejects: §9.6.1 private
+delivery admits no anchor kind but a storage program, and these vectors model
+no authenticated renewal re-payment.
+Type/domain and signature mutation cases pin the minor-safe boundary. Focused
+review cases pin the bundle-job comparison, EntitlementRecord hash/signature checks, missing
 top-level and phase-summary members, wrong optional pointers, success-only
 closure, signed evidence/phase-summary outcome agreement, legacy DV-5 refusal,
 and composition with a genuinely signed payment `SettlementEvidence` in the
@@ -564,6 +645,46 @@ resource rail that exposes no single EIP-155 chain in its pinned definition
 cannot gain tier 2 retroactively from a later receipt.
 Run the dependency-free executable predicate with
 `python3 -m unittest tests.test_cci_xm_rail_chain_applicability_vectors -v`.
+
+### `cci-native-identifier-rows-v0.8.json` — §6.3.1 `cci-humanpassport` and `cci-tlsn` rows
+
+27 candidate vectors pin two CCI-native identifier rows to what the Demos node
+stores. Each vector models a stored node identity entry, not a ClaimReference,
+and the claims a producer emits when it projects that entry. The rule
+predicates in the test below check them. The reference parser
+`parse_claim_reference` in `scripts/dacs_reference.py` does not yet apply the
+per-scheme identifier shapes (it still accepts, for example,
+`cci-humanpassport:humanity-proof-0001` and `cci-tlsn:zz`), so it does not
+check these rows.
+
+A `humanpassport` entry is identified by its verified EVM address, so
+`cci-humanpassport:<address>` carries `0x` + 40 lowercase hex. The node does not
+fix the letter case of the stored address, so the producer emits the lowercase
+form when it projects a checksum-case or uppercase-hex entry. It trims
+surrounding whitespace first (the code points ECMAScript `String.prototype.trim`
+removes), so a valid address padded with spaces, a tab, a newline, U+FEFF or
+U+3000 projects to the same lowercase claim, while U+0085 is not trimmed and
+the padded value produces no claim. An opaque proof id, a missing or uppercase `0x`, a
+short or long address, and a non-hex character produce no claim.
+
+A TLSNotary commitment is stored on a web2 identity entry with proof type
+`tlsn`. That one entry projects to a `cci-tlsn:<proof-hash>` claim (64
+lowercase hex, the form the producer emits, including for an uppercase-hex or
+whitespace-padded stored hash) and, separately, to its `cci-web2:<platform>:<username>` claim. An
+entry with another proof type, or with a missing, short, or `0x`-prefixed hash,
+still yields its `cci-web2` claim and no `cci-tlsn` claim, as does one with a
+context outside `github`, `discord` and `telegram`, or a missing or blank
+`userId` (a blank `username` yields neither claim). A context padded with
+whitespace (`" github "`) is trimmed for the `cci-tlsn` claim but not for the
+`cci-web2` platform lookup, so that entry yields the `cci-tlsn` claim and no
+`cci-web2` claim. The set's
+`provenance.storageSources` cites the node and SDK source for each storage fact.
+
+Two `tlsn-requirement` vectors model a requirement on a registered `cci-tlsn:H1`
+and the proof supplied: the proof stored with the entry whose hash is `H1`
+passes, and a valid proof stored under another entry `H2` gives no pass for `H1`.
+Run the dependency-free executable predicate with
+`python3 -m unittest tests.test_cci_native_identifier_rows_vectors -v`.
 
 ### `metered-pricing-v0.3.json` — §8.5.2 MTR-1..MTR-5
 
@@ -2165,6 +2286,60 @@ Regenerate and execute with:
 python3 scripts/generate_identity_bundle_hash_binding_vectors.py --write
 python3 scripts/generate_identity_bundle_hash_binding_vectors.py --check
 python3 -m unittest tests.test_identity_bundle_hash_binding_vectors -v
+```
+
+### `cci-tlsn-stored-proof-check-v0.1.json` — §7.3.3 stored-proof check (`cci-tlsn` only)
+
+23 vectors, plus a 19-case decision-composition table, for the check that applies only to a requirement on a registered
+`cci-tlsn:H` claim (`H` is 64 lowercase hex). The stored web2 entry for `H` is
+modelled as `storedEntry` (`proof`, `userId`); `null` means `H` resolves to no
+stored entry. How the node derives `H` is outside the check and not modelled.
+
+- **Stored proof:** the supplied proof MUST equal the proof stored for `H`. A
+  valid proof stored under another hash, or `H` resolving to no entry → `fail`
+  (`stored-proof`). Proofs are compared by type-preserving structural JSON
+  equality: member order ignored, array order kept, numbers equal when their
+  JSON text gives the same exact decimal value (`1`, `1.0` and `1e0` are equal,
+  `1.00000000000000001` and `1` are not), a number never equals a boolean or
+  string, a duplicate member name in either proof → `fail`. This does not
+  define how `H` is derived.
+- **Subject:** only when `parserRules.dataMap` declares `subject`. The resolved
+  value MUST equal the stored `userId` as JSON strings only (exact equality
+  after NFC). A different value, a value that resolves to nothing, or a JSON
+  number on either side → `fail` (`subject`); numeric ids are not yet
+  supported and no number is converted to text. The subject part never yields
+  `pass` and adds no outcome.
+- **No `subject` declared:** the check adds nothing beyond the stored-proof
+  match.
+
+The check applies to no other scheme and adds no session binding, signature,
+signature domain or nonce use. The vectors carry no parser or bundle fields.
+
+`compositionCases` (outside the set's `count` and `hash`) is a decision-
+composition table: the stored-proof check result (`pass-no-subject`,
+`pass-subject-declared`, `fail-stored-proof`, `fail-subject`) and the parser
+outcome (`pass`, `fail`, `indeterminate`, `error-executed`,
+`error-pra5-preinvocation`) give the final outcome. A PRA-5 `error` returned
+before the parser is invoked stands and the check is not evaluated, whatever
+its result would be. Otherwise a stored-proof `fail` stands over what an
+executed parser gives; the subject part applies only on a parser `pass`; and
+the parser outcome stands in the remaining cases. It composes outcomes only and
+does not run a parser.
+
+#### Vector schema
+| field | meaning |
+|-------|---------|
+| `name` | stable case id |
+| `expected` / `failedPart` | verdict, and the failing part (`stored-proof` \| `subject`, `null` on `pass`) |
+| `scheme`, `identifier` | always `cci-tlsn`, and `H` |
+| `storedEntry` | the stored entry for `H` as `proof` (or `proofRaw`, its JSON text, for the same reasons as `bodyRaw`) and `userId`, or `null` |
+| `recipe` | `dataMap`; a `subject` key is the subject entry |
+| `proof` | `body` (the supplied proof; `bodyRaw` is its JSON text, used when it has a duplicate member name or a number a binary float cannot hold exactly) and `subject` (the value `dataMap.subject` resolves to, `null` if nothing) |
+
+Execute with:
+
+```sh
+python3 -m unittest tests.test_cci_tlsn_stored_proof_check_vectors -v
 ```
 
 ## Status

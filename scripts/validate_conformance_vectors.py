@@ -37,6 +37,12 @@ MANIFEST_STATUSES = {"golden", "candidate"}
 REGISTRY_CASE_ID = "sig-registry-closed"
 HISTORICAL_CHANNEL_DOMAIN = "dacs-channelmsg:v1:"
 GOLDEN_DECISIONS = {"pass", "fail", "indeterminate", "error"}
+AP2_GOLDEN_FIXTURE = "conformance/fixtures/settlement/settlement-ap2-reference.json"
+# Complete raw-byte authority for the authenticated AP2 reference fixture. An
+# intentional fixture revision updates this pin only after its oracle review.
+AP2_GOLDEN_FIXTURE_SHA256 = (
+    "93d43891b151347111184b2afda2cdc8d3990637f79b3cedd40a90e1ad32621b"
+)
 REQUIRED_TOP_LEVEL = {
     "vectorId",
     "title",
@@ -334,8 +340,8 @@ def is_within(path: Path, root: Path) -> bool:
     return True
 
 
-def fixture_exists(manifest_dir: Path, fixture: str) -> bool:
-    """Return true when a fixture path exists relative to common vector roots.
+def resolve_fixture_path(manifest_dir: Path, fixture: str) -> Path | None:
+    """Resolve a fixture path relative to the allowed common vector roots.
 
     PR #117-style golden outputs use repository-root paths such as
     `conformance/fixtures/example.json`, while smaller local harness tests may use
@@ -346,14 +352,41 @@ def fixture_exists(manifest_dir: Path, fixture: str) -> bool:
 
     fixture_path = Path(fixture)
     if fixture_path.is_absolute():
-        return False
+        return None
 
     allowed_roots = [manifest_dir, manifest_dir.parent]
     candidates = [manifest_dir / fixture_path, manifest_dir.parent / fixture_path]
-    return any(
-        candidate.is_file() and is_within(candidate, root)
-        for candidate, root in zip(candidates, allowed_roots)
-    )
+    for candidate, root in zip(candidates, allowed_roots):
+        if candidate.is_file() and is_within(candidate, root):
+            return candidate
+    return None
+
+
+def fixture_exists(manifest_dir: Path, fixture: str) -> bool:
+    return resolve_fixture_path(manifest_dir, fixture) is not None
+
+
+class DuplicateJsonMemberError(ValueError):
+    """Raised when a JSON object repeats an exact decoded member name."""
+
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in result:
+            raise DuplicateJsonMemberError(f"duplicate object member {name!r}")
+        result[name] = value
+    return result
+
+
+def parse_json_bytes_without_duplicates(raw: bytes) -> Any:
+    """Strictly decode UTF-8 JSON and reject duplicate members recursively.
+
+    Member names are compared exactly as decoded. They are deliberately not
+    normalised because signed JSON member names must remain byte-faithful.
+    """
+
+    return json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_json_object)
 
 
 def validate_vector(path: Path) -> list[str]:
@@ -671,11 +704,117 @@ def validate_manifest(path: Path) -> list[str]:
     return errors
 
 
+def validate_ap2_golden_output(
+    path: Path, manifest_dir: Path, settlement: dict[str, Any]
+) -> list[str]:
+    """Bind AP2 golden pins to the independently pinned reference fixture."""
+    errors: list[str] = []
+    decisions = settlement.get("decisions")
+    has_ap2_decision = (
+        isinstance(decisions, dict) and "ap2ReferencePass" in decisions
+    )
+    if not (
+        "ap2Fixture" in settlement
+        or "ap2EvidenceHash" in settlement
+        or "ap2JobId" in settlement
+        or has_ap2_decision
+    ):
+        return errors
+
+    required = ("ap2Fixture", "ap2EvidenceHash", "ap2JobId")
+    missing = [key for key in required if key not in settlement]
+    if not has_ap2_decision:
+        missing.append("decisions.ap2ReferencePass")
+    if missing:
+        errors.append(
+            fail(path, f"settlement AP2 golden is missing: {', '.join(missing)}")
+        )
+        return errors
+
+    fixture_name = settlement["ap2Fixture"]
+    if not isinstance(fixture_name, str) or not fixture_name.strip():
+        return [fail(path, "settlement.ap2Fixture MUST be a non-empty fixture path string")]
+    if fixture_name != AP2_GOLDEN_FIXTURE:
+        return [fail(path, f"settlement.ap2Fixture MUST equal {AP2_GOLDEN_FIXTURE}")]
+    fixture_path = resolve_fixture_path(manifest_dir, fixture_name)
+    if fixture_path is None:
+        return errors  # The structural fixture-existence check reports this.
+    try:
+        fixture_bytes = fixture_path.read_bytes()
+        fixture = parse_json_bytes_without_duplicates(fixture_bytes)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, DuplicateJsonMemberError) as exc:
+        return [fail(path, f"settlement.ap2Fixture is not valid JSON: {exc}")]
+
+    fixture_digest = hashlib.sha256(fixture_bytes).hexdigest()
+    if fixture_digest != AP2_GOLDEN_FIXTURE_SHA256:
+        return [
+            fail(
+                path,
+                "settlement.ap2Fixture is not the independently pinned canonical "
+                "AP2 reference fixture; complete raw-byte SHA-256 mismatch "
+                f"(expected {AP2_GOLDEN_FIXTURE_SHA256}, got {fixture_digest})",
+            )
+        ]
+
+    try:
+        evidence = fixture["evidence"]
+        if not isinstance(evidence, dict):
+            raise TypeError("evidence MUST be an object")
+        unsigned = dict(evidence)
+        signature = unsigned.pop("signature")
+        if not isinstance(signature, dict):
+            raise TypeError("evidence.signature MUST be an object")
+        computed_hash = hashlib.sha256(
+            jcs.canonicalize(unsigned).encode("utf-8")
+        ).hexdigest()
+        fixture_hash = fixture["evidenceHash"]
+        fixture_job_id = evidence["jobId"]
+        fixture_decision = fixture["expected"]["verdict"]
+    except (KeyError, OverflowError, TypeError, ValueError) as exc:
+        return [fail(path, f"settlement.ap2Fixture has invalid evidence: {exc}")]
+
+    if fixture_hash != computed_hash:
+        errors.append(
+            fail(
+                path,
+                "settlement.ap2Fixture evidenceHash MUST equal RFC 8785 SHA-256 "
+                f"of unsigned evidence ({computed_hash})",
+            )
+        )
+    if settlement["ap2EvidenceHash"] != computed_hash:
+        errors.append(
+            fail(
+                path,
+                "settlement.ap2EvidenceHash MUST equal the AP2 fixture's "
+                f"unsigned evidence hash ({computed_hash})",
+            )
+        )
+    if settlement["ap2JobId"] != fixture_job_id:
+        errors.append(
+            fail(
+                path,
+                "settlement.ap2JobId MUST equal the AP2 fixture evidence jobId "
+                f"({fixture_job_id})",
+            )
+        )
+    if decisions["ap2ReferencePass"] != fixture_decision:
+        errors.append(
+            fail(
+                path,
+                "settlement.decisions.ap2ReferencePass MUST equal the AP2 fixture "
+                f"verdict ({fixture_decision})",
+            )
+        )
+    return errors
+
+
 def validate_golden_outputs(path: Path, manifest_path: Path) -> list[str]:
     errors: list[str] = []
+    # Golden pins must have one reading: a duplicate member would let a
+    # last-wins and a first-wins consumer see different pinned values.
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        data = parse_json_bytes_without_duplicates(path.read_bytes())
+    except (UnicodeDecodeError, json.JSONDecodeError, DuplicateJsonMemberError) as exc:
         return [fail(path, f"invalid JSON: {exc}")]
 
     if not isinstance(data, dict):
@@ -724,6 +863,10 @@ def validate_golden_outputs(path: Path, manifest_path: Path) -> list[str]:
                         f"{section}.decisions.{decision_key} MUST be one of: {', '.join(sorted(GOLDEN_DECISIONS))}",
                     )
                 )
+
+    settlement = data.get("settlement")
+    if isinstance(settlement, dict):
+        errors.extend(validate_ap2_golden_output(path, manifest_dir, settlement))
 
     return errors
 

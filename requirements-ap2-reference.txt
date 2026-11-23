@@ -1,0 +1,4 @@
+# Official AP2 verifier source used by the settlement reference fixture.
+ap2 @ git+https://github.com/google-agentic-commerce/AP2.git@e1ea56db72a6385bce3e5c1112b3a56ce60acb43
+cryptography==46.0.5
+idna==3.10

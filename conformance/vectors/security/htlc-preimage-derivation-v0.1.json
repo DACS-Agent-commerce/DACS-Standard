@@ -1,0 +1,135 @@
+{
+  "set": "htlc-preimage-derivation-v0.1",
+  "spec": "DACS-4 §9.5.4 HTLC-5 / HTLC-6 preimage derivation byte encodings",
+  "decisionModel": "A pass vector's want.preimageHex is the only preimage an HTLC-5 implementation may derive from its input; a fail vector's want is the output of one named encoding mistake and MUST NOT be derived. hashlock values are sha256(preimage); chains using another hash apply it to the same 32 bytes (HTLC-6).",
+  "count": 6,
+  "hash": "55f2f7e3087b8c7afe3c888a0a479718803d650a617fcd9dbf5ae7d665e00ad2",
+  "vectors": [
+    {
+      "name": "canonical-derivation",
+      "rule": "HTLC-5",
+      "expected": "pass",
+      "input": {
+        "buyerSaltHex": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+        "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "agreementHash": "499e2828c1dc03e8c346a46df345a2e52571832407287d811b3082b6a91c9f7d"
+      },
+      "derivation": {
+        "ikmHex": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+        "saltHex": "303141525a334e44454b54535634525246465136394735464156",
+        "infoHex": "34393965323832386331646330336538633334366134366466333435613265353235373138333234303732383764383131623330383262366139316339663764",
+        "length": 32
+      },
+      "want": {
+        "preimageHex": "25c6082d85f7a2b1249b4a739062525b705bfa3046eb6e7cb1313af0e3256fc8",
+        "hashlockSha256Hex": "8f681004211fd4196a2c9fa4b2e6c9dfcff082d131bd74590ee612ff19450991"
+      },
+      "note": "The pinned derivation: IKM = the 32 buyerSalt bytes, salt = the 26 ASCII bytes of the jobId, info = the 64 ASCII bytes of the lowercase hex agreementHash, L = 32. want.preimageHex is the preimage; want.hashlockSha256Hex is its sha256 hashlock (HTLC-6, sha256 chains)."
+    },
+    {
+      "name": "sixteen-byte-salt-minimum",
+      "rule": "HTLC-1 / HTLC-5",
+      "expected": "pass",
+      "input": {
+        "buyerSaltHex": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "agreementHash": "499e2828c1dc03e8c346a46df345a2e52571832407287d811b3082b6a91c9f7d"
+      },
+      "derivation": {
+        "ikmHex": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "saltHex": "303141525a334e44454b54535634525246465136394735464156",
+        "infoHex": "34393965323832386331646330336538633334366134366466333435613265353235373138333234303732383764383131623330383262366139316339663764",
+        "length": 32
+      },
+      "want": {
+        "preimageHex": "cba6c8851540a8837dbf7bf5142f2fc5cef2b0751eec664db9c0b533ba302e4b",
+        "hashlockSha256Hex": "8d11e2bdc8048bec88d0b794108f36033781aa0c52df244a33c829856b382645"
+      },
+      "note": "A 16-byte buyerSalt (the HTLC-1 minimum of 128 bits) derives with the same rule."
+    },
+    {
+      "name": "other-job-id-other-preimage",
+      "rule": "HTLC-5",
+      "expected": "pass",
+      "input": {
+        "buyerSaltHex": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+        "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        "agreementHash": "499e2828c1dc03e8c346a46df345a2e52571832407287d811b3082b6a91c9f7d"
+      },
+      "derivation": {
+        "ikmHex": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+        "saltHex": "303141525a334e44454b54535634525246465136394735464157",
+        "infoHex": "34393965323832386331646330336538633334366134366466333435613265353235373138333234303732383764383131623330383262366139316339663764",
+        "length": 32
+      },
+      "want": {
+        "preimageHex": "b7aa8c33295e3720ce9b75b55e2f92e6550317a24cf41913148334109bb0037e",
+        "hashlockSha256Hex": "632e7f9315ddd2793ec38998fbb49235fffb480268c931762a533fb235cae100"
+      },
+      "note": "Same salt and agreementHash, jobId differs in its last character: a different preimage. Compare with canonical-derivation."
+    },
+    {
+      "name": "info-as-decoded-bytes-is-wrong",
+      "rule": "HTLC-5",
+      "expected": "fail",
+      "input": {
+        "buyerSaltHex": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+        "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "agreementHash": "499e2828c1dc03e8c346a46df345a2e52571832407287d811b3082b6a91c9f7d"
+      },
+      "derivation": {
+        "ikmHex": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+        "saltHex": "303141525a334e44454b54535634525246465136394735464156",
+        "infoHex": "499e2828c1dc03e8c346a46df345a2e52571832407287d811b3082b6a91c9f7d",
+        "length": 32
+      },
+      "want": {
+        "preimageHex": "6e9aad00209b1c715272df8bb3bd72beda91341c4e733050486f4e3579868b97",
+        "hashlockSha256Hex": "a43c8085f8892fe6dc3ca3e5fe0110984cff50d55bf0a2bfed90adc6eea599d1"
+      },
+      "note": "The same inputs with info = the 32 decoded bytes of agreementHash instead of its 64 hex characters. want shows what that mistake produces; it MUST NOT equal canonical-derivation's preimage."
+    },
+    {
+      "name": "uppercase-hex-info-is-wrong",
+      "rule": "HTLC-5",
+      "expected": "fail",
+      "input": {
+        "buyerSaltHex": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+        "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "agreementHash": "499e2828c1dc03e8c346a46df345a2e52571832407287d811b3082b6a91c9f7d"
+      },
+      "derivation": {
+        "ikmHex": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+        "saltHex": "303141525a334e44454b54535634525246465136394735464156",
+        "infoHex": "34393945323832384331444330334538433334364134364446333435413245353235373138333234303732383744383131423330383242364139314339463744",
+        "length": 32
+      },
+      "want": {
+        "preimageHex": "d2934590bda2e82dc24d6fc22a6ebd6bb9afb44f35d8678e829278bc89aa510f",
+        "hashlockSha256Hex": "714b6a1eb58f04e7d9e19b5e020167eddcc5c8b94295e3e7b2bda98e62746dac"
+      },
+      "note": "info built from an uppercase rendering of agreementHash. The hash is carried lowercase (CORE §B); any other spelling is a different input."
+    },
+    {
+      "name": "salt-and-info-swapped-is-wrong",
+      "rule": "HTLC-5",
+      "expected": "fail",
+      "input": {
+        "buyerSaltHex": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+        "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "agreementHash": "499e2828c1dc03e8c346a46df345a2e52571832407287d811b3082b6a91c9f7d"
+      },
+      "derivation": {
+        "ikmHex": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+        "saltHex": "34393965323832386331646330336538633334366134366466333435613265353235373138333234303732383764383131623330383262366139316339663764",
+        "infoHex": "303141525a334e44454b54535634525246465136394735464156",
+        "length": 32
+      },
+      "want": {
+        "preimageHex": "c9b9cf643ccdd5cb0f88f847bbdb6f4d352f1ee7a13cf5c4a577a3ab9105673e",
+        "hashlockSha256Hex": "a729a47f91133ba49b67f90a18ae00e88095e37ce02709aa4368d8758325435d"
+      },
+      "note": "salt and info exchanged. want shows the result; it MUST NOT be used."
+    }
+  ]
+}

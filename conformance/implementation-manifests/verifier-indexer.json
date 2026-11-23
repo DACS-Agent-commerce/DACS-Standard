@@ -31,7 +31,7 @@
     {
       "id": "claim-bundle-verifier",
       "level": "capability",
-      "result": "conformance-tested",
+      "result": "implemented",
       "roles": ["verifier"],
       "modules": ["DACS-5"],
       "capabilityRefs": ["verify-attestation-bundle"],
@@ -41,7 +41,7 @@
     {
       "id": "claim-reputation-deriver",
       "level": "capability",
-      "result": "conformance-tested",
+      "result": "implemented",
       "roles": ["verifier"],
       "modules": ["DACS-5"],
       "capabilityRefs": ["derive-reputation"],
@@ -67,7 +67,7 @@
       "modules": ["DACS-5"],
       "roles": ["verifier"],
       "supportStatus": "implemented",
-      "testStatus": "passed",
+      "testStatus": "partial",
       "evidenceRefs": ["bundle-verifier-vectors"]
     },
     {
@@ -77,7 +77,7 @@
       "modules": ["DACS-5"],
       "roles": ["verifier"],
       "supportStatus": "implemented",
-      "testStatus": "passed",
+      "testStatus": "partial",
       "evidenceRefs": ["reputation-vectors"]
     },
     {

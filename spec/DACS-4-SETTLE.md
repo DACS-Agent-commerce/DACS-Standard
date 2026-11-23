@@ -948,9 +948,11 @@ Atomic cross-chain settlement using HTLC contracts on source and destination cha
 
 *Setup:* resolve the rail (`asset.kind == "stablecoin-cross-chain"`, `network.kind == "cross-chain"`, mechanism `"htlc"`); select the route matching `(sourceChainId, destChainId)`; derive the preimage (HTLC-5) and per-chain hashlocks (HTLC-6):
 
-    preimage        = HKDF(IKM=buyerSalt, salt=jobId, info=agreementHash)   (RFC 5869, sha256)
+    preimage        = HKDF(IKM=buyerSalt, salt=jobId, info=agreementHash, L=32)   (RFC 5869, sha256)
     hashlock_source = H_source(preimage)
     hashlock_dest   = H_dest(preimage)
+
+The HKDF inputs are byte strings, pinned by HTLC-5 below: IKM is the `buyerSalt` bytes, `salt` is the ASCII bytes of `jobId`, `info` is the ASCII bytes of the lowercase hex `agreementHash`, and the preimage is the 32 output bytes.
 
 *Swap order:*
 
@@ -978,7 +980,7 @@ Atomic cross-chain settlement using HTLC contracts on source and destination cha
 - (HTLC-2) buyerSalt MUST NOT be disclosed to any party but the payer while either leg is live (until both legs are claimed or refunded). It is never revealed on-chain — the destination claim reveals the *preimage*, not the salt.
 - (HTLC-3) buyerSalt MUST NOT be reused across sessions; each jobId uses a freshly-generated salt.
 - (HTLC-4) The payer MUST retain buyerSalt until the destination-side claim reaches finality (loss makes the preimage unrecoverable — a fund-safety requirement, not merely operational).
-- (HTLC-5) **Preimage derivation** MUST use HKDF (RFC 5869, sha256): IKM=buyerSalt, salt=jobId, info=agreementHash. Weaker derivations MUST NOT be used. jobId MUST be globally unique per swap and agreementHash MUST be collision-resistant; both hold in DACS, where jobId is per-session and agreementHash is the sha256 of the canonical agreement.
+- (HTLC-5) **Preimage derivation** MUST use HKDF (RFC 5869, sha256): IKM=buyerSalt, salt=jobId, info=agreementHash. Weaker derivations MUST NOT be used. jobId MUST be globally unique per swap and agreementHash MUST be collision-resistant; both hold in DACS, where jobId is per-session and agreementHash is the sha256 of the canonical agreement. The inputs are the following byte strings, exactly: IKM is the `buyerSalt` bytes (at least 16 bytes, HTLC-1); `salt` is the exact ASCII bytes of the JID-1 `jobId` (26 bytes); `info` is the ASCII bytes of the 64-character lowercase hexadecimal `agreementHash` as carried in the Agreement and its references, not the 32 decoded bytes and not any other spelling; L = 32, and the preimage is those 32 output bytes, which HTLC-6 hashes as received. The hexadecimal form is pinned because every DACS artifact carries and compares hashes in that form (CORE §B), so no implementation decodes before deriving. Known-answer vectors, including the outputs of the three encoding mistakes an implementation MUST NOT reproduce, are in `conformance/vectors/security/htlc-preimage-derivation-v0.1.json`.
 - (HTLC-6) **Hashlock** is the chain-native hash of the preimage. Source and destination chains MAY use different hash functions (keccak256 EVM, sha256 Solana/BTC, blake2b Cosmos) and MUST NOT be required to share one. The preimage is the only cross-chain-shared value; the preimage revealed on the destination is bit-identical to the one producing `hashlock_source`.
 - (HTLC-7) **Timelock asymmetry.** Implementations MUST reject a route unless `expiry_source > expiry_dest + source_finality + safety`, evaluated on absolute expiry instants. The margin is sized to **source** finality, not destination latency: the binding constraint is the payee *finalising* its source claim after the reveal. `source_finality` and `safety` are the pinned rail parameters `rail.parameters.sourceFinalitySec` and `rail.parameters.safetyWindowSec`; both are REQUIRED, and `safetyWindowSec` defaults to 600s. The inequality MUST be evaluated against the pinned values, not runtime-estimated latency.
 - (HTLC-8) **Timelock epoch.** Timelocks are durations measured from when each lock is mined. The destination lock MUST NOT be mined before source-lock finality; implementations MUST reject any schedule that could. With this anchoring, the HTLC-7 duration inequality implies the absolute-expiry inequality.

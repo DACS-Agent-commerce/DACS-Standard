@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
 import importlib.util
 import itertools
 import json
@@ -696,6 +695,10 @@ PINNED_UNIT_REGRESSIONS = {
         "file": "tests/test_current_use_replay_corpus.py",
         "test": "CurrentUseReplayCorpusTests.test_legacy_negative_cases_pass_a_verifier_missing_only_their_guard",
     },
+    "pr418-credential-field-delivery-signature-bypass-witness": {
+        "file": "tests/test_phase_bound_delivery_vectors.py",
+        "test": "PhaseBoundDeliveryVectorTests.test_credential_field_vectors_reject_delivery_signature_bypass",
+    },
 }
 
 EXACT_UNITTEST_COMPLETION_MARKER = "DACS-EXACT-UNITTEST-COMPLETE"
@@ -759,13 +762,35 @@ def _run():
         and not result.unexpectedSuccesses
     )
     if not accepted:
-        for test, traceback in result.failures + result.errors + result.expectedFailures:
-            print(str(test), file=sys.stderr)
-            print(traceback, file=sys.stderr)
         print(
             "exact unittest contract failed: " + json.dumps(summary, sort_keys=True),
             file=sys.stderr,
         )
+        detail_limit = 8 * 1024
+        remaining = 64 * 1024
+        for kind, records in (
+            ("FAIL", result.failures),
+            ("ERROR", result.errors),
+            ("EXPECTED FAILURE", result.expectedFailures),
+        ):
+            for test, detail in records:
+                diagnostic = "%s: %s\\n%s" % (kind, test.id(), detail)
+                if len(diagnostic) > detail_limit:
+                    diagnostic = (
+                        diagnostic[:detail_limit - 20] + "\\n[detail truncated]"
+                    )
+                if len(diagnostic) > remaining:
+                    diagnostic = (
+                        diagnostic[:max(0, remaining - 20)]
+                        + "\\n[output truncated]"
+                    )
+                if diagnostic:
+                    print(diagnostic, file=sys.stderr)
+                    remaining -= len(diagnostic) + 1
+                if remaining <= 0:
+                    break
+            if remaining <= 0:
+                break
         raise SystemExit(1)
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -1361,49 +1386,28 @@ def _terminate_selected_test_process(process: subprocess.Popen) -> str | None:
     return cleanup_issue
 
 
-class _SelectedTestTerminated(BaseException):
-    pass
+class _SelectedTestSignal(BaseException):
+    """A termination signal received while an isolated test runner is active."""
+
+    def __init__(self, signum: int):
+        self.signum = signum
 
 
-@contextmanager
-def _selected_test_termination():
-    """Unwind runner cleanup on default SIGTERM, then retain signal exit status."""
-    if (
-        os.name != "posix"
-        or threading.current_thread() is not threading.main_thread()
-        or signal.getsignal(signal.SIGTERM) != signal.SIG_DFL
-    ):
-        yield lambda: None
-        return
+def _raise_selected_test_signal(signum: int) -> None:
+    """Restore default signal handling and re-raise after child cleanup."""
+    signal.signal(signum, signal.SIG_DFL)
+    os.kill(os.getpid(), signum)
+    # A patched os.kill may return in tests; preserve cancellation semantics.
+    raise _SelectedTestSignal(signum)
 
-    launching = True
-    pending = False
 
-    def terminate(signum, frame):
-        nonlocal pending
-        # Defer cancellation until the new runner is published to its cleanup
-        # scope; interrupting Popen before assignment would orphan its session.
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        if launching:
-            pending = True
-            return
-        raise _SelectedTestTerminated()
+def _selected_test_signal_handler(state: dict):
+    def handle_sigterm(signum, _frame):
+        state["pending_signal"] = signum
+        if state["phase"] == "communicating":
+            raise _SelectedTestSignal(signum)
 
-    def communication_ready():
-        nonlocal launching
-        launching = False
-        if pending:
-            raise _SelectedTestTerminated()
-
-    signal.signal(signal.SIGTERM, terminate)
-    try:
-        yield communication_ready
-    except _SelectedTestTerminated:
-        signal.signal(signal.SIGTERM, signal.SIG_DFL)
-        os.kill(os.getpid(), signal.SIGTERM)
-        raise
-    finally:
-        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+    return handle_sigterm
 
 
 def _run_python_evidence(entries: list[dict], label: str) -> int:
@@ -1424,7 +1428,20 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
             "regression" if label == "regression"
             else "independent review evidence"
         )
-        with _selected_test_termination() as communication_ready:
+        previous_handler = None
+        handle_signals = (
+            os.name == "posix"
+            and threading.current_thread() is threading.main_thread()
+            and signal.getsignal(signal.SIGTERM) == signal.SIG_DFL
+        )
+        termination_state = {"phase": "launching", "pending_signal": None}
+        process = None
+
+        try:
+            if handle_signals:
+                previous_handler = signal.signal(
+                    signal.SIGTERM, _selected_test_signal_handler(termination_state)
+                )
             process = subprocess.Popen(
                 command,
                 cwd=ROOT,
@@ -1435,14 +1452,22 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
                 env={**os.environ, "PYTHONPATH": python_path},
                 start_new_session=os.name == "posix",
             )
-            try:
-                communication_ready()
-                stdout, stderr = process.communicate(
-                    input=nonce + "\n",
-                    timeout=SELECTED_TEST_TIMEOUT_SECONDS,
-                )
-            except subprocess.TimeoutExpired:
-                cleanup_issue = _terminate_selected_test_process(process)
+            termination_state["phase"] = "communicating"
+            if termination_state["pending_signal"] is not None:
+                raise _SelectedTestSignal(termination_state["pending_signal"])
+            stdout, stderr = process.communicate(
+                input=nonce + "\n",
+                timeout=SELECTED_TEST_TIMEOUT_SECONDS,
+            )
+        except BaseException as exc:
+            termination_state["phase"] = "cleanup"
+            cleanup_issue = (
+                _terminate_selected_test_process(process)
+                if process is not None else None
+            )
+            if termination_state["pending_signal"] is not None:
+                _raise_selected_test_signal(termination_state["pending_signal"])
+            if isinstance(exc, subprocess.TimeoutExpired):
                 message = (
                     f"{entry['id']}: {failure_kind} timed out after "
                     f"{SELECTED_TEST_TIMEOUT_SECONDS:g} seconds"
@@ -1450,12 +1475,12 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
                 if cleanup_issue:
                     message += f"; {cleanup_issue}"
                 raise GateError(message) from None
-            except BaseException as exc:
-                # Isolated runners do not receive the gate's terminal signals.
-                cleanup_issue = _terminate_selected_test_process(process)
-                if cleanup_issue and hasattr(exc, "add_note"):
-                    exc.add_note(f"selected test cleanup: {cleanup_issue}")
-                raise
+            if cleanup_issue and hasattr(exc, "add_note"):
+                exc.add_note(f"selected test cleanup: {cleanup_issue}")
+            raise
+        finally:
+            if previous_handler is not None:
+                signal.signal(signal.SIGTERM, previous_handler)
         if process.returncode or not _exact_unittest_completed(stdout, nonce):
             detail = (stdout + stderr).strip()
             raise GateError(

@@ -41,9 +41,99 @@ python3 scripts/validate_implementation_manifests.py
 
 Implementation support claims use the optional normative
 [`ImplementationManifest`](implementation-manifest.schema.json) reporting shape.
-Four validated examples live in [`implementation-manifests/`](implementation-manifests/).
+Six validated examples live in [`implementation-manifests/`](implementation-manifests/).
 They pin this vector manifest by commit and SHA-256 hash; live-only tests remain
 separate and cannot substitute for deterministic cases.
+
+An implementation that copies the vector sets under `vectors/` into its own
+tree can check those copies for drift. The non-normative checker matches sets
+by their `set` name, in a flat directory or with the `security/` subdirectory
+kept, and compares them with this checkout or with a revision of it:
+
+```sh
+python3 scripts/check_vendored_vectors.py path/to/vendored/vectors
+python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --rev 4bb9e48a1095ab32c06c25b7c0b52018d3ce4091
+python3 scripts/check_vendored_vectors.py path/to/vendored/vectors --json
+python3 scripts/check_vendored_vectors.py path/to/vendored/sets --sets-only
+python3 scripts/check_vendored_vectors.py path/to/vendored/selection --subset --sets-only
+```
+
+`--rev` takes any revision the checkout can resolve. The commit above is
+the v0.4 release; a tag name such as `v0.4` resolves only once the tag
+has been fetched (`git fetch --tags`), which a shallow or single-branch
+clone may not have done.
+
+Point the tool at the directory holding vector sets, such as `vectors/`,
+rather than a copy of the whole `conformance/` tree. Incomplete set objects,
+symlinked subdirectories and files, JSON paths that are not regular files,
+and strings that are not valid Unicode (a lone surrogate escape) are bad
+input. Each Standard set is named after its file stem, so a vendored file
+with the file name of a Standard set must hold that complete set. One that
+lost its `set` member, is wrapped in an array or holds another set is also
+bad input, in every mode.
+
+Other JSON files under `vectors/`, such as `golden.json`, the
+`dacs-v0.1-*` paths and `examples/`, are matched by their path relative to
+that directory and compared as type-strict parsed JSON. Each is reported as
+matching, drifted (naming its changed top-level members), missing or extra.
+For a copy that holds only the vector sets, `--sets-only` compares the sets
+alone and counts other JSON files as ignored, naming each ignored vendored
+file. In that mode only an object with a `set` member, or a file named after
+a Standard set, is a set, so other JSON that uses a member such as `hash` is
+ignored; every file must still parse.
+
+For a copy that holds selected sets or files, `--subset` still reports the
+sets and files it does not hold as missing, but they do not fail the run;
+drifted, extra and uncheckable ones still do. A `--subset` copy that holds
+no set (or, without `--sets-only`, no other JSON file) is bad input. A copy
+whose files come from different Standard revisions can be checked once per
+revision, each with `--rev` and a directory holding that revision's files.
+
+For each set, it reports changes to `vectors`, `count`, declared `hash`,
+`spec`, or any other top-level member, as well as missing and extra sets.
+Vectors are evaluated against top-level members such as `agreement`,
+`publicKeys`, `decisionModel`, `trustedFixturePolicy`, `tier` and
+`conformanceProfile`, so every member is compared and each changed one is
+named under `members`. The checker computes this content hash separately
+from each set's declared `hash`, whose encoding varies by set:
+
+```text
+sha256(canonical_json(vectors))
+```
+
+It uses `canonical_json` from `scripts/validate_conformance_vectors.py`.
+When that function refuses a set, the checker verifies its declared hash
+using the compact encodings accepted by `scripts/validate_security_vectors.py`
+and compares computed hashes under the selected encoding. Text and JSON
+output label this mode `declared-encoding-sha256+parsed-json` and name the
+encoding. The four current sets containing integers beyond the CORE §B.2
+safe range use this mode, so a self-check can pass without changing vectors.
+This is a non-normative tooling choice.
+
+When the Standard supplies the verified encoding, the checker hashes the
+vendored copy under that encoding even if its own declared hash is stale or
+edited. Those changes report drift with exit 1. When the Standard's vectors
+canonicalize and the vendored vectors do not, the vectors differ and the set
+is reported as drifted. Because invalid Unicode is bad input on either side,
+every accepted encoding can encode the vectors it compares, as
+`scripts/validate_security_vectors.py` requires of the Standard's own sets.
+
+Both modes also compare type-strict parsed values: Unicode normalization,
+`1.0` versus `1`, and float zero-sign changes are drift. Numbers use Python's
+parsed values; spelling and precision lost during parsing are not compared.
+Formatting is ignored. Canonical hashing ignores object member order; the
+fallback mode must reproduce a declared hash under a validator-accepted
+encoding. When the parsed vectors are equal and reproduce it under any
+encoding that verifies the Standard's hash, the checker uses and names that
+encoding; otherwise it uses the first verified one.
+
+Exit 0 means every set and compared file matches, exit 1 means drift
+(including missing sets and files, unless `--subset`), and
+exit 2 means bad input or a set with neither a canonical nor a verified
+declared-encoding hash.
+Such a set is `uncheckable`; a known missing or extra set retains that status
+and also contributes to the separate uncheckable count, with or without
+`--subset`. Exit 2 takes precedence over drift.
 
 For a runnable five-stage builder path, see the dependency-free
 [`walkthrough/`](./walkthrough/) reference tool. It verifies the current signed
@@ -136,7 +226,7 @@ The output map describes the intended DACS-X step-3 policy boundary: a full tran
   history and is rejected by the cross-run tool; its abbreviated references
   and signatures are not executable wire artifacts.
 - `fixtures/settlement-evidence-payment-success.json` — a byte-stable pay-evm-erc20 success SettlementEvidence (§9.7) with its PaymentPhaseInput + PhaseHandlerResult, signed by a deterministic orchestrator key.
-- `fixtures/settlement/settlement-ap2-reference.json` — a byte-stable public fixture generated and verified with the official AP2 Python SDK at the pinned commit. It carries the separate CheckoutMandate and PaymentMandate presentations, public JWKs, byte-exact transaction-ID projection, replayable non-secret provider-response bytes, deterministic signed DAHR transaction/block wire evidence, the `ap2-sr3` receipt references, and deterministic signed `pay-ap2` SettlementEvidence. `tests/test_ap2_reference_fixture.py` independently checks the merchant JWS, canonical ULID, exact response-byte hash and parsed session/amount binding, known-answer DAHR transaction/block identities, Ed25519 signatures against a separately pinned fixture validator roster, inclusion/finality, evidence hash, and DACS signature; it rejects detached status-field mutations and an internally consistent attacker-selected block roster. The public fixture is a deterministic conformance replay, not the historical live provider/network receipt.
+- `fixtures/settlement/settlement-ap2-reference.json` — a byte-stable public fixture verified with the official AP2 Python SDK at the pinned commit. It carries the separate CheckoutMandate and PaymentMandate presentations, public JWKs, byte-exact transaction-ID projection, a signed Listing with an ordered `pay-ap2` phase, a buyer/seller co-signed `PayeeBoundAgreementDocument`, replayable non-secret provider-response bytes, deterministic signed DAHR transaction/block wire evidence, the `ap2-sr3` receipt references, and deterministic signed `pay-ap2` SettlementEvidence. Fixture v2 (2026-09-07) preserves both original official AP2 presentations byte-for-byte and refreshes only the synthetic DACS/provider/DAHR side from the published fixture seeds: the provider's authenticated metadata now carries the RFC 8785 hash of the complete agreement minus `signatures`, and the PC-2 result locator is derived from the signed Listing phase plus the agreement's exact payout binding. Install the exact verifier with `python3 -m pip install -r requirements-ap2-reference.txt`; the immutable Git revision and its source provenance are enforced in CI. `tests/test_ap2_reference_fixture.py` invokes the official `MandateClient` with independently pinned AP2 trust, audience, nonce, presentation hashes, and a DAHR-authenticated evaluation epoch. It independently pins the synthetic Listing/agreement/orchestrator/writer/validator keys, verifies the Listing and agreement signatures and full canonical hashes, checks payout coverage, and then joins the authenticated `(jobId, railId, phaseIndex)` to provider status, evidence, and the result locator. Its deterministic refresh predicate reproduces the synthetic signatures and hashes without treating candidate-carried seeds or keys as verifier authority. Coordinated rail/phase-plus-locator mutation, mutated presentations/disclosures, detached status fields, and an internally consistent attacker-selected block roster all fail before effects. This fixture models a public conformance replay only: it does not establish a live provider charge, live DAHR/ledger observation, credential scope, registry availability, or production readiness.
 - `fixtures/settlement-evidence-delivery-success.json` — a byte-stable historical deliver-storage-program `SettlementEvidence`; current delivery wire fixtures live in `vectors/security/phase-bound-delivery-evidence-v0.7.json`.
 - `fixtures/session-bundle-one-sided.json` — a one-signature `aborted-by-other` bundle for the §10.4.3(b)/§10.11 one-sided case.
 - `fixtures/session-bundles-presence.json` — byte-stable buyer/seller bundle pairs for §10.4.3 phaseSummary entry-set mismatch and advisory-only skew.
@@ -199,3 +289,7 @@ admission of the later composed tuple in `spec/PROFILE.md`. Current composed
 profile metadata is checked by the JID reference controls. Deployment or
 end-to-end AP2 support for the composed candidate requires separate exact-pin
 consumer evidence; a green pinned fixture-profile run is not that evidence.
+
+### AP2 fixture verification scope
+
+The AP2 reference helper verifies the retrospective integrity of a deterministic public fixture: signed Listing and payee-bound Agreement authority, the complete payment address, official mandates, and the linked provider/DAHR/settlement records. Its exact pipeline includes delivery after payment. Synthetic before-effect assertions only check that fixture-verification failures stop the modeled effects; they do not establish a finalized Agreement commitment receipt or authorize live provider submission. Production admission still requires the Standard's independent commitment and finality gates.

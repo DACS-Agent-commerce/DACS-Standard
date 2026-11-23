@@ -1,5 +1,10 @@
 # DACS Implementation Readiness
 
+> **Historical.** This page records a completed readiness branch and is no
+> longer updated. For the current rules and open issues on the fixed-price
+> `pay-dem` path, see [`docs/fp-dem-current-rules.md`](./docs/fp-dem-current-rules.md);
+> for release status, see [PROFILE](./spec/PROFILE.md).
+
 This document tracks additive repository improvements that make DACS easier to implement, validate, and review without changing v0.1 conformance semantics. Normative roadmap items remain tracked in [ROADMAP.md](./ROADMAP.md).
 
 ## Current implementation-readiness items

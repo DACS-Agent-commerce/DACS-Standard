@@ -13,6 +13,7 @@ import secrets
 import signal
 import subprocess
 import sys
+import threading
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -767,7 +768,11 @@ def _run():
         )
         detail_limit = 8 * 1024
         remaining = 64 * 1024
-        for kind, records in (("FAIL", result.failures), ("ERROR", result.errors)):
+        for kind, records in (
+            ("FAIL", result.failures),
+            ("ERROR", result.errors),
+            ("EXPECTED FAILURE", result.expectedFailures),
+        ):
             for test, detail in records:
                 diagnostic = "%s: %s\\n%s" % (kind, test.id(), detail)
                 if len(diagnostic) > detail_limit:
@@ -1388,6 +1393,23 @@ class _SelectedTestSignal(BaseException):
         self.signum = signum
 
 
+def _raise_selected_test_signal(signum: int) -> None:
+    """Restore default signal handling and re-raise after child cleanup."""
+    signal.signal(signum, signal.SIG_DFL)
+    os.kill(os.getpid(), signum)
+    # A patched os.kill may return in tests; preserve cancellation semantics.
+    raise _SelectedTestSignal(signum)
+
+
+def _selected_test_signal_handler(state: dict):
+    def handle_sigterm(signum, _frame):
+        state["pending_signal"] = signum
+        if state["phase"] == "communicating":
+            raise _SelectedTestSignal(signum)
+
+    return handle_sigterm
+
+
 def _run_python_evidence(entries: list[dict], label: str) -> int:
     python_path = os.pathsep.join((str(ROOT), str(ROOT / "tests")))
     for entry in entries:
@@ -1406,22 +1428,20 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
             "regression" if label == "regression"
             else "independent review evidence"
         )
-        previous_handlers = {}
+        previous_handler = None
+        handle_signals = (
+            os.name == "posix"
+            and threading.current_thread() is threading.main_thread()
+            and signal.getsignal(signal.SIGTERM) == signal.SIG_DFL
+        )
+        termination_state = {"phase": "launching", "pending_signal": None}
         process = None
-        pending_signal = None
-
-        def handle_sigterm(signum, _frame):
-            nonlocal pending_signal
-            pending_signal = signum
-            if sys.exc_info()[0] is None:
-                raise _SelectedTestSignal(signum)
 
         try:
-            if os.name == "posix":
-                for signum in (signal.SIGTERM,):
-                    previous_handlers[signum] = signal.signal(
-                        signum, handle_sigterm
-                    )
+            if handle_signals:
+                previous_handler = signal.signal(
+                    signal.SIGTERM, _selected_test_signal_handler(termination_state)
+                )
             process = subprocess.Popen(
                 command,
                 cwd=ROOT,
@@ -1432,18 +1452,21 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
                 env={**os.environ, "PYTHONPATH": python_path},
                 start_new_session=os.name == "posix",
             )
+            termination_state["phase"] = "communicating"
+            if termination_state["pending_signal"] is not None:
+                raise _SelectedTestSignal(termination_state["pending_signal"])
             stdout, stderr = process.communicate(
                 input=nonce + "\n",
                 timeout=SELECTED_TEST_TIMEOUT_SECONDS,
             )
         except BaseException as exc:
+            termination_state["phase"] = "cleanup"
             cleanup_issue = (
                 _terminate_selected_test_process(process)
                 if process is not None else None
             )
-            if pending_signal is not None:
-                signal.signal(pending_signal, signal.SIG_DFL)
-                os.kill(os.getpid(), pending_signal)
+            if termination_state["pending_signal"] is not None:
+                _raise_selected_test_signal(termination_state["pending_signal"])
             if isinstance(exc, subprocess.TimeoutExpired):
                 message = (
                     f"{entry['id']}: {failure_kind} timed out after "
@@ -1456,8 +1479,8 @@ def _run_python_evidence(entries: list[dict], label: str) -> int:
                 exc.add_note(f"selected test cleanup: {cleanup_issue}")
             raise
         finally:
-            for signum, previous_handler in previous_handlers.items():
-                signal.signal(signum, previous_handler)
+            if previous_handler is not None:
+                signal.signal(signal.SIGTERM, previous_handler)
         if process.returncode or not _exact_unittest_completed(stdout, nonce):
             detail = (stdout + stderr).strip()
             raise GateError(

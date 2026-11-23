@@ -320,6 +320,71 @@ class PreReviewGateTests(unittest.TestCase):
                 "        self.fail('selected assertion must be visible')\n"
             )
 
+    def test_expected_failure_traceback_is_preserved_with_bounded_output(self):
+        body = (
+            "import unittest\n"
+            "class ExitProbeTests(unittest.TestCase):\n"
+            "    @unittest.expectedFailure\n"
+            "    def test_probe(self):\n"
+            "        self.fail('EXPECTED_FAILURE_DIAGNOSTIC_SENTINEL')\n"
+        )
+        with self.assertRaises(self.gate.GateError) as caught:
+            self._run_temporary_evidence(body)
+        detail = str(caught.exception)
+        self.assertIn("EXPECTED FAILURE", detail)
+        self.assertIn("AssertionError", detail)
+        self.assertIn("EXPECTED_FAILURE_DIAGNOSTIC_SENTINEL", detail)
+
+        oversized = body.replace(
+            "EXPECTED_FAILURE_DIAGNOSTIC_SENTINEL", "x" * (16 * 1024)
+        )
+        with self.assertRaises(self.gate.GateError) as caught:
+            self._run_temporary_evidence(oversized)
+        detail = str(caught.exception)
+        self.assertIn("[detail truncated]", detail)
+        self.assertLess(len(detail), 9 * 1024)
+
+    def test_selected_test_runs_from_a_worker_thread(self):
+        import threading
+
+        outcome = []
+        errors = []
+
+        def run_selected_test():
+            try:
+                outcome.append(self._run_temporary_evidence(
+                    "import unittest\n"
+                    "class ExitProbeTests(unittest.TestCase):\n"
+                    "    def test_probe(self):\n"
+                    "        pass\n"
+                ))
+            except BaseException as exc:
+                errors.append(exc)
+
+        worker = threading.Thread(target=run_selected_test)
+        worker.start()
+        worker.join(timeout=10)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(errors, [])
+        self.assertEqual(outcome, [1])
+
+    @unittest.skipUnless(os.name == "posix", "POSIX SIGTERM disposition")
+    def test_caller_sigterm_ignore_is_preserved_during_selected_test(self):
+        import signal
+
+        original = signal.getsignal(signal.SIGTERM)
+        try:
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
+            self.assertEqual(self._run_temporary_evidence(
+                "import os, signal, unittest\n"
+                "class ExitProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        os.kill(os.getppid(), signal.SIGTERM)\n"
+            ), 1)
+            self.assertIs(signal.getsignal(signal.SIGTERM), signal.SIG_IGN)
+        finally:
+            signal.signal(signal.SIGTERM, original)
+
     def _assert_signal_kills_selected_test_group_and_releases_lock(
         self, signum: int
     ):
@@ -405,6 +470,90 @@ class PreReviewGateTests(unittest.TestCase):
         self._assert_signal_kills_selected_test_group_and_releases_lock(
             signal.SIGTERM
         )
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
+    def test_sigterm_during_popen_cleans_up_unpublished_runner(self):
+        import fcntl
+        import signal
+        import subprocess
+        import sys
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            tests = root / "tests"
+            tests.mkdir()
+            lock_path = root / "runner.lock"
+            ready_path = root / "runner.ready"
+            pid_path = root / "runner.pid"
+            test_path = tests / "test_launch.py"
+            lock_path.touch()
+            test_path.write_text(
+                "import fcntl, os, pathlib, time, unittest\n"
+                f"lock = open({str(lock_path)!r}, 'r+')\n"
+                "fcntl.flock(lock, fcntl.LOCK_EX)\n"
+                f"pathlib.Path({str(pid_path)!r}).write_text(str(os.getpid()))\n"
+                f"pathlib.Path({str(ready_path)!r}).touch()\n"
+                "class LaunchProbeTests(unittest.TestCase):\n"
+                "    def test_probe(self):\n"
+                "        time.sleep(60)\n",
+                encoding="utf-8",
+            )
+            driver = (
+                "import importlib.util, os, pathlib, signal, sys, time\n"
+                f"spec = importlib.util.spec_from_file_location('gate', {str(SCRIPT)!r})\n"
+                "gate = importlib.util.module_from_spec(spec)\n"
+                "spec.loader.exec_module(gate)\n"
+                f"gate.ROOT = pathlib.Path({str(root)!r})\n"
+                f"test_path = pathlib.Path({str(test_path)!r})\n"
+                "gate._within_test_root = lambda _: test_path\n"
+                "original_popen = gate.subprocess.Popen\n"
+                "def interrupt_before_publish(*args, **kwargs):\n"
+                "    child = original_popen(*args, **kwargs)\n"
+                "    child.stdin.write('0' * 64 + '\\n')\n"
+                "    child.stdin.flush()\n"
+                f"    deadline = time.monotonic() + 5\n"
+                f"    ready = pathlib.Path({str(ready_path)!r})\n"
+                "    while not ready.exists() and time.monotonic() < deadline:\n"
+                "        time.sleep(0.01)\n"
+                "    if not ready.exists():\n"
+                "        raise RuntimeError('selected runner did not start')\n"
+                "    os.kill(os.getpid(), signal.SIGTERM)\n"
+                "    return child\n"
+                "gate.subprocess.Popen = interrupt_before_publish\n"
+                "gate._run_python_evidence([{'id': 'launch-probe', "
+                "'file': 'tests/test_launch.py', "
+                "'test': 'LaunchProbeTests.test_probe'}], 'review evidence')\n"
+            )
+            process = subprocess.Popen(
+                [sys.executable, "-c", driver],
+                start_new_session=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            try:
+                stdout, stderr = process.communicate(timeout=8)
+                self.assertEqual((stdout, stderr), ("", ""))
+                self.assertEqual(process.returncode, -signal.SIGTERM)
+                with lock_path.open("r+") as lock:
+                    deadline = time.monotonic() + 2
+                    while True:
+                        try:
+                            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                            break
+                        except BlockingIOError:
+                            if time.monotonic() >= deadline:
+                                self.fail("SIGTERM left the unpublished runner holding its lock")
+                            time.sleep(0.01)
+            finally:
+                if process.poll() is None:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait(timeout=5)
+                if pid_path.exists():
+                    try:
+                        os.killpg(int(pid_path.read_text()), signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
 
     @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
     def test_sigterm_during_abnormal_cleanup_is_deferred_until_reaped(self):

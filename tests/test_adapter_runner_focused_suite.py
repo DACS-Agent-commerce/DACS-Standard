@@ -6,12 +6,11 @@ pins and adapter dependencies out of these bounded tests.
 """
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = r"""
@@ -73,14 +72,23 @@ class AdapterRunnerFocusedSuiteTests(unittest.TestCase):
             env={**os.environ, "TMPDIR": str(ROOT)},
         )
 
-    def run_producer_gate(self, extra="", mode="gate"):
+    def run_producer_gate(self, extra="", mode="gate", diagnostic=None, nested=False):
         with tempfile.TemporaryDirectory(dir=ROOT) as directory:
             runner = Path(directory)
             suite = runner / "conformance/shared-suite/unsupported-case.test.mjs"
             suite.parent.mkdir(parents=True)
+            first_test = "test('passing-0', () => {});"
+            if diagnostic is not None:
+                first_test = f"test('passing-0', t => t.diagnostic({json.dumps(diagnostic)}));"
+            tests = [first_test]
+            if nested:
+                tests.extend(f"test('passing-{i}', () => {{}});" for i in range(1, 14))
+                tests.append("test('parent', async t => { await t.test('child', () => {}); });")
+            else:
+                tests.extend(f"test('passing-{i}', () => {{}});" for i in range(1, 16))
             suite.write_text(
                 "import { test } from 'node:test';\n"
-                + "\n".join(f"test('passing-{i}', () => {{}});" for i in range(16))
+                + "\n".join(tests)
                 + "\n" + extra,
                 encoding="utf-8",
             )
@@ -93,7 +101,8 @@ class AdapterRunnerFocusedSuiteTests(unittest.TestCase):
 
     @staticmethod
     def summary(**changed):
-        counts = dict(tests=16, pass_=16, fail=0, skipped=0, cancelled=0, todo=0)
+        counts = {"tests": 16, "pass_": 16, "fail": 0, "skipped": 0,
+                  "cancelled": 0, "todo": 0}
         counts.update(changed)
         return "TAP version 13\n1..16\n" + "".join(
             f"# {key.rstrip('_')} {value}\n" for key, value in counts.items()
@@ -108,6 +117,17 @@ class AdapterRunnerFocusedSuiteTests(unittest.TestCase):
 
     def test_producer_requests_explicit_tap_reporter(self):
         completed = self.run_producer_gate(mode="reporter")
+        self.assertEqual(0, completed.returncode, completed.stderr)
+
+    def test_producer_accepts_diagnostics_that_begin_with_count_keys(self):
+        for diagnostic in ("pass through the sample rows in order",
+                           "tests may include an empty response"):
+            with self.subTest(diagnostic=diagnostic):
+                completed = self.run_producer_gate(diagnostic=diagnostic)
+                self.assertEqual(0, completed.returncode, completed.stderr)
+
+    def test_producer_accepts_nested_test_plan_when_suite_counts_include_subtests(self):
+        completed = self.run_producer_gate(nested=True)
         self.assertEqual(0, completed.returncode, completed.stderr)
 
     def test_packet_counts_are_read_from_verified_result(self):
@@ -160,6 +180,13 @@ class AdapterRunnerFocusedSuiteTests(unittest.TestCase):
 
     def test_indented_diagnostic_counts_are_not_summary(self):
         self.assert_gate_rejected("  " + self.summary().replace("\n", "\n  "))
+
+    def test_missing_duplicate_or_malformed_top_level_plan_fails_closed(self):
+        for plan in ("", "1..016\n", "1..x\n", "1..0\n",
+                     "1..0 # SKIP unavailable\n", "1..16 # TODO later\n",
+                     "1..16\n1..16\n"):
+            with self.subTest(plan=plan):
+                self.assert_gate_rejected(self.summary().replace("1..16\n", plan, 1))
 
     def test_crlf_summary_is_accepted(self):
         completed = self.run_node(self.summary().replace("\n", "\r\n"), "output")

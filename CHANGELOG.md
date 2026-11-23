@@ -34,7 +34,7 @@ The format used per release:
   When PRA-5 requires `error` before the parser is invoked, that `error`
   stands and this check is not evaluated; otherwise a wrong stored proof stays
   `fail` over whatever an executed parser gives. Candidate vector set
-  `cci-tlsn-stored-proof-check-v0.1` (23 vectors, plus a 19-case
+  `cci-tlsn-stored-proof-check-v0.1` (23 vectors, plus a 20-case
   decision-composition table).
 
 ### Breaking pre-v1 correction — Vet admission, provenance, time, and receipt authority (CORE v0.3 / DACS-1 v0.8 / DACS-2 v0.6)

@@ -2290,7 +2290,7 @@ python3 -m unittest tests.test_identity_bundle_hash_binding_vectors -v
 
 ### `cci-tlsn-stored-proof-check-v0.1.json` — §7.3.3 stored-proof check (`cci-tlsn` only)
 
-23 vectors, plus a 19-case decision-composition table, for the check that applies only to a requirement on a registered
+23 vectors, plus a 20-case decision-composition table, for the check that applies only to a requirement on a registered
 `cci-tlsn:H` claim (`H` is 64 lowercase hex). The stored web2 entry for `H` is
 modelled as `storedEntry` (`proof`, `userId`); `null` means `H` resolves to no
 stored entry. How the node derives `H` is outside the check and not modelled.
@@ -2334,7 +2334,7 @@ does not run a parser.
 | `scheme`, `identifier` | always `cci-tlsn`, and `H` |
 | `storedEntry` | the stored entry for `H` as `proof` (or `proofRaw`, its JSON text, for the same reasons as `bodyRaw`) and `userId`, or `null` |
 | `recipe` | `dataMap`; a `subject` key is the subject entry |
-| `proof` | `body` (the supplied proof; `bodyRaw` is its JSON text, used when it has a duplicate member name or a number a binary float cannot hold exactly) and `subject` (the value `dataMap.subject` resolves to, `null` if nothing) |
+| `proof` | `body` (the supplied proof; `bodyRaw` is its JSON text, used when it has a duplicate member name or when the JSON number spelling must be preserved (including exact decimal values and exponent forms such as `1e2`)) and `subject` (the value `dataMap.subject` resolves to, `null` if nothing) |
 
 Execute with:
 

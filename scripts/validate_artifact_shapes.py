@@ -531,7 +531,7 @@ def check_no_legacy_attestation_refs() -> tuple[list[str], int]:
         except json.JSONDecodeError:
             continue  # the owning structural validator reports malformed JSON
 
-        def walk(value, pointer: str = "") -> None:
+        def walk(value, pointer: str = "", source_path: Path = path) -> None:
             nonlocal checked
             if isinstance(value, dict):
                 checked += 1
@@ -541,7 +541,7 @@ def check_no_legacy_attestation_refs() -> tuple[list[str], int]:
                     and value["kind"].startswith("dacs-")
                 ):
                     errors.append(
-                        f"{path.relative_to(ROOT)}{pointer}: legacy "
+                        f"{source_path.relative_to(ROOT)}{pointer}: legacy "
                         "{kind,id,contentHash} reference; use AttestationRef.anchor.locator"
                     )
                 for key, child in value.items():
